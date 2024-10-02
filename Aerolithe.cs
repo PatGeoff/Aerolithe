@@ -266,7 +266,7 @@ namespace Aerolithe
         private void btn_communicationUDP_Click(object sender, EventArgs e)
         {
            
-            // C'est bien rendu
+            // Blah blah blah 
 
         }
 
