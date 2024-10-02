@@ -28,10 +28,7 @@ namespace Aerolithe
         }
 
        
-        public void pingAll()
-        {
-            
-        }
+      
 
 
         public void udpSendStepperMessage(string message)
