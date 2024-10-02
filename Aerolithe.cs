@@ -266,7 +266,7 @@ namespace Aerolithe
         private void btn_communicationUDP_Click(object sender, EventArgs e)
         {
            
-            // Bon, finalement!
+            // Version fonctionnelle avant de changer la méthode sendUDP()
 
         }
 
