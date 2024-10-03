@@ -109,6 +109,8 @@
             btn_actuator25deg = new Button();
             btn_actuator5deg = new Button();
             tabPage7 = new TabPage();
+            lbl_lastTimePing = new Label();
+            label19 = new Label();
             picBox_routerPing = new PictureBox();
             label18 = new Label();
             picBox_waveshareCom = new PictureBox();
@@ -122,8 +124,8 @@
             btn_communicationUDP = new Button();
             btn_pingAll = new Button();
             panel6 = new Panel();
-            btn_clearConsole = new Button();
             panel_Console = new Panel();
+            btn_clearConsole = new Button();
             tabPage4.SuspendLayout();
             Pnl_StepperTrkbar.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)stepperMotor_trkbar).BeginInit();
@@ -1044,6 +1046,8 @@
             // tabPage7
             // 
             tabPage7.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage7.Controls.Add(lbl_lastTimePing);
+            tabPage7.Controls.Add(label19);
             tabPage7.Controls.Add(picBox_routerPing);
             tabPage7.Controls.Add(label18);
             tabPage7.Controls.Add(picBox_waveshareCom);
@@ -1062,6 +1066,25 @@
             tabPage7.Size = new Size(890, 1296);
             tabPage7.TabIndex = 6;
             tabPage7.Text = "Settings";
+            // 
+            // lbl_lastTimePing
+            // 
+            lbl_lastTimePing.AutoSize = true;
+            lbl_lastTimePing.ForeColor = Color.White;
+            lbl_lastTimePing.Location = new Point(618, 98);
+            lbl_lastTimePing.Name = "lbl_lastTimePing";
+            lbl_lastTimePing.Size = new Size(0, 32);
+            lbl_lastTimePing.TabIndex = 18;
+            // 
+            // label19
+            // 
+            label19.AutoSize = true;
+            label19.ForeColor = Color.White;
+            label19.Location = new Point(661, 37);
+            label19.Name = "label19";
+            label19.Size = new Size(161, 32);
+            label19.TabIndex = 17;
+            label19.Text = "Dernier check";
             // 
             // picBox_routerPing
             // 
@@ -1212,6 +1235,16 @@
             panel6.Size = new Size(2670, 1807);
             panel6.TabIndex = 27;
             // 
+            // panel_Console
+            // 
+            panel_Console.BackColor = Color.FromArgb(10, 10, 10);
+            panel_Console.Controls.Add(btn_clearConsole);
+            panel_Console.Controls.Add(txtBox_Console);
+            panel_Console.Location = new Point(3, 1353);
+            panel_Console.Name = "panel_Console";
+            panel_Console.Size = new Size(2674, 454);
+            panel_Console.TabIndex = 1;
+            // 
             // btn_clearConsole
             // 
             btn_clearConsole.BackColor = Color.Black;
@@ -1223,16 +1256,6 @@
             btn_clearConsole.Text = "Clear";
             btn_clearConsole.UseVisualStyleBackColor = false;
             btn_clearConsole.Click += btn_clearConsole_Click;
-            // 
-            // panel_Console
-            // 
-            panel_Console.BackColor = Color.FromArgb(10, 10, 10);
-            panel_Console.Controls.Add(btn_clearConsole);
-            panel_Console.Controls.Add(txtBox_Console);
-            panel_Console.Location = new Point(3, 1353);
-            panel_Console.Name = "panel_Console";
-            panel_Console.Size = new Size(2674, 454);
-            panel_Console.TabIndex = 1;
             // 
             // Aerolithe
             // 
@@ -1387,5 +1410,7 @@
         private Label label18;
         private Panel panel_Console;
         private Button btn_clearConsole;
+        private Label lbl_lastTimePing;
+        private Label label19;
     }
 }

@@ -218,6 +218,9 @@ namespace Aerolithe
 
         public void CheckCommunication()
         {
+
+            DateTime now = DateTime.Now;
+            lbl_lastTimePing.Text = now.ToString();
             esp32Alive = false;
             waveshareAlive = false;
             picBox_waveshareCom.Image = Resources.echec;
