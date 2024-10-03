@@ -1,0 +1,30 @@
+﻿- En ouvrant l'application, on ouvre la caméra et on voit le livestream, sinon un icône demande d'allumer la caméra et de checker le setup
+- On demande de mettre la météorite sur la table tournante et d'appuyer sur AL:Mise au point
+- La table tournante devrait faire un 360 aller-retour et la caméra devrait se placer de façon a être optimale. Aucune image hors frame mais la plus grosse possible.
+- On demande de retirer la météorite, d'allumer la lumière de la table tournante et d'appuyer sur AL:Prendre une photo
+- Ensuite on demande de remettre la météorite au centre.
+- On appuie sur AL:Débuter
+- Techniquement, la personne pourrait partir à ce moment.
+
+? Est-ce qu'on ferme tout après 30 minutes d'inactivité? 
+
+
+
+********************************************************************
+
+{{{{{{Pour commencer, il faut télécharger nikonswrapper et l'inclure dans le projet afin de communiquer avec la caméra. Ceci dit, c'est en .NET 4.0 et ça fonctionnera jusqu'à 4.8.1. 
+Malheureusement, quand on va vouloir utiliser EMGU.CV.Bitmap dans notre application, ça roulera pas dans 4.8 alors il faut porter tout ce qui a rapport avec Nikon en .NET 8.0 et c'est une grosse job.
+
+Merci ChatGPT, on lui demande de réécrire les .csproj pour nous. Il y a beaucoup à faire alors j'ai zippé une conversion qui fonctionne que je nommerai nikonwswrapperNET8
+Il ne faut pas oublier de ne pas regénérer de AssemblyINfo en mettant cette ligne <GenerateAssemblyInfo>false</GenerateAssemblyInfo> dnas les .csprject.
+Aussi ne pas oublier de targetter AnyCpu}}}}}} - Je ne suis plus certain que ce soit nécessaire si on load la référence au lieu des dossiers.
+
+J'ai cherché vraiment longtemps et j'ai été chanceux de me rappeler qu'il faut aussi que les fichiers dnssd.dll, NkdPTP.dll et NkRoyalmile.dll se retrouvent avec Type0022.md3 
+dans bin/debug ou bin/release sinon l'appareil n'est pas vu.
+
+********************************************************************
+Modifications à nikonswrapper pour supprimer les exceptions de FocusOutOfRange
+
+- NikonNative.cs: commenté les lignes 1410 à 1416
+- NikonTaskQueue.cs: ligne 219 Décoché le "Break when exception is thrown"
+- NikonTaskQueue.cs: ligne 91 commenté la ligne

@@ -1,0 +1,54 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="nikoncswrapper\**" />
+    <Compile Remove="Resources\Images\**" />
+    <EmbeddedResource Remove="nikoncswrapper\**" />
+    <EmbeddedResource Remove="Resources\Images\**" />
+    <None Remove="nikoncswrapper\**" />
+    <None Remove="Resources\Images\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Images\echec.png" />
+    <EmbeddedResource Include="Resources\Images\crochet.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Emgu.CV" Version="4.9.0.5494" />
+    <PackageReference Include="Emgu.CV.Bitmap" Version="4.9.0.5494" />
+    <PackageReference Include="Emgu.CV.runtime.windows" Version="4.9.0.5494" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="nikoncswrapper">
+      <HintPath>..\Aerolithe_4.8\nikoncswrapper_v2.1\bin\Debug\nikoncswrapper.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+ <ItemGroup>
+  <Compile Update="Properties\Resources.Designer.cs">
+    <DesignTime>True</DesignTime>
+    <AutoGen>True</AutoGen>
+    <DependentUpon>Resources.resx</DependentUpon>
+  </Compile>
+</ItemGroup>
+
+<ItemGroup>
+  <EmbeddedResource Update="Properties\Resources.resx">
+    <Generator>ResXFileCodeGenerator</Generator>
+    <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+  </EmbeddedResource>
+</ItemGroup>
+
+
+</Project>

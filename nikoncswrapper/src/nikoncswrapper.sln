@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "nikoncswrapper", "nikoncswrapper\nikoncswrapper.csproj", "{AADE1DF5-4C46-4760-B72B-474D90336F5B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demos", "demos", "{E6A887CC-306E-4E8B-B1D7-D2F5B09B3A23}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demo_capture", "demo_capture\demo_capture.csproj", "{69F8CD0A-322E-4FC7-AD59-3354B4CC73A4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demo_video", "demo_video\demo_video.csproj", "{7852C3A2-5AAD-4DA1-99F4-EA4302A060C1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demo_manualfocus", "demo_manualfocus\demo_manualfocus.csproj", "{CCEB0802-25CB-431A-BDF8-4E62F3E504CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demo_capabilities", "demo_capabilities\demo_capabilities.csproj", "{436953C9-5AC6-41ED-BE92-E1DEDB5295F1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "testapp", "testapp", "{948E7B71-B7FA-4296-9630-C3AB4375E6FC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demo_continuouscapture", "demo_continuouscapture\demo_continuouscapture.csproj", "{CCBA610B-AA4D-4D1E-B940-60929B80BD5D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AADE1DF5-4C46-4760-B72B-474D90336F5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AADE1DF5-4C46-4760-B72B-474D90336F5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AADE1DF5-4C46-4760-B72B-474D90336F5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AADE1DF5-4C46-4760-B72B-474D90336F5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69F8CD0A-322E-4FC7-AD59-3354B4CC73A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69F8CD0A-322E-4FC7-AD59-3354B4CC73A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69F8CD0A-322E-4FC7-AD59-3354B4CC73A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69F8CD0A-322E-4FC7-AD59-3354B4CC73A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7852C3A2-5AAD-4DA1-99F4-EA4302A060C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7852C3A2-5AAD-4DA1-99F4-EA4302A060C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7852C3A2-5AAD-4DA1-99F4-EA4302A060C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7852C3A2-5AAD-4DA1-99F4-EA4302A060C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CCEB0802-25CB-431A-BDF8-4E62F3E504CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CCEB0802-25CB-431A-BDF8-4E62F3E504CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CCEB0802-25CB-431A-BDF8-4E62F3E504CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CCEB0802-25CB-431A-BDF8-4E62F3E504CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{436953C9-5AC6-41ED-BE92-E1DEDB5295F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{436953C9-5AC6-41ED-BE92-E1DEDB5295F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{436953C9-5AC6-41ED-BE92-E1DEDB5295F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{436953C9-5AC6-41ED-BE92-E1DEDB5295F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CCBA610B-AA4D-4D1E-B940-60929B80BD5D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CCBA610B-AA4D-4D1E-B940-60929B80BD5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CCBA610B-AA4D-4D1E-B940-60929B80BD5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CCBA610B-AA4D-4D1E-B940-60929B80BD5D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B621A06A-9F04-41D5-A332-D73997181DF0}
+	EndGlobalSection
+EndGlobal
