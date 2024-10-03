@@ -278,6 +278,7 @@ namespace Aerolithe
         {
             try
             {
+               
                 using (Ping ping = new Ping())
                 {
                     PingReply reply = ping.Send(host);
