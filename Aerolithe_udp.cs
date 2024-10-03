@@ -37,8 +37,8 @@ namespace Aerolithe
             }
         }
 
-
-
+       
+      
 
 
         public void udpSendStepperMessage(string message)
@@ -93,7 +93,7 @@ namespace Aerolithe
             string message = $"stepmotor moveto {vitesse},{position},0";
             udpSendStepperMessage(message);
         }
-
+             
 
         public void listenUDP()
         {
@@ -105,7 +105,9 @@ namespace Aerolithe
 
             while (true)
             {
-                try
+            try
+            {
+                while (true)
                 {
                     UdpReceiveResult result = await udpClient.ReceiveAsync();
                     string message = Encoding.UTF8.GetString(result.Buffer);
@@ -113,13 +115,14 @@ namespace Aerolithe
                     AppendTextToConsole(message);
                     checkMessage(message);
                 }
-                catch (Exception ex)
-                {
+            }
+            catch (Exception ex)
+            {
 
                     Debug.WriteLine($"Exception: {ex.Message}");
-                }
-
             }
+
+        }
 
         }
 
@@ -142,29 +145,29 @@ namespace Aerolithe
         }
 
         private void StepperMotorSetMaxValueEnableTrkbar(long position)
-        {
+        {            
             if (stepperMotor_trkbar.InvokeRequired)
             {
                 stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Enabled = true));
-                stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Maximum = (int)position));
+                stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Maximum = (int)position));                
                 txtBox_Console.Invoke(new Action(() => txtBox_Console.Text += "calibration done, trakcbar enabled" + Environment.NewLine));
                 stepperCurrentPosition = stepperMaxPositionValue / 2;
                 stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Value = stepperCurrentPosition));
                 udpSendStepperMotorData(4000, stepperCurrentPosition);
             }
         }
-
+      
 
         private void checkMessage(string message)
-        {
+        {           
             if (message.Contains("calibration done, steppermotor maxPosition: "))
-            {
+            {                
                 // Extract the part of the message after "steppermotor far position = "
                 string positionString = message.Substring(message.IndexOf("calibration done, steppermotor maxPosition: ") + "calibration done, steppermotor maxPosition: ".Length);
-
+                
                 // Try to parse the extracted substring to a double
                 if (long.TryParse(positionString, out long position))
-                {
+                {                                       
                     string txt = "stepper motor far value set to " + position.ToString();
                     AppendTextToConsole(txt);
                     StepperMotorSetMaxValueEnableTrkbar(position);
@@ -202,10 +205,10 @@ namespace Aerolithe
                 waveshareAlive = false;
                 picBox_waveshareCom.Image = Resources.echec;
                 Debug.WriteLine("RIEN reçu du from ESP32");
-            }
+        }
         }
 
-
+      
 
         public void UdpChecker()
         {

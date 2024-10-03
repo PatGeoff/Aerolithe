@@ -30,6 +30,8 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Aerolithe));
             txtBox_Console = new TextBox();
+            panel1 = new Panel();
+            btn_clearConsole = new Button();
             tabPage4 = new TabPage();
             label13 = new Label();
             label12 = new Label();
@@ -125,7 +127,7 @@
             btn_pingAll = new Button();
             panel6 = new Panel();
             panel_Console = new Panel();
-            btn_clearConsole = new Button();
+            panel1.SuspendLayout();
             tabPage4.SuspendLayout();
             Pnl_StepperTrkbar.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)stepperMotor_trkbar).BeginInit();
@@ -166,11 +168,32 @@
             // 
             txtBox_Console.BackColor = Color.FromArgb(10, 10, 10);
             txtBox_Console.ForeColor = Color.White;
-            txtBox_Console.Location = new Point(4, 3);
+            txtBox_Console.Location = new Point(3, 18);
             txtBox_Console.Multiline = true;
             txtBox_Console.Name = "txtBox_Console";
-            txtBox_Console.Size = new Size(2661, 448);
+            txtBox_Console.Size = new Size(2661, 416);
             txtBox_Console.TabIndex = 1;
+            // 
+            // panel1
+            // 
+            panel1.BackColor = Color.FromArgb(10, 10, 10);
+            panel1.Controls.Add(btn_clearConsole);
+            panel1.Location = new Point(3, 1353);
+            panel1.Name = "panel1";
+            panel1.Size = new Size(2674, 235);
+            panel1.TabIndex = 1;
+            // 
+            // btn_clearConsole
+            // 
+            btn_clearConsole.BackColor = Color.Black;
+            btn_clearConsole.ForeColor = Color.White;
+            btn_clearConsole.Location = new Point(500, 500);
+            btn_clearConsole.Name = "btn_clearConsole";
+            btn_clearConsole.Size = new Size(120, 47);
+            btn_clearConsole.TabIndex = 2;
+            btn_clearConsole.Text = "Clear";
+            btn_clearConsole.UseVisualStyleBackColor = false;
+            btn_clearConsole.Click += btn_clearConsole_Click;
             // 
             // tabPage4
             // 
@@ -1238,24 +1261,12 @@
             // panel_Console
             // 
             panel_Console.BackColor = Color.FromArgb(10, 10, 10);
-            panel_Console.Controls.Add(btn_clearConsole);
             panel_Console.Controls.Add(txtBox_Console);
+            panel_Console.Controls.Add(btn_clearConsole);
             panel_Console.Location = new Point(3, 1353);
             panel_Console.Name = "panel_Console";
             panel_Console.Size = new Size(2674, 454);
             panel_Console.TabIndex = 1;
-            // 
-            // btn_clearConsole
-            // 
-            btn_clearConsole.BackColor = Color.Black;
-            btn_clearConsole.ForeColor = Color.White;
-            btn_clearConsole.Location = new Point(2535, 20);
-            btn_clearConsole.Name = "btn_clearConsole";
-            btn_clearConsole.Size = new Size(120, 47);
-            btn_clearConsole.TabIndex = 2;
-            btn_clearConsole.Text = "Clear";
-            btn_clearConsole.UseVisualStyleBackColor = false;
-            btn_clearConsole.Click += btn_clearConsole_Click;
             // 
             // Aerolithe
             // 
@@ -1266,6 +1277,7 @@
             Controls.Add(panel6);
             Name = "Aerolithe";
             Text = "Aerolithe";
+            panel1.ResumeLayout(false);
             tabPage4.ResumeLayout(false);
             tabPage4.PerformLayout();
             Pnl_StepperTrkbar.ResumeLayout(false);
@@ -1316,6 +1328,8 @@
 
         #endregion
         private TextBox txtBox_Console;
+        private Panel panel1;
+        private Button btn_clearConsole;
         private TabPage tabPage4;
         private Panel Pnl_StepperTrkbar;
         private Label lbl_position;
@@ -1409,7 +1423,6 @@
         private PictureBox picBox_routerPing;
         private Label label18;
         private Panel panel_Console;
-        private Button btn_clearConsole;
         private Label lbl_lastTimePing;
         private Label label19;
     }

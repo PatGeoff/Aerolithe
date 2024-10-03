@@ -299,9 +299,9 @@ namespace Aerolithe
         {
             udpSendStepperMessage("fullSetup");
         }
+
         #endregion
 
-        // Bout de viarge! Ça marche tu?
 
 
     }
