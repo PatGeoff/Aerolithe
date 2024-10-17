@@ -184,24 +184,27 @@ namespace Aerolithe
         }
         #endregion
         #region ÉLÉVATEUR TAB
-        private void trkBar_Lift_Scroll(object sender, EventArgs e)
+
+        private void btn_liftMaxDown_Click(object sender, EventArgs e)
         {
-            int val = trkBar_Lift.Value;
-            udpSendScissorLiftMessage(val.ToString());
+            udpSendStepperMessage("lift setZero");
+            trkBar_Lift.Value = 500;
+        }
+        private void btn_liftMaxUp_Click(object sender, EventArgs e)
+        {
+
         }
 
-        private void btn_stopLiftStepper_Click(object sender, EventArgs e)
+        private void trkBar_Lift_MouseUp(object sender, MouseEventArgs e)
         {
-            int val = 0;
-            udpSendScissorLiftMessage(val.ToString());
+            int val = trkBar_Lift.Value;
+            udpSendScissorLiftMessage("lift position " + val.ToString());
+
         }
+
         #endregion
         #region ACTUATEUR
 
-        private void btn_actuator_0_Click(object sender, EventArgs e)
-        {
-            udpSendStepperMessage("actuator zero");
-        }
 
         private void btn_actuator_5_Click(object sender, EventArgs e)
         {
@@ -225,26 +228,24 @@ namespace Aerolithe
         }
         #endregion
 
-
         private void btn_takePicture_Click(object sender, EventArgs e)
         {
             takePicture();
         }
         #region PREFERENCES
-        private void btn_pingAll_Click(object sender, EventArgs e)
-        {
-            Ping();
-        }
 
         private void Ping()
         {
+
             string host = "192.168.2.1";
             bool result = PingHost(host);
             txtBox_Console.Text += ($"Ping --> routeur: {(result ? "succès" : "échec")}" + Environment.NewLine);
-            if (result) {
+            if (result)
+            {
                 picBox_routerPing.Image = Resources.crochet;
             }
-            else {
+            else
+            {
                 picBox_routerPing.Image = Resources.echec;
             }
             Thread.Sleep(200);
@@ -274,14 +275,14 @@ namespace Aerolithe
         }
 
 
-        public static bool PingHost(string host)
+        public static bool PingHost(string host, int timeout = 500)
         {
             try
             {
-               
+
                 using (Ping ping = new Ping())
                 {
-                    PingReply reply = ping.Send(host);
+                    PingReply reply = ping.Send(host, timeout);
                     return reply.Status == IPStatus.Success;
                 }
             }
@@ -293,7 +294,9 @@ namespace Aerolithe
         }
         private void btn_communicationUDP_Click(object sender, EventArgs e)
         {
+            Ping();
             CheckCommunication();
+
         }
         private void btn_esp32StepperFullSetup_Click(object sender, EventArgs e)
         {
@@ -302,7 +305,14 @@ namespace Aerolithe
 
         #endregion
 
+        private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
+        {
+            udpSendScissorLiftMessage("lift getPosition");
+        }
 
-
+        private void btn_esp32Reset_Click(object sender, EventArgs e)
+        {
+            udpSendStepperMessage("fullSetup");
+        }
     }
 }

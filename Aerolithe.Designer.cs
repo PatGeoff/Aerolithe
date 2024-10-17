@@ -33,6 +33,7 @@
             panel1 = new Panel();
             btn_clearConsole = new Button();
             tabPage4 = new TabPage();
+            label3 = new Label();
             label13 = new Label();
             label12 = new Label();
             btn_StopLinearMotor = new Button();
@@ -42,11 +43,6 @@
             stepperMotor_trkbar = new TrackBar();
             picBox_CalibrationCheck = new PictureBox();
             panel2 = new Panel();
-            btn_actuator_45 = new Button();
-            btn_actuator_25 = new Button();
-            btn_actuator_5 = new Button();
-            btn_actuator_0 = new Button();
-            label3 = new Label();
             lbl_stepperMotorMaxPosition = new Label();
             btn_stepperGetPosition = new Button();
             stepperCalibration_btn = new Button();
@@ -63,17 +59,14 @@
             lbl_LiveViewState = new Label();
             btn_toggleLiveView = new Button();
             tabPage2 = new TabPage();
+            btn_printLiftPositionConsole = new Button();
+            btn_liftMaxUp = new Button();
+            btn_liftMaxDown = new Button();
             panel5 = new Panel();
             label9 = new Label();
             label10 = new Label();
             label11 = new Label();
             trkBar_Lift = new TrackBar();
-            btn_allerA = new Button();
-            txtBox_allerA = new TextBox();
-            txtBox_stepsTurnTable = new TextBox();
-            btn_fullTurn = new Button();
-            btn_backToZero = new Button();
-            btn_advance = new Button();
             picBox_LiveView_Main = new PictureBox();
             tabPage1 = new TabPage();
             pictureBox_validationE4 = new PictureBox();
@@ -100,6 +93,12 @@
             picBox_imageFond = new PictureBox();
             tabControl1 = new TabControl();
             tabPage5 = new TabPage();
+            btn_allerA = new Button();
+            txtBox_allerA = new TextBox();
+            txtBox_stepsTurnTable = new TextBox();
+            btn_fullTurn = new Button();
+            btn_backToZero = new Button();
+            btn_advance = new Button();
             panel3 = new Panel();
             lbl_trkbar_TableTournante = new Label();
             label7 = new Label();
@@ -124,15 +123,15 @@
             picBox_esp32Ping = new PictureBox();
             picBox_esp32Com = new PictureBox();
             btn_communicationUDP = new Button();
-            btn_pingAll = new Button();
             panel6 = new Panel();
             panel_Console = new Panel();
-            panel1.SuspendLayout();
+            button1 = new Button();
+            btn_esp32Reset = new Button();
+            label20 = new Label();
             tabPage4.SuspendLayout();
             Pnl_StepperTrkbar.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)stepperMotor_trkbar).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_CalibrationCheck).BeginInit();
-            panel2.SuspendLayout();
             tabPage3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_pictureTaken).BeginInit();
             panel4.SuspendLayout();
@@ -167,17 +166,17 @@
             // txtBox_Console
             // 
             txtBox_Console.BackColor = Color.FromArgb(10, 10, 10);
+            txtBox_Console.BorderStyle = BorderStyle.None;
             txtBox_Console.ForeColor = Color.White;
-            txtBox_Console.Location = new Point(3, 18);
+            txtBox_Console.Location = new Point(3, 56);
             txtBox_Console.Multiline = true;
             txtBox_Console.Name = "txtBox_Console";
-            txtBox_Console.Size = new Size(2661, 416);
+            txtBox_Console.Size = new Size(2661, 378);
             txtBox_Console.TabIndex = 1;
             // 
             // panel1
             // 
             panel1.BackColor = Color.FromArgb(10, 10, 10);
-            panel1.Controls.Add(btn_clearConsole);
             panel1.Location = new Point(3, 1353);
             panel1.Name = "panel1";
             panel1.Size = new Size(2674, 235);
@@ -198,6 +197,7 @@
             // tabPage4
             // 
             tabPage4.BackColor = Color.FromArgb(40, 40, 40);
+            tabPage4.Controls.Add(label3);
             tabPage4.Controls.Add(label13);
             tabPage4.Controls.Add(label12);
             tabPage4.Controls.Add(btn_StopLinearMotor);
@@ -215,33 +215,43 @@
             tabPage4.TabIndex = 3;
             tabPage4.Text = "Linéaire";
             // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.ForeColor = Color.White;
+            label3.Location = new Point(3, 729);
+            label3.Name = "label3";
+            label3.Size = new Size(884, 32);
+            label3.TabIndex = 24;
+            label3.Text = "_______________________________________________________________________________________";
+            // 
             // label13
             // 
             label13.AutoSize = true;
             label13.ForeColor = Color.White;
-            label13.Location = new Point(649, 768);
+            label13.Location = new Point(21, 813);
             label13.Name = "label13";
-            label13.Size = new Size(207, 32);
+            label13.Size = new Size(229, 32);
             label13.TabIndex = 23;
-            label13.Text = "Far from turntable";
+            label13.Text = "Loin de la météorite";
             // 
             // label12
             // 
             label12.AutoSize = true;
             label12.ForeColor = Color.White;
-            label12.Location = new Point(66, 768);
+            label12.Location = new Point(638, 813);
             label12.Name = "label12";
-            label12.Size = new Size(169, 32);
+            label12.Size = new Size(228, 32);
             label12.TabIndex = 22;
-            label12.Text = "Near turntable";
+            label12.Text = "Près de la météorite";
             // 
             // btn_StopLinearMotor
             // 
             btn_StopLinearMotor.BackColor = Color.FromArgb(100, 40, 40);
             btn_StopLinearMotor.ForeColor = Color.WhiteSmoke;
-            btn_StopLinearMotor.Location = new Point(66, 952);
+            btn_StopLinearMotor.Location = new Point(375, 806);
             btn_StopLinearMotor.Name = "btn_StopLinearMotor";
-            btn_StopLinearMotor.Size = new Size(203, 46);
+            btn_StopLinearMotor.Size = new Size(143, 39);
             btn_StopLinearMotor.TabIndex = 21;
             btn_StopLinearMotor.Text = "Stop";
             btn_StopLinearMotor.UseVisualStyleBackColor = false;
@@ -252,9 +262,9 @@
             Pnl_StepperTrkbar.Controls.Add(lbl_position);
             Pnl_StepperTrkbar.Controls.Add(label2);
             Pnl_StepperTrkbar.Controls.Add(stepperMotor_trkbar);
-            Pnl_StepperTrkbar.Location = new Point(66, 826);
+            Pnl_StepperTrkbar.Location = new Point(11, 873);
             Pnl_StepperTrkbar.Name = "Pnl_StepperTrkbar";
-            Pnl_StepperTrkbar.Size = new Size(790, 99);
+            Pnl_StepperTrkbar.Size = new Size(855, 99);
             Pnl_StepperTrkbar.TabIndex = 18;
             // 
             // lbl_position
@@ -281,16 +291,17 @@
             stepperMotor_trkbar.Location = new Point(0, 53);
             stepperMotor_trkbar.Maximum = 60000;
             stepperMotor_trkbar.Name = "stepperMotor_trkbar";
-            stepperMotor_trkbar.RightToLeft = RightToLeft.Yes;
-            stepperMotor_trkbar.Size = new Size(787, 90);
+            stepperMotor_trkbar.RightToLeft = RightToLeft.No;
+            stepperMotor_trkbar.Size = new Size(855, 90);
             stepperMotor_trkbar.TabIndex = 3;
             stepperMotor_trkbar.TickFrequency = 0;
+            stepperMotor_trkbar.Value = 30000;
             stepperMotor_trkbar.MouseUp += stepperMotor_trkbar_MouseUp;
             // 
             // picBox_CalibrationCheck
             // 
             picBox_CalibrationCheck.BackgroundImageLayout = ImageLayout.None;
-            picBox_CalibrationCheck.Location = new Point(375, 151);
+            picBox_CalibrationCheck.Location = new Point(312, 35);
             picBox_CalibrationCheck.Name = "picBox_CalibrationCheck";
             picBox_CalibrationCheck.Size = new Size(46, 46);
             picBox_CalibrationCheck.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -299,81 +310,10 @@
             // 
             // panel2
             // 
-            panel2.Controls.Add(btn_actuator_45);
-            panel2.Controls.Add(btn_actuator_25);
-            panel2.Controls.Add(btn_actuator_5);
-            panel2.Controls.Add(btn_actuator_0);
-            panel2.Controls.Add(label3);
             panel2.Location = new Point(66, 1306);
             panel2.Name = "panel2";
             panel2.Size = new Size(601, 78);
             panel2.TabIndex = 14;
-            // 
-            // btn_actuator_45
-            // 
-            btn_actuator_45.BackColor = Color.FromArgb(30, 30, 30);
-            btn_actuator_45.FlatAppearance.BorderSize = 0;
-            btn_actuator_45.FlatStyle = FlatStyle.Flat;
-            btn_actuator_45.ForeColor = Color.White;
-            btn_actuator_45.Location = new Point(486, 1);
-            btn_actuator_45.Name = "btn_actuator_45";
-            btn_actuator_45.Size = new Size(111, 72);
-            btn_actuator_45.TabIndex = 18;
-            btn_actuator_45.Text = "45";
-            btn_actuator_45.UseVisualStyleBackColor = false;
-            btn_actuator_45.Click += btn_actuator_45_Click;
-            // 
-            // btn_actuator_25
-            // 
-            btn_actuator_25.BackColor = Color.FromArgb(30, 30, 30);
-            btn_actuator_25.FlatAppearance.BorderSize = 0;
-            btn_actuator_25.FlatStyle = FlatStyle.Flat;
-            btn_actuator_25.ForeColor = Color.White;
-            btn_actuator_25.Location = new Point(369, 1);
-            btn_actuator_25.Name = "btn_actuator_25";
-            btn_actuator_25.Size = new Size(111, 72);
-            btn_actuator_25.TabIndex = 17;
-            btn_actuator_25.Text = "25";
-            btn_actuator_25.UseVisualStyleBackColor = false;
-            btn_actuator_25.Click += btn_actuator_25_Click;
-            // 
-            // btn_actuator_5
-            // 
-            btn_actuator_5.BackColor = Color.FromArgb(30, 30, 30);
-            btn_actuator_5.FlatAppearance.BorderSize = 0;
-            btn_actuator_5.FlatStyle = FlatStyle.Flat;
-            btn_actuator_5.ForeColor = Color.White;
-            btn_actuator_5.Location = new Point(252, 1);
-            btn_actuator_5.Name = "btn_actuator_5";
-            btn_actuator_5.Size = new Size(111, 72);
-            btn_actuator_5.TabIndex = 16;
-            btn_actuator_5.Text = "5";
-            btn_actuator_5.UseVisualStyleBackColor = false;
-            btn_actuator_5.Click += btn_actuator_5_Click;
-            // 
-            // btn_actuator_0
-            // 
-            btn_actuator_0.BackColor = Color.FromArgb(30, 30, 30);
-            btn_actuator_0.FlatAppearance.BorderSize = 0;
-            btn_actuator_0.FlatStyle = FlatStyle.Flat;
-            btn_actuator_0.ForeColor = Color.White;
-            btn_actuator_0.Location = new Point(135, 1);
-            btn_actuator_0.Name = "btn_actuator_0";
-            btn_actuator_0.Size = new Size(111, 72);
-            btn_actuator_0.TabIndex = 15;
-            btn_actuator_0.Text = "0";
-            btn_actuator_0.UseVisualStyleBackColor = false;
-            btn_actuator_0.Click += btn_actuator_0_Click;
-            // 
-            // label3
-            // 
-            label3.AutoSize = true;
-            label3.ForeColor = Color.White;
-            label3.Location = new Point(11, 22);
-            label3.Name = "label3";
-            label3.Size = new Size(104, 32);
-            label3.TabIndex = 0;
-            label3.Text = "Actuator";
             // 
             // lbl_stepperMotorMaxPosition
             // 
@@ -390,7 +330,7 @@
             btn_stepperGetPosition.FlatAppearance.BorderSize = 0;
             btn_stepperGetPosition.FlatStyle = FlatStyle.Flat;
             btn_stepperGetPosition.ForeColor = Color.White;
-            btn_stepperGetPosition.Location = new Point(89, 497);
+            btn_stepperGetPosition.Location = new Point(11, 1230);
             btn_stepperGetPosition.Name = "btn_stepperGetPosition";
             btn_stepperGetPosition.Size = new Size(347, 46);
             btn_stepperGetPosition.TabIndex = 12;
@@ -404,7 +344,7 @@
             stepperCalibration_btn.FlatAppearance.BorderSize = 0;
             stepperCalibration_btn.FlatStyle = FlatStyle.Flat;
             stepperCalibration_btn.ForeColor = Color.White;
-            stepperCalibration_btn.Location = new Point(89, 151);
+            stepperCalibration_btn.Location = new Point(21, 35);
             stepperCalibration_btn.Name = "stepperCalibration_btn";
             stepperCalibration_btn.Size = new Size(269, 46);
             stepperCalibration_btn.TabIndex = 11;
@@ -418,7 +358,7 @@
             btn_setStepperZeroRef.FlatAppearance.BorderSize = 0;
             btn_setStepperZeroRef.FlatStyle = FlatStyle.Flat;
             btn_setStepperZeroRef.ForeColor = Color.White;
-            btn_setStepperZeroRef.Location = new Point(89, 445);
+            btn_setStepperZeroRef.Location = new Point(6, 1178);
             btn_setStepperZeroRef.Name = "btn_setStepperZeroRef";
             btn_setStepperZeroRef.Size = new Size(347, 46);
             btn_setStepperZeroRef.TabIndex = 1;
@@ -551,13 +491,10 @@
             // tabPage2
             // 
             tabPage2.BackColor = Color.FromArgb(40, 40, 40);
+            tabPage2.Controls.Add(btn_printLiftPositionConsole);
+            tabPage2.Controls.Add(btn_liftMaxUp);
+            tabPage2.Controls.Add(btn_liftMaxDown);
             tabPage2.Controls.Add(panel5);
-            tabPage2.Controls.Add(btn_allerA);
-            tabPage2.Controls.Add(txtBox_allerA);
-            tabPage2.Controls.Add(txtBox_stepsTurnTable);
-            tabPage2.Controls.Add(btn_fullTurn);
-            tabPage2.Controls.Add(btn_backToZero);
-            tabPage2.Controls.Add(btn_advance);
             tabPage2.Location = new Point(4, 44);
             tabPage2.Name = "tabPage2";
             tabPage2.Padding = new Padding(3);
@@ -565,15 +502,53 @@
             tabPage2.TabIndex = 1;
             tabPage2.Text = "Élévateur";
             // 
+            // btn_printLiftPositionConsole
+            // 
+            btn_printLiftPositionConsole.BackColor = Color.FromArgb(30, 30, 30);
+            btn_printLiftPositionConsole.FlatAppearance.BorderSize = 0;
+            btn_printLiftPositionConsole.ForeColor = Color.White;
+            btn_printLiftPositionConsole.Location = new Point(19, 156);
+            btn_printLiftPositionConsole.Name = "btn_printLiftPositionConsole";
+            btn_printLiftPositionConsole.Size = new Size(417, 46);
+            btn_printLiftPositionConsole.TabIndex = 27;
+            btn_printLiftPositionConsole.Text = "Afficher la position dans la console";
+            btn_printLiftPositionConsole.UseVisualStyleBackColor = false;
+            btn_printLiftPositionConsole.Click += btn_printLiftPositionConsole_Click;
+            // 
+            // btn_liftMaxUp
+            // 
+            btn_liftMaxUp.BackColor = Color.FromArgb(30, 30, 30);
+            btn_liftMaxUp.FlatAppearance.BorderSize = 0;
+            btn_liftMaxUp.ForeColor = Color.White;
+            btn_liftMaxUp.Location = new Point(19, 104);
+            btn_liftMaxUp.Name = "btn_liftMaxUp";
+            btn_liftMaxUp.Size = new Size(417, 46);
+            btn_liftMaxUp.TabIndex = 26;
+            btn_liftMaxUp.Text = "Maximum hauteur";
+            btn_liftMaxUp.UseVisualStyleBackColor = false;
+            btn_liftMaxUp.Click += btn_liftMaxUp_Click;
+            // 
+            // btn_liftMaxDown
+            // 
+            btn_liftMaxDown.BackColor = Color.FromArgb(30, 30, 30);
+            btn_liftMaxDown.ForeColor = Color.White;
+            btn_liftMaxDown.Location = new Point(19, 52);
+            btn_liftMaxDown.Name = "btn_liftMaxDown";
+            btn_liftMaxDown.Size = new Size(417, 46);
+            btn_liftMaxDown.TabIndex = 25;
+            btn_liftMaxDown.Text = "Reset à zéro (max bas)";
+            btn_liftMaxDown.UseVisualStyleBackColor = false;
+            btn_liftMaxDown.Click += btn_liftMaxDown_Click;
+            // 
             // panel5
             // 
             panel5.Controls.Add(label9);
             panel5.Controls.Add(label10);
             panel5.Controls.Add(label11);
             panel5.Controls.Add(trkBar_Lift);
-            panel5.Location = new Point(78, 582);
+            panel5.Location = new Point(19, 1000);
             panel5.Name = "panel5";
-            panel5.Size = new Size(661, 127);
+            panel5.Size = new Size(865, 127);
             panel5.TabIndex = 24;
             // 
             // label9
@@ -605,70 +580,15 @@
             // trkBar_Lift
             // 
             trkBar_Lift.Location = new Point(0, 37);
-            trkBar_Lift.Maximum = 5000;
-            trkBar_Lift.Minimum = -5000;
+            trkBar_Lift.Maximum = 2500;
+            trkBar_Lift.Minimum = 500;
             trkBar_Lift.Name = "trkBar_Lift";
             trkBar_Lift.RightToLeft = RightToLeft.No;
-            trkBar_Lift.Size = new Size(616, 90);
+            trkBar_Lift.Size = new Size(865, 90);
             trkBar_Lift.TabIndex = 3;
             trkBar_Lift.TickFrequency = 0;
-            // 
-            // btn_allerA
-            // 
-            btn_allerA.Location = new Point(156, 422);
-            btn_allerA.Name = "btn_allerA";
-            btn_allerA.Size = new Size(195, 46);
-            btn_allerA.TabIndex = 23;
-            btn_allerA.Text = "Aller à";
-            btn_allerA.UseVisualStyleBackColor = true;
-            btn_allerA.Click += btn_allerA_Click;
-            // 
-            // txtBox_allerA
-            // 
-            txtBox_allerA.Location = new Point(79, 422);
-            txtBox_allerA.MinimumSize = new Size(0, 46);
-            txtBox_allerA.Name = "txtBox_allerA";
-            txtBox_allerA.Size = new Size(71, 46);
-            txtBox_allerA.TabIndex = 22;
-            txtBox_allerA.Text = "14";
-            txtBox_allerA.TextAlign = HorizontalAlignment.Center;
-            // 
-            // txtBox_stepsTurnTable
-            // 
-            txtBox_stepsTurnTable.Location = new Point(300, 235);
-            txtBox_stepsTurnTable.MinimumSize = new Size(0, 46);
-            txtBox_stepsTurnTable.Name = "txtBox_stepsTurnTable";
-            txtBox_stepsTurnTable.Size = new Size(71, 46);
-            txtBox_stepsTurnTable.TabIndex = 12;
-            txtBox_stepsTurnTable.Text = "14";
-            txtBox_stepsTurnTable.TextAlign = HorizontalAlignment.Center;
-            // 
-            // btn_fullTurn
-            // 
-            btn_fullTurn.Location = new Point(78, 235);
-            btn_fullTurn.Name = "btn_fullTurn";
-            btn_fullTurn.Size = new Size(199, 46);
-            btn_fullTurn.TabIndex = 11;
-            btn_fullTurn.Text = "Tour complet";
-            btn_fullTurn.UseVisualStyleBackColor = true;
-            // 
-            // btn_backToZero
-            // 
-            btn_backToZero.Location = new Point(82, 147);
-            btn_backToZero.Name = "btn_backToZero";
-            btn_backToZero.Size = new Size(195, 46);
-            btn_backToZero.TabIndex = 10;
-            btn_backToZero.Text = "Retour à Zéro";
-            btn_backToZero.UseVisualStyleBackColor = true;
-            // 
-            // btn_advance
-            // 
-            btn_advance.Location = new Point(78, 329);
-            btn_advance.Name = "btn_advance";
-            btn_advance.Size = new Size(199, 46);
-            btn_advance.TabIndex = 9;
-            btn_advance.Text = "Avance";
-            btn_advance.UseVisualStyleBackColor = true;
+            trkBar_Lift.Value = 500;
+            trkBar_Lift.MouseUp += trkBar_Lift_MouseUp;
             // 
             // picBox_LiveView_Main
             // 
@@ -958,6 +878,12 @@
             // tabPage5
             // 
             tabPage5.BackColor = Color.FromArgb(40, 40, 40);
+            tabPage5.Controls.Add(btn_allerA);
+            tabPage5.Controls.Add(txtBox_allerA);
+            tabPage5.Controls.Add(txtBox_stepsTurnTable);
+            tabPage5.Controls.Add(btn_fullTurn);
+            tabPage5.Controls.Add(btn_backToZero);
+            tabPage5.Controls.Add(btn_advance);
             tabPage5.Controls.Add(panel3);
             tabPage5.Location = new Point(4, 44);
             tabPage5.Name = "tabPage5";
@@ -966,6 +892,62 @@
             tabPage5.TabIndex = 4;
             tabPage5.Text = "Table Tournante";
             // 
+            // btn_allerA
+            // 
+            btn_allerA.Location = new Point(99, 315);
+            btn_allerA.Name = "btn_allerA";
+            btn_allerA.Size = new Size(195, 46);
+            btn_allerA.TabIndex = 36;
+            btn_allerA.Text = "Aller à";
+            btn_allerA.UseVisualStyleBackColor = true;
+            // 
+            // txtBox_allerA
+            // 
+            txtBox_allerA.Location = new Point(22, 315);
+            txtBox_allerA.MinimumSize = new Size(0, 46);
+            txtBox_allerA.Name = "txtBox_allerA";
+            txtBox_allerA.Size = new Size(71, 46);
+            txtBox_allerA.TabIndex = 35;
+            txtBox_allerA.Text = "14";
+            txtBox_allerA.TextAlign = HorizontalAlignment.Center;
+            // 
+            // txtBox_stepsTurnTable
+            // 
+            txtBox_stepsTurnTable.Location = new Point(243, 128);
+            txtBox_stepsTurnTable.MinimumSize = new Size(0, 46);
+            txtBox_stepsTurnTable.Name = "txtBox_stepsTurnTable";
+            txtBox_stepsTurnTable.Size = new Size(71, 46);
+            txtBox_stepsTurnTable.TabIndex = 34;
+            txtBox_stepsTurnTable.Text = "14";
+            txtBox_stepsTurnTable.TextAlign = HorizontalAlignment.Center;
+            // 
+            // btn_fullTurn
+            // 
+            btn_fullTurn.Location = new Point(21, 128);
+            btn_fullTurn.Name = "btn_fullTurn";
+            btn_fullTurn.Size = new Size(199, 46);
+            btn_fullTurn.TabIndex = 33;
+            btn_fullTurn.Text = "Tour complet";
+            btn_fullTurn.UseVisualStyleBackColor = true;
+            // 
+            // btn_backToZero
+            // 
+            btn_backToZero.Location = new Point(25, 40);
+            btn_backToZero.Name = "btn_backToZero";
+            btn_backToZero.Size = new Size(195, 46);
+            btn_backToZero.TabIndex = 32;
+            btn_backToZero.Text = "Retour à Zéro";
+            btn_backToZero.UseVisualStyleBackColor = true;
+            // 
+            // btn_advance
+            // 
+            btn_advance.Location = new Point(21, 222);
+            btn_advance.Name = "btn_advance";
+            btn_advance.Size = new Size(199, 46);
+            btn_advance.TabIndex = 31;
+            btn_advance.Text = "Avance";
+            btn_advance.UseVisualStyleBackColor = true;
+            // 
             // panel3
             // 
             panel3.Controls.Add(lbl_trkbar_TableTournante);
@@ -973,9 +955,9 @@
             panel3.Controls.Add(label1);
             panel3.Controls.Add(trkBar_turntable);
             panel3.Controls.Add(label4);
-            panel3.Location = new Point(140, 647);
+            panel3.Location = new Point(6, 1023);
             panel3.Name = "panel3";
-            panel3.Size = new Size(433, 142);
+            panel3.Size = new Size(878, 142);
             panel3.TabIndex = 21;
             // 
             // lbl_trkbar_TableTournante
@@ -1009,7 +991,7 @@
             trkBar_turntable.Minimum = -360;
             trkBar_turntable.Name = "trkBar_turntable";
             trkBar_turntable.RightToLeft = RightToLeft.No;
-            trkBar_turntable.Size = new Size(427, 90);
+            trkBar_turntable.Size = new Size(873, 90);
             trkBar_turntable.TabIndex = 7;
             trkBar_turntable.TickFrequency = 0;
             // 
@@ -1069,6 +1051,8 @@
             // tabPage7
             // 
             tabPage7.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage7.Controls.Add(label20);
+            tabPage7.Controls.Add(btn_esp32Reset);
             tabPage7.Controls.Add(lbl_lastTimePing);
             tabPage7.Controls.Add(label19);
             tabPage7.Controls.Add(picBox_routerPing);
@@ -1082,7 +1066,6 @@
             tabPage7.Controls.Add(picBox_esp32Ping);
             tabPage7.Controls.Add(picBox_esp32Com);
             tabPage7.Controls.Add(btn_communicationUDP);
-            tabPage7.Controls.Add(btn_pingAll);
             tabPage7.Location = new Point(4, 44);
             tabPage7.Name = "tabPage7";
             tabPage7.Padding = new Padding(3);
@@ -1216,27 +1199,18 @@
             // 
             // btn_communicationUDP
             // 
-            btn_communicationUDP.BackColor = Color.FromArgb(40, 40, 40);
+            btn_communicationUDP.BackColor = Color.FromArgb(30, 30, 30);
+            btn_communicationUDP.BackgroundImage = (Image)resources.GetObject("btn_communicationUDP.BackgroundImage");
+            btn_communicationUDP.BackgroundImageLayout = ImageLayout.Stretch;
+            btn_communicationUDP.FlatAppearance.BorderSize = 0;
+            btn_communicationUDP.FlatStyle = FlatStyle.Flat;
             btn_communicationUDP.ForeColor = Color.White;
-            btn_communicationUDP.Location = new Point(3, 337);
+            btn_communicationUDP.Location = new Point(25, 35);
             btn_communicationUDP.Name = "btn_communicationUDP";
-            btn_communicationUDP.Size = new Size(371, 46);
+            btn_communicationUDP.Size = new Size(36, 36);
             btn_communicationUDP.TabIndex = 1;
-            btn_communicationUDP.Text = "Communication";
             btn_communicationUDP.UseVisualStyleBackColor = false;
             btn_communicationUDP.Click += btn_communicationUDP_Click;
-            // 
-            // btn_pingAll
-            // 
-            btn_pingAll.BackColor = Color.FromArgb(40, 40, 40);
-            btn_pingAll.ForeColor = Color.White;
-            btn_pingAll.Location = new Point(6, 285);
-            btn_pingAll.Name = "btn_pingAll";
-            btn_pingAll.Size = new Size(368, 46);
-            btn_pingAll.TabIndex = 0;
-            btn_pingAll.Text = "Ping";
-            btn_pingAll.UseVisualStyleBackColor = false;
-            btn_pingAll.Click += btn_pingAll_Click;
             // 
             // panel6
             // 
@@ -1261,12 +1235,52 @@
             // panel_Console
             // 
             panel_Console.BackColor = Color.FromArgb(10, 10, 10);
+            panel_Console.Controls.Add(button1);
             panel_Console.Controls.Add(txtBox_Console);
             panel_Console.Controls.Add(btn_clearConsole);
-            panel_Console.Location = new Point(3, 1353);
+            panel_Console.Location = new Point(7, 1353);
             panel_Console.Name = "panel_Console";
             panel_Console.Size = new Size(2674, 454);
             panel_Console.TabIndex = 1;
+            // 
+            // button1
+            // 
+            button1.BackColor = Color.Black;
+            button1.BackgroundImage = (Image)resources.GetObject("button1.BackgroundImage");
+            button1.BackgroundImageLayout = ImageLayout.Stretch;
+            button1.FlatAppearance.BorderSize = 0;
+            button1.FlatStyle = FlatStyle.Flat;
+            button1.ForeColor = Color.White;
+            button1.Location = new Point(5, 3);
+            button1.Name = "button1";
+            button1.Size = new Size(40, 40);
+            button1.TabIndex = 19;
+            button1.UseVisualStyleBackColor = false;
+            button1.Click += btn_clearConsole_Click;
+            // 
+            // btn_esp32Reset
+            // 
+            btn_esp32Reset.BackColor = Color.FromArgb(40, 40, 40);
+            btn_esp32Reset.FlatAppearance.BorderSize = 0;
+            btn_esp32Reset.FlatStyle = FlatStyle.Flat;
+            btn_esp32Reset.ForeColor = Color.White;
+            btn_esp32Reset.Location = new Point(25, 404);
+            btn_esp32Reset.Name = "btn_esp32Reset";
+            btn_esp32Reset.Size = new Size(150, 46);
+            btn_esp32Reset.TabIndex = 19;
+            btn_esp32Reset.Text = "Réinitialiser";
+            btn_esp32Reset.UseVisualStyleBackColor = false;
+            btn_esp32Reset.Click += btn_esp32Reset_Click;
+            // 
+            // label20
+            // 
+            label20.AutoSize = true;
+            label20.ForeColor = Color.White;
+            label20.Location = new Point(26, 353);
+            label20.Name = "label20";
+            label20.Size = new Size(76, 32);
+            label20.TabIndex = 20;
+            label20.Text = "Esp32";
             // 
             // Aerolithe
             // 
@@ -1277,15 +1291,12 @@
             Controls.Add(panel6);
             Name = "Aerolithe";
             Text = "Aerolithe";
-            panel1.ResumeLayout(false);
             tabPage4.ResumeLayout(false);
             tabPage4.PerformLayout();
             Pnl_StepperTrkbar.ResumeLayout(false);
             Pnl_StepperTrkbar.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)stepperMotor_trkbar).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_CalibrationCheck).EndInit();
-            panel2.ResumeLayout(false);
-            panel2.PerformLayout();
             tabPage3.ResumeLayout(false);
             tabPage3.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_pictureTaken).EndInit();
@@ -1293,7 +1304,6 @@
             panel4.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)trkBar_focus).EndInit();
             tabPage2.ResumeLayout(false);
-            tabPage2.PerformLayout();
             panel5.ResumeLayout(false);
             panel5.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).EndInit();
@@ -1308,6 +1318,7 @@
             ((System.ComponentModel.ISupportInitialize)picBox_imageFond).EndInit();
             tabControl1.ResumeLayout(false);
             tabPage5.ResumeLayout(false);
+            tabPage5.PerformLayout();
             panel3.ResumeLayout(false);
             panel3.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)trkBar_turntable).EndInit();
@@ -1337,11 +1348,6 @@
         private TrackBar stepperMotor_trkbar;
         private PictureBox picBox_CalibrationCheck;
         private Panel panel2;
-        private Button btn_actuator_45;
-        private Button btn_actuator_25;
-        private Button btn_actuator_5;
-        private Button btn_actuator_0;
-        private Label label3;
         private Label lbl_stepperMotorMaxPosition;
         private Button btn_stepperGetPosition;
         private Button stepperCalibration_btn;
@@ -1350,10 +1356,6 @@
         private Label lbl_LiveViewState;
         private Button btn_toggleLiveView;
         private TabPage tabPage2;
-        private TextBox txtBox_stepsTurnTable;
-        private Button btn_fullTurn;
-        private Button btn_backToZero;
-        private Button btn_advance;
         private TabPage tabPage1;
         private Button btn_getMask;
         private TextBox textBox_lowB_z;
@@ -1377,10 +1379,7 @@
         private Button btn_Validation;
         private Label lbl_E2;
         private Button btn_Autofocus;
-        private TabControl tabControl1;
         private TabPage tabPage5;
-        private Button btn_allerA;
-        private TextBox txtBox_allerA;
         public PictureBox picBox_LiveView_Main;
         private Panel panel6;
         private Button btn_Autofocus_StepperTab;
@@ -1410,7 +1409,6 @@
         private TrackBar trkBar_turntable;
         private Label label4;
         private TabPage tabPage7;
-        private Button btn_pingAll;
         private Button btn_communicationUDP;
         private PictureBox picBox_wavesharePing;
         private PictureBox picBox_esp32Ping;
@@ -1425,5 +1423,19 @@
         private Panel panel_Console;
         private Label lbl_lastTimePing;
         private Label label19;
+        private Button button1;
+        private Label label3;
+        private Button btn_allerA;
+        private TextBox txtBox_allerA;
+        private TextBox txtBox_stepsTurnTable;
+        private Button btn_fullTurn;
+        private Button btn_backToZero;
+        private Button btn_advance;
+        private Button btn_liftMaxUp;
+        private Button btn_liftMaxDown;
+        private Button btn_printLiftPositionConsole;
+        public TabControl tabControl1;
+        private Label label20;
+        private Button btn_esp32Reset;
     }
 }
