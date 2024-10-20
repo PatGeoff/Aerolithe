@@ -1,11 +1,17 @@
 //Aerolithe.cs
 
 using Aerolithe.Properties;
+using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Windows.Forms;
+using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
+using Nikon;
+using System.Drawing;
 
 namespace Aerolithe
 {
@@ -13,15 +19,16 @@ namespace Aerolithe
     {
         public readonly IPAddress stepperIpAddress = IPAddress.Parse("192.168.2.11");
         //public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
-        public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.14");
-        public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.11");
+        public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
+        public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
         public readonly int stepperPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
-        //public readonly int turntablePort = 44466;  // Port sur lequel on reçoit les messages UDP au ESP32 de la table tournante
-        public readonly int turntablePort = 44455;  // Port sur lequel on reçoit les messages UDP au ESP32 WaveShare de la table tournante
+        public readonly int turntablePort = 44466;  // Port sur lequel on reçoit les messages UDP au ESP32 de la table tournante
+        //public readonly int turntablePort = 44455;  // Port sur lequel on reçoit les messages UDP au ESP32 WaveShare de la table tournante
         public readonly int scissorLiftPort = 44477;  // Port sur lequel on reçoit les messages UDP au ESP32 du lift
         public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
 
         private UdpClient udpClient;
+        public int turntableSpeed = 2000;
 
         public Aerolithe()
         {
@@ -74,7 +81,7 @@ namespace Aerolithe
 
         private void btn_imageFond_Click(object sender, EventArgs e)
         {
-            picBox_imageFond.Image = Properties.Resources.load;
+            //picBox_imageFond.Image = Properties.Resources.load;
             DialogResult result = AutoCloseMessageBox.ShowPressClose("Enlever la météorite, allumer la lumière de la table tournante et appuyer sur le bouton OK ci-bas", 650, 180);
             if (result == DialogResult.OK)
             {
@@ -94,6 +101,7 @@ namespace Aerolithe
 
         }
         #endregion
+
         #region CAMÉRA TAB
         private void btn_toggleLiveView_Click(object sender, EventArgs e)
         {
@@ -115,6 +123,7 @@ namespace Aerolithe
             NikonAutofocus(1);
         }
         #endregion
+
         #region LINÉAIRE TAB
         private void btn_setStepperZeroPosition(object sender, EventArgs e)
         {
@@ -131,7 +140,8 @@ namespace Aerolithe
         }
         private void stepperCalibration_btn_Click(object sender, EventArgs e)
         {
-            txtBox_Console.Text += "Calibrating" + Environment.NewLine;
+            AppendTextToConsole("Calibrating" + Environment.NewLine);
+            //txtBox_Console.Text += "Calibrating" + Environment.NewLine;
             udpSendStepperMessage("stepmotor calibration");
             picBox_CalibrationCheck.Image = Properties.Resources.crochet;
             stepperMotor_trkbar.Enabled = true;
@@ -147,7 +157,11 @@ namespace Aerolithe
         {
             udpSendStepperMessage("stepmotor stop");
         }
+
+
+
         #endregion
+
         #region TABLE TOURNANTE TAB
         private void trkBar_turntable_Scroll_1(object sender, EventArgs e)
         {
@@ -179,10 +193,12 @@ namespace Aerolithe
         private void trkBar_turntable_MouseUp(object sender, MouseEventArgs e)
         {
             int val = trkBar_turntable.Value;
-            string message = "turntable pos " + val.ToString();
+            string message = "turntable," + val.ToString() + "," + turntableSpeed;
+            //MessageBox.Show(message);
             udpSendTurnTableMessage(message);
         }
         #endregion
+
         #region ÉLÉVATEUR TAB
 
         private void btn_liftMaxDown_Click(object sender, EventArgs e)
@@ -202,7 +218,13 @@ namespace Aerolithe
 
         }
 
+        private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
+        {
+            udpSendScissorLiftMessage("lift getPosition");
+        }
+
         #endregion
+
         #region ACTUATEUR
 
 
@@ -221,17 +243,58 @@ namespace Aerolithe
             udpSendStepperMessage("actuator 45");
         }
         #endregion
+
         #region MAIN FORM
         private void btn_clearConsole_Click(object sender, EventArgs e)
         {
             txtBox_Console.Clear();
         }
-        #endregion
-
         private void btn_takePicture_Click(object sender, EventArgs e)
         {
             takePicture();
         }
+
+
+        private void AppendTextToConsole(string message)
+        {
+            string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
+            string fullMessage = timestamp + message + Environment.NewLine;
+
+            if (txtBox_Console.InvokeRequired)
+            {
+                Debug.WriteLine("Invoke required");
+                txtBox_Console.Invoke(new Action(() =>
+                {
+                    AppendFormattedText(timestamp, Color.Gray);
+                    AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
+                    Debug.WriteLine("Message appended via Invoke");
+                }));
+            }
+            else
+            {
+                AppendFormattedText(timestamp, Color.Gray);
+                AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
+                Debug.WriteLine("Message appended directly");
+            }
+        }
+
+        private void AppendFormattedText(string text, Color color)
+        {
+            txtBox_Console.SelectionStart = txtBox_Console.TextLength;
+            txtBox_Console.SelectionLength = 0;
+
+            txtBox_Console.SelectionColor = color;
+            txtBox_Console.AppendText(text);
+            txtBox_Console.SelectionColor = txtBox_Console.ForeColor;
+        }
+
+
+        private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            Application.Exit();
+        }
+        #endregion 
+
         #region PREFERENCES
 
         private void Ping()
@@ -239,7 +302,8 @@ namespace Aerolithe
 
             string host = "192.168.2.1";
             bool result = PingHost(host);
-            txtBox_Console.Text += ($"Ping --> routeur: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            AppendTextToConsole($"Ping --> routeur: {(result ? "succès" : "échec")}");
+            //txtBox_Console.Text += ($"Ping --> routeur: {(result ? "succès" : "échec")}" + Environment.NewLine);
             if (result)
             {
                 picBox_routerPing.Image = Resources.crochet;
@@ -259,7 +323,8 @@ namespace Aerolithe
             {
                 picBox_wavesharePing.Image = Resources.echec;
             }
-            txtBox_Console.Text += ($"Ping --> table tournante: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            AppendTextToConsole($"Ping --> table tournante: {(result ? "succès" : "échec")}");
+            //txtBox_Console.Text += ($"Ping --> table tournante: {(result ? "succès" : "échec")}" + Environment.NewLine);
             Thread.Sleep(200);
             host = "192.168.2.11";
             result = PingHost(host);
@@ -271,11 +336,12 @@ namespace Aerolithe
             {
                 picBox_esp32Ping.Image = Resources.echec;
             }
-            txtBox_Console.Text += ($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            AppendTextToConsole($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}");
+            //txtBox_Console.Text += ($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}" + Environment.NewLine);
         }
 
 
-        public static bool PingHost(string host, int timeout = 500)
+        public bool PingHost(string host, int timeout = 500)
         {
             try
             {
@@ -288,7 +354,8 @@ namespace Aerolithe
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ping failed: {ex.Message}");
+                AppendTextToConsole($"Ping failed: {ex.Message}");
+                //Console.WriteLine($"Ping failed: {ex.Message}");
                 return false;
             }
         }
@@ -298,21 +365,34 @@ namespace Aerolithe
             CheckCommunication();
 
         }
-        private void btn_esp32StepperFullSetup_Click(object sender, EventArgs e)
-        {
-            udpSendStepperMessage("fullSetup");
-        }
-
-        #endregion
-
-        private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
-        {
-            udpSendScissorLiftMessage("lift getPosition");
-        }
 
         private void btn_esp32Reset_Click(object sender, EventArgs e)
         {
             udpSendStepperMessage("fullSetup");
+        }
+        private void comboBox_TaillePhotos_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            NikonEnum imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
+            imgSize.Index = comboBox_TaillePhotos.SelectedIndex;
+            device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize, imgSize);
+        }
+
+        private void comboBox_TailleLiveView_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            NikonEnum lvSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
+            lvSize.Index = comboBox_TaillePhotos.SelectedIndex;
+            device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, lvSize);
+        }
+        #endregion
+
+
+
+        private void picBox_LiveView_Main_DoubleClick(object sender, EventArgs e)
+        {
+            if (picBox_LiveView_Main.Image != null)
+            {
+                MessageBox.Show(picBox_LiveView_Main.Image.Width.ToString() + " * " + picBox_LiveView_Main.Image.Height.ToString());
+            }
         }
     }
 }

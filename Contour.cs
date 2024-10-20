@@ -15,6 +15,7 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
+        
         private void getBackgroundImage()
         {
             if (!device.LiveViewEnabled)
@@ -32,35 +33,35 @@ namespace Aerolithe
                     // Convertit le byte array en Mat
                     CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
                     picBox_imageFond.Image = background.ToImage<Bgr, Byte>().ToBitmap();
-                    if (background == null) MessageBox.Show("calisse");
+                    if (background == null) MessageBox.Show("Impossible de saisir l'image");
                 }
             }
         }
 
 
-        //private void backgroundSubstraction()
-        //{
-        //    if (background != null)
-        //    {
-        //        //MessageBox.Show("ici"); 
-        //        // Convertit le LiveCapture en stream
-        //        using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
-        //        {
-        //            Mat foreground = new Mat();
-        //            //stream = new MemoryStream(imageView.JpegBuffer);
-        //            byte[] imageBytes = stream.ToArray();
-        //            CvInvoke.Imdecode(imageBytes, ImreadModes.Color, foreground);
-        //            //pictureBox_applyBlur.Image = foreground.ToImage<Bgr, Byte>().ToBitmap();
-        //            Mat result = new Mat();
-        //            result = background - foreground;
-        //            //Mat result = foreground.AbsDiff(background);
-        //            pictureBox_imageMasquage.Image = result.ToImage<Bgr, Byte>().ToBitmap();
-        //            calculerFlou(result);
-        //            createMask(result, foreground);
-        //        }
-                
-        //    }
-        //}
+        private void backgroundSubstraction()
+        {
+            if (background != null)
+            {
+                MessageBox.Show("ici"); 
+                // Convertit le LiveCapture en stream
+                using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
+                {
+                    Mat foreground = new Mat();
+                    //stream = new MemoryStream(imageView.JpegBuffer);
+                    byte[] imageBytes = stream.ToArray();
+                    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, foreground);
+                    //pictureBox_applyBlur.Image = foreground.ToImage<Bgr, Byte>().ToBitmap();
+                    Mat result = new Mat();
+                    result = background - foreground;
+                    //Mat result = foreground.AbsDiff(background);
+                    pictureBox_imageMasquage.Image = result.ToImage<Bgr, Byte>().ToBitmap();
+                    calculerFlou(result);
+                    createMask(result, foreground);
+                }
+
+            }
+        }
 
         private void createMask(Mat stream, Mat foreground)
         {

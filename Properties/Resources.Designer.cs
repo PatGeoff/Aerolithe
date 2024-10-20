@@ -63,6 +63,16 @@ namespace Aerolithe.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap camera_offline {
+            get {
+                object obj = ResourceManager.GetObject("camera_offline", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap crochet {
             get {
                 object obj = ResourceManager.GetObject("crochet", resourceCulture);

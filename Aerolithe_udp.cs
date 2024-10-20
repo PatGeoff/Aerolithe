@@ -125,24 +125,7 @@ namespace Aerolithe
         }
 
         }
-
-        private void AppendTextToConsole(string message)
-        {
-            if (txtBox_Console.InvokeRequired)
-            {
-                Debug.WriteLine("Invoke required");
-                txtBox_Console.Invoke(new Action(() =>
-                {
-                    txtBox_Console.Text += message + Environment.NewLine;
-                    Debug.WriteLine("Message appended via Invoke");
-                }));
-            }
-            else
-            {
-                txtBox_Console.Text += message + Environment.NewLine;
-                Debug.WriteLine("Message appended directly");
-            }
-        }
+              
 
         private void StepperMotorSetMaxValueEnableTrkbar(long position)
         {            
@@ -228,11 +211,12 @@ namespace Aerolithe
             waveshareAlive = false;
             picBox_waveshareCom.Image = Resources.echec;
             picBox_esp32Com.Image = Resources.echec;
-            
-            txtBox_Console.Text += "tentative de communication avec le ESP32 dans la boîte blanche" + Environment.NewLine;
+            AppendTextToConsole("tentative de communication avec le ESP32 dans la boîte blanche");
+            //txtBox_Console.Text += "tentative de communication avec le ESP32 dans la boîte blanche" + Environment.NewLine;
             udpSendStepperMessage("status");
             Thread.Sleep(200);
-            txtBox_Console.Text += "tentative de communication avec le ESP32 dans la table tournante" + Environment.NewLine;
+            AppendTextToConsole("tentative de communication avec le ESP32 dans la table tournante");
+            //txtBox_Console.Text += "tentative de communication avec le ESP32 dans la table tournante" + Environment.NewLine;
             udpSendTurnTableMessage("status");
         }
         private void CheckDevices(object? sender, ElapsedEventArgs e)
