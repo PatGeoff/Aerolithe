@@ -37,10 +37,54 @@ namespace Aerolithe
             }
         }
 
-       
-      
 
+        private async Task UdpSendActuatorMessageAsync(string message)
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(message);
+                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                {
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
+        private async Task UdpSendTurnTableMessageAsync(string message)
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(message);
+                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                {
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(turntableIpAddress, turntablePort));
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        public async void UdpSendStepperMessageAsync(string message)
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(message);
+                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                {
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
         public void udpSendStepperMessage(string message)
         {
             try
@@ -56,6 +100,23 @@ namespace Aerolithe
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        public void udpSendActuatorMessage(string message)
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(message);
+                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                {
+                    client.Send(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         public void udpSendTurnTableMessage(string message)
         {
             try
@@ -72,14 +133,14 @@ namespace Aerolithe
             }
         }
 
-        public void udpSendScissorLiftMessage(string message)
+        public async Task UdpSendScissorLiftMessageAsync(string message)
         {
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
-                    client.Send(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(scissorLiftIpAddress, scissorLiftPort));
                 }
             }
             catch (Exception ex)
@@ -91,7 +152,7 @@ namespace Aerolithe
         public void udpSendStepperMotorData(int vitesse, int position)
         {
             string message = $"stepmotor moveto {vitesse},{position},0";
-            udpSendStepperMessage(message);
+            UdpSendStepperMessageAsync(message);
         }
              
 
@@ -213,11 +274,11 @@ namespace Aerolithe
             picBox_esp32Com.Image = Resources.echec;
             AppendTextToConsole("tentative de communication avec le ESP32 dans la boîte blanche");
             //txtBox_Console.Text += "tentative de communication avec le ESP32 dans la boîte blanche" + Environment.NewLine;
-            udpSendStepperMessage("status");
+            UdpSendStepperMessageAsync("status");
             Thread.Sleep(200);
             AppendTextToConsole("tentative de communication avec le ESP32 dans la table tournante");
             //txtBox_Console.Text += "tentative de communication avec le ESP32 dans la table tournante" + Environment.NewLine;
-            udpSendTurnTableMessage("status");
+            UdpSendTurnTableMessageAsync("status");
         }
         private void CheckDevices(object? sender, ElapsedEventArgs e)
         {

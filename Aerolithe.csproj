@@ -11,16 +11,16 @@
 
   <ItemGroup>
     <Compile Remove="nikoncswrapper\**" />
-    <Compile Remove="Resources\Images\**" />
+    <Compile Remove="MyResources\Images\**" />
     <EmbeddedResource Remove="nikoncswrapper\**" />
-    <EmbeddedResource Remove="Resources\Images\**" />
+    <EmbeddedResource Remove="MyResources\Images\**" />
     <None Remove="nikoncswrapper\**" />
-    <None Remove="Resources\Images\**" />
+    <None Remove="MyResources\Images\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\Images\echec.png" />
-    <EmbeddedResource Include="Resources\Images\crochet.png" />
+    <EmbeddedResource Include="MyResources\Images\echec.png" />
+    <EmbeddedResource Include="MyResources\Images\crochet.png" />
   </ItemGroup>
 
   <ItemGroup>

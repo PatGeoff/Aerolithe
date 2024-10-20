@@ -4,8 +4,6 @@
 using System.Drawing.Text;
 using System.Net;
 
-// TOUT ce qui concerne les controls de la Form Aerolithe; boutons, picturebox, sliders, etc
-
 namespace Aerolithe
 {
     public partial class Aerolithe : Form
@@ -14,14 +12,14 @@ namespace Aerolithe
         private bool liveViewState = true;
 
         private void ButtonSetup()
-        {            
-            
+        {
+
             buttonLabelPairs = new Tuple<Button, Label>[]
             {
                 Tuple.Create(btn_Validation, lbl_E1),
                 Tuple.Create(btn_Autofocus, lbl_E2),
                 Tuple.Create(btn_imageFond, lbl_E3),
-                Tuple.Create(btn_Demarrer, lbl_E4)
+                Tuple.Create(btn_DemarrerPrisePhotos, lbl_E4),
             };
 
             foreach (var e in buttonLabelPairs)

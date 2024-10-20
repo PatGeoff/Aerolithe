@@ -17,13 +17,13 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        private NikonManager manager;
-        private NikonDevice device;
-        private NikonImage nkImage;
-        private NikonRange driveStep;
+        public NikonManager manager;
+        public NikonDevice device;
+        public NikonImage nkImage;
+        public NikonRange driveStep;
         private Timer liveViewTimer;
-        private Image capturedImage;
-        private NikonPreview preview;
+        public Image capturedImage;
+        public NikonPreview preview;
         private NikonLiveViewImage imageView = null;
         private Mat foreground, background, substractionResult, mask = null;
 

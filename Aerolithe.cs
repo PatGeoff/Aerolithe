@@ -12,6 +12,8 @@ using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Nikon;
 using System.Drawing;
+using System.Threading;
+using Emgu.CV.XPhoto;
 
 namespace Aerolithe
 {
@@ -28,11 +30,12 @@ namespace Aerolithe
         public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
 
         private UdpClient udpClient;
-        public int turntableSpeed = 2000;
+        public int turntableSpeed = 1000;
 
         public Aerolithe()
         {
             InitializeComponent();
+            picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
             CamSetup();
             ButtonSetup();
             InitializeUdpClient();
@@ -63,7 +66,6 @@ namespace Aerolithe
                              ;
             string caption = "Vérification Initiale";
             MessageBoxButtons buttons = MessageBoxButtons.OK;
-            MessageBoxIcon icon = MessageBoxIcon.Question;
 
             //MessageBox.Show(message, caption, buttons, icon);
 
@@ -81,25 +83,57 @@ namespace Aerolithe
 
         private void btn_imageFond_Click(object sender, EventArgs e)
         {
-            //picBox_imageFond.Image = Properties.Resources.load;
             DialogResult result = AutoCloseMessageBox.ShowPressClose("Enlever la météorite, allumer la lumière de la table tournante et appuyer sur le bouton OK ci-bas", 650, 180);
             if (result == DialogResult.OK)
             {
                 getBackgroundImage();
-                //    // ICI on prend la photo de background
-                //    getBackgroundImage();
-
-                //    DialogResult resultat = AutoCloseMessageBox.ShowPressClose("Remettre la météorite au centre et appuyer sur OK ci-bas", 650, 180);
-                //    if (resultat == DialogResult.OK)
-                //    {
-                //        ApplyButtonStyle(buttonLabelPairs[2], false);
-                //        ApplyButtonStyle(buttonLabelPairs[3], true);
-                //        pictureBox_validationE3.Image = Properties.Resources.crochet;                    
-                //    }
+                pictureBox_validationE3.Image = Properties.Resources.crochet;
             }
-            //backgroundSubstraction();
+            btn_DemarrerPrisePhotos.BackColor = Color.FromArgb(30, 30, 30);
+            btn_DemarrerPrisePhotos.ForeColor = Color.White;
 
         }
+        private async void btn_DemarrerPrisePhotos_Click(object sender, EventArgs e)
+        {
+            if (working)
+            {
+                MessageBox.Show("La prise de photo est déjà en cours");
+                return;
+            }
+
+            working = true;
+            cancellationTokenSource = new CancellationTokenSource();
+
+            // Show the cancel button and disable the start button
+            btn_cancelSequence.Visible = true;
+            btn_DemarrerPrisePhotos.Enabled = false;
+
+            try
+            {
+                await PrisePhotoSequenceAsync(cancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                AppendTextToConsole("La prise de photos a été cancellée");
+            }
+            finally
+            {
+                working = false;
+                // Hide the cancel button and enable the start button
+                btn_cancelSequence.Visible = false;
+                btn_DemarrerPrisePhotos.Enabled = true;
+            }
+
+        }
+
+        private void btn_cancelSequence_Click(object sender, EventArgs e)
+        {
+            if (working)
+            {
+                cancellationTokenSource.Cancel();
+            }
+        }
+
         #endregion
 
         #region CAMÉRA TAB
@@ -127,7 +161,7 @@ namespace Aerolithe
         #region LINÉAIRE TAB
         private void btn_setStepperZeroPosition(object sender, EventArgs e)
         {
-            udpSendStepperMessage("stepmotor setZero");
+            UdpSendStepperMessageAsync("stepmotor setZero");
         }
 
         private void stepperMotor_trkbar_MouseUp(object sender, MouseEventArgs e)
@@ -142,20 +176,20 @@ namespace Aerolithe
         {
             AppendTextToConsole("Calibrating" + Environment.NewLine);
             //txtBox_Console.Text += "Calibrating" + Environment.NewLine;
-            udpSendStepperMessage("stepmotor calibration");
+            UdpSendStepperMessageAsync("stepmotor calibration");
             picBox_CalibrationCheck.Image = Properties.Resources.crochet;
             stepperMotor_trkbar.Enabled = true;
             stepperMotor_trkbar.Value = 0;
-            udpSendStepperMessage("stepmotor calibration");
+            UdpSendStepperMessageAsync("stepmotor calibration");
 
         }
         private void btn_stepperGetPosition_Click(object sender, EventArgs e)
         {
-            udpSendStepperMessage("stepmotor getstepperposition");
+            UdpSendStepperMessageAsync("stepmotor getstepperposition");
         }
         private void btn_StopLinearMotor_Click(object sender, EventArgs e)
         {
-            udpSendStepperMessage("stepmotor stop");
+            UdpSendStepperMessageAsync("stepmotor stop");
         }
 
 
@@ -168,7 +202,7 @@ namespace Aerolithe
             int val = trkBar_turntable.Value;
             string message = "turntable pos " + val.ToString();
             lbl_trkbar_TableTournante.Text = trkBar_turntable.Value.ToString();
-            udpSendTurnTableMessage(message);
+            UdpSendTurnTableMessageAsync(message);
         }
 
 
@@ -179,7 +213,7 @@ namespace Aerolithe
                 int val = txtBox_allerA.TabIndex;
                 string message = "turntable pos " + val.ToString();
                 lbl_trkbar_TableTournante.Text = trkBar_turntable.Value.ToString();
-                udpSendTurnTableMessage(message);
+                UdpSendTurnTableMessageAsync(message);
 
             }
             catch (Exception)
@@ -195,7 +229,7 @@ namespace Aerolithe
             int val = trkBar_turntable.Value;
             string message = "turntable," + val.ToString() + "," + turntableSpeed;
             //MessageBox.Show(message);
-            udpSendTurnTableMessage(message);
+            UdpSendTurnTableMessageAsync(message);
         }
         #endregion
 
@@ -203,7 +237,7 @@ namespace Aerolithe
 
         private void btn_liftMaxDown_Click(object sender, EventArgs e)
         {
-            udpSendStepperMessage("lift setZero");
+            UdpSendStepperMessageAsync("lift setZero");
             trkBar_Lift.Value = 500;
         }
         private void btn_liftMaxUp_Click(object sender, EventArgs e)
@@ -214,13 +248,13 @@ namespace Aerolithe
         private void trkBar_Lift_MouseUp(object sender, MouseEventArgs e)
         {
             int val = trkBar_Lift.Value;
-            udpSendScissorLiftMessage("lift position " + val.ToString());
+            UdpSendScissorLiftMessageAsync("lift position " + val.ToString());
 
         }
 
         private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
         {
-            udpSendScissorLiftMessage("lift getPosition");
+            UdpSendScissorLiftMessageAsync("lift getPosition");
         }
 
         #endregion
@@ -230,17 +264,17 @@ namespace Aerolithe
 
         private void btn_actuator_5_Click(object sender, EventArgs e)
         {
-            udpSendStepperMessage("actuator 5");
+            UdpSendActuatorMessageAsync("actuator 5");
         }
 
         private void btn_actuator_25_Click(object sender, EventArgs e)
         {
-            udpSendStepperMessage("actuator 25");
+            UdpSendActuatorMessageAsync("actuator 25");
         }
 
         private void btn_actuator_45_Click(object sender, EventArgs e)
         {
-            udpSendStepperMessage("actuator 45");
+            UdpSendActuatorMessageAsync("actuator 45");
         }
         #endregion
 
@@ -267,14 +301,16 @@ namespace Aerolithe
                 {
                     AppendFormattedText(timestamp, Color.Gray);
                     AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
-                    Debug.WriteLine("Message appended via Invoke");
+                    ScrollToBottom();
+                    //Debug.WriteLine("Message appended via Invoke");
                 }));
             }
             else
             {
                 AppendFormattedText(timestamp, Color.Gray);
                 AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
-                Debug.WriteLine("Message appended directly");
+                //Debug.WriteLine("Message appended directly");
+                ScrollToBottom();
             }
         }
 
@@ -288,7 +324,11 @@ namespace Aerolithe
             txtBox_Console.SelectionColor = txtBox_Console.ForeColor;
         }
 
-
+        private void ScrollToBottom()
+        {
+            txtBox_Console.SelectionStart = txtBox_Console.Text.Length;
+            txtBox_Console.ScrollToCaret();
+        }
         private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
         {
             Application.Exit();
@@ -368,7 +408,7 @@ namespace Aerolithe
 
         private void btn_esp32Reset_Click(object sender, EventArgs e)
         {
-            udpSendStepperMessage("fullSetup");
+            UdpSendStepperMessageAsync("fullSetup");
         }
         private void comboBox_TaillePhotos_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -394,5 +434,7 @@ namespace Aerolithe
                 MessageBox.Show(picBox_LiveView_Main.Image.Width.ToString() + " * " + picBox_LiveView_Main.Image.Height.ToString());
             }
         }
+
+      
     }
 }

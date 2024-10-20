@@ -68,9 +68,9 @@
             trkBar_Lift = new TrackBar();
             picBox_LiveView_Main = new PictureBox();
             tabPage1 = new TabPage();
-            pictureBox_validationE4 = new PictureBox();
+            btn_cancelSequence = new Button();
             lbl_E4 = new Label();
-            btn_Demarrer = new Button();
+            btn_DemarrerPrisePhotos = new Button();
             pictureBox_validationE3 = new PictureBox();
             lbl_E3 = new Label();
             btn_imageFond = new Button();
@@ -146,7 +146,6 @@
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_LiveView_Main).BeginInit();
             tabPage1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)pictureBox_validationE4).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE3).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE2).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE1).BeginInit();
@@ -586,7 +585,6 @@
             // 
             // picBox_LiveView_Main
             // 
-            picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
             picBox_LiveView_Main.Location = new Point(953, 0);
             picBox_LiveView_Main.Name = "picBox_LiveView_Main";
             picBox_LiveView_Main.Size = new Size(1176, 780);
@@ -599,9 +597,9 @@
             // 
             tabPage1.BackColor = Color.FromArgb(40, 40, 40);
             tabPage1.BackgroundImageLayout = ImageLayout.Stretch;
-            tabPage1.Controls.Add(pictureBox_validationE4);
+            tabPage1.Controls.Add(btn_cancelSequence);
             tabPage1.Controls.Add(lbl_E4);
-            tabPage1.Controls.Add(btn_Demarrer);
+            tabPage1.Controls.Add(btn_DemarrerPrisePhotos);
             tabPage1.Controls.Add(pictureBox_validationE3);
             tabPage1.Controls.Add(lbl_E3);
             tabPage1.Controls.Add(btn_imageFond);
@@ -619,15 +617,19 @@
             tabPage1.Text = "Procédure";
             tabPage1.Click += btnAutofocus_Click;
             // 
-            // pictureBox_validationE4
+            // btn_cancelSequence
             // 
-            pictureBox_validationE4.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE4.Location = new Point(413, 231);
-            pictureBox_validationE4.Name = "pictureBox_validationE4";
-            pictureBox_validationE4.Size = new Size(46, 46);
-            pictureBox_validationE4.SizeMode = PictureBoxSizeMode.CenterImage;
-            pictureBox_validationE4.TabIndex = 12;
-            pictureBox_validationE4.TabStop = false;
+            btn_cancelSequence.BackColor = Color.FromArgb(70, 30, 30);
+            btn_cancelSequence.FlatStyle = FlatStyle.Flat;
+            btn_cancelSequence.ForeColor = Color.White;
+            btn_cancelSequence.Location = new Point(413, 231);
+            btn_cancelSequence.Name = "btn_cancelSequence";
+            btn_cancelSequence.Size = new Size(162, 46);
+            btn_cancelSequence.TabIndex = 12;
+            btn_cancelSequence.Text = "Cancellation";
+            btn_cancelSequence.UseVisualStyleBackColor = false;
+            btn_cancelSequence.Visible = false;
+            btn_cancelSequence.Click += btn_cancelSequence_Click;
             // 
             // lbl_E4
             // 
@@ -640,17 +642,18 @@
             lbl_E4.Text = "Étape 4: ";
             lbl_E4.TextAlign = ContentAlignment.MiddleCenter;
             // 
-            // btn_Demarrer
+            // btn_DemarrerPrisePhotos
             // 
-            btn_Demarrer.BackColor = Color.FromArgb(30, 30, 30);
-            btn_Demarrer.FlatStyle = FlatStyle.Flat;
-            btn_Demarrer.ForeColor = Color.White;
-            btn_Demarrer.Location = new Point(209, 231);
-            btn_Demarrer.Name = "btn_Demarrer";
-            btn_Demarrer.Size = new Size(162, 46);
-            btn_Demarrer.TabIndex = 10;
-            btn_Demarrer.Text = "Démarrer";
-            btn_Demarrer.UseVisualStyleBackColor = false;
+            btn_DemarrerPrisePhotos.BackColor = Color.FromArgb(30, 30, 30);
+            btn_DemarrerPrisePhotos.FlatStyle = FlatStyle.Flat;
+            btn_DemarrerPrisePhotos.ForeColor = Color.White;
+            btn_DemarrerPrisePhotos.Location = new Point(209, 231);
+            btn_DemarrerPrisePhotos.Name = "btn_DemarrerPrisePhotos";
+            btn_DemarrerPrisePhotos.Size = new Size(162, 46);
+            btn_DemarrerPrisePhotos.TabIndex = 10;
+            btn_DemarrerPrisePhotos.Text = "Démarrer";
+            btn_DemarrerPrisePhotos.UseVisualStyleBackColor = false;
+            btn_DemarrerPrisePhotos.Click += btn_DemarrerPrisePhotos_Click;
             // 
             // pictureBox_validationE3
             // 
@@ -1373,7 +1376,6 @@
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_LiveView_Main).EndInit();
             tabPage1.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)pictureBox_validationE4).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE3).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE2).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE1).EndInit();
@@ -1429,9 +1431,8 @@
         private PictureBox pictureBox_imageMasquage;
         private PictureBox pictureBox_imageSoustraction;
         private PictureBox picBox_imageFond;
-        private PictureBox pictureBox_validationE4;
         private Label lbl_E4;
-        private Button btn_Demarrer;
+        private Button btn_DemarrerPrisePhotos;
         private PictureBox pictureBox_validationE3;
         private Label lbl_E3;
         private Button btn_imageFond;
@@ -1505,5 +1506,6 @@
         private Label label22;
         private ComboBox comboBox_TaillePhotos;
         private ComboBox comboBox_TailleLiveView;
+        private Button btn_cancelSequence;
     }
 }
