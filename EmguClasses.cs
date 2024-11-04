@@ -38,7 +38,7 @@ namespace Aerolithe
             pictureBox.Image = bitmap;
         }
 
-        public static void DownsizeImageToFitPictureBox(PictureBox pictureBox, MemoryStream memoryStream)
+        public static Image DownsizeImageToFitPictureBox(PictureBox pictureBox, MemoryStream memoryStream)
         {
             // Convert MemoryStream to Mat
             Mat originalMat = MemoryStreamToMat(memoryStream);
@@ -51,6 +51,8 @@ namespace Aerolithe
 
             // Display the Bitmap in the PictureBox
             DisplayImageInPictureBox(pictureBox, bitmap);
+
+            return bitmap;
         }
     }
 }

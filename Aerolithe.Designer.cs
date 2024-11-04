@@ -68,6 +68,9 @@
             trkBar_Lift = new TrackBar();
             picBox_LiveView_Main = new PictureBox();
             tabPage1 = new TabPage();
+            btn_Dossier = new Button();
+            label24 = new Label();
+            pictureBox_validationE4 = new PictureBox();
             btn_cancelSequence = new Button();
             lbl_E4 = new Label();
             btn_DemarrerPrisePhotos = new Button();
@@ -92,12 +95,13 @@
             picBox_imageFond = new PictureBox();
             tabControl1 = new TabControl();
             tabPage5 = new TabPage();
+            btn_turntableRecule = new Button();
             btn_allerA = new Button();
             txtBox_allerA = new TextBox();
             txtBox_stepsTurnTable = new TextBox();
-            btn_fullTurn = new Button();
-            btn_backToZero = new Button();
-            btn_advance = new Button();
+            btn_turnTableFullRotation = new Button();
+            btn_turnTableBackToZero = new Button();
+            btn_turntableAvance = new Button();
             panel3 = new Panel();
             lbl_trkbar_TableTournante = new Label();
             label7 = new Label();
@@ -109,6 +113,16 @@
             btn_actuator25deg = new Button();
             btn_actuator5deg = new Button();
             tabPage7 = new TabPage();
+            txtBox_vitesseTableTournante = new TextBox();
+            label30 = new Label();
+            label29 = new Label();
+            txtBox_nbrImg45deg = new TextBox();
+            txtBox_nbrImg25deg = new TextBox();
+            txtBox_nbrImg5deg = new TextBox();
+            label28 = new Label();
+            label27 = new Label();
+            label26 = new Label();
+            label25 = new Label();
             comboBox_TailleLiveView = new ComboBox();
             comboBox_TaillePhotos = new ComboBox();
             label23 = new Label();
@@ -130,6 +144,7 @@
             picBox_esp32Com = new PictureBox();
             btn_communicationUDP = new Button();
             panel6 = new Panel();
+            flowLayoutPanel1 = new FlowLayoutPanel();
             panel_Console = new Panel();
             txtBox_Console = new RichTextBox();
             button1 = new Button();
@@ -146,6 +161,7 @@
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_LiveView_Main).BeginInit();
             tabPage1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)pictureBox_validationE4).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE3).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE2).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE1).BeginInit();
@@ -204,7 +220,7 @@
             tabPage4.Location = new Point(4, 44);
             tabPage4.Name = "tabPage4";
             tabPage4.Padding = new Padding(3);
-            tabPage4.Size = new Size(890, 1296);
+            tabPage4.Size = new Size(890, 982);
             tabPage4.TabIndex = 3;
             tabPage4.Text = "Linéaire";
             // 
@@ -212,7 +228,7 @@
             // 
             label3.AutoSize = true;
             label3.ForeColor = Color.White;
-            label3.Location = new Point(3, 729);
+            label3.Location = new Point(4, 92);
             label3.Name = "label3";
             label3.Size = new Size(884, 32);
             label3.TabIndex = 24;
@@ -222,7 +238,7 @@
             // 
             label13.AutoSize = true;
             label13.ForeColor = Color.White;
-            label13.Location = new Point(21, 813);
+            label13.Location = new Point(22, 176);
             label13.Name = "label13";
             label13.Size = new Size(229, 32);
             label13.TabIndex = 23;
@@ -232,7 +248,7 @@
             // 
             label12.AutoSize = true;
             label12.ForeColor = Color.White;
-            label12.Location = new Point(638, 813);
+            label12.Location = new Point(639, 176);
             label12.Name = "label12";
             label12.Size = new Size(228, 32);
             label12.TabIndex = 22;
@@ -242,7 +258,7 @@
             // 
             btn_StopLinearMotor.BackColor = Color.FromArgb(100, 40, 40);
             btn_StopLinearMotor.ForeColor = Color.WhiteSmoke;
-            btn_StopLinearMotor.Location = new Point(375, 806);
+            btn_StopLinearMotor.Location = new Point(376, 169);
             btn_StopLinearMotor.Name = "btn_StopLinearMotor";
             btn_StopLinearMotor.Size = new Size(143, 39);
             btn_StopLinearMotor.TabIndex = 21;
@@ -255,7 +271,7 @@
             Pnl_StepperTrkbar.Controls.Add(lbl_position);
             Pnl_StepperTrkbar.Controls.Add(label2);
             Pnl_StepperTrkbar.Controls.Add(stepperMotor_trkbar);
-            Pnl_StepperTrkbar.Location = new Point(11, 873);
+            Pnl_StepperTrkbar.Location = new Point(12, 236);
             Pnl_StepperTrkbar.Name = "Pnl_StepperTrkbar";
             Pnl_StepperTrkbar.Size = new Size(855, 99);
             Pnl_StepperTrkbar.TabIndex = 18;
@@ -323,7 +339,7 @@
             btn_stepperGetPosition.FlatAppearance.BorderSize = 0;
             btn_stepperGetPosition.FlatStyle = FlatStyle.Flat;
             btn_stepperGetPosition.ForeColor = Color.White;
-            btn_stepperGetPosition.Location = new Point(11, 1230);
+            btn_stepperGetPosition.Location = new Point(12, 593);
             btn_stepperGetPosition.Name = "btn_stepperGetPosition";
             btn_stepperGetPosition.Size = new Size(347, 46);
             btn_stepperGetPosition.TabIndex = 12;
@@ -351,7 +367,7 @@
             btn_setStepperZeroRef.FlatAppearance.BorderSize = 0;
             btn_setStepperZeroRef.FlatStyle = FlatStyle.Flat;
             btn_setStepperZeroRef.ForeColor = Color.White;
-            btn_setStepperZeroRef.Location = new Point(6, 1178);
+            btn_setStepperZeroRef.Location = new Point(7, 541);
             btn_setStepperZeroRef.Name = "btn_setStepperZeroRef";
             btn_setStepperZeroRef.Size = new Size(347, 46);
             btn_setStepperZeroRef.TabIndex = 1;
@@ -371,15 +387,15 @@
             tabPage3.Location = new Point(4, 44);
             tabPage3.Name = "tabPage3";
             tabPage3.Padding = new Padding(3);
-            tabPage3.Size = new Size(890, 1296);
+            tabPage3.Size = new Size(890, 982);
             tabPage3.TabIndex = 2;
             tabPage3.Text = "Caméra";
             // 
             // picBox_pictureTaken
             // 
-            picBox_pictureTaken.Location = new Point(19, 724);
+            picBox_pictureTaken.Location = new Point(22, 326);
             picBox_pictureTaken.Name = "picBox_pictureTaken";
-            picBox_pictureTaken.Size = new Size(751, 553);
+            picBox_pictureTaken.Size = new Size(762, 503);
             picBox_pictureTaken.TabIndex = 23;
             picBox_pictureTaken.TabStop = false;
             // 
@@ -389,7 +405,7 @@
             btn_takePicture.FlatAppearance.BorderSize = 0;
             btn_takePicture.FlatStyle = FlatStyle.Flat;
             btn_takePicture.ForeColor = Color.White;
-            btn_takePicture.Location = new Point(19, 638);
+            btn_takePicture.Location = new Point(19, 257);
             btn_takePicture.Name = "btn_takePicture";
             btn_takePicture.Size = new Size(225, 46);
             btn_takePicture.TabIndex = 22;
@@ -456,6 +472,7 @@
             btn_Autofocus_StepperTab.TabIndex = 18;
             btn_Autofocus_StepperTab.Text = "Autofocus";
             btn_Autofocus_StepperTab.UseVisualStyleBackColor = false;
+            btn_Autofocus_StepperTab.Click += btn_Autofocus_StepperTab_Click;
             // 
             // lbl_LiveViewState
             // 
@@ -491,7 +508,7 @@
             tabPage2.Location = new Point(4, 44);
             tabPage2.Name = "tabPage2";
             tabPage2.Padding = new Padding(3);
-            tabPage2.Size = new Size(890, 1296);
+            tabPage2.Size = new Size(890, 982);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "Élévateur";
             // 
@@ -539,7 +556,7 @@
             panel5.Controls.Add(label10);
             panel5.Controls.Add(label11);
             panel5.Controls.Add(trkBar_Lift);
-            panel5.Location = new Point(19, 1000);
+            panel5.Location = new Point(19, 218);
             panel5.Name = "panel5";
             panel5.Size = new Size(865, 127);
             panel5.TabIndex = 24;
@@ -585,7 +602,7 @@
             // 
             // picBox_LiveView_Main
             // 
-            picBox_LiveView_Main.Location = new Point(953, 0);
+            picBox_LiveView_Main.Location = new Point(959, 112);
             picBox_LiveView_Main.Name = "picBox_LiveView_Main";
             picBox_LiveView_Main.Size = new Size(1176, 780);
             picBox_LiveView_Main.SizeMode = PictureBoxSizeMode.Zoom;
@@ -597,6 +614,9 @@
             // 
             tabPage1.BackColor = Color.FromArgb(40, 40, 40);
             tabPage1.BackgroundImageLayout = ImageLayout.Stretch;
+            tabPage1.Controls.Add(btn_Dossier);
+            tabPage1.Controls.Add(label24);
+            tabPage1.Controls.Add(pictureBox_validationE4);
             tabPage1.Controls.Add(btn_cancelSequence);
             tabPage1.Controls.Add(lbl_E4);
             tabPage1.Controls.Add(btn_DemarrerPrisePhotos);
@@ -612,21 +632,54 @@
             tabPage1.Location = new Point(4, 44);
             tabPage1.Name = "tabPage1";
             tabPage1.Padding = new Padding(3);
-            tabPage1.Size = new Size(890, 1296);
+            tabPage1.Size = new Size(890, 982);
             tabPage1.TabIndex = 0;
             tabPage1.Text = "Procédure";
             tabPage1.Click += btnAutofocus_Click;
+            // 
+            // btn_Dossier
+            // 
+            btn_Dossier.BackColor = Color.FromArgb(30, 30, 30);
+            btn_Dossier.FlatStyle = FlatStyle.Flat;
+            btn_Dossier.ForeColor = Color.White;
+            btn_Dossier.Location = new Point(209, 230);
+            btn_Dossier.Name = "btn_Dossier";
+            btn_Dossier.Size = new Size(162, 46);
+            btn_Dossier.TabIndex = 15;
+            btn_Dossier.Text = "Dossier";
+            btn_Dossier.UseVisualStyleBackColor = false;
+            // 
+            // label24
+            // 
+            label24.BackColor = Color.FromArgb(30, 30, 30);
+            label24.ForeColor = Color.White;
+            label24.Location = new Point(62, 230);
+            label24.Name = "label24";
+            label24.Size = new Size(109, 46);
+            label24.TabIndex = 14;
+            label24.Text = "Étape 4: ";
+            label24.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // pictureBox_validationE4
+            // 
+            pictureBox_validationE4.BackgroundImageLayout = ImageLayout.None;
+            pictureBox_validationE4.Location = new Point(413, 292);
+            pictureBox_validationE4.Name = "pictureBox_validationE4";
+            pictureBox_validationE4.Size = new Size(46, 46);
+            pictureBox_validationE4.SizeMode = PictureBoxSizeMode.CenterImage;
+            pictureBox_validationE4.TabIndex = 13;
+            pictureBox_validationE4.TabStop = false;
             // 
             // btn_cancelSequence
             // 
             btn_cancelSequence.BackColor = Color.FromArgb(70, 30, 30);
             btn_cancelSequence.FlatStyle = FlatStyle.Flat;
             btn_cancelSequence.ForeColor = Color.White;
-            btn_cancelSequence.Location = new Point(413, 231);
+            btn_cancelSequence.Location = new Point(209, 292);
             btn_cancelSequence.Name = "btn_cancelSequence";
             btn_cancelSequence.Size = new Size(162, 46);
             btn_cancelSequence.TabIndex = 12;
-            btn_cancelSequence.Text = "Cancellation";
+            btn_cancelSequence.Text = "Canceller";
             btn_cancelSequence.UseVisualStyleBackColor = false;
             btn_cancelSequence.Visible = false;
             btn_cancelSequence.Click += btn_cancelSequence_Click;
@@ -635,7 +688,7 @@
             // 
             lbl_E4.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E4.ForeColor = Color.White;
-            lbl_E4.Location = new Point(62, 231);
+            lbl_E4.Location = new Point(62, 292);
             lbl_E4.Name = "lbl_E4";
             lbl_E4.Size = new Size(109, 46);
             lbl_E4.TabIndex = 11;
@@ -647,7 +700,7 @@
             btn_DemarrerPrisePhotos.BackColor = Color.FromArgb(30, 30, 30);
             btn_DemarrerPrisePhotos.FlatStyle = FlatStyle.Flat;
             btn_DemarrerPrisePhotos.ForeColor = Color.White;
-            btn_DemarrerPrisePhotos.Location = new Point(209, 231);
+            btn_DemarrerPrisePhotos.Location = new Point(209, 292);
             btn_DemarrerPrisePhotos.Name = "btn_DemarrerPrisePhotos";
             btn_DemarrerPrisePhotos.Size = new Size(162, 46);
             btn_DemarrerPrisePhotos.TabIndex = 10;
@@ -759,7 +812,7 @@
             // 
             // btn_getMask
             // 
-            btn_getMask.Location = new Point(2191, 708);
+            btn_getMask.Location = new Point(2191, 690);
             btn_getMask.Name = "btn_getMask";
             btn_getMask.Size = new Size(150, 46);
             btn_getMask.TabIndex = 22;
@@ -771,7 +824,7 @@
             // 
             textBox_lowB_z.BackColor = Color.FromArgb(30, 30, 30);
             textBox_lowB_z.ForeColor = Color.White;
-            textBox_lowB_z.Location = new Point(2459, 618);
+            textBox_lowB_z.Location = new Point(2459, 600);
             textBox_lowB_z.Name = "textBox_lowB_z";
             textBox_lowB_z.Size = new Size(128, 39);
             textBox_lowB_z.TabIndex = 21;
@@ -781,7 +834,7 @@
             // 
             textBox_upperB_z.BackColor = Color.FromArgb(30, 30, 30);
             textBox_upperB_z.ForeColor = Color.White;
-            textBox_upperB_z.Location = new Point(2459, 663);
+            textBox_upperB_z.Location = new Point(2459, 645);
             textBox_upperB_z.Name = "textBox_upperB_z";
             textBox_upperB_z.Size = new Size(128, 39);
             textBox_upperB_z.TabIndex = 20;
@@ -791,7 +844,7 @@
             // 
             textBox_lowB_y.BackColor = Color.FromArgb(30, 30, 30);
             textBox_lowB_y.ForeColor = Color.White;
-            textBox_lowB_y.Location = new Point(2325, 618);
+            textBox_lowB_y.Location = new Point(2325, 600);
             textBox_lowB_y.Name = "textBox_lowB_y";
             textBox_lowB_y.Size = new Size(128, 39);
             textBox_lowB_y.TabIndex = 19;
@@ -801,7 +854,7 @@
             // 
             textBox_upperB_y.BackColor = Color.FromArgb(30, 30, 30);
             textBox_upperB_y.ForeColor = Color.White;
-            textBox_upperB_y.Location = new Point(2325, 663);
+            textBox_upperB_y.Location = new Point(2325, 645);
             textBox_upperB_y.Name = "textBox_upperB_y";
             textBox_upperB_y.Size = new Size(128, 39);
             textBox_upperB_y.TabIndex = 18;
@@ -811,7 +864,7 @@
             // 
             textBox_lowB_x.BackColor = Color.FromArgb(30, 30, 30);
             textBox_lowB_x.ForeColor = Color.White;
-            textBox_lowB_x.Location = new Point(2191, 618);
+            textBox_lowB_x.Location = new Point(2191, 600);
             textBox_lowB_x.Name = "textBox_lowB_x";
             textBox_lowB_x.Size = new Size(128, 39);
             textBox_lowB_x.TabIndex = 16;
@@ -821,7 +874,7 @@
             // 
             textBox_upperB_x.BackColor = Color.FromArgb(30, 30, 30);
             textBox_upperB_x.ForeColor = Color.White;
-            textBox_upperB_x.Location = new Point(2191, 663);
+            textBox_upperB_x.Location = new Point(2191, 645);
             textBox_upperB_x.Name = "textBox_upperB_x";
             textBox_upperB_x.Size = new Size(128, 39);
             textBox_upperB_x.TabIndex = 15;
@@ -842,7 +895,7 @@
             // 
             pictureBox_imageSoustraction.BackColor = Color.FromArgb(30, 30, 30);
             pictureBox_imageSoustraction.BackgroundImageLayout = ImageLayout.Stretch;
-            pictureBox_imageSoustraction.Location = new Point(2191, 760);
+            pictureBox_imageSoustraction.Location = new Point(2191, 742);
             pictureBox_imageSoustraction.Name = "pictureBox_imageSoustraction";
             pictureBox_imageSoustraction.Size = new Size(467, 287);
             pictureBox_imageSoustraction.SizeMode = PictureBoxSizeMode.Zoom;
@@ -855,7 +908,7 @@
             picBox_imageFond.BackgroundImageLayout = ImageLayout.None;
             picBox_imageFond.Location = new Point(2191, 1);
             picBox_imageFond.Name = "picBox_imageFond";
-            picBox_imageFond.Size = new Size(467, 287);
+            picBox_imageFond.Size = new Size(467, 278);
             picBox_imageFond.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_imageFond.TabIndex = 13;
             picBox_imageFond.TabStop = false;
@@ -873,25 +926,35 @@
             tabControl1.Location = new Point(3, 3);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(898, 1344);
+            tabControl1.Size = new Size(898, 1030);
             tabControl1.TabIndex = 0;
             // 
             // tabPage5
             // 
             tabPage5.BackColor = Color.FromArgb(40, 40, 40);
+            tabPage5.Controls.Add(btn_turntableRecule);
             tabPage5.Controls.Add(btn_allerA);
             tabPage5.Controls.Add(txtBox_allerA);
             tabPage5.Controls.Add(txtBox_stepsTurnTable);
-            tabPage5.Controls.Add(btn_fullTurn);
-            tabPage5.Controls.Add(btn_backToZero);
-            tabPage5.Controls.Add(btn_advance);
+            tabPage5.Controls.Add(btn_turnTableFullRotation);
+            tabPage5.Controls.Add(btn_turnTableBackToZero);
+            tabPage5.Controls.Add(btn_turntableAvance);
             tabPage5.Controls.Add(panel3);
             tabPage5.Location = new Point(4, 44);
             tabPage5.Name = "tabPage5";
             tabPage5.Padding = new Padding(3);
-            tabPage5.Size = new Size(890, 1296);
+            tabPage5.Size = new Size(890, 982);
             tabPage5.TabIndex = 4;
             tabPage5.Text = "Table Tournante";
+            // 
+            // btn_turntableRecule
+            // 
+            btn_turntableRecule.Location = new Point(251, 128);
+            btn_turntableRecule.Name = "btn_turntableRecule";
+            btn_turntableRecule.Size = new Size(199, 46);
+            btn_turntableRecule.TabIndex = 37;
+            btn_turntableRecule.Text = "Recule";
+            btn_turntableRecule.UseVisualStyleBackColor = true;
             // 
             // btn_allerA
             // 
@@ -914,7 +977,7 @@
             // 
             // txtBox_stepsTurnTable
             // 
-            txtBox_stepsTurnTable.Location = new Point(243, 128);
+            txtBox_stepsTurnTable.Location = new Point(542, 40);
             txtBox_stepsTurnTable.MinimumSize = new Size(0, 46);
             txtBox_stepsTurnTable.Name = "txtBox_stepsTurnTable";
             txtBox_stepsTurnTable.Size = new Size(71, 46);
@@ -922,32 +985,34 @@
             txtBox_stepsTurnTable.Text = "14";
             txtBox_stepsTurnTable.TextAlign = HorizontalAlignment.Center;
             // 
-            // btn_fullTurn
+            // btn_turnTableFullRotation
             // 
-            btn_fullTurn.Location = new Point(21, 128);
-            btn_fullTurn.Name = "btn_fullTurn";
-            btn_fullTurn.Size = new Size(199, 46);
-            btn_fullTurn.TabIndex = 33;
-            btn_fullTurn.Text = "Tour complet";
-            btn_fullTurn.UseVisualStyleBackColor = true;
+            btn_turnTableFullRotation.Location = new Point(25, 211);
+            btn_turnTableFullRotation.Name = "btn_turnTableFullRotation";
+            btn_turnTableFullRotation.Size = new Size(199, 46);
+            btn_turnTableFullRotation.TabIndex = 33;
+            btn_turnTableFullRotation.Text = "Tour complet";
+            btn_turnTableFullRotation.UseVisualStyleBackColor = true;
+            btn_turnTableFullRotation.Click += btn_turnTableFullRotation_Click;
             // 
-            // btn_backToZero
+            // btn_turnTableBackToZero
             // 
-            btn_backToZero.Location = new Point(25, 40);
-            btn_backToZero.Name = "btn_backToZero";
-            btn_backToZero.Size = new Size(195, 46);
-            btn_backToZero.TabIndex = 32;
-            btn_backToZero.Text = "Retour à Zéro";
-            btn_backToZero.UseVisualStyleBackColor = true;
+            btn_turnTableBackToZero.Location = new Point(25, 40);
+            btn_turnTableBackToZero.Name = "btn_turnTableBackToZero";
+            btn_turnTableBackToZero.Size = new Size(195, 46);
+            btn_turnTableBackToZero.TabIndex = 32;
+            btn_turnTableBackToZero.Text = "Retour à Zéro";
+            btn_turnTableBackToZero.UseVisualStyleBackColor = true;
+            btn_turnTableBackToZero.Click += btn_turnTableBackToZero_Click;
             // 
-            // btn_advance
+            // btn_turntableAvance
             // 
-            btn_advance.Location = new Point(21, 222);
-            btn_advance.Name = "btn_advance";
-            btn_advance.Size = new Size(199, 46);
-            btn_advance.TabIndex = 31;
-            btn_advance.Text = "Avance";
-            btn_advance.UseVisualStyleBackColor = true;
+            btn_turntableAvance.Location = new Point(25, 128);
+            btn_turntableAvance.Name = "btn_turntableAvance";
+            btn_turntableAvance.Size = new Size(199, 46);
+            btn_turntableAvance.TabIndex = 31;
+            btn_turntableAvance.Text = "Avance";
+            btn_turntableAvance.UseVisualStyleBackColor = true;
             // 
             // panel3
             // 
@@ -956,7 +1021,7 @@
             panel3.Controls.Add(label1);
             panel3.Controls.Add(trkBar_turntable);
             panel3.Controls.Add(label4);
-            panel3.Location = new Point(6, 1023);
+            panel3.Location = new Point(9, 392);
             panel3.Name = "panel3";
             panel3.Size = new Size(878, 142);
             panel3.TabIndex = 21;
@@ -1016,7 +1081,7 @@
             tabPage6.Location = new Point(4, 44);
             tabPage6.Name = "tabPage6";
             tabPage6.Padding = new Padding(3);
-            tabPage6.Size = new Size(890, 1296);
+            tabPage6.Size = new Size(890, 982);
             tabPage6.TabIndex = 5;
             tabPage6.Text = "Actuateur";
             // 
@@ -1053,6 +1118,16 @@
             // tabPage7
             // 
             tabPage7.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage7.Controls.Add(txtBox_vitesseTableTournante);
+            tabPage7.Controls.Add(label30);
+            tabPage7.Controls.Add(label29);
+            tabPage7.Controls.Add(txtBox_nbrImg45deg);
+            tabPage7.Controls.Add(txtBox_nbrImg25deg);
+            tabPage7.Controls.Add(txtBox_nbrImg5deg);
+            tabPage7.Controls.Add(label28);
+            tabPage7.Controls.Add(label27);
+            tabPage7.Controls.Add(label26);
+            tabPage7.Controls.Add(label25);
             tabPage7.Controls.Add(comboBox_TailleLiveView);
             tabPage7.Controls.Add(comboBox_TaillePhotos);
             tabPage7.Controls.Add(label23);
@@ -1076,14 +1151,121 @@
             tabPage7.Location = new Point(4, 44);
             tabPage7.Name = "tabPage7";
             tabPage7.Padding = new Padding(3);
-            tabPage7.Size = new Size(890, 1296);
+            tabPage7.Size = new Size(890, 982);
             tabPage7.TabIndex = 6;
             tabPage7.Text = "Settings";
+            // 
+            // txtBox_vitesseTableTournante
+            // 
+            txtBox_vitesseTableTournante.BackColor = Color.FromArgb(30, 30, 30);
+            txtBox_vitesseTableTournante.ForeColor = Color.White;
+            txtBox_vitesseTableTournante.Location = new Point(319, 786);
+            txtBox_vitesseTableTournante.Name = "txtBox_vitesseTableTournante";
+            txtBox_vitesseTableTournante.Size = new Size(97, 39);
+            txtBox_vitesseTableTournante.TabIndex = 37;
+            txtBox_vitesseTableTournante.Text = "800";
+            txtBox_vitesseTableTournante.TextAlign = HorizontalAlignment.Center;
+            // 
+            // label30
+            // 
+            label30.AutoSize = true;
+            label30.ForeColor = SystemColors.ScrollBar;
+            label30.Location = new Point(80, 789);
+            label30.Name = "label30";
+            label30.Size = new Size(227, 32);
+            label30.TabIndex = 36;
+            label30.Text = "Vitesse (500 à 3000)";
+            // 
+            // label29
+            // 
+            label29.AutoSize = true;
+            label29.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
+            label29.ForeColor = Color.White;
+            label29.Location = new Point(26, 745);
+            label29.Name = "label29";
+            label29.Size = new Size(184, 32);
+            label29.TabIndex = 35;
+            label29.Text = "Table Tournante";
+            // 
+            // txtBox_nbrImg45deg
+            // 
+            txtBox_nbrImg45deg.BackColor = Color.FromArgb(30, 30, 30);
+            txtBox_nbrImg45deg.ForeColor = Color.White;
+            txtBox_nbrImg45deg.Location = new Point(433, 691);
+            txtBox_nbrImg45deg.Name = "txtBox_nbrImg45deg";
+            txtBox_nbrImg45deg.Size = new Size(66, 39);
+            txtBox_nbrImg45deg.TabIndex = 34;
+            txtBox_nbrImg45deg.Text = "14";
+            txtBox_nbrImg45deg.TextAlign = HorizontalAlignment.Center;
+            // 
+            // txtBox_nbrImg25deg
+            // 
+            txtBox_nbrImg25deg.BackColor = Color.FromArgb(30, 30, 30);
+            txtBox_nbrImg25deg.ForeColor = Color.White;
+            txtBox_nbrImg25deg.Location = new Point(433, 648);
+            txtBox_nbrImg25deg.Name = "txtBox_nbrImg25deg";
+            txtBox_nbrImg25deg.Size = new Size(66, 39);
+            txtBox_nbrImg25deg.TabIndex = 33;
+            txtBox_nbrImg25deg.Text = "14";
+            txtBox_nbrImg25deg.TextAlign = HorizontalAlignment.Center;
+            // 
+            // txtBox_nbrImg5deg
+            // 
+            txtBox_nbrImg5deg.BackColor = Color.FromArgb(30, 30, 30);
+            txtBox_nbrImg5deg.ForeColor = Color.White;
+            txtBox_nbrImg5deg.Location = new Point(433, 607);
+            txtBox_nbrImg5deg.Name = "txtBox_nbrImg5deg";
+            txtBox_nbrImg5deg.Size = new Size(66, 39);
+            txtBox_nbrImg5deg.TabIndex = 32;
+            txtBox_nbrImg5deg.Text = "20";
+            txtBox_nbrImg5deg.TextAlign = HorizontalAlignment.Center;
+            // 
+            // label28
+            // 
+            label28.AutoSize = true;
+            label28.ForeColor = SystemColors.ScrollBar;
+            label28.Location = new Point(80, 692);
+            label28.Name = "label28";
+            label28.Size = new Size(336, 32);
+            label28.TabIndex = 31;
+            label28.Text = "Nombre d'images à 45 degrés";
+            // 
+            // label27
+            // 
+            label27.AutoSize = true;
+            label27.ForeColor = SystemColors.ScrollBar;
+            label27.Location = new Point(80, 649);
+            label27.Name = "label27";
+            label27.Size = new Size(336, 32);
+            label27.TabIndex = 30;
+            label27.Text = "Nombre d'images à 25 degrés";
+            // 
+            // label26
+            // 
+            label26.AutoSize = true;
+            label26.BackColor = Color.FromArgb(30, 30, 30);
+            label26.ForeColor = SystemColors.ScrollBar;
+            label26.Location = new Point(80, 607);
+            label26.Name = "label26";
+            label26.Size = new Size(323, 32);
+            label26.TabIndex = 29;
+            label26.Text = "Nombre d'images à 5 degrés";
+            // 
+            // label25
+            // 
+            label25.AutoSize = true;
+            label25.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
+            label25.ForeColor = Color.White;
+            label25.Location = new Point(25, 560);
+            label25.Name = "label25";
+            label25.Size = new Size(129, 32);
+            label25.TabIndex = 28;
+            label25.Text = "Séquences";
             // 
             // comboBox_TailleLiveView
             // 
             comboBox_TailleLiveView.FormattingEnabled = true;
-            comboBox_TailleLiveView.Location = new Point(379, 526);
+            comboBox_TailleLiveView.Location = new Point(379, 436);
             comboBox_TailleLiveView.Name = "comboBox_TailleLiveView";
             comboBox_TailleLiveView.Size = new Size(242, 40);
             comboBox_TailleLiveView.TabIndex = 27;
@@ -1092,7 +1274,7 @@
             // comboBox_TaillePhotos
             // 
             comboBox_TaillePhotos.FormattingEnabled = true;
-            comboBox_TaillePhotos.Location = new Point(379, 575);
+            comboBox_TaillePhotos.Location = new Point(379, 484);
             comboBox_TaillePhotos.Name = "comboBox_TaillePhotos";
             comboBox_TaillePhotos.Size = new Size(242, 40);
             comboBox_TaillePhotos.TabIndex = 26;
@@ -1102,7 +1284,7 @@
             // 
             label23.AutoSize = true;
             label23.ForeColor = SystemColors.ScrollBar;
-            label23.Location = new Point(80, 574);
+            label23.Location = new Point(80, 492);
             label23.Name = "label23";
             label23.Size = new Size(258, 32);
             label23.TabIndex = 25;
@@ -1112,7 +1294,7 @@
             // 
             label22.AutoSize = true;
             label22.ForeColor = SystemColors.ScrollBar;
-            label22.Location = new Point(80, 534);
+            label22.Location = new Point(80, 444);
             label22.Name = "label22";
             label22.Size = new Size(269, 32);
             label22.TabIndex = 24;
@@ -1121,8 +1303,9 @@
             // label21
             // 
             label21.AutoSize = true;
+            label21.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
             label21.ForeColor = Color.White;
-            label21.Location = new Point(25, 488);
+            label21.Location = new Point(25, 398);
             label21.Name = "label21";
             label21.Size = new Size(95, 32);
             label21.TabIndex = 21;
@@ -1131,8 +1314,9 @@
             // label20
             // 
             label20.AutoSize = true;
+            label20.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
             label20.ForeColor = Color.White;
-            label20.Location = new Point(26, 353);
+            label20.Location = new Point(26, 280);
             label20.Name = "label20";
             label20.Size = new Size(76, 32);
             label20.TabIndex = 20;
@@ -1144,7 +1328,7 @@
             btn_esp32Reset.FlatAppearance.BorderSize = 0;
             btn_esp32Reset.FlatStyle = FlatStyle.Flat;
             btn_esp32Reset.ForeColor = Color.White;
-            btn_esp32Reset.Location = new Point(25, 404);
+            btn_esp32Reset.Location = new Point(26, 327);
             btn_esp32Reset.Name = "btn_esp32Reset";
             btn_esp32Reset.Size = new Size(150, 46);
             btn_esp32Reset.TabIndex = 19;
@@ -1293,6 +1477,7 @@
             // 
             // panel6
             // 
+            panel6.Controls.Add(flowLayoutPanel1);
             panel6.Controls.Add(btn_getMask);
             panel6.Controls.Add(tabControl1);
             panel6.Controls.Add(textBox_lowB_z);
@@ -1308,8 +1493,16 @@
             panel6.Controls.Add(textBox_upperB_x);
             panel6.Location = new Point(4, 12);
             panel6.Name = "panel6";
-            panel6.Size = new Size(2670, 1807);
+            panel6.Size = new Size(2670, 2034);
             panel6.TabIndex = 27;
+            // 
+            // flowLayoutPanel1
+            // 
+            flowLayoutPanel1.BackColor = Color.FromArgb(25, 25, 25);
+            flowLayoutPanel1.Location = new Point(0, 1039);
+            flowLayoutPanel1.Name = "flowLayoutPanel1";
+            flowLayoutPanel1.Size = new Size(2660, 527);
+            flowLayoutPanel1.TabIndex = 27;
             // 
             // panel_Console
             // 
@@ -1317,7 +1510,7 @@
             panel_Console.Controls.Add(txtBox_Console);
             panel_Console.Controls.Add(button1);
             panel_Console.Controls.Add(btn_clearConsole);
-            panel_Console.Location = new Point(7, 1353);
+            panel_Console.Location = new Point(0, 1577);
             panel_Console.Name = "panel_Console";
             panel_Console.Size = new Size(2674, 454);
             panel_Console.TabIndex = 1;
@@ -1353,7 +1546,7 @@
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(40, 40, 40);
-            ClientSize = new Size(2680, 1829);
+            ClientSize = new Size(2680, 2047);
             Controls.Add(panel6);
             Name = "Aerolithe";
             Text = "Aerolithe";
@@ -1376,6 +1569,7 @@
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_LiveView_Main).EndInit();
             tabPage1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)pictureBox_validationE4).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE3).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE2).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE1).EndInit();
@@ -1491,9 +1685,9 @@
         private Button btn_allerA;
         private TextBox txtBox_allerA;
         private TextBox txtBox_stepsTurnTable;
-        private Button btn_fullTurn;
-        private Button btn_backToZero;
-        private Button btn_advance;
+        private Button btn_turnTableFullRotation;
+        private Button btn_turnTableBackToZero;
+        private Button btn_turntableAvance;
         private Button btn_liftMaxUp;
         private Button btn_liftMaxDown;
         private Button btn_printLiftPositionConsole;
@@ -1507,5 +1701,20 @@
         private ComboBox comboBox_TaillePhotos;
         private ComboBox comboBox_TailleLiveView;
         private Button btn_cancelSequence;
+        private PictureBox pictureBox_validationE4;
+        private Button btn_turntableRecule;
+        private Button btn_Dossier;
+        private Label label24;
+        private FlowLayoutPanel flowLayoutPanel1;
+        private Label label28;
+        private Label label27;
+        private Label label26;
+        private Label label25;
+        private TextBox txtBox_vitesseTableTournante;
+        private Label label30;
+        private Label label29;
+        private TextBox txtBox_nbrImg45deg;
+        private TextBox txtBox_nbrImg25deg;
+        private TextBox txtBox_nbrImg5deg;
     }
 }

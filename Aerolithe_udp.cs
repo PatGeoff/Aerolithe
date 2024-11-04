@@ -21,6 +21,8 @@ namespace Aerolithe
         private System.Timers.Timer checkTimer;
         private bool esp32Alive = false;
         private bool waveshareAlive = false;
+        public bool turntablePositionReached = false;
+        public bool actuatorPositionReached = false;
 
 
         public void InitializeUdpClient()
@@ -173,7 +175,7 @@ namespace Aerolithe
                     UdpReceiveResult result = await udpClient.ReceiveAsync();
                     string message = Encoding.UTF8.GetString(result.Buffer);
                     Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
-                    AppendTextToConsole(message);
+                    AppendTextToConsoleNL(message);
                     checkMessage(message);
                 }
             }
@@ -213,7 +215,7 @@ namespace Aerolithe
                 if (long.TryParse(positionString, out long position))
                 {                                       
                     string txt = "stepper motor far value set to " + position.ToString();
-                    AppendTextToConsole(txt);
+                    AppendTextToConsoleNL(txt);
                     StepperMotorSetMaxValueEnableTrkbar(position);
                     // Successfully parsed the position
                     Debug.WriteLine($"Parsed position: {position}");
@@ -249,7 +251,12 @@ namespace Aerolithe
                 waveshareAlive = false;
                 picBox_waveshareCom.Image = Resources.echec;
                 Debug.WriteLine("RIEN reçu du from ESP32");
-        }
+
+             }
+            if (message.Contains("Message de Table Tournante: Position atteinte"))
+            {
+                turntablePositionReached = true;
+            }
         }
 
       
@@ -272,11 +279,11 @@ namespace Aerolithe
             waveshareAlive = false;
             picBox_waveshareCom.Image = Resources.echec;
             picBox_esp32Com.Image = Resources.echec;
-            AppendTextToConsole("tentative de communication avec le ESP32 dans la boîte blanche");
+            AppendTextToConsoleNL("tentative de communication avec le ESP32 dans la boîte blanche");
             //txtBox_Console.Text += "tentative de communication avec le ESP32 dans la boîte blanche" + Environment.NewLine;
             UdpSendStepperMessageAsync("status");
             Thread.Sleep(200);
-            AppendTextToConsole("tentative de communication avec le ESP32 dans la table tournante");
+            AppendTextToConsoleNL("tentative de communication avec le ESP32 dans la table tournante");
             //txtBox_Console.Text += "tentative de communication avec le ESP32 dans la table tournante" + Environment.NewLine;
             UdpSendTurnTableMessageAsync("status");
         }

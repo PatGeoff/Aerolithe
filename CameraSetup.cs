@@ -12,6 +12,8 @@ using Emgu.CV;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
 using System.IO;
 using Emgu.CV.Reg;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 
 namespace Aerolithe
 {
@@ -57,7 +59,7 @@ namespace Aerolithe
 
                 // Hook up device capture events
                 device.ImageReady += new ImageReadyDelegate(device_ImageReady);
-                //device.ThumbnailReady += new ThumbnailReadyDelegate(device_ThumbnailReady);
+                //device.ThumbnailReady += new ThumbnailReadyDelegate(OnThumbnailReady);
                 //device.CaptureComplete += new CaptureCompleteDelegate(device_CaptureComplete);
                 //device.PreviewReady += new PreviewReadyDelegate(device_PreviewReady);
 
@@ -79,17 +81,16 @@ namespace Aerolithe
             }
         }
 
-
         void deviceLoaded()
         {
 
             if (!device.LiveViewEnabled)
             {
                 device.LiveViewEnabled = true;
-                
+
 
             }
-            liveViewTimer.Start();           
+            liveViewTimer.Start();
 
 
             //SetCrosshair();
@@ -115,12 +116,6 @@ namespace Aerolithe
 
             // Stop live view timer
             liveViewTimer.Stop();
-
-            // Clear device name
-            //label_name.Text = "No Camera";
-
-            // Disable buttons
-            //ToggleButtons(false);
 
             // Clear live view picture
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
@@ -185,7 +180,7 @@ namespace Aerolithe
             comboBox_TaillePhotos.SelectedIndex = imgSize.Index;
         }
 
-      
+
         private void GetLiveViewSize()
         {
             NikonEnum liveviewSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
@@ -194,18 +189,22 @@ namespace Aerolithe
             comboBox_TailleLiveView.Items.Add("1920 x 1080");
             switch (liveviewSize.ToString())
             {
-                case "0":                    
+                case "0":
                     comboBox_TailleLiveView.SelectedIndex = 0;
                     break;
-                case "1":                    
+                case "1":
                     comboBox_TailleLiveView.SelectedIndex = 1;
                     break;
-                case "2":                    
+                case "2":
                     comboBox_TailleLiveView.SelectedIndex = 2;
                     break;
-            }           
+            }
 
         }
+
+     
+
+
 
         #endregion
 

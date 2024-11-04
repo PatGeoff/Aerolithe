@@ -43,7 +43,7 @@ namespace Aerolithe
         {
             if (background != null)
             {
-                MessageBox.Show("ici"); 
+                //MessageBox.Show("ici"); 
                 // Convertit le LiveCapture en stream
                 using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
                 {

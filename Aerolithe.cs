@@ -14,6 +14,7 @@ using Nikon;
 using System.Drawing;
 using System.Threading;
 using Emgu.CV.XPhoto;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Aerolithe
 {
@@ -30,7 +31,6 @@ namespace Aerolithe
         public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
 
         private UdpClient udpClient;
-        public int turntableSpeed = 1000;
 
         public Aerolithe()
         {
@@ -42,6 +42,7 @@ namespace Aerolithe
             listenUDP();
             Ping();
             CheckCommunication();
+            SetupMainFlowLayoutPanel();
         }
 
 
@@ -81,6 +82,7 @@ namespace Aerolithe
             NikonAutofocus(1);
         }
 
+
         private void btn_imageFond_Click(object sender, EventArgs e)
         {
             DialogResult result = AutoCloseMessageBox.ShowPressClose("Enlever la météorite, allumer la lumière de la table tournante et appuyer sur le bouton OK ci-bas", 650, 180);
@@ -88,13 +90,20 @@ namespace Aerolithe
             {
                 getBackgroundImage();
                 pictureBox_validationE3.Image = Properties.Resources.crochet;
+                ApplyButtonStyle(buttonLabelPairs[2], false);
+                ApplyButtonStyle(buttonLabelPairs[3], true);
             }
-            btn_DemarrerPrisePhotos.BackColor = Color.FromArgb(30, 30, 30);
-            btn_DemarrerPrisePhotos.ForeColor = Color.White;
+
 
         }
         private async void btn_DemarrerPrisePhotos_Click(object sender, EventArgs e)
         {
+
+            btn_DemarrerPrisePhotos.BackColor = Color.FromArgb(30, 30, 30);
+            btn_DemarrerPrisePhotos.ForeColor = Color.White;
+            // Show the cancel button and disable the start button
+            btn_cancelSequence.Visible = true;
+            btn_DemarrerPrisePhotos.Visible = false;
             if (working)
             {
                 MessageBox.Show("La prise de photo est déjà en cours");
@@ -104,24 +113,20 @@ namespace Aerolithe
             working = true;
             cancellationTokenSource = new CancellationTokenSource();
 
-            // Show the cancel button and disable the start button
-            btn_cancelSequence.Visible = true;
-            btn_DemarrerPrisePhotos.Enabled = false;
-
             try
             {
                 await PrisePhotoSequenceAsync(cancellationTokenSource.Token);
             }
             catch (OperationCanceledException)
             {
-                AppendTextToConsole("La prise de photos a été cancellée");
+                AppendTextToConsoleNL("La prise de photos a été cancellée");
             }
             finally
             {
                 working = false;
                 // Hide the cancel button and enable the start button
                 btn_cancelSequence.Visible = false;
-                btn_DemarrerPrisePhotos.Enabled = true;
+                btn_DemarrerPrisePhotos.Visible = true;
             }
 
         }
@@ -152,10 +157,16 @@ namespace Aerolithe
                 device.LiveViewEnabled = true;
             }
         }
-        private void btn_Autofocus_StepperTab_MouseClick(object sender, MouseEventArgs e)
+        private void btn_Autofocus_StepperTab_Click(object sender, EventArgs e)
         {
             NikonAutofocus(1);
         }
+
+        private async void btn_takePicture_Click(object sender, EventArgs e)
+        {
+            await takePictureAsync();
+        }
+
         #endregion
 
         #region LINÉAIRE TAB
@@ -174,8 +185,7 @@ namespace Aerolithe
         }
         private void stepperCalibration_btn_Click(object sender, EventArgs e)
         {
-            AppendTextToConsole("Calibrating" + Environment.NewLine);
-            //txtBox_Console.Text += "Calibrating" + Environment.NewLine;
+            AppendTextToConsoleNL("Calibrating" + Environment.NewLine);
             UdpSendStepperMessageAsync("stepmotor calibration");
             picBox_CalibrationCheck.Image = Properties.Resources.crochet;
             stepperMotor_trkbar.Enabled = true;
@@ -214,7 +224,7 @@ namespace Aerolithe
                 string message = "turntable pos " + val.ToString();
                 lbl_trkbar_TableTournante.Text = trkBar_turntable.Value.ToString();
                 UdpSendTurnTableMessageAsync(message);
-
+                trkBar_turntable.Value = 0;
             }
             catch (Exception)
             {
@@ -223,13 +233,22 @@ namespace Aerolithe
             }
 
         }
-
         private void trkBar_turntable_MouseUp(object sender, MouseEventArgs e)
         {
             int val = trkBar_turntable.Value;
             string message = "turntable," + val.ToString() + "," + turntableSpeed;
             //MessageBox.Show(message);
             UdpSendTurnTableMessageAsync(message);
+        }
+        private void btn_turnTableBackToZero_Click(object sender, EventArgs e)
+        {
+            string message = $"turntable,0,{turntableSpeed}";
+            UdpSendTurnTableMessageAsync(message);
+
+        }
+        private void btn_turnTableFullRotation_Click(object sender, EventArgs e)
+        {
+
         }
         #endregion
 
@@ -283,16 +302,12 @@ namespace Aerolithe
         {
             txtBox_Console.Clear();
         }
-        private void btn_takePicture_Click(object sender, EventArgs e)
-        {
-            takePicture();
-        }
 
 
-        private void AppendTextToConsole(string message)
+
+        private void AppendTextToConsoleNL(string message) // New Line
         {
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
-            string fullMessage = timestamp + message + Environment.NewLine;
 
             if (txtBox_Console.InvokeRequired)
             {
@@ -314,6 +329,28 @@ namespace Aerolithe
             }
         }
 
+        private void AppendTextToConsoleSL(string message) // Single Line
+        {
+
+            if (txtBox_Console.InvokeRequired)
+            {
+                Debug.WriteLine("Invoke required");
+                txtBox_Console.Invoke(new Action(() =>
+                {
+                    AppendFormattedText(message, txtBox_Console.ForeColor);
+                    ScrollToBottom();
+                    //Debug.WriteLine("Message appended via Invoke");
+                }));
+            }
+            else
+            {
+                AppendFormattedText(message, txtBox_Console.ForeColor);
+                //Debug.WriteLine("Message appended directly");
+                ScrollToBottom();
+            }
+        }
+
+
         private void AppendFormattedText(string text, Color color)
         {
             txtBox_Console.SelectionStart = txtBox_Console.TextLength;
@@ -333,6 +370,20 @@ namespace Aerolithe
         {
             Application.Exit();
         }
+        private void picBox_LiveView_Main_DoubleClick(object sender, EventArgs e)
+        {
+            if (picBox_LiveView_Main.Image != null)
+            {
+                MessageBox.Show(picBox_LiveView_Main.Image.Width.ToString() + " * " + picBox_LiveView_Main.Image.Height.ToString());
+            }
+        }
+
+        private void SetupMainFlowLayoutPanel()
+        {
+            flowLayoutPanel1.AutoScroll = true;
+            flowLayoutPanel1.FlowDirection = FlowDirection.TopDown;
+            flowLayoutPanel1.WrapContents = false;
+        }
         #endregion 
 
         #region PREFERENCES
@@ -342,7 +393,7 @@ namespace Aerolithe
 
             string host = "192.168.2.1";
             bool result = PingHost(host);
-            AppendTextToConsole($"Ping --> routeur: {(result ? "succès" : "échec")}");
+            AppendTextToConsoleNL($"Ping --> routeur: {(result ? "succès" : "échec")}");
             //txtBox_Console.Text += ($"Ping --> routeur: {(result ? "succès" : "échec")}" + Environment.NewLine);
             if (result)
             {
@@ -363,7 +414,7 @@ namespace Aerolithe
             {
                 picBox_wavesharePing.Image = Resources.echec;
             }
-            AppendTextToConsole($"Ping --> table tournante: {(result ? "succès" : "échec")}");
+            AppendTextToConsoleNL($"Ping --> table tournante: {(result ? "succès" : "échec")}");
             //txtBox_Console.Text += ($"Ping --> table tournante: {(result ? "succès" : "échec")}" + Environment.NewLine);
             Thread.Sleep(200);
             host = "192.168.2.11";
@@ -376,29 +427,29 @@ namespace Aerolithe
             {
                 picBox_esp32Ping.Image = Resources.echec;
             }
-            AppendTextToConsole($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}");
+            AppendTextToConsoleNL($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}");
             //txtBox_Console.Text += ($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}" + Environment.NewLine);
         }
 
 
-        public bool PingHost(string host, int timeout = 500)
+        private bool PingHost(string nameOrAddress)
         {
+            bool pingable = false;
+            Ping pinger = new Ping();
+
             try
             {
-
-                using (Ping ping = new Ping())
-                {
-                    PingReply reply = ping.Send(host, timeout);
-                    return reply.Status == IPStatus.Success;
-                }
+                PingReply reply = pinger.Send(nameOrAddress);
+                pingable = reply.Status == IPStatus.Success;
             }
-            catch (Exception ex)
+            catch (PingException)
             {
-                AppendTextToConsole($"Ping failed: {ex.Message}");
-                //Console.WriteLine($"Ping failed: {ex.Message}");
-                return false;
+                // Discard PingExceptions and return false;
             }
+
+            return pingable;
         }
+
         private void btn_communicationUDP_Click(object sender, EventArgs e)
         {
             Ping();
@@ -423,18 +474,14 @@ namespace Aerolithe
             lvSize.Index = comboBox_TaillePhotos.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, lvSize);
         }
+
+       
+
+
         #endregion
 
 
 
-        private void picBox_LiveView_Main_DoubleClick(object sender, EventArgs e)
-        {
-            if (picBox_LiveView_Main.Image != null)
-            {
-                MessageBox.Show(picBox_LiveView_Main.Image.Width.ToString() + " * " + picBox_LiveView_Main.Image.Height.ToString());
-            }
-        }
 
-      
     }
 }
