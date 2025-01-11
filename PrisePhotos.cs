@@ -17,16 +17,16 @@ namespace Aerolithe
         private int nombreImages45Degres = 14;
         private int actuatorDelay1 = 5000; // secondes
         private int actuatorDelay2 = 9000; // secondes
-        private int turntableDelay = 5000; // secondes
+        private int turntableDelay = 7000; // secondes
         public int turntableSpeed = 500;
+        public int delayTimePhotoShoot = 2000; 
         private bool working = false;
         public CancellationTokenSource cancellationTokenSource;
 
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken)
         {
-           
-
+            
             turntablePositionReached = false;
             actuatorPositionReached = false;
             int total = 0;
@@ -36,81 +36,40 @@ namespace Aerolithe
             int divider = 4096 / nombreImages5Degres;
 
             currentSequence = 1; // Sequence 1
-            for (int i = 0; i < nombreImages5Degres; i++)
+            for (int i = 1; i < nombreImages5Degres; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 AppendTextToConsoleNL($"photo {i}/{nombreImages5Degres}");
                 int degres = i * divider;
 
+                // Initialize the TaskCompletionSource for each image capture
+                imageReadyTcs = new TaskCompletionSource<bool>();
+
                 // Take the picture asynchronously
                 await takePictureAsync();
 
                 // Wait for the image to be ready
                 await imageReadyTcs.Task;
 
+                
+                // Send the turntable command immediately after the image is ready
+                await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
+
+                // Add a delay after the image is ready
+                await Task.Delay(delayTimePhotoShoot); // Delay for x seconds
+
                 AppendTextToConsoleNL($"prise de photo #{total}");
                 total += 1;
 
-                await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
+                // Wait for the turntable to reach the target position
                 await WaitForTargetPositionConfirmation(turntableDelay, "En attente de la table tournante ", cancellationToken);
             }
 
             AppendTextToConsoleNL($"Série 1 terminée");
-            divider = 4096 / nombreImages25Degres;
-            await UdpSendActuatorMessageAsync("actuator 25");
-            await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
-            await WaitForTargetPositionConfirmation(turntableDelay, "En attente de la table tournante " , cancellationToken);
-
-            currentSequence = 2; // Sequence 2
-            for (int i = 0; i < nombreImages25Degres; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                AppendTextToConsoleNL($"photo {i}/{nombreImages25Degres}");
-                AppendTextToConsoleNL($"prise de photo #{total}");
-                total += 1;
-
-                // Initialize the TaskCompletionSource
-                imageReadyTcs = new TaskCompletionSource<bool>();
-
-                // Take the picture asynchronously
-                await takePictureAsync();
-
-                // Wait for the image to be ready
-                await imageReadyTcs.Task;
-
-                int degres = i * divider;
-                await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-            }
-
-            divider = 4096 / nombreImages45Degres;
-            await UdpSendActuatorMessageAsync("actuator 45");
-            await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
-            await WaitForTargetPositionConfirmation(turntableDelay, "En attente de la table tournante ", cancellationToken);
-
-            currentSequence = 3; // Sequence 3
-            for (int i = 0; i < nombreImages45Degres; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                AppendTextToConsoleNL($"photo {i}/{nombreImages45Degres}");
-                AppendTextToConsoleNL($"prise de photo #{total}");
-                total += 1;
-
-                // Initialize the TaskCompletionSource
-                imageReadyTcs = new TaskCompletionSource<bool>();
-
-                // Take the picture asynchronously
-                await takePictureAsync();
-
-                // Wait for the image to be ready
-                await imageReadyTcs.Task;
-
-                int degres = i * divider;
-                await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-                await WaitForTargetPositionConfirmation(turntableDelay, "En attente de la table tournante", cancellationToken);
-            }
-
-            AppendTextToConsoleNL("prise de photo terminée");
+            // Continue with the rest of your sequences...
         }
+
+
 
 
 

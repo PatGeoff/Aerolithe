@@ -44,6 +44,7 @@ namespace Aerolithe
 
                         // Downsize and display the image in a PictureBox
                         var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream);
+
                         if (resizedImage != null)
                         {
                             picBox_pictureTaken.Image = resizedImage;
@@ -54,56 +55,18 @@ namespace Aerolithe
                             return;
                         }
 
-                        // Calculate the position for the new PictureBox
-                        int pictureBoxWidth = 200;
-                        int pictureBoxHeight = 132;
-
-                        PictureBox pictureBox = new PictureBox
-                        {
-                            Name = $"img_{flowLayoutPanel1.Controls.Count:D3}",
-                            Image = resizedImage,
-                            SizeMode = PictureBoxSizeMode.Zoom,
-                            Width = pictureBoxWidth,
-                            Height = pictureBoxHeight,
-                            Margin = new Padding(0), // Increase margin to add more space between PictureBoxes
-                            Padding = new Padding(0), // Set padding to zero
-                            BorderStyle = BorderStyle.FixedSingle // Adjust border style as needed
-                        };
+                        // Create a new PictureBox
+                        PictureBox pictureBox = CreatePictureBox(resizedImage);
 
                         // Set border color based on the sequence
-                        Color borderColor = Color.Transparent;
-                        switch (currentSequence)
-                        {
-                            case 1:
-                                borderColor = Color.Green;
-                                break;
-                            case 2:
-                                borderColor = Color.Orange;
-                                break;
-                            case 3:
-                                borderColor = Color.Purple;
-                                break;
-                        }
+                        Color borderColor = GetBorderColor(currentSequence);
 
-                        //// Create a new sequence FlowLayoutPanel if needed
-                        //if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
-                        //{
-                        //    currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
-                        //    flowLayoutPanel1.Invoke((MethodInvoker)delegate
-                        //    {
-                        //        flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
-                        //    });
-                        //}
-
-                        //// Add the PictureBox to the current sequence FlowLayoutPanel
-                        //currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
-                        //{
-                        //    currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
-                        //});
                         // Create a new sequence FlowLayoutPanel if needed
                         if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
                         {
                             currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
+                            SetFlowLayoutPanelWidth(currentSequenceFlowLayoutPanel, nombreImages5Degres, 200);
+                            SetFlowLayoutPanelWidth(flowLayoutPanel1, nombreImages5Degres, 200);
                             flowLayoutPanel1.Invoke((MethodInvoker)delegate
                             {
                                 flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
@@ -114,19 +77,6 @@ namespace Aerolithe
                         currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
                         {
                             currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
-
-                            // Calculate the total width of the PictureBox controls
-                            int totalWidth = 0;
-                            foreach (Control control in currentSequenceFlowLayoutPanel.Controls)
-                            {
-                                totalWidth += control.Width;
-                            }
-
-                            // Adjust the width of the FlowLayoutPanel if needed
-                            if (totalWidth > currentSequenceFlowLayoutPanel.Width)
-                            {
-                                currentSequenceFlowLayoutPanel.Width = totalWidth;
-                            }
                         });
 
                         // Signal that the image is ready
@@ -142,7 +92,39 @@ namespace Aerolithe
         }
 
 
+        private PictureBox CreatePictureBox(Image image)
+        {
+            return new PictureBox
+            {
+                Name = $"img_{flowLayoutPanel1.Controls.Count:D3}",
+                Image = image,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Width = 200,
+                Height = 132,
+                Margin = new Padding(0),
+                Padding = new Padding(0),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+        }
 
+        private Color GetBorderColor(int sequence)
+        {
+            return sequence switch
+            {
+                1 => Color.Green,
+                2 => Color.Orange,
+                3 => Color.Purple,
+                _ => Color.Transparent
+            };
+        }
+        private void SetFlowLayoutPanelWidth(FlowLayoutPanel panel, int nombreImages, int pictureBoxWidth)
+        {
+            // Calculate the total width needed for the FlowLayoutPanel
+            int totalWidth = nombreImages * pictureBoxWidth;
+
+            // Set the width of the FlowLayoutPanel
+            panel.Width = totalWidth;
+        }
 
     }
 }
