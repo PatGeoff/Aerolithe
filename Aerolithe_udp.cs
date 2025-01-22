@@ -23,6 +23,8 @@ namespace Aerolithe
         private bool waveshareAlive = false;
         public bool turntablePositionReached = false;
         public bool actuatorPositionReached = false;
+        public int rotaryEncoderStepperMotorValue = 0;
+        public bool rotaryEncoderSteperMotorTriggered = false;
 
 
         public void InitializeUdpClient()
@@ -87,53 +89,7 @@ namespace Aerolithe
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        public void udpSendStepperMessage(string message)
-        {
-            try
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(message);
-                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
-                {
-                    client.Send(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        public void udpSendActuatorMessage(string message)
-        {
-            try
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(message);
-                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
-                {
-                    client.Send(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        public void udpSendTurnTableMessage(string message)
-        {
-            try
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(message);
-                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
-                {
-                    client.Send(bytes, bytes.Length, new IPEndPoint(turntableIpAddress, turntablePort));
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+       
 
         public async Task UdpSendScissorLiftMessageAsync(string message)
         {
@@ -143,6 +99,7 @@ namespace Aerolithe
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
                     await client.SendAsync(bytes, bytes.Length, new IPEndPoint(scissorLiftIpAddress, scissorLiftPort));
+                    AppendTextToConsoleNL("Message sent to Scissor Lift with message:"  + message);
                 }
             }
             catch (Exception ex)
@@ -151,12 +108,31 @@ namespace Aerolithe
             }
         }
 
-        public void udpSendStepperMotorData(int vitesse, int position)
+        public async Task udpSendScissorData(int vitesse, int position)
         {
-            string message = $"stepmotor moveto {vitesse},{position},0";
+            string message = $"lift moveto {vitesse},{position}";
+            await UdpSendScissorLiftMessageAsync(message);
+        }
+        public async Task udpSendScissorData(int vitesse)
+        {
+            string message = $"lift movespeed {vitesse}";
+            await UdpSendScissorLiftMessageAsync(message);
+        }
+
+        public void udpSendStepperMotorData(int vitesse, int position) // valeurs 
+        {
+            string message = $"stepmotor moveto {vitesse},{position}";
             UdpSendStepperMessageAsync(message);
         }
-             
+
+        public void udpSendStepperMotorData(int vitesse) // valeurs 
+        {
+            string message = $"stepmotor movespeed {vitesse}";
+            UdpSendStepperMessageAsync(message);
+            AppendTextToConsoleNL(message);
+           
+        }
+
 
         public void listenUDP()
         {
@@ -168,52 +144,52 @@ namespace Aerolithe
 
             while (true)
             {
-            try
-            {
-                while (true)
+                try
                 {
-                    UdpReceiveResult result = await udpClient.ReceiveAsync();
-                    string message = Encoding.UTF8.GetString(result.Buffer);
-                    Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
-                    AppendTextToConsoleNL(message);
-                    checkMessage(message);
+                    while (true)
+                    {
+                        UdpReceiveResult result = await udpClient.ReceiveAsync();
+                        string message = Encoding.UTF8.GetString(result.Buffer);
+                        Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
+                        AppendTextToConsoleNL(message);
+                        checkMessage(message);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
+                catch (Exception ex)
+                {
 
                     Debug.WriteLine($"Exception: {ex.Message}");
+                }
+
             }
 
         }
 
-        }
-              
 
         private void StepperMotorSetMaxValueEnableTrkbar(long position)
-        {            
+        {
             if (stepperMotor_trkbar.InvokeRequired)
             {
                 stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Enabled = true));
-                stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Maximum = (int)position));                
+                stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Maximum = (int)position));
                 txtBox_Console.Invoke(new Action(() => txtBox_Console.Text += "calibration done, trakcbar enabled" + Environment.NewLine));
                 stepperCurrentPosition = stepperMaxPositionValue / 2;
                 stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Value = stepperCurrentPosition));
                 udpSendStepperMotorData(4000, stepperCurrentPosition);
             }
         }
-      
+
 
         private void checkMessage(string message)
-        {           
+        {
             if (message.Contains("calibration done, steppermotor maxPosition: "))
-            {                
+            {
                 // Extract the part of the message after "steppermotor far position = "
                 string positionString = message.Substring(message.IndexOf("calibration done, steppermotor maxPosition: ") + "calibration done, steppermotor maxPosition: ".Length);
-                
+
                 // Try to parse the extracted substring to a double
                 if (long.TryParse(positionString, out long position))
-                {                                       
+                {
                     string txt = "stepper motor far value set to " + position.ToString();
                     AppendTextToConsoleNL(txt);
                     StepperMotorSetMaxValueEnableTrkbar(position);
@@ -231,35 +207,57 @@ namespace Aerolithe
             {
                 esp32Alive = true;
                 picBox_esp32Com.Image = Resources.crochet;
-                Debug.WriteLine("Reçu un OK du ESP32");
+                //Debug.WriteLine("Reçu un OK du ESP32");
             }
             else
             {
                 esp32Alive = false;
                 picBox_esp32Com.Image = Resources.echec;
-                Debug.WriteLine("RIEN reçu du ESP32");
+                //Debug.WriteLine("RIEN reçu du ESP32");
             }
             // Waveshare
             if (message.Contains("ok waveshare"))
             {
                 waveshareAlive = true;
                 picBox_waveshareCom.Image = Resources.crochet;
-                Debug.WriteLine("Reçu un OK du Waveshare");
+                //Debug.WriteLine("Reçu un OK du Waveshare");
             }
             else
             {
                 waveshareAlive = false;
                 picBox_waveshareCom.Image = Resources.echec;
-                Debug.WriteLine("RIEN reçu du from ESP32");
+                //Debug.WriteLine("RIEN reçu du from ESP32");
 
-             }
+            }
             if (message.Contains("Message de Table Tournante: Position atteinte"))
             {
                 turntablePositionReached = true;
             }
+            if (message.Contains("Encoder"))
+            {
+                string[] parts = message.Split(',');
+                if (int.Parse(parts[1]) == 0) // 0 = StepperMotor Linéaire de la caméra
+                {
+                    int value = int.Parse(parts[2]);
+                    encoderRotationStepper(value);
+
+                }
+                if (int.Parse(parts[1]) == 1) // 2 = Scissor Lift
+                {
+                    int value = int.Parse(parts[2]);
+                    encoderRotationLift(value);
+
+                }
+                if (int.Parse(parts[1]) == 2) // 2 = StepperMotor Linéaire de la caméra
+                {
+                    int value = int.Parse(parts[2]);
+                    encoderRotationTurnTable(value);
+
+                }
+            }
         }
 
-      
+
 
         public void UdpChecker()
         {

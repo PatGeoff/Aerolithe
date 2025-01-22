@@ -66,6 +66,7 @@
             lbl_LiveViewState = new Label();
             btn_toggleLiveView = new Button();
             tabPage4 = new TabPage();
+            button2 = new Button();
             label3 = new Label();
             label13 = new Label();
             label12 = new Label();
@@ -621,6 +622,7 @@
             // tabPage4
             // 
             tabPage4.BackColor = Color.FromArgb(40, 40, 40);
+            tabPage4.Controls.Add(button2);
             tabPage4.Controls.Add(label3);
             tabPage4.Controls.Add(label13);
             tabPage4.Controls.Add(label12);
@@ -638,6 +640,20 @@
             tabPage4.Size = new Size(890, 982);
             tabPage4.TabIndex = 3;
             tabPage4.Text = "Linéaire";
+            // 
+            // button2
+            // 
+            button2.BackColor = Color.FromArgb(30, 30, 30);
+            button2.FlatAppearance.BorderSize = 0;
+            button2.FlatStyle = FlatStyle.Flat;
+            button2.ForeColor = Color.White;
+            button2.Location = new Point(360, 541);
+            button2.Name = "button2";
+            button2.Size = new Size(347, 46);
+            button2.TabIndex = 25;
+            button2.Text = "Set Stepper Max Reference";
+            button2.UseVisualStyleBackColor = false;
+            button2.Click += btn_setStepperMaxPosition;
             // 
             // label3
             // 
@@ -711,7 +727,6 @@
             // 
             // stepperMotor_trkbar
             // 
-            stepperMotor_trkbar.Enabled = false;
             stepperMotor_trkbar.Location = new Point(0, 53);
             stepperMotor_trkbar.Maximum = 60000;
             stepperMotor_trkbar.Name = "stepperMotor_trkbar";
@@ -1725,5 +1740,6 @@
         private TextBox textBox_lowB_x;
         private PictureBox pictureBox_imageSoustraction;
         private TextBox textBox_upperB_x;
+        private Button button2;
     }
 }

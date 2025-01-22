@@ -19,6 +19,7 @@ namespace Aerolithe
         private int actuatorDelay2 = 9000; // secondes
         private int turntableDelay = 7000; // secondes
         public int turntableSpeed = 500;
+        public int turntablePosition = 0;
         public int delayTimePhotoShoot = 2000; 
         private bool working = false;
         public CancellationTokenSource cancellationTokenSource;

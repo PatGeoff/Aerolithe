@@ -32,6 +32,8 @@ namespace Aerolithe
 
         private UdpClient udpClient;
 
+        private bool calibrationDone = true;
+
         public Aerolithe()
         {
             InitializeComponent();
@@ -175,13 +177,21 @@ namespace Aerolithe
             UdpSendStepperMessageAsync("stepmotor setZero");
         }
 
+        private void btn_setStepperMaxPosition(object sender, EventArgs e)
+        {
+            UdpSendStepperMessageAsync("stepmotor setMaxPos");
+        }
+
         private void stepperMotor_trkbar_MouseUp(object sender, MouseEventArgs e)
         {
+            if (calibrationDone)
+            {
+                int position = stepperMotor_trkbar.Value;
+                int speed = 4000;
+                lbl_position.Text = position.ToString();
+                udpSendStepperMotorData(speed, position);  // Speed, acceleration, position
+            }
 
-            int position = stepperMotor_trkbar.Value;
-            int speed = 4000;
-            lbl_position.Text = position.ToString();
-            udpSendStepperMotorData(speed, position);  // Speed, acceleration, position
         }
         private void stepperCalibration_btn_Click(object sender, EventArgs e)
         {
@@ -189,8 +199,9 @@ namespace Aerolithe
             UdpSendStepperMessageAsync("stepmotor calibration");
             picBox_CalibrationCheck.Image = Properties.Resources.crochet;
             stepperMotor_trkbar.Enabled = true;
-            stepperMotor_trkbar.Value = 0;
+            stepperMotor_trkbar.Value = 30000;
             UdpSendStepperMessageAsync("stepmotor calibration");
+            calibrationDone = true;
 
         }
         private void btn_stepperGetPosition_Click(object sender, EventArgs e)
@@ -202,19 +213,57 @@ namespace Aerolithe
             UdpSendStepperMessageAsync("stepmotor stop");
         }
 
+        public void encoderRotationStepper(int speed)
+        {
+            if (calibrationDone)
+            {
+
+                int position = 0;
+                int newSpeed = speed * 200;
+
+
+                // Use Invoke to safely access the stepperMotor_trkbar.Value
+                stepperMotor_trkbar.Invoke(new Action(() =>
+                {
+                    position = stepperMotor_trkbar.Value;
+                }));
+
+                //AppendTextToConsoleNL(position.ToString());
+                //AppendTextToConsoleNL($"sending {speed} (newSpeed: {newSpeed}) to stepper trackbar, Current position: {position}");
+
+                udpSendStepperMotorData(newSpeed);
+            }
+        }
+
+      
 
 
         #endregion
 
         #region TABLE TOURNANTE TAB
-        private void trkBar_turntable_Scroll_1(object sender, EventArgs e)
-        {
-            int val = trkBar_turntable.Value;
-            string message = "turntable pos " + val.ToString();
-            lbl_trkbar_TableTournante.Text = trkBar_turntable.Value.ToString();
-            UdpSendTurnTableMessageAsync(message);
-        }
+      
 
+        private void encoderRotationTurnTable(int position)
+        {
+            int newPos = turntablePosition + position * 5;
+            if (newPos >= 0 && newPos <= 4096)
+            {
+                turntablePosition = newPos;
+                string message = "turntable," + turntablePosition.ToString() + "," + turntableSpeed;
+                if (trkBar_turntable.InvokeRequired)
+                {
+                    trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
+                }
+                else
+                {
+                    trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
+                }
+                //MessageBox.Show(message);
+                UdpSendTurnTableMessageAsync(message);
+            }
+            
+            
+        }
 
         private void btn_allerA_Click(object sender, EventArgs e)
         {
@@ -236,6 +285,7 @@ namespace Aerolithe
         private void trkBar_turntable_MouseUp(object sender, MouseEventArgs e)
         {
             int val = trkBar_turntable.Value;
+            turntablePosition = trkBar_turntable.Value;
             string message = "turntable," + val.ToString() + "," + turntableSpeed;
             //MessageBox.Show(message);
             UdpSendTurnTableMessageAsync(message);
@@ -243,6 +293,15 @@ namespace Aerolithe
         private void btn_turnTableBackToZero_Click(object sender, EventArgs e)
         {
             string message = $"turntable,0,{turntableSpeed}";
+            turntablePosition = 0;
+            if (trkBar_turntable.InvokeRequired)
+            {
+                trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = 0));
+            }
+            else
+            {
+                trkBar_turntable.Value = 0;
+            }
             UdpSendTurnTableMessageAsync(message);
 
         }
@@ -267,13 +326,33 @@ namespace Aerolithe
         private void trkBar_Lift_MouseUp(object sender, MouseEventArgs e)
         {
             int val = trkBar_Lift.Value;
-            UdpSendScissorLiftMessageAsync("lift position " + val.ToString());
+             UdpSendScissorLiftMessageAsync("lift position " + val.ToString());
 
         }
 
-        private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
+        private void  btn_printLiftPositionConsole_Click(object sender, EventArgs e)
         {
-            UdpSendScissorLiftMessageAsync("lift getPosition");
+             UdpSendScissorLiftMessageAsync("lift getPosition");
+        }
+
+        private async Task encoderRotationLift(int speed)
+        {
+           
+                int position = 0;
+                int newSpeed = speed * 200;
+
+
+                // Use Invoke to safely access the stepperMotor_trkbar.Value
+                stepperMotor_trkbar.Invoke(new Action(() =>
+                {
+                    position = stepperMotor_trkbar.Value;
+                }));
+
+            //AppendTextToConsoleNL(position.ToString());
+            //AppendTextToConsoleNL($"sending {speed} (newSpeed: {newSpeed}) to stepper trackbar, Current position: {position}");
+
+            await udpSendScissorData(newSpeed);
+            
         }
 
         #endregion
@@ -475,7 +554,7 @@ namespace Aerolithe
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, lvSize);
         }
 
-       
+
 
 
         #endregion

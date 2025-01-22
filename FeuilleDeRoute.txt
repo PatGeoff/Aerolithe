@@ -28,3 +28,8 @@ Modifications à nikonswrapper pour supprimer les exceptions de FocusOutOfRange
 - NikonNative.cs: commenté les lignes 1410 à 1416
 - NikonTaskQueue.cs: ligne 219 Décoché le "Break when exception is thrown"
 - NikonTaskQueue.cs: ligne 91 commenté la ligne
+
+
+
+**********************************************
+le steppermoteur pour la caméra a des valeurs entre 0  et 60000 avec une vitesse 
