@@ -21,7 +21,6 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         public readonly IPAddress stepperIpAddress = IPAddress.Parse("192.168.2.11");
-        //public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
         public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
         public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
         public readonly int stepperPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
@@ -29,6 +28,8 @@ namespace Aerolithe
         //public readonly int turntablePort = 44455;  // Port sur lequel on reçoit les messages UDP au ESP32 WaveShare de la table tournante
         public readonly int scissorLiftPort = 44477;  // Port sur lequel on reçoit les messages UDP au ESP32 du lift
         public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
+        public readonly IPAddress M5ipAddress = IPAddress.Parse("192.168.2.6");
+        public readonly int M5Port = 44488;
 
         private UdpClient udpClient;
 
@@ -37,6 +38,8 @@ namespace Aerolithe
         public Aerolithe()
         {
             InitializeComponent();
+            this.KeyDown += new KeyEventHandler(Form1_KeyDown);
+            this.KeyPreview = true; // Ensure the form receives key events
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
             CamSetup();
             ButtonSetup();
@@ -219,7 +222,7 @@ namespace Aerolithe
             {
 
                 int position = 0;
-                int newSpeed = speed * 200;
+                int newSpeed = speed * 400;
 
 
                 // Use Invoke to safely access the stepperMotor_trkbar.Value
@@ -235,13 +238,13 @@ namespace Aerolithe
             }
         }
 
-      
+
 
 
         #endregion
 
         #region TABLE TOURNANTE TAB
-      
+
 
         private void encoderRotationTurnTable(int position)
         {
@@ -261,8 +264,8 @@ namespace Aerolithe
                 //MessageBox.Show(message);
                 UdpSendTurnTableMessageAsync(message);
             }
-            
-            
+
+
         }
 
         private void btn_allerA_Click(object sender, EventArgs e)
@@ -326,33 +329,33 @@ namespace Aerolithe
         private void trkBar_Lift_MouseUp(object sender, MouseEventArgs e)
         {
             int val = trkBar_Lift.Value;
-             UdpSendScissorLiftMessageAsync("lift position " + val.ToString());
+            UdpSendScissorLiftMessageAsync("lift position " + val.ToString());
 
         }
 
-        private void  btn_printLiftPositionConsole_Click(object sender, EventArgs e)
+        private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
         {
-             UdpSendScissorLiftMessageAsync("lift getPosition");
+            UdpSendScissorLiftMessageAsync("lift getPosition");
         }
 
         private async Task encoderRotationLift(int speed)
         {
-           
-                int position = 0;
-                int newSpeed = speed * 200;
+
+            int position = 0;
+            int newSpeed = speed * 600;
 
 
-                // Use Invoke to safely access the stepperMotor_trkbar.Value
-                stepperMotor_trkbar.Invoke(new Action(() =>
-                {
-                    position = stepperMotor_trkbar.Value;
-                }));
+            // Use Invoke to safely access the stepperMotor_trkbar.Value
+            stepperMotor_trkbar.Invoke(new Action(() =>
+            {
+                position = stepperMotor_trkbar.Value;
+            }));
 
             //AppendTextToConsoleNL(position.ToString());
-            //AppendTextToConsoleNL($"sending {speed} (newSpeed: {newSpeed}) to stepper trackbar, Current position: {position}");
+            AppendTextToConsoleNL($"sending {speed} (newSpeed: {newSpeed}) to stepper trackbar, Current position: {position}");
 
             await udpSendScissorData(newSpeed);
-            
+
         }
 
         #endregion
@@ -373,6 +376,30 @@ namespace Aerolithe
         private void btn_actuator_45_Click(object sender, EventArgs e)
         {
             UdpSendActuatorMessageAsync("actuator 45");
+        }
+
+        public void encoderRotationActuateur(int position)
+        {
+            if (position == 4)
+            {
+                AppendTextToConsoleNL("Actuateur à 5 degrés");
+                UdpSendActuatorMessageAsync("actuator 5");
+                UdpSendActuatorMessageAsync("actuator 45");
+            }
+            else if (position == 8)
+            {
+                AppendTextToConsoleNL("Actuateur à 25 degrés");
+                UdpSendActuatorMessageAsync("actuator 25");
+                UdpSendActuatorMessageAsync("actuator 45");
+            }
+            else if (position == 12)
+            {
+                AppendTextToConsoleNL("Actuateur à 45 degrés");
+                UdpSendActuatorMessageAsync("actuator 45");
+                UdpSendActuatorMessageAsync("actuator 45");
+            }
+
+
         }
         #endregion
 
@@ -462,6 +489,42 @@ namespace Aerolithe
             flowLayoutPanel1.AutoScroll = true;
             flowLayoutPanel1.FlowDirection = FlowDirection.TopDown;
             flowLayoutPanel1.WrapContents = false;
+        }
+
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+
+            if ((e.Control || e.KeyCode == Keys.LWin || e.KeyCode == Keys.RWin) && e.KeyCode == Keys.S)
+            {
+
+                SaveProject();
+
+            }
+        }
+        private void btn_setProject_Click(object sender, EventArgs e)
+        {
+            SaveProject();
+        }
+        private void btn_projectSetup_Click(object sender, EventArgs e)
+        {
+            if (btn_projectSetup.Enabled)
+            {
+                OpenExplorerAtProjectPath();
+            }
+        }
+        private void OpenExplorerAtProjectPath()
+        {
+            if (!string.IsNullOrEmpty(projectPath))
+            {
+                string directoryPath = Path.GetDirectoryName(projectPath);
+                string argument = "/select, \"" + directoryPath + "\"";
+                //MessageBox.Show(argument);
+                Process.Start("explorer.exe", argument);
+            }
+            else
+            {
+                MessageBox.Show("Project path is not set.");
+            }
         }
         #endregion 
 
@@ -562,5 +625,7 @@ namespace Aerolithe
 
 
 
+
+       
     }
 }

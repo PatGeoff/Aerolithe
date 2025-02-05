@@ -39,6 +39,7 @@
             btn_getMask = new Button();
             tabControl1 = new TabControl();
             tabPage1 = new TabPage();
+            btn_setProject = new Button();
             btn_Dossier = new Button();
             label24 = new Label();
             pictureBox_validationE4 = new PictureBox();
@@ -150,6 +151,7 @@
             pictureBox_imageSoustraction = new PictureBox();
             textBox_upperB_x = new TextBox();
             flowLayoutPanel1 = new FlowLayoutPanel();
+            btn_projectSetup = new Button();
             panel6.SuspendLayout();
             panel_Console.SuspendLayout();
             panel2.SuspendLayout();
@@ -302,6 +304,8 @@
             // 
             tabPage1.BackColor = Color.FromArgb(40, 40, 40);
             tabPage1.BackgroundImageLayout = ImageLayout.Stretch;
+            tabPage1.Controls.Add(btn_projectSetup);
+            tabPage1.Controls.Add(btn_setProject);
             tabPage1.Controls.Add(btn_Dossier);
             tabPage1.Controls.Add(label24);
             tabPage1.Controls.Add(pictureBox_validationE4);
@@ -324,12 +328,25 @@
             tabPage1.TabIndex = 0;
             tabPage1.Text = "Procédure";
             // 
+            // btn_setProject
+            // 
+            btn_setProject.BackColor = Color.FromArgb(30, 30, 30);
+            btn_setProject.FlatStyle = FlatStyle.Flat;
+            btn_setProject.ForeColor = Color.White;
+            btn_setProject.Location = new Point(56, 35);
+            btn_setProject.Name = "btn_setProject";
+            btn_setProject.Size = new Size(109, 46);
+            btn_setProject.TabIndex = 18;
+            btn_setProject.Text = "Projet";
+            btn_setProject.UseVisualStyleBackColor = false;
+            btn_setProject.Click += btn_setProject_Click;
+            // 
             // btn_Dossier
             // 
             btn_Dossier.BackColor = Color.FromArgb(30, 30, 30);
             btn_Dossier.FlatStyle = FlatStyle.Flat;
             btn_Dossier.ForeColor = Color.White;
-            btn_Dossier.Location = new Point(209, 230);
+            btn_Dossier.Location = new Point(203, 365);
             btn_Dossier.Name = "btn_Dossier";
             btn_Dossier.Size = new Size(162, 46);
             btn_Dossier.TabIndex = 15;
@@ -340,7 +357,7 @@
             // 
             label24.BackColor = Color.FromArgb(30, 30, 30);
             label24.ForeColor = Color.White;
-            label24.Location = new Point(62, 230);
+            label24.Location = new Point(56, 365);
             label24.Name = "label24";
             label24.Size = new Size(109, 46);
             label24.TabIndex = 14;
@@ -350,7 +367,7 @@
             // pictureBox_validationE4
             // 
             pictureBox_validationE4.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE4.Location = new Point(413, 292);
+            pictureBox_validationE4.Location = new Point(407, 427);
             pictureBox_validationE4.Name = "pictureBox_validationE4";
             pictureBox_validationE4.Size = new Size(46, 46);
             pictureBox_validationE4.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -362,7 +379,7 @@
             btn_cancelSequence.BackColor = Color.FromArgb(70, 30, 30);
             btn_cancelSequence.FlatStyle = FlatStyle.Flat;
             btn_cancelSequence.ForeColor = Color.White;
-            btn_cancelSequence.Location = new Point(209, 292);
+            btn_cancelSequence.Location = new Point(203, 427);
             btn_cancelSequence.Name = "btn_cancelSequence";
             btn_cancelSequence.Size = new Size(162, 46);
             btn_cancelSequence.TabIndex = 12;
@@ -375,7 +392,7 @@
             // 
             lbl_E4.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E4.ForeColor = Color.White;
-            lbl_E4.Location = new Point(62, 292);
+            lbl_E4.Location = new Point(56, 427);
             lbl_E4.Name = "lbl_E4";
             lbl_E4.Size = new Size(109, 46);
             lbl_E4.TabIndex = 11;
@@ -387,7 +404,7 @@
             btn_DemarrerPrisePhotos.BackColor = Color.FromArgb(30, 30, 30);
             btn_DemarrerPrisePhotos.FlatStyle = FlatStyle.Flat;
             btn_DemarrerPrisePhotos.ForeColor = Color.White;
-            btn_DemarrerPrisePhotos.Location = new Point(209, 292);
+            btn_DemarrerPrisePhotos.Location = new Point(203, 427);
             btn_DemarrerPrisePhotos.Name = "btn_DemarrerPrisePhotos";
             btn_DemarrerPrisePhotos.Size = new Size(162, 46);
             btn_DemarrerPrisePhotos.TabIndex = 10;
@@ -398,7 +415,7 @@
             // pictureBox_validationE3
             // 
             pictureBox_validationE3.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE3.Location = new Point(413, 170);
+            pictureBox_validationE3.Location = new Point(407, 305);
             pictureBox_validationE3.Name = "pictureBox_validationE3";
             pictureBox_validationE3.Size = new Size(46, 46);
             pictureBox_validationE3.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -409,7 +426,7 @@
             // 
             lbl_E3.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E3.ForeColor = Color.White;
-            lbl_E3.Location = new Point(62, 170);
+            lbl_E3.Location = new Point(56, 305);
             lbl_E3.Name = "lbl_E3";
             lbl_E3.Size = new Size(109, 46);
             lbl_E3.TabIndex = 8;
@@ -421,7 +438,7 @@
             btn_imageFond.BackColor = Color.FromArgb(30, 30, 30);
             btn_imageFond.FlatStyle = FlatStyle.Flat;
             btn_imageFond.ForeColor = Color.White;
-            btn_imageFond.Location = new Point(209, 170);
+            btn_imageFond.Location = new Point(203, 305);
             btn_imageFond.Name = "btn_imageFond";
             btn_imageFond.Size = new Size(162, 46);
             btn_imageFond.TabIndex = 7;
@@ -432,7 +449,7 @@
             // pictureBox_validationE2
             // 
             pictureBox_validationE2.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE2.Location = new Point(413, 109);
+            pictureBox_validationE2.Location = new Point(407, 244);
             pictureBox_validationE2.Name = "pictureBox_validationE2";
             pictureBox_validationE2.Size = new Size(46, 46);
             pictureBox_validationE2.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -442,7 +459,7 @@
             // pictureBox_validationE1
             // 
             pictureBox_validationE1.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE1.Location = new Point(413, 50);
+            pictureBox_validationE1.Location = new Point(407, 185);
             pictureBox_validationE1.Name = "pictureBox_validationE1";
             pictureBox_validationE1.Size = new Size(46, 46);
             pictureBox_validationE1.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -453,7 +470,7 @@
             // 
             lbl_E1.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E1.ForeColor = Color.White;
-            lbl_E1.Location = new Point(62, 50);
+            lbl_E1.Location = new Point(56, 185);
             lbl_E1.Name = "lbl_E1";
             lbl_E1.Size = new Size(109, 46);
             lbl_E1.TabIndex = 4;
@@ -465,7 +482,7 @@
             btn_Validation.BackColor = Color.FromArgb(30, 30, 30);
             btn_Validation.FlatStyle = FlatStyle.Flat;
             btn_Validation.ForeColor = Color.White;
-            btn_Validation.Location = new Point(209, 50);
+            btn_Validation.Location = new Point(203, 185);
             btn_Validation.Name = "btn_Validation";
             btn_Validation.Size = new Size(162, 46);
             btn_Validation.TabIndex = 3;
@@ -477,7 +494,7 @@
             // 
             lbl_E2.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E2.ForeColor = Color.White;
-            lbl_E2.Location = new Point(62, 109);
+            lbl_E2.Location = new Point(56, 244);
             lbl_E2.Name = "lbl_E2";
             lbl_E2.Size = new Size(109, 46);
             lbl_E2.TabIndex = 2;
@@ -489,7 +506,7 @@
             btn_Autofocus.BackColor = Color.FromArgb(30, 30, 30);
             btn_Autofocus.FlatStyle = FlatStyle.Flat;
             btn_Autofocus.ForeColor = Color.White;
-            btn_Autofocus.Location = new Point(209, 109);
+            btn_Autofocus.Location = new Point(203, 244);
             btn_Autofocus.Name = "btn_Autofocus";
             btn_Autofocus.Size = new Size(162, 46);
             btn_Autofocus.TabIndex = 1;
@@ -1563,6 +1580,21 @@
             flowLayoutPanel1.Size = new Size(2668, 528);
             flowLayoutPanel1.TabIndex = 27;
             // 
+            // btn_projectSetup
+            // 
+            btn_projectSetup.BackColor = Color.FromArgb(40, 40, 40);
+            btn_projectSetup.Enabled = false;
+            btn_projectSetup.FlatAppearance.BorderSize = 0;
+            btn_projectSetup.FlatStyle = FlatStyle.Flat;
+            btn_projectSetup.ForeColor = Color.White;
+            btn_projectSetup.Location = new Point(203, 35);
+            btn_projectSetup.Name = "btn_projectSetup";
+            btn_projectSetup.Size = new Size(150, 46);
+            btn_projectSetup.TabIndex = 19;
+            btn_projectSetup.Text = "non défini";
+            btn_projectSetup.UseVisualStyleBackColor = false;
+            btn_projectSetup.Click += btn_projectSetup_Click;
+            // 
             // Aerolithe
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -1741,5 +1773,7 @@
         private PictureBox pictureBox_imageSoustraction;
         private TextBox textBox_upperB_x;
         private Button button2;
+        private Button btn_setProject;
+        private Button btn_projectSetup;
     }
 }

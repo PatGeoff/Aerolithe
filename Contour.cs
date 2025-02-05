@@ -238,7 +238,15 @@ namespace Aerolithe
 
             }
 
+        }
 
+         public async Task backgroundSubstractionOnImage()
+        {
+            // Take the picture asynchronously
+            await takePictureAsync();
+
+            // Wait for the image to be ready
+            await imageReadyTcs.Task;
 
         }
     }

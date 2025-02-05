@@ -108,6 +108,23 @@ namespace Aerolithe
             }
         }
 
+        public async Task UdpSendM5MessageAsync(string position)
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(position);
+                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                {
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(M5ipAddress, M5Port));
+                    AppendTextToConsoleNL("Message sent to M5 Dial:" + position);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         public async Task udpSendScissorData(int vitesse, int position)
         {
             string message = $"lift moveto {vitesse},{position}";
@@ -133,6 +150,10 @@ namespace Aerolithe
            
         }
 
+        public void udpSendM5Data(int position)
+        {
+
+        }
 
         public void listenUDP()
         {
@@ -236,22 +257,28 @@ namespace Aerolithe
             if (message.Contains("Encoder"))
             {
                 string[] parts = message.Split(',');
-                if (int.Parse(parts[1]) == 0) // 0 = StepperMotor Linéaire de la caméra
+                if (parts[1] == "0") // 0 = StepperMotor Linéaire de la caméra
                 {
                     int value = int.Parse(parts[2]);
                     encoderRotationStepper(value);
 
                 }
-                if (int.Parse(parts[1]) == 1) // 2 = Scissor Lift
+                if (parts[1] == "1") // 2 = Scissor Lift
                 {
                     int value = int.Parse(parts[2]);
                     encoderRotationLift(value);
 
                 }
-                if (int.Parse(parts[1]) == 2) // 2 = StepperMotor Linéaire de la caméra
+                if (parts[1] == "2") // 2 = Table Tounante
                 {
                     int value = int.Parse(parts[2]);
                     encoderRotationTurnTable(value);
+
+                }
+                if (parts[1] == "3") // 2 = Actuateur Linéaire
+                {
+                    int value = int.Parse(parts[2]);
+                    encoderRotationActuateur(value);
 
                 }
             }
