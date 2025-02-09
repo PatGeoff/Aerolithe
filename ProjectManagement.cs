@@ -26,13 +26,13 @@ namespace Aerolithe
                     btn_projectSetup.Enabled = true;
                     btn_projectSetup.Text = Path.GetFileName(projectPath);
                     SaveProjectToFile(projectPath);
-                }
-                string projectDirectory = Path.GetDirectoryName(projectPath);
-                string imagesFolderPath = Path.Combine(projectDirectory, "images");
-                if (!Directory.Exists(imagesFolderPath))
-                {
-                    Directory.CreateDirectory(imagesFolderPath);
-                }
+                    string projectDirectory = Path.GetDirectoryName(projectPath);
+                    string imagesFolderPath = Path.Combine(projectDirectory, "images");
+                    if (!Directory.Exists(imagesFolderPath))
+                    {
+                        Directory.CreateDirectory(imagesFolderPath);
+                    }
+                }                
             }
         }
 

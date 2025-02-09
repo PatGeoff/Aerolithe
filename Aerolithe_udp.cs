@@ -74,7 +74,7 @@ namespace Aerolithe
             }
         }
 
-        public async void UdpSendStepperMessageAsync(string message)
+        public async Task UdpSendStepperMessageAsync(string message)
         {
             try
             {
@@ -82,41 +82,6 @@ namespace Aerolithe
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
                     await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-       
-
-        public async Task UdpSendScissorLiftMessageAsync(string message)
-        {
-            try
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(message);
-                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
-                {
-                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(scissorLiftIpAddress, scissorLiftPort));
-                    AppendTextToConsoleNL("Message sent to Scissor Lift with message:"  + message);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        public async Task UdpSendM5MessageAsync(string position)
-        {
-            try
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(position);
-                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
-                {
-                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(M5ipAddress, M5Port));
-                    AppendTextToConsoleNL("Message sent to M5 Dial:" + position);
                 }
             }
             catch (Exception ex)
@@ -136,6 +101,43 @@ namespace Aerolithe
             await UdpSendScissorLiftMessageAsync(message);
         }
 
+        public async Task UdpSendScissorLiftMessageAsync(string message)
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(message);
+                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                {
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(scissorLiftIpAddress, scissorLiftPort));
+                    AppendTextToConsoleNL("Aero --> ScissorLift: " + message);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+    
+
+        public async Task UdpSendM5MessageAsync(string position)
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(position);
+                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                {
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(M5ipAddress, M5Port));
+                    AppendTextToConsoleNL("Message sent to M5 Dial:" + position);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
         public void udpSendStepperMotorData(int vitesse, int position) // valeurs 
         {
             string message = $"stepmotor moveto {vitesse},{position}";
@@ -147,7 +149,7 @@ namespace Aerolithe
             string message = $"stepmotor movespeed {vitesse}";
             UdpSendStepperMessageAsync(message);
             AppendTextToConsoleNL(message);
-           
+
         }
 
         public void udpSendM5Data(int position)
@@ -172,15 +174,15 @@ namespace Aerolithe
                         UdpReceiveResult result = await udpClient.ReceiveAsync();
                         string message = Encoding.UTF8.GetString(result.Buffer);
                         Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
-                        AppendTextToConsoleNL(message);
-                        checkMessage(message);
+                        //AppendTextToConsoleNL(message);
+                        await CheckMessage(message);
                     }
                 }
                 catch (Exception ex)
                 {
 
                     Debug.WriteLine($"Exception: {ex.Message}");
-                }
+                } 
 
             }
 
@@ -201,8 +203,10 @@ namespace Aerolithe
         }
 
 
-        private void checkMessage(string message)
+        private async Task CheckMessage(string message)
         {
+            AppendTextToConsoleNL("Message Reçu: " + message);
+            #region stepMotor
             if (message.Contains("calibration done, steppermotor maxPosition: "))
             {
                 // Extract the part of the message after "steppermotor far position = "
@@ -236,52 +240,71 @@ namespace Aerolithe
                 picBox_esp32Com.Image = Resources.echec;
                 //Debug.WriteLine("RIEN reçu du ESP32");
             }
+            #endregion
+            #region Waveshare
             // Waveshare
-            if (message.Contains("ok waveshare"))
+            if (message.Contains("waveshare --> status ok"))
             {
-                waveshareAlive = true;
+                waveshareAlive = true;                
                 picBox_waveshareCom.Image = Resources.crochet;
                 //Debug.WriteLine("Reçu un OK du Waveshare");
-            }
-            else
-            {
-                waveshareAlive = false;
-                picBox_waveshareCom.Image = Resources.echec;
-                //Debug.WriteLine("RIEN reçu du from ESP32");
-
-            }
+            }           
             if (message.Contains("Message de Table Tournante: Position atteinte"))
             {
                 turntablePositionReached = true;
             }
-            if (message.Contains("Encoder"))
+
+            if (message.Contains("waveshare -> position"))
             {
                 string[] parts = message.Split(',');
-                if (parts[1] == "0") // 0 = StepperMotor Linéaire de la caméra
-                {
-                    int value = int.Parse(parts[2]);
-                    encoderRotationStepper(value);
 
-                }
-                if (parts[1] == "1") // 2 = Scissor Lift
+                
+                turntablePosition = int.Parse(parts[1].Trim());
+                if (trkBar_turntable.InvokeRequired)
                 {
-                    int value = int.Parse(parts[2]);
-                    encoderRotationLift(value);
-
+                    trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
                 }
-                if (parts[1] == "2") // 2 = Table Tounante
+                if (lbl_turntablePosition.InvokeRequired)
                 {
-                    int value = int.Parse(parts[2]);
-                    encoderRotationTurnTable(value);
-
+                    lbl_turntablePosition.Invoke(new Action(() => lbl_turntablePosition.Text = trkBar_turntable.Value.ToString()));
                 }
-                if (parts[1] == "3") // 2 = Actuateur Linéaire
+                _turntablePositionTcs?.SetResult(turntablePosition); // vers Aerolithe.cs/getTurntablePosFromWaveshare()
+
+
+            }
+            #endregion
+            #region M5
+
+            if (message.Contains("Encoder"))   
+            {
+                string[] parts = message.Split(',');
+                if (parts[1] == "0") // 0 = Actuateur Linéaire
                 {
                     int value = int.Parse(parts[2]);
                     encoderRotationActuateur(value);
 
                 }
+                if (parts[1] == "1") // 1 = Scissor Lift
+                {
+                    int value = int.Parse(parts[2]);
+                    Task.Run(async () => await encoderRotationLift(value));
+
+                }
+                if (parts[1] == "2") // 2 = Table Tounante
+                {
+                    int value = int.Parse(parts[2]);                    
+                    encoderRotationTurnTable(value);
+
+
+                }
+                if (parts[1] == "3") // 3 = Caméra
+                {
+                    int value = int.Parse(parts[2]);
+                    encoderRotationStepper(value);
+
+                }
             }
+            #endregion
         }
 
 
@@ -295,26 +318,21 @@ namespace Aerolithe
             checkTimer.Enabled = true;
         }
 
-        public void CheckCommunication()
+        public async Task CheckCommunication()
         {
 
             DateTime now = DateTime.Now;
             lbl_lastTimePing.Text = now.ToString();
             esp32Alive = false;
             waveshareAlive = false;
-            picBox_waveshareCom.Image = Resources.echec;
-            picBox_esp32Com.Image = Resources.echec;
-            AppendTextToConsoleNL("tentative de communication avec le ESP32 dans la boîte blanche");
-            //txtBox_Console.Text += "tentative de communication avec le ESP32 dans la boîte blanche" + Environment.NewLine;
-            UdpSendStepperMessageAsync("status");
-            Thread.Sleep(200);
-            AppendTextToConsoleNL("tentative de communication avec le ESP32 dans la table tournante");
-            //txtBox_Console.Text += "tentative de communication avec le ESP32 dans la table tournante" + Environment.NewLine;
-            UdpSendTurnTableMessageAsync("status");
+            await UdpSendStepperMessageAsync("status");
+            Thread.Sleep(500);
+            await UdpSendTurnTableMessageAsync("status");
+            Thread.Sleep(500);
         }
         private void CheckDevices(object? sender, ElapsedEventArgs e)
         {
-            CheckCommunication();
+            Task.Run(async() => await CheckCommunication());
             Ping();
         }
 

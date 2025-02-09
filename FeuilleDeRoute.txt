@@ -33,3 +33,9 @@ Modifications à nikonswrapper pour supprimer les exceptions de FocusOutOfRange
 
 **********************************************
 le steppermoteur pour la caméra a des valeurs entre 0  et 60000 avec une vitesse 
+
+
+
+**********************************************
+
+Implémentation finale, ne pas oublier de pousser les projets dans les esp32 avec le bon nom de windows_hostname. 

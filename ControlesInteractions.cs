@@ -37,15 +37,8 @@ namespace Aerolithe
             button.ForeColor = enabled ? Color.White : Color.DarkGray;
             label.ForeColor = enabled ? Color.White : Color.DarkGray;   
             
-            
         }
                    
-     
-
-    
-      
-
-      
 
         private void btn_getMask_Click(object sender, EventArgs e)
         {

@@ -17,9 +17,6 @@ namespace Aerolithe
         private int nombreImages45Degres = 14;
         private int actuatorDelay1 = 5000; // secondes
         private int actuatorDelay2 = 9000; // secondes
-        private int turntableDelay = 7000; // secondes
-        public int turntableSpeed = 500;
-        public int turntablePosition = 0;
         public int delayTimePhotoShoot = 2000; 
         private bool working = false;
         public CancellationTokenSource cancellationTokenSource;
@@ -27,7 +24,16 @@ namespace Aerolithe
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken)
         {
-            
+            if (projectPath == null) {
+                SaveProject();  // Demande à setter le projet
+            }
+            if (projectPath == null)
+            {
+                return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
+            }
+            //await getTurnTablePosition();
+
+
             turntablePositionReached = false;
             actuatorPositionReached = false;
             int total = 0;

@@ -15,6 +15,7 @@ using System.Drawing;
 using System.Threading;
 using Emgu.CV.XPhoto;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using static Emgu.Util.Platform;
 
 namespace Aerolithe
 {
@@ -32,6 +33,7 @@ namespace Aerolithe
         public readonly int M5Port = 44488;
 
         private UdpClient udpClient;
+        private TaskCompletionSource<int> _turntablePositionTcs;
 
         private bool calibrationDone = true;
 
@@ -46,10 +48,25 @@ namespace Aerolithe
             InitializeUdpClient();
             listenUDP();
             Ping();
-            CheckCommunication();
             SetupMainFlowLayoutPanel();
+            Task.Run(async () => await InitializeAsync());
         }
 
+        private async Task InitializeAsync()
+        {
+            await CheckCommunication(); // Wait for CheckCommunication to complete
+
+            if (waveshareAlive)
+            {
+                await getTurntablePosFromWaveshare(); // Wait for getTurntablePosFromWaveshare to complete
+            }
+            else
+            {
+                MessageBox.Show("Il y a un problème avec la table tournante.\n" +
+                                "Assurez-vous que le controlleur Waveshare est bien branché\n" +
+                                "Ensuite, redémarrez l'application.");
+            }
+        }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
@@ -248,70 +265,64 @@ namespace Aerolithe
 
         private void encoderRotationTurnTable(int position)
         {
-            int newPos = turntablePosition + position * 5;
-            if (newPos >= 0 && newPos <= 4096)
+            turntablePosition += position * 8;
+            turntablePosition = Math.Clamp(turntablePosition, 0, 4096);
+            TurnTableRotation(turntablePosition);
+        }
+
+        private void TurnTableRotation(int position) // Envoie la valeur au ESP32
+        {
+            AppendTextToConsoleNL("Aero: turnTablePosition = " + turntablePosition.ToString());
+            string message = "turntable," + position.ToString() + "," + turntableSpeed;
+            if (trkBar_turntable.InvokeRequired)
             {
-                turntablePosition = newPos;
-                string message = "turntable," + turntablePosition.ToString() + "," + turntableSpeed;
+                trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
+            }
+
+            AppendTextToConsoleNL("Aero --> Table Tournate: " + message);
+            Task.Run(async () => await UdpSendTurnTableMessageAsync(message));
+        }
+
+        private void btn_queryTurntablePos_Click(object sender, EventArgs e)
+        {
+            AppendTextToConsoleNL("Aero: Position demandée à la table tournante. Si plus rien ne répond c'est que la communication est perdue");
+            Task.Run(async () => await getTurntablePosFromWaveshare());
+        }
+
+        private void trkBar_turntable_MouseUp(object sender, MouseEventArgs e)
+        {
+            TurnTableRotation(trkBar_turntable.Value);
+            turntablePosition = trkBar_turntable.Value;
+        }
+        private void trkBar_turntable_ValueChanged(object sender, EventArgs e)
+        {
+            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString();
+            
+        }
+        private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
+        {
+            if (waveshareAlive)
+            {
+                _turntablePositionTcs = new TaskCompletionSource<int>();
+                await UdpSendTurnTableMessageAsync("Aerolithe_Asks_GetPosition");
+                turntablePosition = await _turntablePositionTcs.Task;
                 if (trkBar_turntable.InvokeRequired)
                 {
-                    trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
+                    trkBar_turntable.Invoke(new Action(() =>
+                    {
+                        trkBar_turntable.Value = turntablePosition;
+                        lbl_turntablePosition.Text = turntablePosition.ToString();
+                    }));
                 }
                 else
                 {
-                    trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
+                    trkBar_turntable.Value = turntablePosition;
+                    lbl_turntablePosition.Text = turntablePosition.ToString();
                 }
-                //MessageBox.Show(message);
-                UdpSendTurnTableMessageAsync(message);
             }
-
-
+            else { MessageBox.Show("Il y a un problème avec la table tournante.\nAssurez-vous que le controlleur Waveshare est bien branché"); }
         }
 
-        private void btn_allerA_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                int val = txtBox_allerA.TabIndex;
-                string message = "turntable pos " + val.ToString();
-                lbl_trkbar_TableTournante.Text = trkBar_turntable.Value.ToString();
-                UdpSendTurnTableMessageAsync(message);
-                trkBar_turntable.Value = 0;
-            }
-            catch (Exception)
-            {
-
-                throw;
-            }
-
-        }
-        private void trkBar_turntable_MouseUp(object sender, MouseEventArgs e)
-        {
-            int val = trkBar_turntable.Value;
-            turntablePosition = trkBar_turntable.Value;
-            string message = "turntable," + val.ToString() + "," + turntableSpeed;
-            //MessageBox.Show(message);
-            UdpSendTurnTableMessageAsync(message);
-        }
-        private void btn_turnTableBackToZero_Click(object sender, EventArgs e)
-        {
-            string message = $"turntable,0,{turntableSpeed}";
-            turntablePosition = 0;
-            if (trkBar_turntable.InvokeRequired)
-            {
-                trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = 0));
-            }
-            else
-            {
-                trkBar_turntable.Value = 0;
-            }
-            UdpSendTurnTableMessageAsync(message);
-
-        }
-        private void btn_turnTableFullRotation_Click(object sender, EventArgs e)
-        {
-
-        }
         #endregion
 
         #region ÉLÉVATEUR TAB
@@ -341,18 +352,17 @@ namespace Aerolithe
         private async Task encoderRotationLift(int speed)
         {
 
-            int position = 0;
             int newSpeed = speed * 600;
 
 
             // Use Invoke to safely access the stepperMotor_trkbar.Value
-            stepperMotor_trkbar.Invoke(new Action(() =>
-            {
-                position = stepperMotor_trkbar.Value;
-            }));
+            //stepperMotor_trkbar.Invoke(new Action(() =>
+            //{
+            //    position = stepperMotor_trkbar.Value;
+            //}));
 
-            //AppendTextToConsoleNL(position.ToString());
-            AppendTextToConsoleNL($"sending {speed} (newSpeed: {newSpeed}) to stepper trackbar, Current position: {position}");
+            //AppendTextToConsoleNL(newSpeed.ToString());
+            //AppendTextToConsoleNL($"sending {speed} (newSpeed: {newSpeed}) to stepper trackbar, Current position: {position}");
 
             await udpSendScissorData(newSpeed);
 
@@ -410,7 +420,6 @@ namespace Aerolithe
         }
 
 
-
         private void AppendTextToConsoleNL(string message) // New Line
         {
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
@@ -454,6 +463,26 @@ namespace Aerolithe
                 //Debug.WriteLine("Message appended directly");
                 ScrollToBottom();
             }
+        }
+
+        private async Task UpdateConsoleMessageAsync(string message, CancellationToken token) // Permet de printer à chaque 2 secondes jusqu'à ce que le token soit envoyé
+        {
+            while (!token.IsCancellationRequested)
+            {
+                AppendTextToConsoleSL(message);
+                try
+                {
+                    await Task.Delay(2000, token);
+                }
+                catch (TaskCanceledException)
+                {
+                    // Task was canceled, exit the loop
+                    AppendTextToConsoleSL("Task was canceled.");
+                    break;
+                }
+                message += ".";
+            }
+            AppendTextToConsoleSL("Exiting UpdateConsoleMessageAsync.");
         }
 
 
@@ -533,44 +562,44 @@ namespace Aerolithe
         private void Ping()
         {
 
-            string host = "192.168.2.1";
-            bool result = PingHost(host);
-            AppendTextToConsoleNL($"Ping --> routeur: {(result ? "succès" : "échec")}");
-            //txtBox_Console.Text += ($"Ping --> routeur: {(result ? "succès" : "échec")}" + Environment.NewLine);
-            if (result)
-            {
-                picBox_routerPing.Image = Resources.crochet;
-            }
-            else
-            {
-                picBox_routerPing.Image = Resources.echec;
-            }
-            Thread.Sleep(200);
-            host = "192.168.2.14";
-            result = PingHost(host);
-            if (result)
-            {
-                picBox_wavesharePing.Image = Resources.crochet;
-            }
-            else
-            {
-                picBox_wavesharePing.Image = Resources.echec;
-            }
-            AppendTextToConsoleNL($"Ping --> table tournante: {(result ? "succès" : "échec")}");
-            //txtBox_Console.Text += ($"Ping --> table tournante: {(result ? "succès" : "échec")}" + Environment.NewLine);
-            Thread.Sleep(200);
-            host = "192.168.2.11";
-            result = PingHost(host);
-            if (result)
-            {
-                picBox_esp32Ping.Image = Resources.crochet;
-            }
-            else
-            {
-                picBox_esp32Ping.Image = Resources.echec;
-            }
-            AppendTextToConsoleNL($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}");
-            //txtBox_Console.Text += ($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            //string host = "192.168.2.1";
+            //bool result = PingHost(host);
+            //AppendTextToConsoleNL($"Ping --> routeur: {(result ? "succès" : "échec")}");
+            ////txtBox_Console.Text += ($"Ping --> routeur: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            //if (result)
+            //{
+            //    picBox_routerPing.Image = Resources.crochet;
+            //}
+            //else
+            //{
+            //    picBox_routerPing.Image = Resources.echec;
+            //}
+            //Thread.Sleep(200);
+            //host = "192.168.2.14";
+            //result = PingHost(host);
+            //if (result)
+            //{
+            //    picBox_wavesharePing.Image = Resources.crochet;
+            //}
+            //else
+            //{
+            //    picBox_wavesharePing.Image = Resources.echec;
+            //}
+            //AppendTextToConsoleNL($"Ping --> table tournante: {(result ? "succès" : "échec")}");
+            ////txtBox_Console.Text += ($"Ping --> table tournante: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            //Thread.Sleep(200);
+            //host = "192.168.2.11";
+            //result = PingHost(host);
+            //if (result)
+            //{
+            //    picBox_esp32Ping.Image = Resources.crochet;
+            //}
+            //else
+            //{
+            //    picBox_esp32Ping.Image = Resources.echec;
+            //}
+            //AppendTextToConsoleNL($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}");
+            ////txtBox_Console.Text += ($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}" + Environment.NewLine);
         }
 
 
@@ -594,8 +623,8 @@ namespace Aerolithe
 
         private void btn_communicationUDP_Click(object sender, EventArgs e)
         {
-            Ping();
-            CheckCommunication();
+            //Ping();
+            Task.Run(async () => await CheckCommunication());
 
         }
 
@@ -618,14 +647,10 @@ namespace Aerolithe
         }
 
 
-
-
         #endregion
 
 
 
 
-
-       
     }
 }
