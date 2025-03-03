@@ -16,7 +16,7 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         
-        private void getBackgroundImage()
+        private async Task getBackgroundImage()
         {
             if (!device.LiveViewEnabled)
             {
@@ -35,31 +35,6 @@ namespace Aerolithe
                     picBox_imageFond.Image = background.ToImage<Bgr, Byte>().ToBitmap();
                     if (background == null) MessageBox.Show("Impossible de saisir l'image");
                 }
-            }
-        }
-
-
-        private void backgroundSubstraction()
-        {
-            if (background != null)
-            {
-                //MessageBox.Show("ici"); 
-                // Convertit le LiveCapture en stream
-                using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
-                {
-                    Mat foreground = new Mat();
-                    //stream = new MemoryStream(imageView.JpegBuffer);
-                    byte[] imageBytes = stream.ToArray();
-                    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, foreground);
-                    //pictureBox_applyBlur.Image = foreground.ToImage<Bgr, Byte>().ToBitmap();
-                    Mat result = new Mat();
-                    result = background - foreground;
-                    //Mat result = foreground.AbsDiff(background);
-                    pictureBox_imageMasquage.Image = result.ToImage<Bgr, Byte>().ToBitmap();
-                    calculerFlou(result);
-                    createMask(result, foreground);
-                }
-
             }
         }
 
@@ -114,6 +89,33 @@ namespace Aerolithe
 
 
         }
+
+        private Bitmap applyMaskToPicture(Mat mask, Mat picture)
+        {
+            if (mask == null) {
+                return null;
+            }
+            Mat resultat = new Mat();
+            try
+            {
+                // Resize the mask to match the dimensions of the picture
+                Mat resizedMask = new Mat();
+                CvInvoke.Resize(mask, resizedMask, new Size(picture.Width, picture.Height));
+
+                // Apply the resized mask to the picture
+                CvInvoke.BitwiseAnd(picture, picture, resultat, mask: resizedMask);
+                
+            }
+            catch (Exception ex)
+            {
+                txtBox_Console.Text += $"picture channels: {picture.NumberOfChannels}" + Environment.NewLine + $"mask channels: {mask.NumberOfChannels}" + Environment.NewLine + ex.ToString();
+            }
+
+            return resultat.ToImage<Bgr, Byte>().ToBitmap();
+        }
+    
+
+
         public void calculerFlou()
         {
             // Set live view image on picture box
@@ -224,7 +226,6 @@ namespace Aerolithe
             {
 
                 Mat foreground = new Mat();
-                //stream = new MemoryStream(imageView.JpegBuffer);
                 byte[] imageBytes = stream.ToArray();
                 CvInvoke.Imdecode(imageBytes, ImreadModes.Color, foreground);
                 //pictureBox_applyBlur.Image = foreground.ToImage<Bgr, Byte>().ToBitmap();
@@ -232,7 +233,7 @@ namespace Aerolithe
                 result = background - foreground;
                 //Mat result = foreground.AbsDiff(background);
                 pictureBox_imageSoustraction.Image = result.ToImage<Bgr, Byte>().ToBitmap();
-
+                
                 calculerFlou(result);
                 createMask(result, foreground);
 

@@ -31,8 +31,7 @@ namespace Aerolithe
             {
                 return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
             }
-            //await getTurnTablePosition();
-
+            await getTurntablePosFromWaveshare();
 
             turntablePositionReached = false;
             actuatorPositionReached = false;
@@ -76,12 +75,6 @@ namespace Aerolithe
             // Continue with the rest of your sequences...
         }
 
-
-
-
-
-
-
         private async Task CountdownWithDelay(int delay, string text, CancellationToken cancellationToken)
         {
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
@@ -121,7 +114,6 @@ namespace Aerolithe
             }
         }
 
-
         private FlowLayoutPanel CreateSequenceFlowLayoutPanel(Color borderColor)
         {
             FlowLayoutPanel sequenceFlowLayoutPanel = new FlowLayoutPanel
@@ -137,7 +129,13 @@ namespace Aerolithe
             return sequenceFlowLayoutPanel;
         }
 
+        private async Task TraitementPhoto_A()
+        {
+            if (chkBox_applyMask.Checked)
+            {
 
+            }
 
+        }
     }
 }

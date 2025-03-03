@@ -24,13 +24,14 @@ namespace Aerolithe
         public readonly IPAddress stepperIpAddress = IPAddress.Parse("192.168.2.11");
         public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
         public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
+        public readonly IPAddress M5ipAddress = IPAddress.Parse("192.168.2.6");
         public readonly int stepperPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
         public readonly int turntablePort = 44466;  // Port sur lequel on reçoit les messages UDP au ESP32 de la table tournante
-        //public readonly int turntablePort = 44455;  // Port sur lequel on reçoit les messages UDP au ESP32 WaveShare de la table tournante
         public readonly int scissorLiftPort = 44477;  // Port sur lequel on reçoit les messages UDP au ESP32 du lift
-        public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
-        public readonly IPAddress M5ipAddress = IPAddress.Parse("192.168.2.6");
         public readonly int M5Port = 44488;
+        public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
+        
+     
 
         private UdpClient udpClient;
         private TaskCompletionSource<int> _turntablePositionTcs;
@@ -110,14 +111,16 @@ namespace Aerolithe
             DialogResult result = AutoCloseMessageBox.ShowPressClose("Enlever la météorite, allumer la lumière de la table tournante et appuyer sur le bouton OK ci-bas", 650, 180);
             if (result == DialogResult.OK)
             {
-                getBackgroundImage();
+                Task.Run(async() => await getBackgroundImage());
                 pictureBox_validationE3.Image = Properties.Resources.crochet;
                 ApplyButtonStyle(buttonLabelPairs[2], false);
                 ApplyButtonStyle(buttonLabelPairs[3], true);
             }
-
-
         }
+
+
+
+
         private async void btn_DemarrerPrisePhotos_Click(object sender, EventArgs e)
         {
 
@@ -186,6 +189,14 @@ namespace Aerolithe
 
         private async void btn_takePicture_Click(object sender, EventArgs e)
         {
+            if (projectPath == null)
+            {
+                SaveProject();  // Demande à setter le projet
+            }
+            if (projectPath == null)
+            {
+                return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
+            }
             await takePictureAsync();
         }
 
@@ -256,8 +267,6 @@ namespace Aerolithe
         }
 
 
-
-
         #endregion
 
         #region TABLE TOURNANTE TAB
@@ -297,7 +306,7 @@ namespace Aerolithe
         private void trkBar_turntable_ValueChanged(object sender, EventArgs e)
         {
             lbl_turntablePosition.Text = trkBar_turntable.Value.ToString();
-            
+
         }
         private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
         {
@@ -536,19 +545,40 @@ namespace Aerolithe
         }
         private void btn_projectSetup_Click(object sender, EventArgs e)
         {
-            if (btn_projectSetup.Enabled)
+            if (btn_goToProjectFolder.Enabled)
             {
-                OpenExplorerAtProjectPath();
+                OpenExplorerAtProjectPath(projectPath);
             }
         }
-        private void OpenExplorerAtProjectPath()
+
+        private void btn_setImageFolder_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(projectPath))
+            SetImageFolder();
+        }
+
+        private void btn_goToImageFolder_Click(object sender, EventArgs e)
+        {
+            if (btn_goToImageFolder.Enabled)
             {
-                string directoryPath = Path.GetDirectoryName(projectPath);
-                string argument = "/select, \"" + directoryPath + "\"";
-                //MessageBox.Show(argument);
+                OpenExplorerAtProjectPath(imagesFolderPath);
+            }
+        }
+
+
+
+        private void OpenExplorerAtProjectPath(string folder)
+        {
+            if (!string.IsNullOrEmpty(folder))
+            {
+                if (folder.Contains("."))
+                {
+                     folder = Path.GetDirectoryName(projectPath);
+
+                }
+                string argument = "/select, \"" + folder + "\"";
+                
                 Process.Start("explorer.exe", argument);
+               
             }
             else
             {
@@ -652,5 +682,7 @@ namespace Aerolithe
 
 
 
+
+     
     }
 }

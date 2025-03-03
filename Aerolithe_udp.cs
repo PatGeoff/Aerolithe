@@ -49,6 +49,7 @@ namespace Aerolithe
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
+                    AppendTextToConsoleNL("sent " + message + " to Actuator");
                     await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
                 }
             }
@@ -262,6 +263,7 @@ namespace Aerolithe
                 turntablePosition = int.Parse(parts[1].Trim());
                 if (trkBar_turntable.InvokeRequired)
                 {
+                    if (turntablePosition == - 1) turntablePosition = 0;
                     trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
                 }
                 if (lbl_turntablePosition.InvokeRequired)

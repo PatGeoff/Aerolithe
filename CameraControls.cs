@@ -5,6 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
+using Emgu.CV;
 
 namespace Aerolithe
 {
@@ -14,7 +17,7 @@ namespace Aerolithe
         public async Task takePictureAsync()
         {
             imageReadyTcs = new TaskCompletionSource<bool>();
-            await Task.Run(() => device.Capture());
+            await Task.Run(() => device.Capture());            
         }
 
         private FlowLayoutPanel currentSequenceFlowLayoutPanel;
@@ -42,6 +45,7 @@ namespace Aerolithe
                         // Reset the memory stream position after testing
                         memoryStream.Position = 0;
 
+                       
                         // Downsize and display the image in a PictureBox
                         var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream);
 
@@ -72,6 +76,7 @@ namespace Aerolithe
                                 flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
                             });
                         }
+                                               
 
                         // Add the PictureBox to the current sequence FlowLayoutPanel
                         currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
@@ -90,6 +95,8 @@ namespace Aerolithe
                 imageReadyTcs?.TrySetException(ex);
             }
         }
+
+
 
 
         private PictureBox CreatePictureBox(Image image)

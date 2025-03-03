@@ -9,6 +9,7 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         private static string projectPath = null;
+        private static string imagesFolderPath = null;
         private void SaveProject()
         {
             using (SaveFileDialog saveFileDialog = new SaveFileDialog())
@@ -23,17 +24,55 @@ namespace Aerolithe
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     projectPath = saveFileDialog.FileName;
-                    btn_projectSetup.Enabled = true;
-                    btn_projectSetup.Text = Path.GetFileName(projectPath);
-                    SaveProjectToFile(projectPath);
+                    btn_goToProjectFolder.Enabled = true;
                     string projectDirectory = Path.GetDirectoryName(projectPath);
-                    string imagesFolderPath = Path.Combine(projectDirectory, "images");
-                    if (!Directory.Exists(imagesFolderPath))
-                    {
-                        Directory.CreateDirectory(imagesFolderPath);
-                    }
-                }                
+                    string projectName = Path.GetFileName(projectPath);
+                    btn_goToProjectFolder.Text = $"{Path.GetFileName(projectDirectory)}/{projectName}";
+
+                    SaveProjectToFile(projectPath);
+                    SetImageFolder();
+                }
             }
+        }
+
+        private void SetImageFolder()
+        {
+            try
+            {
+                if (projectPath == null)
+                {
+                    SaveProject();
+                }
+                string projectDirectory = Path.GetDirectoryName(projectPath);
+                imagesFolderPath = Path.Combine(projectDirectory, "images");
+                btn_goToImageFolder.Enabled = true;
+                if (!Directory.Exists(imagesFolderPath))
+                {
+                    Directory.CreateDirectory(imagesFolderPath);
+                    btn_goToImageFolder.Text = imagesFolderPath;
+
+                }
+
+                using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
+                {
+                    folderDialog.Description = "Select the folder to save images";
+                    folderDialog.SelectedPath = imagesFolderPath;
+
+                    if (folderDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        imagesFolderPath = folderDialog.SelectedPath;
+
+                    }
+                }
+                btn_goToImageFolder.Text = $"{Path.GetFileName(projectDirectory)}/images";
+                btn_goToImageFolder.Enabled = true;
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("Aero Erreur: " + ex.Message);
+            }
+
+
         }
 
         private void SaveProjectToFile(string filePath)

@@ -39,7 +39,12 @@
             btn_getMask = new Button();
             tabControl1 = new TabControl();
             tabPage1 = new TabPage();
-            btn_projectSetup = new Button();
+            btn_imageFond = new Button();
+            btn_Validation = new Button();
+            btn_Autofocus = new Button();
+            btn_goToImageFolder = new Button();
+            btn_setImageFolder = new Button();
+            btn_goToProjectFolder = new Button();
             btn_setProject = new Button();
             pictureBox_validationE4 = new PictureBox();
             btn_cancelSequence = new Button();
@@ -47,13 +52,10 @@
             btn_DemarrerPrisePhotos = new Button();
             pictureBox_validationE3 = new PictureBox();
             lbl_E3 = new Label();
-            btn_imageFond = new Button();
             pictureBox_validationE2 = new PictureBox();
             pictureBox_validationE1 = new PictureBox();
             lbl_E1 = new Label();
-            btn_Validation = new Button();
             lbl_E2 = new Label();
-            btn_Autofocus = new Button();
             tabPage3 = new TabPage();
             picBox_pictureTaken = new PictureBox();
             btn_takePicture = new Button();
@@ -82,9 +84,9 @@
             stepperCalibration_btn = new Button();
             btn_setStepperZeroRef = new Button();
             tabPage5 = new TabPage();
-            trkBar_turntable = new TrackBar();
             btn_queryTurntablePos = new Button();
             panel5 = new Panel();
+            trkBar_turntable = new TrackBar();
             lbl_turntablePosition = new Label();
             label4 = new Label();
             tabPage2 = new TabPage();
@@ -138,6 +140,8 @@
             pictureBox_imageSoustraction = new PictureBox();
             textBox_upperB_x = new TextBox();
             flowLayoutPanel1 = new FlowLayoutPanel();
+            chkBox_applyMask = new CheckBox();
+            chkBox_savePicture = new CheckBox();
             panel6.SuspendLayout();
             panel_Console.SuspendLayout();
             panel2.SuspendLayout();
@@ -156,8 +160,8 @@
             ((System.ComponentModel.ISupportInitialize)stepperMotor_trkbar).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_CalibrationCheck).BeginInit();
             tabPage5.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)trkBar_turntable).BeginInit();
             panel5.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)trkBar_turntable).BeginInit();
             tabPage2.SuspendLayout();
             panel7.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).BeginInit();
@@ -287,7 +291,12 @@
             // 
             tabPage1.BackColor = Color.FromArgb(40, 40, 40);
             tabPage1.BackgroundImageLayout = ImageLayout.Stretch;
-            tabPage1.Controls.Add(btn_projectSetup);
+            tabPage1.Controls.Add(btn_imageFond);
+            tabPage1.Controls.Add(btn_Validation);
+            tabPage1.Controls.Add(btn_Autofocus);
+            tabPage1.Controls.Add(btn_goToImageFolder);
+            tabPage1.Controls.Add(btn_setImageFolder);
+            tabPage1.Controls.Add(btn_goToProjectFolder);
             tabPage1.Controls.Add(btn_setProject);
             tabPage1.Controls.Add(pictureBox_validationE4);
             tabPage1.Controls.Add(btn_cancelSequence);
@@ -295,13 +304,10 @@
             tabPage1.Controls.Add(btn_DemarrerPrisePhotos);
             tabPage1.Controls.Add(pictureBox_validationE3);
             tabPage1.Controls.Add(lbl_E3);
-            tabPage1.Controls.Add(btn_imageFond);
             tabPage1.Controls.Add(pictureBox_validationE2);
             tabPage1.Controls.Add(pictureBox_validationE1);
             tabPage1.Controls.Add(lbl_E1);
-            tabPage1.Controls.Add(btn_Validation);
             tabPage1.Controls.Add(lbl_E2);
-            tabPage1.Controls.Add(btn_Autofocus);
             tabPage1.Location = new Point(4, 44);
             tabPage1.Name = "tabPage1";
             tabPage1.Padding = new Padding(3);
@@ -309,30 +315,100 @@
             tabPage1.TabIndex = 0;
             tabPage1.Text = "Procédure";
             // 
-            // btn_projectSetup
+            // btn_imageFond
             // 
-            btn_projectSetup.BackColor = Color.FromArgb(40, 40, 40);
-            btn_projectSetup.Enabled = false;
-            btn_projectSetup.FlatAppearance.BorderSize = 0;
-            btn_projectSetup.FlatStyle = FlatStyle.Flat;
-            btn_projectSetup.ForeColor = Color.White;
-            btn_projectSetup.Location = new Point(203, 35);
-            btn_projectSetup.Name = "btn_projectSetup";
-            btn_projectSetup.Size = new Size(419, 46);
-            btn_projectSetup.TabIndex = 19;
-            btn_projectSetup.Text = "non défini";
-            btn_projectSetup.TextAlign = ContentAlignment.MiddleLeft;
-            btn_projectSetup.UseVisualStyleBackColor = false;
-            btn_projectSetup.Click += btn_projectSetup_Click;
+            btn_imageFond.BackColor = Color.FromArgb(30, 30, 30);
+            btn_imageFond.FlatStyle = FlatStyle.Flat;
+            btn_imageFond.ForeColor = Color.White;
+            btn_imageFond.Location = new Point(247, 305);
+            btn_imageFond.Name = "btn_imageFond";
+            btn_imageFond.Size = new Size(162, 46);
+            btn_imageFond.TabIndex = 7;
+            btn_imageFond.Text = "Image Fond";
+            btn_imageFond.UseVisualStyleBackColor = false;
+            btn_imageFond.Click += btn_imageFond_Click;
+            // 
+            // btn_Validation
+            // 
+            btn_Validation.BackColor = Color.FromArgb(30, 30, 30);
+            btn_Validation.FlatStyle = FlatStyle.Flat;
+            btn_Validation.ForeColor = Color.White;
+            btn_Validation.Location = new Point(247, 185);
+            btn_Validation.Name = "btn_Validation";
+            btn_Validation.Size = new Size(162, 46);
+            btn_Validation.TabIndex = 3;
+            btn_Validation.Text = "Vérifications";
+            btn_Validation.UseVisualStyleBackColor = false;
+            btn_Validation.Click += btn_Validation_Click;
+            // 
+            // btn_Autofocus
+            // 
+            btn_Autofocus.BackColor = Color.FromArgb(30, 30, 30);
+            btn_Autofocus.FlatStyle = FlatStyle.Flat;
+            btn_Autofocus.ForeColor = Color.White;
+            btn_Autofocus.Location = new Point(247, 244);
+            btn_Autofocus.Name = "btn_Autofocus";
+            btn_Autofocus.Size = new Size(162, 46);
+            btn_Autofocus.TabIndex = 1;
+            btn_Autofocus.Text = "Autofocus";
+            btn_Autofocus.UseVisualStyleBackColor = false;
+            btn_Autofocus.Click += btnAutofocus_Click;
+            // 
+            // btn_goToImageFolder
+            // 
+            btn_goToImageFolder.BackColor = Color.FromArgb(35, 35, 35);
+            btn_goToImageFolder.Enabled = false;
+            btn_goToImageFolder.FlatAppearance.BorderSize = 0;
+            btn_goToImageFolder.FlatStyle = FlatStyle.Flat;
+            btn_goToImageFolder.ForeColor = Color.White;
+            btn_goToImageFolder.Location = new Point(247, 87);
+            btn_goToImageFolder.Name = "btn_goToImageFolder";
+            btn_goToImageFolder.Size = new Size(646, 46);
+            btn_goToImageFolder.TabIndex = 21;
+            btn_goToImageFolder.Text = "non défini";
+            btn_goToImageFolder.TextAlign = ContentAlignment.MiddleLeft;
+            btn_goToImageFolder.UseVisualStyleBackColor = false;
+            btn_goToImageFolder.Click += btn_goToImageFolder_Click;
+            // 
+            // btn_setImageFolder
+            // 
+            btn_setImageFolder.BackColor = Color.FromArgb(30, 30, 30);
+            btn_setImageFolder.FlatAppearance.BorderSize = 0;
+            btn_setImageFolder.FlatStyle = FlatStyle.Flat;
+            btn_setImageFolder.ForeColor = Color.White;
+            btn_setImageFolder.Location = new Point(6, 87);
+            btn_setImageFolder.Name = "btn_setImageFolder";
+            btn_setImageFolder.Size = new Size(247, 46);
+            btn_setImageFolder.TabIndex = 20;
+            btn_setImageFolder.Text = "Dossier des images";
+            btn_setImageFolder.UseVisualStyleBackColor = false;
+            btn_setImageFolder.Click += btn_setImageFolder_Click;
+            // 
+            // btn_goToProjectFolder
+            // 
+            btn_goToProjectFolder.BackColor = Color.FromArgb(35, 35, 35);
+            btn_goToProjectFolder.Enabled = false;
+            btn_goToProjectFolder.FlatAppearance.BorderSize = 0;
+            btn_goToProjectFolder.FlatStyle = FlatStyle.Flat;
+            btn_goToProjectFolder.ForeColor = Color.White;
+            btn_goToProjectFolder.Location = new Point(244, 35);
+            btn_goToProjectFolder.Name = "btn_goToProjectFolder";
+            btn_goToProjectFolder.Size = new Size(646, 46);
+            btn_goToProjectFolder.TabIndex = 19;
+            btn_goToProjectFolder.Text = "non défini";
+            btn_goToProjectFolder.TextAlign = ContentAlignment.MiddleLeft;
+            btn_goToProjectFolder.UseVisualStyleBackColor = false;
+            btn_goToProjectFolder.Click += btn_projectSetup_Click;
             // 
             // btn_setProject
             // 
             btn_setProject.BackColor = Color.FromArgb(30, 30, 30);
+            btn_setProject.FlatAppearance.BorderSize = 0;
             btn_setProject.FlatStyle = FlatStyle.Flat;
             btn_setProject.ForeColor = Color.White;
-            btn_setProject.Location = new Point(56, 35);
+            btn_setProject.Location = new Point(3, 35);
             btn_setProject.Name = "btn_setProject";
-            btn_setProject.Size = new Size(109, 46);
+            btn_setProject.Size = new Size(247, 46);
             btn_setProject.TabIndex = 18;
             btn_setProject.Text = "Projet";
             btn_setProject.UseVisualStyleBackColor = false;
@@ -341,7 +417,7 @@
             // pictureBox_validationE4
             // 
             pictureBox_validationE4.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE4.Location = new Point(407, 371);
+            pictureBox_validationE4.Location = new Point(825, 371);
             pictureBox_validationE4.Name = "pictureBox_validationE4";
             pictureBox_validationE4.Size = new Size(46, 46);
             pictureBox_validationE4.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -353,7 +429,7 @@
             btn_cancelSequence.BackColor = Color.FromArgb(70, 30, 30);
             btn_cancelSequence.FlatStyle = FlatStyle.Flat;
             btn_cancelSequence.ForeColor = Color.White;
-            btn_cancelSequence.Location = new Point(203, 371);
+            btn_cancelSequence.Location = new Point(247, 371);
             btn_cancelSequence.Name = "btn_cancelSequence";
             btn_cancelSequence.Size = new Size(162, 46);
             btn_cancelSequence.TabIndex = 12;
@@ -366,9 +442,9 @@
             // 
             lbl_E4.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E4.ForeColor = Color.White;
-            lbl_E4.Location = new Point(56, 371);
+            lbl_E4.Location = new Point(-7, 371);
             lbl_E4.Name = "lbl_E4";
-            lbl_E4.Size = new Size(109, 46);
+            lbl_E4.Size = new Size(248, 46);
             lbl_E4.TabIndex = 11;
             lbl_E4.Text = "Étape 4: ";
             lbl_E4.TextAlign = ContentAlignment.MiddleCenter;
@@ -378,7 +454,7 @@
             btn_DemarrerPrisePhotos.BackColor = Color.FromArgb(30, 30, 30);
             btn_DemarrerPrisePhotos.FlatStyle = FlatStyle.Flat;
             btn_DemarrerPrisePhotos.ForeColor = Color.White;
-            btn_DemarrerPrisePhotos.Location = new Point(203, 371);
+            btn_DemarrerPrisePhotos.Location = new Point(247, 371);
             btn_DemarrerPrisePhotos.Name = "btn_DemarrerPrisePhotos";
             btn_DemarrerPrisePhotos.Size = new Size(162, 46);
             btn_DemarrerPrisePhotos.TabIndex = 10;
@@ -389,7 +465,7 @@
             // pictureBox_validationE3
             // 
             pictureBox_validationE3.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE3.Location = new Point(407, 305);
+            pictureBox_validationE3.Location = new Point(825, 305);
             pictureBox_validationE3.Name = "pictureBox_validationE3";
             pictureBox_validationE3.Size = new Size(46, 46);
             pictureBox_validationE3.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -400,30 +476,17 @@
             // 
             lbl_E3.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E3.ForeColor = Color.White;
-            lbl_E3.Location = new Point(56, 305);
+            lbl_E3.Location = new Point(-7, 305);
             lbl_E3.Name = "lbl_E3";
-            lbl_E3.Size = new Size(109, 46);
+            lbl_E3.Size = new Size(248, 46);
             lbl_E3.TabIndex = 8;
             lbl_E3.Text = "Étape 3: ";
             lbl_E3.TextAlign = ContentAlignment.MiddleCenter;
             // 
-            // btn_imageFond
-            // 
-            btn_imageFond.BackColor = Color.FromArgb(30, 30, 30);
-            btn_imageFond.FlatStyle = FlatStyle.Flat;
-            btn_imageFond.ForeColor = Color.White;
-            btn_imageFond.Location = new Point(203, 305);
-            btn_imageFond.Name = "btn_imageFond";
-            btn_imageFond.Size = new Size(162, 46);
-            btn_imageFond.TabIndex = 7;
-            btn_imageFond.Text = "Image Fond";
-            btn_imageFond.UseVisualStyleBackColor = false;
-            btn_imageFond.Click += btn_imageFond_Click;
-            // 
             // pictureBox_validationE2
             // 
             pictureBox_validationE2.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE2.Location = new Point(407, 244);
+            pictureBox_validationE2.Location = new Point(825, 244);
             pictureBox_validationE2.Name = "pictureBox_validationE2";
             pictureBox_validationE2.Size = new Size(46, 46);
             pictureBox_validationE2.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -433,7 +496,7 @@
             // pictureBox_validationE1
             // 
             pictureBox_validationE1.BackgroundImageLayout = ImageLayout.None;
-            pictureBox_validationE1.Location = new Point(407, 185);
+            pictureBox_validationE1.Location = new Point(825, 185);
             pictureBox_validationE1.Name = "pictureBox_validationE1";
             pictureBox_validationE1.Size = new Size(46, 46);
             pictureBox_validationE1.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -444,53 +507,29 @@
             // 
             lbl_E1.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E1.ForeColor = Color.White;
-            lbl_E1.Location = new Point(56, 185);
+            lbl_E1.Location = new Point(-7, 185);
             lbl_E1.Name = "lbl_E1";
-            lbl_E1.Size = new Size(109, 46);
+            lbl_E1.Size = new Size(248, 46);
             lbl_E1.TabIndex = 4;
             lbl_E1.Text = "Étape 1: ";
             lbl_E1.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // btn_Validation
-            // 
-            btn_Validation.BackColor = Color.FromArgb(30, 30, 30);
-            btn_Validation.FlatStyle = FlatStyle.Flat;
-            btn_Validation.ForeColor = Color.White;
-            btn_Validation.Location = new Point(203, 185);
-            btn_Validation.Name = "btn_Validation";
-            btn_Validation.Size = new Size(162, 46);
-            btn_Validation.TabIndex = 3;
-            btn_Validation.Text = "Vérifications";
-            btn_Validation.UseVisualStyleBackColor = false;
-            btn_Validation.Click += btn_Validation_Click;
             // 
             // lbl_E2
             // 
             lbl_E2.BackColor = Color.FromArgb(30, 30, 30);
             lbl_E2.ForeColor = Color.White;
-            lbl_E2.Location = new Point(56, 244);
+            lbl_E2.Location = new Point(-7, 244);
             lbl_E2.Name = "lbl_E2";
-            lbl_E2.Size = new Size(109, 46);
+            lbl_E2.Size = new Size(248, 46);
             lbl_E2.TabIndex = 2;
             lbl_E2.Text = "Étape 2: ";
             lbl_E2.TextAlign = ContentAlignment.MiddleCenter;
             // 
-            // btn_Autofocus
-            // 
-            btn_Autofocus.BackColor = Color.FromArgb(30, 30, 30);
-            btn_Autofocus.FlatStyle = FlatStyle.Flat;
-            btn_Autofocus.ForeColor = Color.White;
-            btn_Autofocus.Location = new Point(203, 244);
-            btn_Autofocus.Name = "btn_Autofocus";
-            btn_Autofocus.Size = new Size(162, 46);
-            btn_Autofocus.TabIndex = 1;
-            btn_Autofocus.Text = "Autofocus";
-            btn_Autofocus.UseVisualStyleBackColor = false;
-            btn_Autofocus.Click += btnAutofocus_Click;
-            // 
             // tabPage3
             // 
             tabPage3.BackColor = Color.FromArgb(40, 40, 40);
+            tabPage3.Controls.Add(chkBox_savePicture);
+            tabPage3.Controls.Add(chkBox_applyMask);
             tabPage3.Controls.Add(picBox_pictureTaken);
             tabPage3.Controls.Add(btn_takePicture);
             tabPage3.Controls.Add(panel4);
@@ -520,9 +559,9 @@
             btn_takePicture.ForeColor = Color.White;
             btn_takePicture.Location = new Point(19, 257);
             btn_takePicture.Name = "btn_takePicture";
-            btn_takePicture.Size = new Size(225, 46);
+            btn_takePicture.Size = new Size(269, 46);
             btn_takePicture.TabIndex = 22;
-            btn_takePicture.Text = "Take a picture";
+            btn_takePicture.Text = "Prendre une photo";
             btn_takePicture.UseVisualStyleBackColor = false;
             btn_takePicture.Click += btn_takePicture_Click;
             // 
@@ -808,19 +847,6 @@
             tabPage5.TabIndex = 4;
             tabPage5.Text = "Table Tournante";
             // 
-            // trkBar_turntable
-            // 
-            trkBar_turntable.Location = new Point(2, 52);
-            trkBar_turntable.Maximum = 4096;
-            trkBar_turntable.Name = "trkBar_turntable";
-            trkBar_turntable.RightToLeft = RightToLeft.No;
-            trkBar_turntable.Size = new Size(682, 90);
-            trkBar_turntable.TabIndex = 7;
-            trkBar_turntable.TickFrequency = 0;
-            trkBar_turntable.Value = 4096;
-            trkBar_turntable.ValueChanged += trkBar_turntable_ValueChanged;
-            trkBar_turntable.MouseUp += trkBar_turntable_MouseUp;
-            // 
             // btn_queryTurntablePos
             // 
             btn_queryTurntablePos.Location = new Point(44, 43);
@@ -840,6 +866,19 @@
             panel5.Name = "panel5";
             panel5.Size = new Size(687, 142);
             panel5.TabIndex = 21;
+            // 
+            // trkBar_turntable
+            // 
+            trkBar_turntable.Location = new Point(2, 52);
+            trkBar_turntable.Maximum = 4096;
+            trkBar_turntable.Name = "trkBar_turntable";
+            trkBar_turntable.RightToLeft = RightToLeft.No;
+            trkBar_turntable.Size = new Size(682, 90);
+            trkBar_turntable.TabIndex = 7;
+            trkBar_turntable.TickFrequency = 0;
+            trkBar_turntable.Value = 4096;
+            trkBar_turntable.ValueChanged += trkBar_turntable_ValueChanged;
+            trkBar_turntable.MouseUp += trkBar_turntable_MouseUp;
             // 
             // lbl_turntablePosition
             // 
@@ -1428,6 +1467,32 @@
             flowLayoutPanel1.Size = new Size(2668, 528);
             flowLayoutPanel1.TabIndex = 27;
             // 
+            // chkBox_applyMask
+            // 
+            chkBox_applyMask.AutoSize = true;
+            chkBox_applyMask.Checked = true;
+            chkBox_applyMask.CheckState = CheckState.Checked;
+            chkBox_applyMask.ForeColor = Color.White;
+            chkBox_applyMask.Location = new Point(294, 263);
+            chkBox_applyMask.Name = "chkBox_applyMask";
+            chkBox_applyMask.Size = new Size(267, 36);
+            chkBox_applyMask.TabIndex = 24;
+            chkBox_applyMask.Text = "Appliquer le masque";
+            chkBox_applyMask.UseVisualStyleBackColor = true;
+            // 
+            // chkBox_savePicture
+            // 
+            chkBox_savePicture.AutoSize = true;
+            chkBox_savePicture.Checked = true;
+            chkBox_savePicture.CheckState = CheckState.Checked;
+            chkBox_savePicture.ForeColor = Color.White;
+            chkBox_savePicture.Location = new Point(567, 263);
+            chkBox_savePicture.Name = "chkBox_savePicture";
+            chkBox_savePicture.Size = new Size(179, 36);
+            chkBox_savePicture.TabIndex = 25;
+            chkBox_savePicture.Text = "Sauvegarder";
+            chkBox_savePicture.UseVisualStyleBackColor = true;
+            // 
             // Aerolithe
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -1461,9 +1526,9 @@
             ((System.ComponentModel.ISupportInitialize)stepperMotor_trkbar).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_CalibrationCheck).EndInit();
             tabPage5.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)trkBar_turntable).EndInit();
             panel5.ResumeLayout(false);
             panel5.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trkBar_turntable).EndInit();
             tabPage2.ResumeLayout(false);
             panel7.ResumeLayout(false);
             panel7.PerformLayout();
@@ -1591,8 +1656,12 @@
         private TextBox textBox_upperB_x;
         private Button button2;
         private Button btn_setProject;
-        private Button btn_projectSetup;
+        private Button btn_goToProjectFolder;
         private Label lbl_turntablePosition;
         private Button btn_queryTurntablePos;
+        private Button btn_goToImageFolder;
+        private Button btn_setImageFolder;
+        private CheckBox chkBox_applyMask;
+        private CheckBox chkBox_savePicture;
     }
 }
