@@ -25,13 +25,15 @@ namespace Aerolithe
         public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
         public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
         public readonly IPAddress M5ipAddress = IPAddress.Parse("192.168.2.6");
+        public readonly IPAddress actuatorIpAddress = IPAddress.Parse("192.168.2.15");
         public readonly int stepperPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
         public readonly int turntablePort = 44466;  // Port sur lequel on reçoit les messages UDP au ESP32 de la table tournante
         public readonly int scissorLiftPort = 44477;  // Port sur lequel on reçoit les messages UDP au ESP32 du lift
         public readonly int M5Port = 44488;
         public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
-        
-     
+        public readonly int actuatorPort = 44499;
+
+
 
         private UdpClient udpClient;
         private TaskCompletionSource<int> _turntablePositionTcs;
@@ -111,7 +113,7 @@ namespace Aerolithe
             DialogResult result = AutoCloseMessageBox.ShowPressClose("Enlever la météorite, allumer la lumière de la table tournante et appuyer sur le bouton OK ci-bas", 650, 180);
             if (result == DialogResult.OK)
             {
-                Task.Run(async() => await getBackgroundImage());
+                Task.Run(async () => await getBackgroundImage());
                 pictureBox_validationE3.Image = Properties.Resources.crochet;
                 ApplyButtonStyle(buttonLabelPairs[2], false);
                 ApplyButtonStyle(buttonLabelPairs[3], true);
@@ -420,6 +422,26 @@ namespace Aerolithe
 
 
         }
+
+        private void trkBar_Actuator_MouseUp(object sender, MouseEventArgs e)
+        {
+            UdpSendActuatorMessageAsync("actuator move " + trkBar_Actuator.Value.ToString());
+        }
+
+        private void btn_Actuator_Down_Click(object sender, EventArgs e)
+        {
+            UdpSendActuatorMessageAsync("actuator down");
+        }
+
+        private void btn_Actuator_Up_Click(object sender, EventArgs e)
+        {
+            UdpSendActuatorMessageAsync("actuator up");
+        }
+        private void btn_actoatorCalibration_Click(object sender, EventArgs e)
+        {
+            UdpSendActuatorMessageAsync("actuator calibration");
+        }
+
         #endregion
 
         #region MAIN FORM
@@ -572,13 +594,13 @@ namespace Aerolithe
             {
                 if (folder.Contains("."))
                 {
-                     folder = Path.GetDirectoryName(projectPath);
+                    folder = Path.GetDirectoryName(projectPath);
 
                 }
                 string argument = "/select, \"" + folder + "\"";
-                
+
                 Process.Start("explorer.exe", argument);
-               
+
             }
             else
             {
@@ -683,6 +705,6 @@ namespace Aerolithe
 
 
 
-     
+       
     }
 }

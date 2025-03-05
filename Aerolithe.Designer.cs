@@ -57,6 +57,8 @@
             lbl_E1 = new Label();
             lbl_E2 = new Label();
             tabPage3 = new TabPage();
+            chkBox_savePicture = new CheckBox();
+            chkBox_applyMask = new CheckBox();
             picBox_pictureTaken = new PictureBox();
             btn_takePicture = new Button();
             panel4 = new Panel();
@@ -99,6 +101,9 @@
             label11 = new Label();
             trkBar_Lift = new TrackBar();
             tabPage6 = new TabPage();
+            btn_Actuator_Down = new Button();
+            btn_Actuator_Up = new Button();
+            trkBar_Actuator = new TrackBar();
             btn_actuator45deg = new Button();
             btn_actuator25deg = new Button();
             btn_actuator5deg = new Button();
@@ -140,8 +145,7 @@
             pictureBox_imageSoustraction = new PictureBox();
             textBox_upperB_x = new TextBox();
             flowLayoutPanel1 = new FlowLayoutPanel();
-            chkBox_applyMask = new CheckBox();
-            chkBox_savePicture = new CheckBox();
+            btn_actoatorCalibration = new Button();
             panel6.SuspendLayout();
             panel_Console.SuspendLayout();
             panel2.SuspendLayout();
@@ -166,6 +170,7 @@
             panel7.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).BeginInit();
             tabPage6.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)trkBar_Actuator).BeginInit();
             tabPage7.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_waveshareCom).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_esp32Com).BeginInit();
@@ -542,6 +547,32 @@
             tabPage3.Size = new Size(890, 982);
             tabPage3.TabIndex = 2;
             tabPage3.Text = "Caméra";
+            // 
+            // chkBox_savePicture
+            // 
+            chkBox_savePicture.AutoSize = true;
+            chkBox_savePicture.Checked = true;
+            chkBox_savePicture.CheckState = CheckState.Checked;
+            chkBox_savePicture.ForeColor = Color.White;
+            chkBox_savePicture.Location = new Point(567, 263);
+            chkBox_savePicture.Name = "chkBox_savePicture";
+            chkBox_savePicture.Size = new Size(179, 36);
+            chkBox_savePicture.TabIndex = 25;
+            chkBox_savePicture.Text = "Sauvegarder";
+            chkBox_savePicture.UseVisualStyleBackColor = true;
+            // 
+            // chkBox_applyMask
+            // 
+            chkBox_applyMask.AutoSize = true;
+            chkBox_applyMask.Checked = true;
+            chkBox_applyMask.CheckState = CheckState.Checked;
+            chkBox_applyMask.ForeColor = Color.White;
+            chkBox_applyMask.Location = new Point(294, 263);
+            chkBox_applyMask.Name = "chkBox_applyMask";
+            chkBox_applyMask.Size = new Size(267, 36);
+            chkBox_applyMask.TabIndex = 24;
+            chkBox_applyMask.Text = "Appliquer le masque";
+            chkBox_applyMask.UseVisualStyleBackColor = true;
             // 
             // picBox_pictureTaken
             // 
@@ -1003,6 +1034,10 @@
             // tabPage6
             // 
             tabPage6.BackColor = Color.FromArgb(40, 40, 40);
+            tabPage6.Controls.Add(btn_actoatorCalibration);
+            tabPage6.Controls.Add(btn_Actuator_Down);
+            tabPage6.Controls.Add(btn_Actuator_Up);
+            tabPage6.Controls.Add(trkBar_Actuator);
             tabPage6.Controls.Add(btn_actuator45deg);
             tabPage6.Controls.Add(btn_actuator25deg);
             tabPage6.Controls.Add(btn_actuator5deg);
@@ -1012,6 +1047,36 @@
             tabPage6.Size = new Size(890, 982);
             tabPage6.TabIndex = 5;
             tabPage6.Text = "Actuateur";
+            // 
+            // btn_Actuator_Down
+            // 
+            btn_Actuator_Down.Location = new Point(356, 212);
+            btn_Actuator_Down.Name = "btn_Actuator_Down";
+            btn_Actuator_Down.Size = new Size(150, 46);
+            btn_Actuator_Down.TabIndex = 5;
+            btn_Actuator_Down.Text = "Down";
+            btn_Actuator_Down.UseVisualStyleBackColor = true;
+            btn_Actuator_Down.Click += btn_Actuator_Down_Click;
+            // 
+            // btn_Actuator_Up
+            // 
+            btn_Actuator_Up.Location = new Point(356, 144);
+            btn_Actuator_Up.Name = "btn_Actuator_Up";
+            btn_Actuator_Up.Size = new Size(150, 46);
+            btn_Actuator_Up.TabIndex = 4;
+            btn_Actuator_Up.Text = "Up";
+            btn_Actuator_Up.UseVisualStyleBackColor = true;
+            btn_Actuator_Up.Click += btn_Actuator_Up_Click;
+            // 
+            // trkBar_Actuator
+            // 
+            trkBar_Actuator.Location = new Point(98, 425);
+            trkBar_Actuator.Maximum = 212;
+            trkBar_Actuator.Minimum = -212;
+            trkBar_Actuator.Name = "trkBar_Actuator";
+            trkBar_Actuator.Size = new Size(705, 90);
+            trkBar_Actuator.TabIndex = 3;
+            trkBar_Actuator.MouseUp += trkBar_Actuator_MouseUp;
             // 
             // btn_actuator45deg
             // 
@@ -1467,31 +1532,15 @@
             flowLayoutPanel1.Size = new Size(2668, 528);
             flowLayoutPanel1.TabIndex = 27;
             // 
-            // chkBox_applyMask
+            // btn_actoatorCalibration
             // 
-            chkBox_applyMask.AutoSize = true;
-            chkBox_applyMask.Checked = true;
-            chkBox_applyMask.CheckState = CheckState.Checked;
-            chkBox_applyMask.ForeColor = Color.White;
-            chkBox_applyMask.Location = new Point(294, 263);
-            chkBox_applyMask.Name = "chkBox_applyMask";
-            chkBox_applyMask.Size = new Size(267, 36);
-            chkBox_applyMask.TabIndex = 24;
-            chkBox_applyMask.Text = "Appliquer le masque";
-            chkBox_applyMask.UseVisualStyleBackColor = true;
-            // 
-            // chkBox_savePicture
-            // 
-            chkBox_savePicture.AutoSize = true;
-            chkBox_savePicture.Checked = true;
-            chkBox_savePicture.CheckState = CheckState.Checked;
-            chkBox_savePicture.ForeColor = Color.White;
-            chkBox_savePicture.Location = new Point(567, 263);
-            chkBox_savePicture.Name = "chkBox_savePicture";
-            chkBox_savePicture.Size = new Size(179, 36);
-            chkBox_savePicture.TabIndex = 25;
-            chkBox_savePicture.Text = "Sauvegarder";
-            chkBox_savePicture.UseVisualStyleBackColor = true;
+            btn_actoatorCalibration.Location = new Point(633, 144);
+            btn_actoatorCalibration.Name = "btn_actoatorCalibration";
+            btn_actoatorCalibration.Size = new Size(150, 46);
+            btn_actoatorCalibration.TabIndex = 6;
+            btn_actoatorCalibration.Text = "Calibration";
+            btn_actoatorCalibration.UseVisualStyleBackColor = true;
+            btn_actoatorCalibration.Click += btn_actoatorCalibration_Click;
             // 
             // Aerolithe
             // 
@@ -1534,6 +1583,8 @@
             panel7.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).EndInit();
             tabPage6.ResumeLayout(false);
+            tabPage6.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trkBar_Actuator).EndInit();
             tabPage7.ResumeLayout(false);
             tabPage7.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_waveshareCom).EndInit();
@@ -1663,5 +1714,9 @@
         private Button btn_setImageFolder;
         private CheckBox chkBox_applyMask;
         private CheckBox chkBox_savePicture;
+        private TrackBar trkBar_Actuator;
+        private Button btn_Actuator_Down;
+        private Button btn_Actuator_Up;
+        private Button btn_actoatorCalibration;
     }
 }

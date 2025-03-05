@@ -50,7 +50,7 @@ namespace Aerolithe
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
                     AppendTextToConsoleNL("sent " + message + " to Actuator");
-                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(actuatorIpAddress, actuatorPort));
                 }
             }
             catch (Exception ex)
