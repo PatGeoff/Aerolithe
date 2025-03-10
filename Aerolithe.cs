@@ -461,7 +461,8 @@ namespace Aerolithe
                 txtBox_Console.Invoke(new Action(() =>
                 {
                     AppendFormattedText(timestamp, Color.Gray);
-                    AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
+                    AppendFormattedText(message, txtBox_Console.ForeColor);
+                    AppendTextToConsoleNL(Environment.NewLine);
                     ScrollToBottom();
                     //Debug.WriteLine("Message appended via Invoke");
                 }));

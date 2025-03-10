@@ -34,6 +34,9 @@
       <HintPath>..\Aerolithe_4.8\nikoncswrapper_v2.1\bin\Debug\nikoncswrapper.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="SharpOSC">
+      <HintPath>\\Mac\Home\Downloads\SharpOSC-master\Binaries\v0.1.1.0\Release\SharpOSC.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
  <ItemGroup>

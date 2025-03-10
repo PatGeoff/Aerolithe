@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using Emgu.CV;
 using System.Timers;
 using Aerolithe.Properties;
+using SharpOSC;
 
 
 namespace Aerolithe
@@ -25,6 +26,8 @@ namespace Aerolithe
         public bool actuatorPositionReached = false;
         public int rotaryEncoderStepperMotorValue = 0;
         public bool rotaryEncoderSteperMotorTriggered = false;
+        private System.Timers.Timer _oscTimer;
+        private string _lastOscMessage;
 
 
         public void InitializeUdpClient()
@@ -39,6 +42,10 @@ namespace Aerolithe
             {
                 MessageBox.Show($"Error initializing UDP client: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            // Initialize the timer
+            _oscTimer = new System.Timers.Timer(150); // 500 milliseconds
+            _oscTimer.Elapsed += OnOscTimerElapsed;
+            _oscTimer.AutoReset = false; // Ensure the timer only runs once per interval
         }
 
 
@@ -118,9 +125,7 @@ namespace Aerolithe
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
-    
-
+            
         public async Task UdpSendM5MessageAsync(string position)
         {
             try
@@ -137,7 +142,6 @@ namespace Aerolithe
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
 
         public void udpSendStepperMotorData(int vitesse, int position) // valeurs 
         {
@@ -203,10 +207,38 @@ namespace Aerolithe
             }
         }
 
+        static bool IsOscMessage(string message)
+        {
+            // Check if the first character of the message is a forward slash
+            return !string.IsNullOrEmpty(message) && message[0] == '/';
+        }
 
+        private void OnOscTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            // Process the last OSC message
+            //AppendTextToConsoleNL(_lastOscMessage);
+            if (_lastOscMessage.Contains("camera_osc_fader")){
+                AppendTextToConsoleNL(_lastOscMessage.Split("/")[2]);
+                string[] parts = _lastOscMessage.Split('/');
+                if (parts.Length > 2)
+                {
+                    int vitesse;
+                    if (int.TryParse(parts[2], out vitesse))
+                    {
+                        udpSendStepperMotorData(vitesse); ;
+                    }
+                    else
+                    {
+                        AppendTextToConsoleNL("erreur");
+                    }
+                }              
+                
+            }
+        }
         private async Task CheckMessage(string message)
         {
-            AppendTextToConsoleNL("Message Reçu: " + message);
+
+            //AppendTextToConsoleNL("Message Reçu: " + message);
             #region stepMotor
             if (message.Contains("calibration done, steppermotor maxPosition: "))
             {
@@ -305,6 +337,18 @@ namespace Aerolithe
                     encoderRotationStepper(value);
 
                 }
+            }
+            #endregion
+            #region OSC
+            if (IsOscMessage(message))
+            {
+
+                // Store the last OSC message
+                _lastOscMessage = message;
+
+                // Restart the timer
+                _oscTimer.Stop();
+                _oscTimer.Start();
             }
             #endregion
         }
