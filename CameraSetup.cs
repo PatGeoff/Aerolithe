@@ -28,6 +28,7 @@ namespace Aerolithe
         public NikonPreview preview;
         private NikonLiveViewImage imageView = null;
         private Mat foreground, background, substractionResult, mask = null;
+        public double oldFocusValue;
 
         public void CamSetup()
         {
@@ -40,8 +41,8 @@ namespace Aerolithe
             manager = new NikonManager("Type0022.md3");
             manager.DeviceAdded += new DeviceAddedDelegate(manager_DeviceAdded);
             manager.DeviceRemoved += new DeviceRemovedDelegate(manager_DeviceRemoved);
-
-
+            
+            
         }
 
         void manager_DeviceAdded(NikonManager? sender, NikonDevice device)
@@ -59,9 +60,11 @@ namespace Aerolithe
 
                 // Hook up device capture events
                 device.ImageReady += new ImageReadyDelegate(device_ImageReady);
+                AppendTextToConsoleNL("device_ImageReady delegate added");
                 //device.ThumbnailReady += new ThumbnailReadyDelegate(OnThumbnailReady);
                 //device.CaptureComplete += new CaptureCompleteDelegate(device_CaptureComplete);
                 //device.PreviewReady += new PreviewReadyDelegate(device_PreviewReady);
+
 
                 deviceLoaded();
             }
@@ -92,17 +95,23 @@ namespace Aerolithe
             }
             liveViewTimer.Start();
 
-
+            // Get the drivestep range
+            driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);
+            AppendTextToConsoleNL($"Drive Step Range: Min={driveStep.Min}, Max={driveStep.Max}");
+            trkBar_focus.Maximum = (int)driveStep.Max;
+            lbl_focusRangeMax.Text = driveStep.Max.ToString();
             //SetCrosshair();
             //GetFocusRange();
             //textBox_Error.Text = "À venir";
             //GetFocusMode();
             //GetAperture();
-            //GetShutterSpeed();
+            
             //GetImageType();
             //GetExposureStatus();
+            GetExposureModes();
             GetImageSize();
             GetLiveViewSize();
+            GetShutterSpeed();
             //GetIso();
             //GetWB();
             //SetFrameDim();
@@ -180,6 +189,15 @@ namespace Aerolithe
             comboBox_TaillePhotos.SelectedIndex = imgSize.Index;
         }
 
+        private void GetShutterSpeed()
+        {
+            NikonEnum exposureTime = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed);
+            for (int i = 0; i < exposureTime.Length; i++)
+            {
+                comboBox_shutterTime.Items.Add(exposureTime[i].ToString());
+            }
+            comboBox_shutterTime.SelectedIndex = exposureTime.Index;
+        }
 
         private void GetLiveViewSize()
         {
@@ -202,9 +220,15 @@ namespace Aerolithe
 
         }
 
-     
-
-
+       private void GetExposureModes()
+        {
+            NikonEnum modeSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);            
+            comboBox_ExpoMode.Items.Add("Programmed Auto (P)");
+            comboBox_ExpoMode.Items.Add("Shutter Priority (S)");            
+            comboBox_ExpoMode.Items.Add("Aperture Priority (A)");
+            comboBox_ExpoMode.Items.Add("Manual (M)");
+            comboBox_ExpoMode.SelectedIndex = modeSize.Index;
+        }
 
         #endregion
 

@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV;
+using System.Drawing.Imaging;
 
 namespace Aerolithe
 {
@@ -17,7 +18,8 @@ namespace Aerolithe
         public async Task takePictureAsync()
         {
             imageReadyTcs = new TaskCompletionSource<bool>();
-            await Task.Run(() => device.Capture());            
+            await Task.Run(() => device.Capture());
+            //MessageBox.Show("image capturée");
         }
 
         private FlowLayoutPanel currentSequenceFlowLayoutPanel;
@@ -25,6 +27,7 @@ namespace Aerolithe
 
         void device_ImageReady(NikonDevice sender, NikonImage image)
         {
+            //MessageBox.Show("ici");
             try
             {
                 if (image.Type == NikonImageType.Jpeg)
@@ -35,6 +38,36 @@ namespace Aerolithe
                         {
                             // Test if the image buffer is valid
                             Image testImage = Image.FromStream(memoryStream);
+                            // Save image if needed
+                            if (chkBox_savePicture.Checked)
+                            {
+                                if (imagesFolderPath != null && imageNameBase!= null && imageIncr!= null)
+                                {
+                                    try
+                                    {
+                                        //MessageBox.Show(imageNameBase + "_" + imageIncr + ".jpg");
+                                        // Reset the stream position to the beginning
+                                        memoryStream.Position = 0;
+                                        string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
+                                        string outputPath = Path.Combine(imagesFolderPath, nomImage);
+                                        //MessageBox.Show(outputPath);
+                                        AppendTextToConsoleNL("Sauvegarde de la photo. Ceci peut prendre quelques secondes");
+                                        SaveStreamAsJpeg(memoryStream, outputPath);
+
+                                    }
+                                    catch (Exception)
+                                    {
+                                        throw;
+
+                                    }
+                                }
+
+                                else
+                                {
+                                    MessageBox.Show("Il faut sélectionner un dossier d'images");
+                                    return;
+                                }
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -44,7 +77,7 @@ namespace Aerolithe
 
                         // Reset the memory stream position after testing
                         memoryStream.Position = 0;
-
+                       
                        
                         // Downsize and display the image in a PictureBox
                         var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream);
@@ -65,27 +98,29 @@ namespace Aerolithe
                         // Set border color based on the sequence
                         Color borderColor = GetBorderColor(currentSequence);
 
-                        // Create a new sequence FlowLayoutPanel if needed
-                        if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
-                        {
-                            currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
-                            SetFlowLayoutPanelWidth(currentSequenceFlowLayoutPanel, nombreImages5Degres, 200);
-                            SetFlowLayoutPanelWidth(flowLayoutPanel1, nombreImages5Degres, 200);
-                            flowLayoutPanel1.Invoke((MethodInvoker)delegate
-                            {
-                                flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
-                            });
-                        }
+                        //// Create a new sequence FlowLayoutPanel if needed
+                        //if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
+                        //{
+                        //    currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
+                        //    SetFlowLayoutPanelWidth(currentSequenceFlowLayoutPanel, nombreImages5Degres, 200);
+                        //    SetFlowLayoutPanelWidth(flowLayoutPanel1, nombreImages5Degres, 200);
+                        //    flowLayoutPanel1.Invoke((MethodInvoker)delegate
+                        //    {
+                        //        flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
+                        //    });
+                        //}
                                                
 
-                        // Add the PictureBox to the current sequence FlowLayoutPanel
-                        currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
-                        {
-                            currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
-                        });
+                        //// Add the PictureBox to the current sequence FlowLayoutPanel
+                        //currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
+                        //{
+                        //    currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
+                        //});
 
                         // Signal that the image is ready
                         imageReadyTcs?.TrySetResult(true);
+
+                       
                     }
                 }
             }
@@ -96,7 +131,17 @@ namespace Aerolithe
             }
         }
 
+    
+        public async Task  SaveStreamAsJpeg(Stream imageStream, string outputPath)
+        {
+            AppendTextToConsoleNL($"sauvegarde de l'image dans {outputPath}");
 
+            // Create an Image object from the stream
+            Image image = Image.FromStream(imageStream);
+
+            // Save the image as a JPEG file
+            image.Save(outputPath, ImageFormat.Jpeg);
+        }
 
 
         private PictureBox CreatePictureBox(Image image)

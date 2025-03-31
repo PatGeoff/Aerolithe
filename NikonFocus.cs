@@ -9,7 +9,15 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public void NikonAutofocus(int index)
+        private TaskCompletionSource<bool> focusReadyTcs;
+
+        public async Task nikonDoFocus()
+        {
+            focusReadyTcs = new TaskCompletionSource<bool>();
+            await Task.Run(() => NikonAutofocus());
+            //MessageBox.Show("image capturée");
+        }
+        public async Task NikonAutofocus()
         {
             if (device.LiveViewEnabled)
             {
@@ -23,9 +31,9 @@ namespace Aerolithe
                 {
                     
                     device.Start(eNkMAIDCapability.kNkMAIDCapability_AutoFocus);
-                    pictureBox_validationE2.Image = Properties.Resources.crochet;
-                    ApplyButtonStyle(buttonLabelPairs[1], false);
-                    ApplyButtonStyle(buttonLabelPairs[2], true);
+                    //pictureBox_validationE2.Image = Properties.Resources.crochet;
+                    //ApplyButtonStyle(buttonLabelPairs[1], false);
+                    //ApplyButtonStyle(buttonLabelPairs[2], true);
                 }
                 catch (NikonException ex)
                 {
@@ -35,21 +43,24 @@ namespace Aerolithe
                     }
                     else
                     {
-                        MessageBox.Show("Impossible de faire le focus");
-                        pictureBox_validationE2.Image = Properties.Resources.echec;
+                        //MessageBox.Show("Impossible de faire le focus");
+                        AppendTextToConsoleNL("impossible de faire le focus");
+                        //pictureBox_validationE2.Image = Properties.Resources.echec;
                         break;
                     }
                 }
 
-                break;
+                
             }
             device.LiveViewEnabled = true;
+            await Task.Delay(100);
             liveViewTimer.Start();
             liveViewState = true;
-
+            AppendTextToConsoleNL("Focus complété");
+            // Signal that the image is ready
+            focusReadyTcs?.TrySetResult(true);
         }
-
-
-
+       
+       
     }
 }

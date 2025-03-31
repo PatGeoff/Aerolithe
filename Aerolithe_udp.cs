@@ -207,6 +207,18 @@ namespace Aerolithe
             }
         }
 
+
+        public string SanitizeString(string input)
+        {
+            string[] hiddenChars = new string[] { "\u200B", "\u200C", "\u200D", "\uFEFF", "\u00A0", "\u00AD", "\u200E", "\u200F", "\u202A", "\u202B", "\u202D", "\u202E", "\u202C", "\u2028", "\u2029" };
+            foreach (string hiddenChar in hiddenChars)
+            {
+                input = input.Replace(hiddenChar, "");
+            }
+            return input;
+        }
+
+
         static bool IsOscMessage(string message)
         {
             // Check if the first character of the message is a forward slash
@@ -215,25 +227,10 @@ namespace Aerolithe
 
         private void OnOscTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            // Process the last OSC message
-            //AppendTextToConsoleNL(_lastOscMessage);
-            if (_lastOscMessage.Contains("camera_osc_fader")){
-                AppendTextToConsoleNL(_lastOscMessage.Split("/")[2]);
-                string[] parts = _lastOscMessage.Split('/');
-                if (parts.Length > 2)
-                {
-                    int vitesse;
-                    if (int.TryParse(parts[2], out vitesse))
-                    {
-                        udpSendStepperMotorData(vitesse); ;
-                    }
-                    else
-                    {
-                        AppendTextToConsoleNL("erreur");
-                    }
-                }              
-                
-            }
+            // Sanitize the input to remove hidden characters
+            string sanitizedMessage = SanitizeString(_lastOscMessage);
+            AppendTextToConsoleNL(sanitizedMessage);
+            
         }
         private async Task CheckMessage(string message)
         {
@@ -342,9 +339,9 @@ namespace Aerolithe
             #region OSC
             if (IsOscMessage(message))
             {
-
+                
                 // Store the last OSC message
-                _lastOscMessage = message;
+                _lastOscMessage = message.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "");
 
                 // Restart the timer
                 _oscTimer.Stop();

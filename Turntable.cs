@@ -9,7 +9,7 @@ namespace Aerolithe
     public partial class Aerolithe: Form 
     {
         private int turntableDelay = 7000; // secondes
-        public int turntableSpeed = 500;
+        public int turntableSpeed = 350;
         public int turntablePosition = 0;
         public int previousPos = 0;
     }

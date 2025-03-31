@@ -37,6 +37,7 @@ namespace Aerolithe
 
         private UdpClient udpClient;
         private TaskCompletionSource<int> _turntablePositionTcs;
+        private CancellationTokenSource tokenSource;
 
         private bool calibrationDone = true;
 
@@ -104,7 +105,7 @@ namespace Aerolithe
         private void btnAutofocus_Click(object sender, EventArgs e)
         {
             AutoCloseMessageBox.ShowAutoClose("Placer la météorite au centre de la table tournante et appuyer sur OK ci-bas", 650, 180, 3000);
-            NikonAutofocus(1);
+            NikonAutofocus();
         }
 
 
@@ -142,6 +143,7 @@ namespace Aerolithe
 
             try
             {
+
                 await PrisePhotoSequenceAsync(cancellationTokenSource.Token);
             }
             catch (OperationCanceledException)
@@ -169,37 +171,41 @@ namespace Aerolithe
         #endregion
 
         #region CAMÉRA TAB
-        private void btn_toggleLiveView_Click(object sender, EventArgs e)
-        {
-            if (liveViewState == true)
-            {
-                liveViewState = false;
-                lbl_LiveViewState.Text = "LiveView OFF";
-                device.LiveViewEnabled = false;
-            }
-            else
-            {
-                liveViewState = true;
-                lbl_LiveViewState.Text = "LiveView ON";
-                device.LiveViewEnabled = true;
-            }
-        }
+
         private void btn_Autofocus_StepperTab_Click(object sender, EventArgs e)
         {
-            NikonAutofocus(1);
+            NikonAutofocus();
         }
 
         private async void btn_takePicture_Click(object sender, EventArgs e)
         {
-            if (projectPath == null)
-            {
-                SaveProject();  // Demande à setter le projet
-            }
-            if (projectPath == null)
-            {
-                return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
-            }
+
             await takePictureAsync();
+        }
+
+        private void trkBar_focus_MouseUp(object sender, MouseEventArgs e)
+        {
+            // Get the new focus value from the trackbar
+            double newFocusValue = (double)trkBar_focus.Value;
+            driveStep.Value = newFocusValue;
+            // Drive focus based on the direction
+            if (newFocusValue > oldFocusValue)
+            {
+                // Drive focus towards infinity
+                device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
+                AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_ClosestToInfinity... oldFocusValue = {oldFocusValue.ToString()}");
+            }
+            else
+            {
+                // Drive focus towards close
+
+                device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
+                AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
+            }
+
+            // Update old focus value
+            oldFocusValue = newFocusValue;
+
         }
 
         #endregion
@@ -331,7 +337,7 @@ namespace Aerolithe
                     lbl_turntablePosition.Text = turntablePosition.ToString();
                 }
             }
-            else { MessageBox.Show("Il y a un problème avec la table tournante.\nAssurez-vous que le controlleur Waveshare est bien branché"); }
+            //else { MessageBox.Show("Il y a un problème avec la table tournante.\nAssurez-vous que le controlleur Waveshare est bien branché"); }
         }
 
         #endregion
@@ -437,9 +443,14 @@ namespace Aerolithe
         {
             UdpSendActuatorMessageAsync("actuator up");
         }
-        private void btn_actoatorCalibration_Click(object sender, EventArgs e)
+
+        private void performActuatorCalibration()
         {
             UdpSendActuatorMessageAsync("actuator calibration");
+        }
+        private void btn_actoatorCalibration_Click(object sender, EventArgs e)
+        {
+            performActuatorCalibration();
         }
 
         #endregion
@@ -461,8 +472,7 @@ namespace Aerolithe
                 txtBox_Console.Invoke(new Action(() =>
                 {
                     AppendFormattedText(timestamp, Color.Gray);
-                    AppendFormattedText(message, txtBox_Console.ForeColor);
-                    AppendTextToConsoleNL(Environment.NewLine);
+                    AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
                     ScrollToBottom();
                     //Debug.WriteLine("Message appended via Invoke");
                 }));
@@ -564,8 +574,14 @@ namespace Aerolithe
         }
         private void btn_setProject_Click(object sender, EventArgs e)
         {
-            SaveProject();
+            CreateNewProject();
         }
+
+        private void btn_openProject_Click(object sender, EventArgs e)
+        {
+            SelectExistingProject();
+        }
+
         private void btn_projectSetup_Click(object sender, EventArgs e)
         {
             if (btn_goToProjectFolder.Enabled)
@@ -578,6 +594,7 @@ namespace Aerolithe
         {
             SetImageFolder();
         }
+
 
         private void btn_goToImageFolder_Click(object sender, EventArgs e)
         {
@@ -698,7 +715,41 @@ namespace Aerolithe
             lvSize.Index = comboBox_TaillePhotos.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, lvSize);
         }
+        private void comboBox_ExpoMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            NikonEnum modeSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);
+            modeSize.Index = comboBox_ExpoMode.SelectedIndex;
+            device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode, modeSize);
+        }
 
+        private void comboBox_shutterTime_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            NikonEnum expoMode = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);
+            if (expoMode.Index != 3)
+            {
+                MessageBox.Show("Il faut mettre le mode d'exposition à Manuel");
+            }
+            else
+            {
+                NikonEnum exposureTime = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed);
+                exposureTime.Index = comboBox_shutterTime.SelectedIndex;
+                device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed, exposureTime);
+            }
+
+        }
+
+        private void btn_ExposureGet_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var exposureTime = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed);
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
 
         #endregion
 
@@ -706,6 +757,115 @@ namespace Aerolithe
 
 
 
-       
+
+
+        private void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
+            Task.Run(async () => await nikonDoFocus());
+            Task.Run(async () =>
+            {
+                //await UdpSendActuatorMessageAsync("actuator 5");
+                await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
+                // await Task.Delay(4000); // Non-blocking wait
+
+
+                CancellationTokenSource tokenSource = new CancellationTokenSource();
+                
+                await PrisePhotoSequenceAsync(tokenSource.Token, 0);
+
+            });
+
+        }
+
+        private void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
+            Task.Run(async () => await nikonDoFocus());
+            Task.Run(async () =>
+            {
+                //await UdpSendActuatorMessageAsync("actuator 25");
+                await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
+                //await Task.Delay(4000); // Non-blocking wait
+
+
+                CancellationTokenSource tokenSource = new CancellationTokenSource();
+
+                await PrisePhotoSequenceAsync(tokenSource.Token, 1);
+            });
+
+        }
+
+        private void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
+            Task.Run(async () => await nikonDoFocus());
+            Task.Run(async () =>
+            {
+                //await UdpSendActuatorMessageAsync("actuator 45");
+                await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
+                // await Task.Delay(4000); // Non-blocking wait
+
+
+                CancellationTokenSource tokenSource = new CancellationTokenSource();
+
+                await PrisePhotoSequenceAsync(tokenSource.Token, 2);
+            });
+        }
+
+
+
+        private void QueryProject()
+        {
+            if (projectPath == null)
+            {
+                SaveProject();  // Demande à setter le projet
+            }
+            if (projectPath == null)
+            {
+                return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
+            }
+        }
+
+        private void nouveauToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CreateNewProject();
+        }
+
+        private void ouvrirToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SelectExistingProject();
+        }
+
+        private void txtBox_nomImages_Leave(object sender, EventArgs e)
+        {
+            if (txtBox_nomImages.Text != null)
+            {
+                imageNameBase = txtBox_nomImages.Text;
+                WritePrefs("imageName", imageNameBase);
+            }
+        }
+
+        private void txtBox_nomImages_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (txtBox_nomImages.Text != null && e.KeyCode == Keys.Enter)
+            {
+                imageNameBase = txtBox_nomImages.Text;
+                WritePrefs("imageName", imageNameBase);
+            }
+        }
+
+        private void chkBox_liveView_CheckedChanged(object sender, EventArgs e)
+        {
+            device.LiveViewEnabled = chkBox_liveView.Checked ? true : false;
+        }
+
+        private void btn_cancelPhotoShoot_Click(object sender, EventArgs e)
+        {            
+            if (tokenSource != null)
+            {
+                tokenSource.Cancel();
+            }
+        }
     }
 }
