@@ -73,6 +73,7 @@
             picBox_pictureTaken = new PictureBox();
             btn_takePicture = new Button();
             panel4 = new Panel();
+            lbl_focusRangeMin = new Label();
             btn_focusPlus10 = new Button();
             btn_focusPlus5 = new Button();
             btn_focusMinus5 = new Button();
@@ -123,19 +124,11 @@
             btn_actuator5deg = new Button();
             tabPage7 = new TabPage();
             tabControl2 = new TabControl();
-            tabPage8 = new TabPage();
-            btn_communicationUDP = new Button();
-            picBox_esp32Com = new PictureBox();
-            label14 = new Label();
-            label15 = new Label();
-            label16 = new Label();
-            picBox_waveshareCom = new PictureBox();
-            label18 = new Label();
-            label19 = new Label();
-            lbl_lastTimePing = new Label();
-            btn_esp32Reset = new Button();
-            label20 = new Label();
             tabPage9 = new TabPage();
+            comboBox_AFMode = new ComboBox();
+            label34 = new Label();
+            lbl_AFMode = new Label();
+            label33 = new Label();
             comboBox_FocusAeraMode = new ComboBox();
             label32 = new Label();
             comboBox_AfcPriority = new ComboBox();
@@ -166,6 +159,18 @@
             label29 = new Label();
             txtBox_vitesseTableTournante = new TextBox();
             label30 = new Label();
+            tabPage8 = new TabPage();
+            btn_communicationUDP = new Button();
+            picBox_esp32Com = new PictureBox();
+            label14 = new Label();
+            label15 = new Label();
+            label16 = new Label();
+            picBox_waveshareCom = new PictureBox();
+            label18 = new Label();
+            label19 = new Label();
+            lbl_lastTimePing = new Label();
+            btn_esp32Reset = new Button();
+            label20 = new Label();
             textBox_lowB_z = new TextBox();
             textBox_upperB_z = new TextBox();
             picBox_LiveView_Main = new PictureBox();
@@ -181,7 +186,6 @@
             fichierToolStripMenuItem = new ToolStripMenuItem();
             ouvrirToolStripMenuItem = new ToolStripMenuItem();
             nouveauToolStripMenuItem = new ToolStripMenuItem();
-            lbl_focusRangeMin = new Label();
             panel6.SuspendLayout();
             panel_Console.SuspendLayout();
             panel2.SuspendLayout();
@@ -211,12 +215,12 @@
             ((System.ComponentModel.ISupportInitialize)trkBar_Actuator).BeginInit();
             tabPage7.SuspendLayout();
             tabControl2.SuspendLayout();
-            tabPage8.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)picBox_esp32Com).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)picBox_waveshareCom).BeginInit();
             tabPage9.SuspendLayout();
             tabPage10.SuspendLayout();
             tabPage11.SuspendLayout();
+            tabPage8.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)picBox_esp32Com).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBox_waveshareCom).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_LiveView_Main).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_imageFond).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_imageMasquage).BeginInit();
@@ -782,6 +786,15 @@
             panel4.Size = new Size(849, 99);
             panel4.TabIndex = 21;
             // 
+            // lbl_focusRangeMin
+            // 
+            lbl_focusRangeMin.AutoSize = true;
+            lbl_focusRangeMin.ForeColor = Color.White;
+            lbl_focusRangeMin.Location = new Point(-5, 7);
+            lbl_focusRangeMin.Name = "lbl_focusRangeMin";
+            lbl_focusRangeMin.Size = new Size(0, 32);
+            lbl_focusRangeMin.TabIndex = 15;
+            // 
             // btn_focusPlus10
             // 
             btn_focusPlus10.BackColor = Color.FromArgb(30, 30, 30);
@@ -1335,161 +1348,23 @@
             // 
             // tabControl2
             // 
-            tabControl2.Controls.Add(tabPage8);
             tabControl2.Controls.Add(tabPage9);
             tabControl2.Controls.Add(tabPage10);
             tabControl2.Controls.Add(tabPage11);
-            tabControl2.Location = new Point(0, 3);
+            tabControl2.Controls.Add(tabPage8);
+            tabControl2.Location = new Point(0, 1);
             tabControl2.Name = "tabControl2";
             tabControl2.SelectedIndex = 0;
             tabControl2.Size = new Size(887, 980);
             tabControl2.TabIndex = 49;
             // 
-            // tabPage8
-            // 
-            tabPage8.BackColor = Color.FromArgb(30, 30, 30);
-            tabPage8.Controls.Add(btn_communicationUDP);
-            tabPage8.Controls.Add(picBox_esp32Com);
-            tabPage8.Controls.Add(label14);
-            tabPage8.Controls.Add(label15);
-            tabPage8.Controls.Add(label16);
-            tabPage8.Controls.Add(picBox_waveshareCom);
-            tabPage8.Controls.Add(label18);
-            tabPage8.Controls.Add(label19);
-            tabPage8.Controls.Add(lbl_lastTimePing);
-            tabPage8.Controls.Add(btn_esp32Reset);
-            tabPage8.Controls.Add(label20);
-            tabPage8.Location = new Point(8, 46);
-            tabPage8.Name = "tabPage8";
-            tabPage8.Padding = new Padding(3);
-            tabPage8.Size = new Size(871, 926);
-            tabPage8.TabIndex = 0;
-            tabPage8.Text = "ESP32";
-            // 
-            // btn_communicationUDP
-            // 
-            btn_communicationUDP.BackColor = Color.FromArgb(30, 30, 30);
-            btn_communicationUDP.BackgroundImage = (Image)resources.GetObject("btn_communicationUDP.BackgroundImage");
-            btn_communicationUDP.BackgroundImageLayout = ImageLayout.Stretch;
-            btn_communicationUDP.FlatAppearance.BorderSize = 0;
-            btn_communicationUDP.FlatStyle = FlatStyle.Flat;
-            btn_communicationUDP.ForeColor = Color.White;
-            btn_communicationUDP.Location = new Point(17, 33);
-            btn_communicationUDP.Name = "btn_communicationUDP";
-            btn_communicationUDP.Size = new Size(36, 36);
-            btn_communicationUDP.TabIndex = 1;
-            btn_communicationUDP.UseVisualStyleBackColor = false;
-            btn_communicationUDP.Click += btn_communicationUDP_Click;
-            // 
-            // picBox_esp32Com
-            // 
-            picBox_esp32Com.BackgroundImageLayout = ImageLayout.None;
-            picBox_esp32Com.Image = (Image)resources.GetObject("picBox_esp32Com.Image");
-            picBox_esp32Com.Location = new Point(331, 89);
-            picBox_esp32Com.Name = "picBox_esp32Com";
-            picBox_esp32Com.Size = new Size(46, 46);
-            picBox_esp32Com.SizeMode = PictureBoxSizeMode.CenterImage;
-            picBox_esp32Com.TabIndex = 6;
-            picBox_esp32Com.TabStop = false;
-            // 
-            // label14
-            // 
-            label14.AutoSize = true;
-            label14.ForeColor = Color.White;
-            label14.Location = new Point(11, 99);
-            label14.Name = "label14";
-            label14.Size = new Size(234, 32);
-            label14.TabIndex = 10;
-            label14.Text = "Boîtier blanc - esp32";
-            // 
-            // label15
-            // 
-            label15.AutoSize = true;
-            label15.ForeColor = Color.White;
-            label15.Location = new Point(11, 151);
-            label15.Name = "label15";
-            label15.Size = new Size(184, 32);
-            label15.TabIndex = 11;
-            label15.Text = "Table Tournante";
-            // 
-            // label16
-            // 
-            label16.AutoSize = true;
-            label16.ForeColor = Color.White;
-            label16.Location = new Point(272, 38);
-            label16.Name = "label16";
-            label16.Size = new Size(184, 32);
-            label16.TabIndex = 12;
-            label16.Text = "Communication";
-            // 
-            // picBox_waveshareCom
-            // 
-            picBox_waveshareCom.BackgroundImageLayout = ImageLayout.None;
-            picBox_waveshareCom.Image = (Image)resources.GetObject("picBox_waveshareCom.Image");
-            picBox_waveshareCom.Location = new Point(331, 141);
-            picBox_waveshareCom.Name = "picBox_waveshareCom";
-            picBox_waveshareCom.Size = new Size(46, 46);
-            picBox_waveshareCom.SizeMode = PictureBoxSizeMode.CenterImage;
-            picBox_waveshareCom.TabIndex = 14;
-            picBox_waveshareCom.TabStop = false;
-            // 
-            // label18
-            // 
-            label18.AutoSize = true;
-            label18.ForeColor = Color.White;
-            label18.Location = new Point(11, 205);
-            label18.Name = "label18";
-            label18.Size = new Size(98, 32);
-            label18.TabIndex = 15;
-            label18.Text = "Routeur";
-            // 
-            // label19
-            // 
-            label19.AutoSize = true;
-            label19.ForeColor = Color.White;
-            label19.Location = new Point(656, 38);
-            label19.Name = "label19";
-            label19.Size = new Size(161, 32);
-            label19.TabIndex = 17;
-            label19.Text = "Dernier check";
-            // 
-            // lbl_lastTimePing
-            // 
-            lbl_lastTimePing.AutoSize = true;
-            lbl_lastTimePing.ForeColor = Color.White;
-            lbl_lastTimePing.Location = new Point(613, 99);
-            lbl_lastTimePing.Name = "lbl_lastTimePing";
-            lbl_lastTimePing.Size = new Size(0, 32);
-            lbl_lastTimePing.TabIndex = 18;
-            // 
-            // btn_esp32Reset
-            // 
-            btn_esp32Reset.BackColor = Color.FromArgb(40, 40, 40);
-            btn_esp32Reset.FlatAppearance.BorderSize = 0;
-            btn_esp32Reset.FlatStyle = FlatStyle.Flat;
-            btn_esp32Reset.ForeColor = Color.White;
-            btn_esp32Reset.Location = new Point(14, 302);
-            btn_esp32Reset.Name = "btn_esp32Reset";
-            btn_esp32Reset.Size = new Size(150, 46);
-            btn_esp32Reset.TabIndex = 19;
-            btn_esp32Reset.Text = "Réinitialiser";
-            btn_esp32Reset.UseVisualStyleBackColor = false;
-            btn_esp32Reset.Click += btn_esp32Reset_Click;
-            // 
-            // label20
-            // 
-            label20.AutoSize = true;
-            label20.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
-            label20.ForeColor = Color.White;
-            label20.Location = new Point(17, 258);
-            label20.Name = "label20";
-            label20.Size = new Size(76, 32);
-            label20.TabIndex = 20;
-            label20.Text = "Esp32";
-            // 
             // tabPage9
             // 
             tabPage9.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage9.Controls.Add(comboBox_AFMode);
+            tabPage9.Controls.Add(label34);
+            tabPage9.Controls.Add(lbl_AFMode);
+            tabPage9.Controls.Add(label33);
             tabPage9.Controls.Add(comboBox_FocusAeraMode);
             tabPage9.Controls.Add(label32);
             tabPage9.Controls.Add(comboBox_AfcPriority);
@@ -1507,10 +1382,50 @@
             tabPage9.TabIndex = 1;
             tabPage9.Text = "Caméra";
             // 
+            // comboBox_AFMode
+            // 
+            comboBox_AFMode.Enabled = false;
+            comboBox_AFMode.FormattingEnabled = true;
+            comboBox_AFMode.Location = new Point(312, 289);
+            comboBox_AFMode.Name = "comboBox_AFMode";
+            comboBox_AFMode.Size = new Size(305, 40);
+            comboBox_AFMode.TabIndex = 79;
+            comboBox_AFMode.SelectedIndexChanged += comboBox_AFMode_SelectedIndexChanged;
+            // 
+            // label34
+            // 
+            label34.AutoSize = true;
+            label34.Enabled = false;
+            label34.ForeColor = SystemColors.ScrollBar;
+            label34.Location = new Point(17, 289);
+            label34.Name = "label34";
+            label34.Size = new Size(111, 32);
+            label34.TabIndex = 78;
+            label34.Text = "AF Mode";
+            // 
+            // lbl_AFMode
+            // 
+            lbl_AFMode.AutoSize = true;
+            lbl_AFMode.ForeColor = Color.White;
+            lbl_AFMode.Location = new Point(312, 231);
+            lbl_AFMode.Name = "lbl_AFMode";
+            lbl_AFMode.Size = new Size(0, 32);
+            lbl_AFMode.TabIndex = 77;
+            // 
+            // label33
+            // 
+            label33.AutoSize = true;
+            label33.ForeColor = SystemColors.ScrollBar;
+            label33.Location = new Point(17, 228);
+            label33.Name = "label33";
+            label33.Size = new Size(243, 32);
+            label33.TabIndex = 76;
+            label33.Text = "Focus Mode (Lentille)";
+            // 
             // comboBox_FocusAeraMode
             // 
             comboBox_FocusAeraMode.FormattingEnabled = true;
-            comboBox_FocusAeraMode.Location = new Point(312, 285);
+            comboBox_FocusAeraMode.Location = new Point(312, 411);
             comboBox_FocusAeraMode.Name = "comboBox_FocusAeraMode";
             comboBox_FocusAeraMode.Size = new Size(305, 40);
             comboBox_FocusAeraMode.TabIndex = 75;
@@ -1520,7 +1435,7 @@
             // 
             label32.AutoSize = true;
             label32.ForeColor = SystemColors.ScrollBar;
-            label32.Location = new Point(17, 281);
+            label32.Location = new Point(17, 407);
             label32.Name = "label32";
             label32.Size = new Size(186, 32);
             label32.TabIndex = 74;
@@ -1529,7 +1444,7 @@
             // comboBox_AfcPriority
             // 
             comboBox_AfcPriority.FormattingEnabled = true;
-            comboBox_AfcPriority.Location = new Point(312, 227);
+            comboBox_AfcPriority.Location = new Point(312, 353);
             comboBox_AfcPriority.Name = "comboBox_AfcPriority";
             comboBox_AfcPriority.Size = new Size(305, 40);
             comboBox_AfcPriority.TabIndex = 73;
@@ -1539,7 +1454,7 @@
             // 
             label21.AutoSize = true;
             label21.ForeColor = SystemColors.ScrollBar;
-            label21.Location = new Point(17, 227);
+            label21.Location = new Point(17, 353);
             label21.Name = "label21";
             label21.Size = new Size(127, 32);
             label21.TabIndex = 72;
@@ -1834,6 +1749,148 @@
             label30.TabIndex = 36;
             label30.Text = "Vitesse (500 à 3000)";
             // 
+            // tabPage8
+            // 
+            tabPage8.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage8.Controls.Add(btn_communicationUDP);
+            tabPage8.Controls.Add(picBox_esp32Com);
+            tabPage8.Controls.Add(label14);
+            tabPage8.Controls.Add(label15);
+            tabPage8.Controls.Add(label16);
+            tabPage8.Controls.Add(picBox_waveshareCom);
+            tabPage8.Controls.Add(label18);
+            tabPage8.Controls.Add(label19);
+            tabPage8.Controls.Add(lbl_lastTimePing);
+            tabPage8.Controls.Add(btn_esp32Reset);
+            tabPage8.Controls.Add(label20);
+            tabPage8.Location = new Point(8, 46);
+            tabPage8.Name = "tabPage8";
+            tabPage8.Padding = new Padding(3);
+            tabPage8.Size = new Size(871, 926);
+            tabPage8.TabIndex = 0;
+            tabPage8.Text = "ESP32";
+            // 
+            // btn_communicationUDP
+            // 
+            btn_communicationUDP.BackColor = Color.FromArgb(30, 30, 30);
+            btn_communicationUDP.BackgroundImage = (Image)resources.GetObject("btn_communicationUDP.BackgroundImage");
+            btn_communicationUDP.BackgroundImageLayout = ImageLayout.Stretch;
+            btn_communicationUDP.FlatAppearance.BorderSize = 0;
+            btn_communicationUDP.FlatStyle = FlatStyle.Flat;
+            btn_communicationUDP.ForeColor = Color.White;
+            btn_communicationUDP.Location = new Point(17, 33);
+            btn_communicationUDP.Name = "btn_communicationUDP";
+            btn_communicationUDP.Size = new Size(36, 36);
+            btn_communicationUDP.TabIndex = 1;
+            btn_communicationUDP.UseVisualStyleBackColor = false;
+            btn_communicationUDP.Click += btn_communicationUDP_Click;
+            // 
+            // picBox_esp32Com
+            // 
+            picBox_esp32Com.BackgroundImageLayout = ImageLayout.None;
+            picBox_esp32Com.Image = (Image)resources.GetObject("picBox_esp32Com.Image");
+            picBox_esp32Com.Location = new Point(331, 89);
+            picBox_esp32Com.Name = "picBox_esp32Com";
+            picBox_esp32Com.Size = new Size(46, 46);
+            picBox_esp32Com.SizeMode = PictureBoxSizeMode.CenterImage;
+            picBox_esp32Com.TabIndex = 6;
+            picBox_esp32Com.TabStop = false;
+            // 
+            // label14
+            // 
+            label14.AutoSize = true;
+            label14.ForeColor = Color.White;
+            label14.Location = new Point(11, 99);
+            label14.Name = "label14";
+            label14.Size = new Size(234, 32);
+            label14.TabIndex = 10;
+            label14.Text = "Boîtier blanc - esp32";
+            // 
+            // label15
+            // 
+            label15.AutoSize = true;
+            label15.ForeColor = Color.White;
+            label15.Location = new Point(11, 151);
+            label15.Name = "label15";
+            label15.Size = new Size(184, 32);
+            label15.TabIndex = 11;
+            label15.Text = "Table Tournante";
+            // 
+            // label16
+            // 
+            label16.AutoSize = true;
+            label16.ForeColor = Color.White;
+            label16.Location = new Point(272, 38);
+            label16.Name = "label16";
+            label16.Size = new Size(184, 32);
+            label16.TabIndex = 12;
+            label16.Text = "Communication";
+            // 
+            // picBox_waveshareCom
+            // 
+            picBox_waveshareCom.BackgroundImageLayout = ImageLayout.None;
+            picBox_waveshareCom.Image = (Image)resources.GetObject("picBox_waveshareCom.Image");
+            picBox_waveshareCom.Location = new Point(331, 141);
+            picBox_waveshareCom.Name = "picBox_waveshareCom";
+            picBox_waveshareCom.Size = new Size(46, 46);
+            picBox_waveshareCom.SizeMode = PictureBoxSizeMode.CenterImage;
+            picBox_waveshareCom.TabIndex = 14;
+            picBox_waveshareCom.TabStop = false;
+            // 
+            // label18
+            // 
+            label18.AutoSize = true;
+            label18.ForeColor = Color.White;
+            label18.Location = new Point(11, 205);
+            label18.Name = "label18";
+            label18.Size = new Size(98, 32);
+            label18.TabIndex = 15;
+            label18.Text = "Routeur";
+            // 
+            // label19
+            // 
+            label19.AutoSize = true;
+            label19.ForeColor = Color.White;
+            label19.Location = new Point(656, 38);
+            label19.Name = "label19";
+            label19.Size = new Size(161, 32);
+            label19.TabIndex = 17;
+            label19.Text = "Dernier check";
+            // 
+            // lbl_lastTimePing
+            // 
+            lbl_lastTimePing.AutoSize = true;
+            lbl_lastTimePing.ForeColor = Color.White;
+            lbl_lastTimePing.Location = new Point(613, 99);
+            lbl_lastTimePing.Name = "lbl_lastTimePing";
+            lbl_lastTimePing.Size = new Size(0, 32);
+            lbl_lastTimePing.TabIndex = 18;
+            // 
+            // btn_esp32Reset
+            // 
+            btn_esp32Reset.BackColor = Color.FromArgb(40, 40, 40);
+            btn_esp32Reset.FlatAppearance.BorderSize = 0;
+            btn_esp32Reset.FlatStyle = FlatStyle.Flat;
+            btn_esp32Reset.ForeColor = Color.White;
+            btn_esp32Reset.Location = new Point(14, 302);
+            btn_esp32Reset.Name = "btn_esp32Reset";
+            btn_esp32Reset.Size = new Size(150, 46);
+            btn_esp32Reset.TabIndex = 19;
+            btn_esp32Reset.Text = "Réinitialiser";
+            btn_esp32Reset.UseVisualStyleBackColor = false;
+            btn_esp32Reset.Click += btn_esp32Reset_Click;
+            // 
+            // label20
+            // 
+            label20.AutoSize = true;
+            label20.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
+            label20.ForeColor = Color.White;
+            label20.Location = new Point(17, 258);
+            label20.Name = "label20";
+            label20.Size = new Size(76, 32);
+            label20.TabIndex = 20;
+            label20.Text = "Esp32";
+            // 
             // textBox_lowB_z
             // 
             textBox_lowB_z.BackColor = Color.FromArgb(30, 30, 30);
@@ -1976,15 +2033,6 @@
             nouveauToolStripMenuItem.Text = "Nouveau";
             nouveauToolStripMenuItem.Click += nouveauToolStripMenuItem_Click;
             // 
-            // lbl_focusRangeMin
-            // 
-            lbl_focusRangeMin.AutoSize = true;
-            lbl_focusRangeMin.ForeColor = Color.White;
-            lbl_focusRangeMin.Location = new Point(-5, 7);
-            lbl_focusRangeMin.Name = "lbl_focusRangeMin";
-            lbl_focusRangeMin.Size = new Size(0, 32);
-            lbl_focusRangeMin.TabIndex = 15;
-            // 
             // Aerolithe
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -2036,16 +2084,16 @@
             ((System.ComponentModel.ISupportInitialize)trkBar_Actuator).EndInit();
             tabPage7.ResumeLayout(false);
             tabControl2.ResumeLayout(false);
-            tabPage8.ResumeLayout(false);
-            tabPage8.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)picBox_esp32Com).EndInit();
-            ((System.ComponentModel.ISupportInitialize)picBox_waveshareCom).EndInit();
             tabPage9.ResumeLayout(false);
             tabPage9.PerformLayout();
             tabPage10.ResumeLayout(false);
             tabPage10.PerformLayout();
             tabPage11.ResumeLayout(false);
             tabPage11.PerformLayout();
+            tabPage8.ResumeLayout(false);
+            tabPage8.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)picBox_esp32Com).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBox_waveshareCom).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_LiveView_Main).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_imageFond).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_imageMasquage).EndInit();
@@ -2213,5 +2261,9 @@
         private Label label23;
         private Label label22;
         private Label lbl_focusRangeMin;
+        private Label label33;
+        private Label lbl_AFMode;
+        private ComboBox comboBox_AFMode;
+        private Label label34;
     }
 }

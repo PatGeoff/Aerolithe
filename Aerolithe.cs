@@ -104,7 +104,7 @@ namespace Aerolithe
         }
         private void btnAutofocus_Click(object sender, EventArgs e)
         {
-            AutoCloseMessageBox.ShowAutoClose("Placer la météorite au centre de la table tournante et appuyer sur OK ci-bas", 650, 180, 3000);
+            //AutoCloseMessageBox.ShowAutoClose("Placer la météorite au centre de la table tournante et appuyer sur OK ci-bas", 650, 180, 3000);
             NikonAutofocus();
         }
 
@@ -722,7 +722,7 @@ namespace Aerolithe
 
         }
 
-      
+
 
         #endregion
 
@@ -863,12 +863,41 @@ namespace Aerolithe
 
         private void comboBox_AfcPriority_SelectedIndexChanged(object sender, EventArgs e)
         {
-
+            NikonEnum focusModes = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_AFcPriority);
+            focusModes.Index = comboBox_AfcPriority.SelectedIndex;
+            device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_AFcPriority, focusModes);
         }
 
         private void comboBox_FocusAeraMode_SelectedIndexChanged(object sender, EventArgs e)
         {
+            //try
+            //{
+            //    NikonEnum focusAreaModes = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_FocusAreaMode);
+            //    focusAreaModes.Index = comboBox_FocusAeraMode.SelectedIndex;
+            //    device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_FocusAreaMode, focusAreaModes);
+            //}
+            //catch (Exception)
+            //{
+            //    MessageBox.Show("Fonction impossible");
+            //    throw;
+            //}
+            
+        }
 
+        private void comboBox_AFMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            uint fm = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_FocusMode);
+            if (fm != 0)
+            {
+                uint afm = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode);
+                
+                fm = (uint)comboBox_AFMode.SelectedIndex;
+                device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode, fm);
+            }
+            else
+            {
+                MessageBox.Show("La lentille et la caméra ne doivent pas être en mode manuel (MF)");
+            }
         }
     }
 }

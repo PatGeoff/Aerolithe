@@ -14,6 +14,7 @@ using System.IO;
 using Emgu.CV.Reg;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Numerics;
 
 namespace Aerolithe
 {
@@ -105,7 +106,7 @@ namespace Aerolithe
             //SetCrosshair();
             //GetFocusRange();
             //textBox_Error.Text = "À venir";
-            //GetFocusMode();
+            
             //GetAperture();
             
             //GetImageType();
@@ -113,7 +114,13 @@ namespace Aerolithe
             GetExposureModes();
             GetImageSize();
             GetLiveViewSize();
+            GetAfcPriority();
             GetShutterSpeed();
+            GetFocusMode();
+            //GetAFMode();
+            GetFocusAreaMode();
+          
+
             //GetIso();
             //GetWB();
             //SetFrameDim();
@@ -232,9 +239,59 @@ namespace Aerolithe
             comboBox_ExpoMode.SelectedIndex = modeSize.Index;
         }
 
+        private void GetAfcPriority()
+        {
+            NikonEnum focusModes = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_AFcPriority);
+            for (int i = 0; i < focusModes.Length; i++)
+            {
+                comboBox_AfcPriority.Items.Add(focusModes[i].ToString());
+            }
+            comboBox_AfcPriority.SelectedIndex = focusModes.Index;
+        }
 
+        private void GetFocusAreaMode()
+        {
+            NikonEnum focusAreaModes = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_FocusAreaMode);
+            for (int i = 0; i < focusAreaModes.Length; i++)
+            {
+                comboBox_FocusAeraMode.Items.Add(focusAreaModes[i].ToString());
+            }
+            comboBox_FocusAeraMode.SelectedIndex = focusAreaModes.Index;
+        }
 
+        private void GetFocusMode() {
+            
+            var focusMode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_FocusMode);
 
+            switch (focusMode)
+            {
+                case 0:
+                    lbl_AFMode.Text = "MF";
+                    break;
+                case 1:
+                    lbl_AFMode.Text = "AF-S";
+                    break;
+                case 2:
+                    lbl_AFMode.Text = "AF-C";
+                    break;
+                case 3:
+                    lbl_AFMode.Text = "AF-F";
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        private void GetAFMode()
+        {
+            var focusMode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode);
+            comboBox_AFMode.Items.Add("AF-S");
+            comboBox_AFMode.Items.Add("AF-C");
+            comboBox_AFMode.Items.Add("MF fixed");
+            comboBox_AFMode.Items.Add("MF selected");
+            comboBox_AFMode.SelectedIndex = (int)focusMode;
+        }
 
         #endregion
 
