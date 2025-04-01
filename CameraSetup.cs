@@ -98,6 +98,8 @@ namespace Aerolithe
             // Get the drivestep range
             driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);
             AppendTextToConsoleNL($"Drive Step Range: Min={driveStep.Min}, Max={driveStep.Max}");
+            trkBar_focus.Minimum = (int)driveStep.Min;
+            lbl_focusRangeMin.Text = driveStep.Min.ToString();
             trkBar_focus.Maximum = (int)driveStep.Max;
             lbl_focusRangeMax.Text = driveStep.Max.ToString();
             //SetCrosshair();
@@ -229,6 +231,10 @@ namespace Aerolithe
             comboBox_ExpoMode.Items.Add("Manual (M)");
             comboBox_ExpoMode.SelectedIndex = modeSize.Index;
         }
+
+
+
+
 
         #endregion
 

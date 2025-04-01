@@ -178,5 +178,32 @@ namespace Aerolithe
             panel.Width = totalWidth;
         }
 
+
+        private void ManualFocus(double newFocusValue){
+
+            driveStep.Value = newFocusValue;
+            if (driveStep.Value > 0 && driveStep.Value < trkBar_focus.Maximum)
+            {
+                device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
+                // Drive focus based on the direction
+                if (newFocusValue > oldFocusValue)
+                {
+                    // Drive focus towards infinity
+                    device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
+                    AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_ClosestToInfinity... oldFocusValue = {oldFocusValue.ToString()}");
+                }
+                else
+                {
+                    // Drive focus towards close
+
+                    device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
+                    AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
+                }
+
+                // Update old focus value
+                oldFocusValue = newFocusValue;
+            }
+            
+        }
     }
 }

@@ -185,26 +185,10 @@ namespace Aerolithe
 
         private void trkBar_focus_MouseUp(object sender, MouseEventArgs e)
         {
+
             // Get the new focus value from the trackbar
             double newFocusValue = (double)trkBar_focus.Value;
-            driveStep.Value = newFocusValue;
-            // Drive focus based on the direction
-            if (newFocusValue > oldFocusValue)
-            {
-                // Drive focus towards infinity
-                device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
-                AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_ClosestToInfinity... oldFocusValue = {oldFocusValue.ToString()}");
-            }
-            else
-            {
-                // Drive focus towards close
-
-                device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
-                AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
-            }
-
-            // Update old focus value
-            oldFocusValue = newFocusValue;
+            ManualFocus(newFocusValue);
 
         }
 
@@ -738,18 +722,7 @@ namespace Aerolithe
 
         }
 
-        private void btn_ExposureGet_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                var exposureTime = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed);
-            }
-            catch (Exception)
-            {
-
-                throw;
-            }
-        }
+      
 
         #endregion
 
@@ -771,7 +744,7 @@ namespace Aerolithe
 
 
                 CancellationTokenSource tokenSource = new CancellationTokenSource();
-                
+
                 await PrisePhotoSequenceAsync(tokenSource.Token, 0);
 
             });
@@ -861,11 +834,41 @@ namespace Aerolithe
         }
 
         private void btn_cancelPhotoShoot_Click(object sender, EventArgs e)
-        {            
+        {
             if (tokenSource != null)
             {
                 tokenSource.Cancel();
             }
+        }
+
+        private void btn_focusMinus10_Click(object sender, EventArgs e)
+        {
+            ManualFocus(oldFocusValue - 5);
+        }
+
+        private void btn_focusMinus5_Click(object sender, EventArgs e)
+        {
+            ManualFocus(oldFocusValue - 1);
+        }
+
+        private void btn_focusPlus5_Click(object sender, EventArgs e)
+        {
+            ManualFocus(oldFocusValue + 1);
+        }
+
+        private void btn_focusPlus10_Click(object sender, EventArgs e)
+        {
+            ManualFocus(oldFocusValue + 5);
+        }
+
+        private void comboBox_AfcPriority_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void comboBox_FocusAeraMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }
