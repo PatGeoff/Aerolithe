@@ -114,7 +114,11 @@ namespace Aerolithe
             DialogResult result = AutoCloseMessageBox.ShowPressClose("Enlever la météorite, allumer la lumière de la table tournante et appuyer sur le bouton OK ci-bas", 650, 180);
             if (result == DialogResult.OK)
             {
-                Task.Run(async () => await getBackgroundImage());
+                Task.Run(async () =>
+                {
+                    await getBackgroundImage();
+                });
+
                 pictureBox_validationE3.Image = Properties.Resources.crochet;
                 ApplyButtonStyle(buttonLabelPairs[2], false);
                 ApplyButtonStyle(buttonLabelPairs[3], true);
@@ -183,14 +187,7 @@ namespace Aerolithe
             await takePictureAsync();
         }
 
-        private void trkBar_focus_MouseUp(object sender, MouseEventArgs e)
-        {
 
-            // Get the new focus value from the trackbar
-            double newFocusValue = (double)trkBar_focus.Value;
-            ManualFocus(newFocusValue);
-
-        }
 
         #endregion
 
@@ -735,15 +732,17 @@ namespace Aerolithe
         private void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
         {
             MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
-            Task.Run(async () => await nikonDoFocus());
+
             Task.Run(async () =>
             {
+                await nikonDoFocus();
+
+                AppendTextToConsoleNL("on a fini le focus à ce qui paraît");
                 //await UdpSendActuatorMessageAsync("actuator 5");
-                await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
                 // await Task.Delay(4000); // Non-blocking wait
 
 
-                CancellationTokenSource tokenSource = new CancellationTokenSource();
+                tokenSource = new CancellationTokenSource();
 
                 await PrisePhotoSequenceAsync(tokenSource.Token, 0);
 
@@ -754,15 +753,16 @@ namespace Aerolithe
         private void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
         {
             MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
-            Task.Run(async () => await nikonDoFocus());
+
+
             Task.Run(async () =>
             {
+                await nikonDoFocus();
                 //await UdpSendActuatorMessageAsync("actuator 25");
-                await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
                 //await Task.Delay(4000); // Non-blocking wait
 
 
-                CancellationTokenSource tokenSource = new CancellationTokenSource();
+                tokenSource = new CancellationTokenSource();
 
                 await PrisePhotoSequenceAsync(tokenSource.Token, 1);
             });
@@ -776,11 +776,10 @@ namespace Aerolithe
             Task.Run(async () =>
             {
                 //await UdpSendActuatorMessageAsync("actuator 45");
-                await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
                 // await Task.Delay(4000); // Non-blocking wait
 
 
-                CancellationTokenSource tokenSource = new CancellationTokenSource();
+                tokenSource = new CancellationTokenSource();
 
                 await PrisePhotoSequenceAsync(tokenSource.Token, 2);
             });
@@ -841,25 +840,35 @@ namespace Aerolithe
             }
         }
 
-        private void btn_focusMinus10_Click(object sender, EventArgs e)
+
+        private void btn_focusMinus_Click(object sender, EventArgs e)
         {
-            ManualFocus(oldFocusValue - 5);
+            try
+            {
+                ManualFocus(1,(double)hScrollBar_driveStep.Value);
+            }
+            catch (Exception)
+            {
+
+                
+            }
+            
         }
 
-        private void btn_focusMinus5_Click(object sender, EventArgs e)
+        private void btn_focusPlus_Click(object sender, EventArgs e)
         {
-            ManualFocus(oldFocusValue - 1);
+            try
+            {
+                ManualFocus(0,(double)hScrollBar_driveStep.Value);
+            }
+            catch (Exception)
+            {
+
+
+            }
         }
 
-        private void btn_focusPlus5_Click(object sender, EventArgs e)
-        {
-            ManualFocus(oldFocusValue + 1);
-        }
 
-        private void btn_focusPlus10_Click(object sender, EventArgs e)
-        {
-            ManualFocus(oldFocusValue + 5);
-        }
 
         private void comboBox_AfcPriority_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -881,7 +890,7 @@ namespace Aerolithe
             //    MessageBox.Show("Fonction impossible");
             //    throw;
             //}
-            
+
         }
 
         private void comboBox_AFMode_SelectedIndexChanged(object sender, EventArgs e)
@@ -890,13 +899,31 @@ namespace Aerolithe
             if (fm != 0)
             {
                 uint afm = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode);
-                
+
                 fm = (uint)comboBox_AFMode.SelectedIndex;
                 device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode, fm);
             }
             else
             {
                 MessageBox.Show("La lentille et la caméra ne doivent pas être en mode manuel (MF)");
+            }
+        }
+
+        private void hScrollBar_driveStep_ValueChanged(object sender, EventArgs e)
+        {
+            txtBox_DriveStep.Text = hScrollBar_driveStep.Value.ToString();
+
+        }
+
+        private void txtBox_DriveStep_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                hScrollBar_driveStep.Value = int.Parse(txtBox_DriveStep.Text);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Valeur Invalide");                
             }
         }
     }

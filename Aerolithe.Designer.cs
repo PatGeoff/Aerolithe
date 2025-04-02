@@ -36,6 +36,8 @@
             txtBox_Console = new RichTextBox();
             button1 = new Button();
             panel2 = new Panel();
+            lbl_bluriness = new Label();
+            label35 = new Label();
             chkBox_liveView = new CheckBox();
             btn_getMask = new Button();
             tabControl1 = new TabControl();
@@ -65,24 +67,27 @@
             lbl_E1 = new Label();
             lbl_E2 = new Label();
             tabPage3 = new TabPage();
+            button3 = new Button();
+            lbl_drivestepValue = new Label();
             comboBox_shutterTime = new ComboBox();
             label17 = new Label();
             btn_Autofocus_StepperTab = new Button();
             chkBox_savePicture = new CheckBox();
             chkBox_applyMask = new CheckBox();
-            picBox_pictureTaken = new PictureBox();
             btn_takePicture = new Button();
             panel4 = new Panel();
-            lbl_focusRangeMin = new Label();
-            btn_focusPlus10 = new Button();
+            hScrollBar_driveStep = new HScrollBar();
+            txtBox_DriveStep = new TextBox();
+            label38 = new Label();
+            label37 = new Label();
+            label36 = new Label();
+            lbl_driveStepMin = new Label();
             btn_focusPlus5 = new Button();
             btn_focusMinus5 = new Button();
-            btn_focusMinus10 = new Button();
-            lbl_focusRangeMax = new Label();
-            label8 = new Label();
+            lbl_driveStepMax = new Label();
             label5 = new Label();
             label6 = new Label();
-            trkBar_focus = new TrackBar();
+            picBox_pictureTaken = new PictureBox();
             tabPage4 = new TabPage();
             button2 = new Button();
             label3 = new Label();
@@ -124,21 +129,6 @@
             btn_actuator5deg = new Button();
             tabPage7 = new TabPage();
             tabControl2 = new TabControl();
-            tabPage9 = new TabPage();
-            comboBox_AFMode = new ComboBox();
-            label34 = new Label();
-            lbl_AFMode = new Label();
-            label33 = new Label();
-            comboBox_FocusAeraMode = new ComboBox();
-            label32 = new Label();
-            comboBox_AfcPriority = new ComboBox();
-            label21 = new Label();
-            comboBox_ExpoMode = new ComboBox();
-            label24 = new Label();
-            comboBox_TailleLiveView = new ComboBox();
-            comboBox_TaillePhotos = new ComboBox();
-            label23 = new Label();
-            label22 = new Label();
             tabPage10 = new TabPage();
             label25 = new Label();
             btn_cancelPhotoShoot = new Button();
@@ -155,6 +145,21 @@
             txtBox_nbrImg45deg = new TextBox();
             btn_prisePhotoSeq2 = new Button();
             btn_prisePhotoSeq1 = new Button();
+            tabPage9 = new TabPage();
+            comboBox_AFMode = new ComboBox();
+            label34 = new Label();
+            lbl_AFMode = new Label();
+            label33 = new Label();
+            comboBox_FocusAeraMode = new ComboBox();
+            label32 = new Label();
+            comboBox_AfcPriority = new ComboBox();
+            label21 = new Label();
+            comboBox_ExpoMode = new ComboBox();
+            label24 = new Label();
+            comboBox_TailleLiveView = new ComboBox();
+            comboBox_TaillePhotos = new ComboBox();
+            label23 = new Label();
+            label22 = new Label();
             tabPage11 = new TabPage();
             label29 = new Label();
             txtBox_vitesseTableTournante = new TextBox();
@@ -198,9 +203,8 @@
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE2).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE1).BeginInit();
             tabPage3.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)picBox_pictureTaken).BeginInit();
             panel4.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)trkBar_focus).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBox_pictureTaken).BeginInit();
             tabPage4.SuspendLayout();
             Pnl_StepperTrkbar.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)stepperMotor_trkbar).BeginInit();
@@ -215,8 +219,8 @@
             ((System.ComponentModel.ISupportInitialize)trkBar_Actuator).BeginInit();
             tabPage7.SuspendLayout();
             tabControl2.SuspendLayout();
-            tabPage9.SuspendLayout();
             tabPage10.SuspendLayout();
+            tabPage9.SuspendLayout();
             tabPage11.SuspendLayout();
             tabPage8.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_esp32Com).BeginInit();
@@ -298,6 +302,8 @@
             // 
             // panel2
             // 
+            panel2.Controls.Add(lbl_bluriness);
+            panel2.Controls.Add(label35);
             panel2.Controls.Add(chkBox_liveView);
             panel2.Controls.Add(btn_getMask);
             panel2.Controls.Add(tabControl1);
@@ -315,6 +321,25 @@
             panel2.Name = "panel2";
             panel2.Size = new Size(2680, 1033);
             panel2.TabIndex = 28;
+            // 
+            // lbl_bluriness
+            // 
+            lbl_bluriness.AutoSize = true;
+            lbl_bluriness.ForeColor = Color.White;
+            lbl_bluriness.Location = new Point(1086, 914);
+            lbl_bluriness.Name = "lbl_bluriness";
+            lbl_bluriness.Size = new Size(0, 32);
+            lbl_bluriness.TabIndex = 41;
+            // 
+            // label35
+            // 
+            label35.AutoSize = true;
+            label35.ForeColor = Color.White;
+            label35.Location = new Point(964, 914);
+            label35.Name = "label35";
+            label35.Size = new Size(122, 32);
+            label35.TabIndex = 40;
+            label35.Text = "Blurriness:";
             // 
             // chkBox_liveView
             // 
@@ -674,20 +699,43 @@
             // tabPage3
             // 
             tabPage3.BackColor = Color.FromArgb(40, 40, 40);
+            tabPage3.Controls.Add(button3);
+            tabPage3.Controls.Add(lbl_drivestepValue);
             tabPage3.Controls.Add(comboBox_shutterTime);
             tabPage3.Controls.Add(label17);
             tabPage3.Controls.Add(btn_Autofocus_StepperTab);
             tabPage3.Controls.Add(chkBox_savePicture);
             tabPage3.Controls.Add(chkBox_applyMask);
-            tabPage3.Controls.Add(picBox_pictureTaken);
             tabPage3.Controls.Add(btn_takePicture);
             tabPage3.Controls.Add(panel4);
+            tabPage3.Controls.Add(picBox_pictureTaken);
             tabPage3.Location = new Point(4, 44);
             tabPage3.Name = "tabPage3";
             tabPage3.Padding = new Padding(3);
             tabPage3.Size = new Size(890, 982);
             tabPage3.TabIndex = 2;
             tabPage3.Text = "Caméra";
+            // 
+            // button3
+            // 
+            button3.BackColor = Color.FromArgb(30, 30, 30);
+            button3.FlatStyle = FlatStyle.Flat;
+            button3.ForeColor = Color.White;
+            button3.Location = new Point(649, 77);
+            button3.Name = "button3";
+            button3.Size = new Size(209, 46);
+            button3.TabIndex = 69;
+            button3.Text = "Focus de routine";
+            button3.UseVisualStyleBackColor = false;
+            // 
+            // lbl_drivestepValue
+            // 
+            lbl_drivestepValue.AutoSize = true;
+            lbl_drivestepValue.ForeColor = Color.White;
+            lbl_drivestepValue.Location = new Point(399, 908);
+            lbl_drivestepValue.Name = "lbl_drivestepValue";
+            lbl_drivestepValue.Size = new Size(0, 32);
+            lbl_drivestepValue.TabIndex = 68;
             // 
             // comboBox_shutterTime
             // 
@@ -713,9 +761,9 @@
             btn_Autofocus_StepperTab.BackColor = Color.FromArgb(30, 30, 30);
             btn_Autofocus_StepperTab.FlatStyle = FlatStyle.Flat;
             btn_Autofocus_StepperTab.ForeColor = Color.White;
-            btn_Autofocus_StepperTab.Location = new Point(671, 25);
+            btn_Autofocus_StepperTab.Location = new Point(649, 23);
             btn_Autofocus_StepperTab.Name = "btn_Autofocus_StepperTab";
-            btn_Autofocus_StepperTab.Size = new Size(160, 46);
+            btn_Autofocus_StepperTab.Size = new Size(209, 46);
             btn_Autofocus_StepperTab.TabIndex = 18;
             btn_Autofocus_StepperTab.Text = "Autofocus";
             btn_Autofocus_StepperTab.UseVisualStyleBackColor = false;
@@ -727,7 +775,7 @@
             chkBox_savePicture.Checked = true;
             chkBox_savePicture.CheckState = CheckState.Checked;
             chkBox_savePicture.ForeColor = Color.White;
-            chkBox_savePicture.Location = new Point(579, 104);
+            chkBox_savePicture.Location = new Point(573, 148);
             chkBox_savePicture.Name = "chkBox_savePicture";
             chkBox_savePicture.Size = new Size(179, 36);
             chkBox_savePicture.TabIndex = 25;
@@ -740,20 +788,12 @@
             chkBox_applyMask.Checked = true;
             chkBox_applyMask.CheckState = CheckState.Checked;
             chkBox_applyMask.ForeColor = Color.White;
-            chkBox_applyMask.Location = new Point(306, 104);
+            chkBox_applyMask.Location = new Point(300, 148);
             chkBox_applyMask.Name = "chkBox_applyMask";
             chkBox_applyMask.Size = new Size(267, 36);
             chkBox_applyMask.TabIndex = 24;
             chkBox_applyMask.Text = "Appliquer le masque";
             chkBox_applyMask.UseVisualStyleBackColor = true;
-            // 
-            // picBox_pictureTaken
-            // 
-            picBox_pictureTaken.Location = new Point(18, 326);
-            picBox_pictureTaken.Name = "picBox_pictureTaken";
-            picBox_pictureTaken.Size = new Size(849, 545);
-            picBox_pictureTaken.TabIndex = 23;
-            picBox_pictureTaken.TabStop = false;
             // 
             // btn_takePicture
             // 
@@ -761,7 +801,7 @@
             btn_takePicture.FlatAppearance.BorderSize = 0;
             btn_takePicture.FlatStyle = FlatStyle.Flat;
             btn_takePicture.ForeColor = Color.White;
-            btn_takePicture.Location = new Point(26, 87);
+            btn_takePicture.Location = new Point(20, 131);
             btn_takePicture.Name = "btn_takePicture";
             btn_takePicture.Size = new Size(269, 74);
             btn_takePicture.TabIndex = 22;
@@ -771,43 +811,79 @@
             // 
             // panel4
             // 
-            panel4.Controls.Add(lbl_focusRangeMin);
-            panel4.Controls.Add(btn_focusPlus10);
+            panel4.Controls.Add(hScrollBar_driveStep);
+            panel4.Controls.Add(txtBox_DriveStep);
+            panel4.Controls.Add(label38);
+            panel4.Controls.Add(label37);
+            panel4.Controls.Add(label36);
+            panel4.Controls.Add(lbl_driveStepMin);
             panel4.Controls.Add(btn_focusPlus5);
             panel4.Controls.Add(btn_focusMinus5);
-            panel4.Controls.Add(btn_focusMinus10);
-            panel4.Controls.Add(lbl_focusRangeMax);
-            panel4.Controls.Add(label8);
+            panel4.Controls.Add(lbl_driveStepMax);
             panel4.Controls.Add(label5);
             panel4.Controls.Add(label6);
-            panel4.Controls.Add(trkBar_focus);
-            panel4.Location = new Point(35, 877);
+            panel4.Location = new Point(20, 771);
             panel4.Name = "panel4";
-            panel4.Size = new Size(849, 99);
+            panel4.Size = new Size(849, 192);
             panel4.TabIndex = 21;
             // 
-            // lbl_focusRangeMin
+            // hScrollBar_driveStep
             // 
-            lbl_focusRangeMin.AutoSize = true;
-            lbl_focusRangeMin.ForeColor = Color.White;
-            lbl_focusRangeMin.Location = new Point(-5, 7);
-            lbl_focusRangeMin.Name = "lbl_focusRangeMin";
-            lbl_focusRangeMin.Size = new Size(0, 32);
-            lbl_focusRangeMin.TabIndex = 15;
+            hScrollBar_driveStep.Location = new Point(214, 128);
+            hScrollBar_driveStep.Name = "hScrollBar_driveStep";
+            hScrollBar_driveStep.Size = new Size(618, 30);
+            hScrollBar_driveStep.TabIndex = 70;
+            hScrollBar_driveStep.ValueChanged += hScrollBar_driveStep_ValueChanged;
             // 
-            // btn_focusPlus10
+            // txtBox_DriveStep
             // 
-            btn_focusPlus10.BackColor = Color.FromArgb(30, 30, 30);
-            btn_focusPlus10.FlatAppearance.BorderSize = 0;
-            btn_focusPlus10.FlatStyle = FlatStyle.Flat;
-            btn_focusPlus10.ForeColor = Color.White;
-            btn_focusPlus10.Location = new Point(582, 18);
-            btn_focusPlus10.Name = "btn_focusPlus10";
-            btn_focusPlus10.Size = new Size(135, 46);
-            btn_focusPlus10.TabIndex = 14;
-            btn_focusPlus10.Text = ">> 5";
-            btn_focusPlus10.UseVisualStyleBackColor = false;
-            btn_focusPlus10.Click += btn_focusPlus10_Click;
+            txtBox_DriveStep.BackColor = Color.FromArgb(30, 30, 30);
+            txtBox_DriveStep.BorderStyle = BorderStyle.None;
+            txtBox_DriveStep.ForeColor = Color.White;
+            txtBox_DriveStep.Location = new Point(130, 126);
+            txtBox_DriveStep.Name = "txtBox_DriveStep";
+            txtBox_DriveStep.Size = new Size(81, 32);
+            txtBox_DriveStep.TabIndex = 20;
+            txtBox_DriveStep.Text = "1";
+            txtBox_DriveStep.TextChanged += txtBox_DriveStep_TextChanged;
+            // 
+            // label38
+            // 
+            label38.AutoSize = true;
+            label38.ForeColor = Color.Gray;
+            label38.Location = new Point(130, 80);
+            label38.Name = "label38";
+            label38.Size = new Size(60, 32);
+            label38.TabIndex = 19;
+            label38.Text = "min:";
+            // 
+            // label37
+            // 
+            label37.AutoSize = true;
+            label37.ForeColor = Color.Gray;
+            label37.Location = new Point(12, 80);
+            label37.Name = "label37";
+            label37.Size = new Size(122, 32);
+            label37.TabIndex = 18;
+            label37.Text = "drivesteps";
+            // 
+            // label36
+            // 
+            label36.AutoSize = true;
+            label36.ForeColor = Color.White;
+            label36.Location = new Point(12, 126);
+            label36.Name = "label36";
+            label36.Size = new Size(112, 32);
+            label36.TabIndex = 16;
+            label36.Text = "drivestep";
+            // 
+            // lbl_driveStepMin
+            // 
+            lbl_driveStepMin.ForeColor = Color.Gray;
+            lbl_driveStepMin.Location = new Point(196, 80);
+            lbl_driveStepMin.Name = "lbl_driveStepMin";
+            lbl_driveStepMin.Size = new Size(40, 32);
+            lbl_driveStepMin.TabIndex = 15;
             // 
             // btn_focusPlus5
             // 
@@ -815,13 +891,13 @@
             btn_focusPlus5.FlatAppearance.BorderSize = 0;
             btn_focusPlus5.FlatStyle = FlatStyle.Flat;
             btn_focusPlus5.ForeColor = Color.White;
-            btn_focusPlus5.Location = new Point(441, 18);
+            btn_focusPlus5.Location = new Point(479, 18);
             btn_focusPlus5.Name = "btn_focusPlus5";
-            btn_focusPlus5.Size = new Size(135, 46);
+            btn_focusPlus5.Size = new Size(353, 46);
             btn_focusPlus5.TabIndex = 13;
-            btn_focusPlus5.Text = ">> 1";
+            btn_focusPlus5.Text = ">>";
             btn_focusPlus5.UseVisualStyleBackColor = false;
-            btn_focusPlus5.Click += btn_focusPlus5_Click;
+            btn_focusPlus5.Click += btn_focusPlus_Click;
             // 
             // btn_focusMinus5
             // 
@@ -829,73 +905,49 @@
             btn_focusMinus5.FlatAppearance.BorderSize = 0;
             btn_focusMinus5.FlatStyle = FlatStyle.Flat;
             btn_focusMinus5.ForeColor = Color.White;
-            btn_focusMinus5.Location = new Point(300, 18);
+            btn_focusMinus5.Location = new Point(130, 18);
             btn_focusMinus5.Name = "btn_focusMinus5";
-            btn_focusMinus5.Size = new Size(135, 46);
+            btn_focusMinus5.Size = new Size(345, 46);
             btn_focusMinus5.TabIndex = 12;
-            btn_focusMinus5.Text = "1 << ";
+            btn_focusMinus5.Text = "<<";
             btn_focusMinus5.UseVisualStyleBackColor = false;
-            btn_focusMinus5.Click += btn_focusMinus5_Click;
+            btn_focusMinus5.Click += btn_focusMinus_Click;
             // 
-            // btn_focusMinus10
+            // lbl_driveStepMax
             // 
-            btn_focusMinus10.BackColor = Color.FromArgb(30, 30, 30);
-            btn_focusMinus10.FlatAppearance.BorderSize = 0;
-            btn_focusMinus10.FlatStyle = FlatStyle.Flat;
-            btn_focusMinus10.ForeColor = Color.White;
-            btn_focusMinus10.Location = new Point(159, 18);
-            btn_focusMinus10.Name = "btn_focusMinus10";
-            btn_focusMinus10.Size = new Size(135, 46);
-            btn_focusMinus10.TabIndex = 11;
-            btn_focusMinus10.Text = "5 <<";
-            btn_focusMinus10.UseVisualStyleBackColor = false;
-            btn_focusMinus10.Click += btn_focusMinus10_Click;
-            // 
-            // lbl_focusRangeMax
-            // 
-            lbl_focusRangeMax.AutoSize = true;
-            lbl_focusRangeMax.ForeColor = Color.White;
-            lbl_focusRangeMax.Location = new Point(742, 8);
-            lbl_focusRangeMax.Name = "lbl_focusRangeMax";
-            lbl_focusRangeMax.Size = new Size(0, 32);
-            lbl_focusRangeMax.TabIndex = 10;
-            // 
-            // label8
-            // 
-            label8.ForeColor = Color.White;
-            label8.Location = new Point(209, 18);
-            label8.Name = "label8";
-            label8.Size = new Size(100, 32);
-            label8.TabIndex = 9;
+            lbl_driveStepMax.FlatStyle = FlatStyle.Flat;
+            lbl_driveStepMax.ForeColor = Color.Gray;
+            lbl_driveStepMax.Location = new Point(338, 80);
+            lbl_driveStepMax.Name = "lbl_driveStepMax";
+            lbl_driveStepMax.Size = new Size(99, 32);
+            lbl_driveStepMax.TabIndex = 10;
             // 
             // label5
             // 
-            label5.ForeColor = Color.White;
-            label5.Location = new Point(209, 8);
+            label5.ForeColor = Color.Gray;
+            label5.Location = new Point(258, 80);
             label5.Name = "label5";
-            label5.Size = new Size(100, 32);
+            label5.Size = new Size(74, 32);
             label5.TabIndex = 7;
+            label5.Text = "max:";
             // 
             // label6
             // 
             label6.AutoSize = true;
             label6.ForeColor = Color.White;
-            label6.Location = new Point(78, 8);
+            label6.Location = new Point(12, 25);
             label6.Name = "label6";
             label6.Size = new Size(75, 32);
             label6.TabIndex = 6;
             label6.Text = "Focus";
             // 
-            // trkBar_focus
+            // picBox_pictureTaken
             // 
-            trkBar_focus.Location = new Point(0, 53);
-            trkBar_focus.Maximum = 30000;
-            trkBar_focus.Name = "trkBar_focus";
-            trkBar_focus.RightToLeft = RightToLeft.No;
-            trkBar_focus.Size = new Size(832, 90);
-            trkBar_focus.TabIndex = 3;
-            trkBar_focus.TickFrequency = 0;
-            trkBar_focus.MouseUp += trkBar_focus_MouseUp;
+            picBox_pictureTaken.Location = new Point(20, 220);
+            picBox_pictureTaken.Name = "picBox_pictureTaken";
+            picBox_pictureTaken.Size = new Size(849, 545);
+            picBox_pictureTaken.TabIndex = 23;
+            picBox_pictureTaken.TabStop = false;
             // 
             // tabPage4
             // 
@@ -1348,8 +1400,8 @@
             // 
             // tabControl2
             // 
-            tabControl2.Controls.Add(tabPage9);
             tabControl2.Controls.Add(tabPage10);
+            tabControl2.Controls.Add(tabPage9);
             tabControl2.Controls.Add(tabPage11);
             tabControl2.Controls.Add(tabPage8);
             tabControl2.Location = new Point(0, 1);
@@ -1357,165 +1409,6 @@
             tabControl2.SelectedIndex = 0;
             tabControl2.Size = new Size(887, 980);
             tabControl2.TabIndex = 49;
-            // 
-            // tabPage9
-            // 
-            tabPage9.BackColor = Color.FromArgb(30, 30, 30);
-            tabPage9.Controls.Add(comboBox_AFMode);
-            tabPage9.Controls.Add(label34);
-            tabPage9.Controls.Add(lbl_AFMode);
-            tabPage9.Controls.Add(label33);
-            tabPage9.Controls.Add(comboBox_FocusAeraMode);
-            tabPage9.Controls.Add(label32);
-            tabPage9.Controls.Add(comboBox_AfcPriority);
-            tabPage9.Controls.Add(label21);
-            tabPage9.Controls.Add(comboBox_ExpoMode);
-            tabPage9.Controls.Add(label24);
-            tabPage9.Controls.Add(comboBox_TailleLiveView);
-            tabPage9.Controls.Add(comboBox_TaillePhotos);
-            tabPage9.Controls.Add(label23);
-            tabPage9.Controls.Add(label22);
-            tabPage9.Location = new Point(8, 46);
-            tabPage9.Name = "tabPage9";
-            tabPage9.Padding = new Padding(3);
-            tabPage9.Size = new Size(871, 926);
-            tabPage9.TabIndex = 1;
-            tabPage9.Text = "Caméra";
-            // 
-            // comboBox_AFMode
-            // 
-            comboBox_AFMode.Enabled = false;
-            comboBox_AFMode.FormattingEnabled = true;
-            comboBox_AFMode.Location = new Point(312, 289);
-            comboBox_AFMode.Name = "comboBox_AFMode";
-            comboBox_AFMode.Size = new Size(305, 40);
-            comboBox_AFMode.TabIndex = 79;
-            comboBox_AFMode.SelectedIndexChanged += comboBox_AFMode_SelectedIndexChanged;
-            // 
-            // label34
-            // 
-            label34.AutoSize = true;
-            label34.Enabled = false;
-            label34.ForeColor = SystemColors.ScrollBar;
-            label34.Location = new Point(17, 289);
-            label34.Name = "label34";
-            label34.Size = new Size(111, 32);
-            label34.TabIndex = 78;
-            label34.Text = "AF Mode";
-            // 
-            // lbl_AFMode
-            // 
-            lbl_AFMode.AutoSize = true;
-            lbl_AFMode.ForeColor = Color.White;
-            lbl_AFMode.Location = new Point(312, 231);
-            lbl_AFMode.Name = "lbl_AFMode";
-            lbl_AFMode.Size = new Size(0, 32);
-            lbl_AFMode.TabIndex = 77;
-            // 
-            // label33
-            // 
-            label33.AutoSize = true;
-            label33.ForeColor = SystemColors.ScrollBar;
-            label33.Location = new Point(17, 228);
-            label33.Name = "label33";
-            label33.Size = new Size(243, 32);
-            label33.TabIndex = 76;
-            label33.Text = "Focus Mode (Lentille)";
-            // 
-            // comboBox_FocusAeraMode
-            // 
-            comboBox_FocusAeraMode.FormattingEnabled = true;
-            comboBox_FocusAeraMode.Location = new Point(312, 411);
-            comboBox_FocusAeraMode.Name = "comboBox_FocusAeraMode";
-            comboBox_FocusAeraMode.Size = new Size(305, 40);
-            comboBox_FocusAeraMode.TabIndex = 75;
-            comboBox_FocusAeraMode.SelectedIndexChanged += comboBox_FocusAeraMode_SelectedIndexChanged;
-            // 
-            // label32
-            // 
-            label32.AutoSize = true;
-            label32.ForeColor = SystemColors.ScrollBar;
-            label32.Location = new Point(17, 407);
-            label32.Name = "label32";
-            label32.Size = new Size(186, 32);
-            label32.TabIndex = 74;
-            label32.Text = "FocusAreaMode";
-            // 
-            // comboBox_AfcPriority
-            // 
-            comboBox_AfcPriority.FormattingEnabled = true;
-            comboBox_AfcPriority.Location = new Point(312, 353);
-            comboBox_AfcPriority.Name = "comboBox_AfcPriority";
-            comboBox_AfcPriority.Size = new Size(305, 40);
-            comboBox_AfcPriority.TabIndex = 73;
-            comboBox_AfcPriority.SelectedIndexChanged += comboBox_AfcPriority_SelectedIndexChanged;
-            // 
-            // label21
-            // 
-            label21.AutoSize = true;
-            label21.ForeColor = SystemColors.ScrollBar;
-            label21.Location = new Point(17, 353);
-            label21.Name = "label21";
-            label21.Size = new Size(127, 32);
-            label21.TabIndex = 72;
-            label21.Text = "AFcPriority";
-            // 
-            // comboBox_ExpoMode
-            // 
-            comboBox_ExpoMode.FormattingEnabled = true;
-            comboBox_ExpoMode.Location = new Point(312, 175);
-            comboBox_ExpoMode.Name = "comboBox_ExpoMode";
-            comboBox_ExpoMode.Size = new Size(305, 40);
-            comboBox_ExpoMode.TabIndex = 71;
-            comboBox_ExpoMode.SelectedIndexChanged += comboBox_ExpoMode_SelectedIndexChanged;
-            // 
-            // label24
-            // 
-            label24.AutoSize = true;
-            label24.ForeColor = SystemColors.ScrollBar;
-            label24.Location = new Point(17, 173);
-            label24.Name = "label24";
-            label24.Size = new Size(214, 32);
-            label24.TabIndex = 70;
-            label24.Text = "Mode d'exposition";
-            // 
-            // comboBox_TailleLiveView
-            // 
-            comboBox_TailleLiveView.FormattingEnabled = true;
-            comboBox_TailleLiveView.Location = new Point(312, 65);
-            comboBox_TailleLiveView.Name = "comboBox_TailleLiveView";
-            comboBox_TailleLiveView.Size = new Size(305, 40);
-            comboBox_TailleLiveView.TabIndex = 69;
-            comboBox_TailleLiveView.SelectedIndexChanged += comboBox_TailleLiveView_SelectedIndexChanged;
-            // 
-            // comboBox_TaillePhotos
-            // 
-            comboBox_TaillePhotos.FormattingEnabled = true;
-            comboBox_TaillePhotos.Location = new Point(312, 120);
-            comboBox_TaillePhotos.Name = "comboBox_TaillePhotos";
-            comboBox_TaillePhotos.Size = new Size(305, 40);
-            comboBox_TaillePhotos.TabIndex = 68;
-            comboBox_TaillePhotos.SelectedIndexChanged += comboBox_TaillePhotos_SelectedIndexChanged;
-            // 
-            // label23
-            // 
-            label23.AutoSize = true;
-            label23.ForeColor = SystemColors.ScrollBar;
-            label23.Location = new Point(17, 119);
-            label23.Name = "label23";
-            label23.Size = new Size(258, 32);
-            label23.TabIndex = 67;
-            label23.Text = "Dimensions de l'image";
-            // 
-            // label22
-            // 
-            label22.AutoSize = true;
-            label22.ForeColor = SystemColors.ScrollBar;
-            label22.Location = new Point(17, 65);
-            label22.Name = "label22";
-            label22.Size = new Size(269, 32);
-            label22.TabIndex = 66;
-            label22.Text = "Dimensions du liveView";
             // 
             // tabPage10
             // 
@@ -1703,6 +1596,165 @@
             btn_prisePhotoSeq1.Text = "Prise de photos";
             btn_prisePhotoSeq1.UseVisualStyleBackColor = true;
             btn_prisePhotoSeq1.Click += btn_prisePhotoSeq1_Click;
+            // 
+            // tabPage9
+            // 
+            tabPage9.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage9.Controls.Add(comboBox_AFMode);
+            tabPage9.Controls.Add(label34);
+            tabPage9.Controls.Add(lbl_AFMode);
+            tabPage9.Controls.Add(label33);
+            tabPage9.Controls.Add(comboBox_FocusAeraMode);
+            tabPage9.Controls.Add(label32);
+            tabPage9.Controls.Add(comboBox_AfcPriority);
+            tabPage9.Controls.Add(label21);
+            tabPage9.Controls.Add(comboBox_ExpoMode);
+            tabPage9.Controls.Add(label24);
+            tabPage9.Controls.Add(comboBox_TailleLiveView);
+            tabPage9.Controls.Add(comboBox_TaillePhotos);
+            tabPage9.Controls.Add(label23);
+            tabPage9.Controls.Add(label22);
+            tabPage9.Location = new Point(8, 46);
+            tabPage9.Name = "tabPage9";
+            tabPage9.Padding = new Padding(3);
+            tabPage9.Size = new Size(871, 926);
+            tabPage9.TabIndex = 1;
+            tabPage9.Text = "Caméra";
+            // 
+            // comboBox_AFMode
+            // 
+            comboBox_AFMode.Enabled = false;
+            comboBox_AFMode.FormattingEnabled = true;
+            comboBox_AFMode.Location = new Point(312, 289);
+            comboBox_AFMode.Name = "comboBox_AFMode";
+            comboBox_AFMode.Size = new Size(305, 40);
+            comboBox_AFMode.TabIndex = 79;
+            comboBox_AFMode.SelectedIndexChanged += comboBox_AFMode_SelectedIndexChanged;
+            // 
+            // label34
+            // 
+            label34.AutoSize = true;
+            label34.Enabled = false;
+            label34.ForeColor = SystemColors.ScrollBar;
+            label34.Location = new Point(17, 289);
+            label34.Name = "label34";
+            label34.Size = new Size(111, 32);
+            label34.TabIndex = 78;
+            label34.Text = "AF Mode";
+            // 
+            // lbl_AFMode
+            // 
+            lbl_AFMode.AutoSize = true;
+            lbl_AFMode.ForeColor = Color.White;
+            lbl_AFMode.Location = new Point(312, 231);
+            lbl_AFMode.Name = "lbl_AFMode";
+            lbl_AFMode.Size = new Size(0, 32);
+            lbl_AFMode.TabIndex = 77;
+            // 
+            // label33
+            // 
+            label33.AutoSize = true;
+            label33.ForeColor = SystemColors.ScrollBar;
+            label33.Location = new Point(17, 228);
+            label33.Name = "label33";
+            label33.Size = new Size(243, 32);
+            label33.TabIndex = 76;
+            label33.Text = "Focus Mode (Lentille)";
+            // 
+            // comboBox_FocusAeraMode
+            // 
+            comboBox_FocusAeraMode.FormattingEnabled = true;
+            comboBox_FocusAeraMode.Location = new Point(312, 411);
+            comboBox_FocusAeraMode.Name = "comboBox_FocusAeraMode";
+            comboBox_FocusAeraMode.Size = new Size(305, 40);
+            comboBox_FocusAeraMode.TabIndex = 75;
+            comboBox_FocusAeraMode.SelectedIndexChanged += comboBox_FocusAeraMode_SelectedIndexChanged;
+            // 
+            // label32
+            // 
+            label32.AutoSize = true;
+            label32.ForeColor = SystemColors.ScrollBar;
+            label32.Location = new Point(17, 407);
+            label32.Name = "label32";
+            label32.Size = new Size(186, 32);
+            label32.TabIndex = 74;
+            label32.Text = "FocusAreaMode";
+            // 
+            // comboBox_AfcPriority
+            // 
+            comboBox_AfcPriority.FormattingEnabled = true;
+            comboBox_AfcPriority.Location = new Point(312, 353);
+            comboBox_AfcPriority.Name = "comboBox_AfcPriority";
+            comboBox_AfcPriority.Size = new Size(305, 40);
+            comboBox_AfcPriority.TabIndex = 73;
+            comboBox_AfcPriority.SelectedIndexChanged += comboBox_AfcPriority_SelectedIndexChanged;
+            // 
+            // label21
+            // 
+            label21.AutoSize = true;
+            label21.ForeColor = SystemColors.ScrollBar;
+            label21.Location = new Point(17, 353);
+            label21.Name = "label21";
+            label21.Size = new Size(127, 32);
+            label21.TabIndex = 72;
+            label21.Text = "AFcPriority";
+            // 
+            // comboBox_ExpoMode
+            // 
+            comboBox_ExpoMode.FormattingEnabled = true;
+            comboBox_ExpoMode.Location = new Point(312, 175);
+            comboBox_ExpoMode.Name = "comboBox_ExpoMode";
+            comboBox_ExpoMode.Size = new Size(305, 40);
+            comboBox_ExpoMode.TabIndex = 71;
+            comboBox_ExpoMode.SelectedIndexChanged += comboBox_ExpoMode_SelectedIndexChanged;
+            // 
+            // label24
+            // 
+            label24.AutoSize = true;
+            label24.ForeColor = SystemColors.ScrollBar;
+            label24.Location = new Point(17, 173);
+            label24.Name = "label24";
+            label24.Size = new Size(214, 32);
+            label24.TabIndex = 70;
+            label24.Text = "Mode d'exposition";
+            // 
+            // comboBox_TailleLiveView
+            // 
+            comboBox_TailleLiveView.FormattingEnabled = true;
+            comboBox_TailleLiveView.Location = new Point(312, 65);
+            comboBox_TailleLiveView.Name = "comboBox_TailleLiveView";
+            comboBox_TailleLiveView.Size = new Size(305, 40);
+            comboBox_TailleLiveView.TabIndex = 69;
+            comboBox_TailleLiveView.SelectedIndexChanged += comboBox_TailleLiveView_SelectedIndexChanged;
+            // 
+            // comboBox_TaillePhotos
+            // 
+            comboBox_TaillePhotos.FormattingEnabled = true;
+            comboBox_TaillePhotos.Location = new Point(312, 120);
+            comboBox_TaillePhotos.Name = "comboBox_TaillePhotos";
+            comboBox_TaillePhotos.Size = new Size(305, 40);
+            comboBox_TaillePhotos.TabIndex = 68;
+            comboBox_TaillePhotos.SelectedIndexChanged += comboBox_TaillePhotos_SelectedIndexChanged;
+            // 
+            // label23
+            // 
+            label23.AutoSize = true;
+            label23.ForeColor = SystemColors.ScrollBar;
+            label23.Location = new Point(17, 119);
+            label23.Name = "label23";
+            label23.Size = new Size(258, 32);
+            label23.TabIndex = 67;
+            label23.Text = "Dimensions de l'image";
+            // 
+            // label22
+            // 
+            label22.AutoSize = true;
+            label22.ForeColor = SystemColors.ScrollBar;
+            label22.Location = new Point(17, 65);
+            label22.Name = "label22";
+            label22.Size = new Size(269, 32);
+            label22.TabIndex = 66;
+            label22.Text = "Dimensions du liveView";
             // 
             // tabPage11
             // 
@@ -2061,10 +2113,9 @@
             ((System.ComponentModel.ISupportInitialize)pictureBox_validationE1).EndInit();
             tabPage3.ResumeLayout(false);
             tabPage3.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)picBox_pictureTaken).EndInit();
             panel4.ResumeLayout(false);
             panel4.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)trkBar_focus).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBox_pictureTaken).EndInit();
             tabPage4.ResumeLayout(false);
             tabPage4.PerformLayout();
             Pnl_StepperTrkbar.ResumeLayout(false);
@@ -2084,10 +2135,10 @@
             ((System.ComponentModel.ISupportInitialize)trkBar_Actuator).EndInit();
             tabPage7.ResumeLayout(false);
             tabControl2.ResumeLayout(false);
-            tabPage9.ResumeLayout(false);
-            tabPage9.PerformLayout();
             tabPage10.ResumeLayout(false);
             tabPage10.PerformLayout();
+            tabPage9.ResumeLayout(false);
+            tabPage9.PerformLayout();
             tabPage11.ResumeLayout(false);
             tabPage11.PerformLayout();
             tabPage8.ResumeLayout(false);
@@ -2133,10 +2184,8 @@
         private PictureBox picBox_pictureTaken;
         private Button btn_takePicture;
         private Panel panel4;
-        private Label label8;
         private Label label5;
         private Label label6;
-        private TrackBar trkBar_focus;
         private Button btn_Autofocus_StepperTab;
         private TabPage tabPage4;
         private Label label3;
@@ -2218,7 +2267,7 @@
         private Button btn_Actuator_Down;
         private Button btn_Actuator_Up;
         private Button btn_actoatorCalibration;
-        private Label lbl_focusRangeMax;
+        private Label lbl_driveStepMax;
         private Button btn_prisePhotoSeq3;
         private Button btn_prisePhotoSeq2;
         private Button btn_prisePhotoSeq1;
@@ -2241,10 +2290,8 @@
         private ToolStripMenuItem nouveauToolStripMenuItem;
         private CheckBox chkBox_liveView;
         private Button btn_cancelPhotoShoot;
-        private Button btn_focusPlus10;
         private Button btn_focusPlus5;
         private Button btn_focusMinus5;
-        private Button btn_focusMinus10;
         private TabControl tabControl2;
         private TabPage tabPage8;
         private TabPage tabPage9;
@@ -2260,10 +2307,19 @@
         private ComboBox comboBox_TaillePhotos;
         private Label label23;
         private Label label22;
-        private Label lbl_focusRangeMin;
+        private Label lbl_driveStepMin;
         private Label label33;
         private Label lbl_AFMode;
         private ComboBox comboBox_AFMode;
         private Label label34;
+        private Label label35;
+        private Label lbl_bluriness;
+        private Label lbl_drivestepValue;
+        private Button button3;
+        private Label label36;
+        private Label label38;
+        private Label label37;
+        private TextBox txtBox_DriveStep;
+        private HScrollBar hScrollBar_driveStep;
     }
 }

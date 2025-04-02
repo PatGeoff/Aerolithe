@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
+using Emgu.CV.Util;
 
 // RÉFÉRENCES: https://stackoverflow.com/questions/62866191/emgucv-crop-detected-shape-automatically
 // Autre ref: https://stackoverflow.com/questions/35460986/morphological-operations-on-image
@@ -113,8 +114,65 @@ namespace Aerolithe
 
             return resultat.ToImage<Bgr, Byte>().ToBitmap();
         }
-    
 
+        private async Task CalculateBlurriness(MemoryStream memoryStream)
+        {
+            //AppendTextToConsoleNL("ici");
+            // Convert MemoryStream to byte array
+            byte[] byteArray = memoryStream.ToArray();
+            //AppendTextToConsoleNL("Byte array length: " + byteArray.Length);
+
+            // Convert byte array to Mat using VectorOfByte
+            using (VectorOfByte buf2 = new VectorOfByte(byteArray))
+            {
+                Mat frame = new Mat();
+                CvInvoke.Imdecode(buf2, ImreadModes.Color, frame);
+                //AppendTextToConsoleNL("Frame decoded: " + !frame.IsEmpty);
+
+                if (!frame.IsEmpty)
+                {
+                    // Convert frame to grayscale
+                    Mat gray = new Mat();
+                    CvInvoke.CvtColor(frame, gray, ColorConversion.Bgr2Gray);
+                    //AppendTextToConsoleNL("Converted to grayscale");
+
+                    // Apply Laplacian filter
+                    Mat laplacian = new Mat();
+                    CvInvoke.Laplacian(gray, laplacian, DepthType.Cv64F);
+                    //AppendTextToConsoleNL("Laplacian applied");
+
+                    // Calculate mean and standard deviation
+                    Mat mean = new Mat();
+                    Mat stddev = new Mat();
+                    CvInvoke.MeanStdDev(laplacian, mean, stddev);
+                    //AppendTextToConsoleNL("Mean and standard deviation calculated");
+
+                    // Retrieve the standard deviation value
+                    double[] stddevValues = new double[stddev.Rows * stddev.Cols];
+                    stddev.CopyTo(stddevValues);
+                    if (stddevValues.Length > 0)
+                    {
+                        double variance = Math.Pow(stddevValues[0], 2);
+                        //AppendTextToConsoleNL($"Variance: {variance}");
+
+                        // Update the label on the UI thread
+                        lbl_bluriness.Invoke((MethodInvoker)(() =>
+                        {
+                            lbl_bluriness.Text = variance.ToString();
+                            //AppendTextToConsoleNL("Label updated");
+                        }));
+                    }
+                    else
+                    {
+                        AppendTextToConsoleNL("Failed to retrieve standard deviation values");
+                    }
+                }
+                else
+                {
+                    AppendTextToConsoleNL("Frame is empty");
+                }
+            }
+        }
 
         public void calculerFlou()
         {
@@ -176,9 +234,9 @@ namespace Aerolithe
             try
             {
                 double blurAmount = calculateBlur_Laplacian(imageMat);
-                //label_flou_L_M.Text = (Math.Truncate(blurAmount * 1000) / 1000).ToString();
+                //lbl_blur_Laplacian.Text = (Math.Truncate(blurAmount * 1000) / 1000).ToString();
                 double blurAmount_S = CalculateBlur_Sobel(imageMat);
-                //label_flou_S_M.Text = (Math.Truncate(blurAmount_S * 1000) / 1000).ToString();
+                //lbl_blur_Sobel.Text = (Math.Truncate(blurAmount_S * 1000) / 1000).ToString();
             }
             catch (Exception ex)
             {
@@ -234,7 +292,7 @@ namespace Aerolithe
                 //Mat result = foreground.AbsDiff(background);
                 pictureBox_imageSoustraction.Image = result.ToImage<Bgr, Byte>().ToBitmap();
                 
-                calculerFlou(result);
+                //calculerFlou(result);
                 createMask(result, foreground);
 
             }

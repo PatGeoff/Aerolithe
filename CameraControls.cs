@@ -9,25 +9,38 @@ using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV;
 using System.Drawing.Imaging;
+using Emgu.CV.Util;
 
 namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
+        private FlowLayoutPanel currentSequenceFlowLayoutPanel;
+        private int currentSequence = 1;
         private TaskCompletionSource<bool> imageReadyTcs;
+        
+        
         public async Task takePictureAsync()
         {
+            //AppendTextToConsoleNL("prise de photo");
             imageReadyTcs = new TaskCompletionSource<bool>();
-            await Task.Run(() => device.Capture());
+            try
+            {
+                await Task.Run(() => device.Capture());
+            }
+            catch (Exception e)
+            {
+                AppendTextToConsoleNL(e.Message);
+                return;
+            }
+            
+            
             //MessageBox.Show("image capturée");
         }
 
-        private FlowLayoutPanel currentSequenceFlowLayoutPanel;
-        private int currentSequence = 1;
-
         void device_ImageReady(NikonDevice sender, NikonImage image)
         {
-            //MessageBox.Show("ici");
+            AppendTextToConsoleNL("image capturée, sauvegarde de l'image");
             try
             {
                 if (image.Type == NikonImageType.Jpeg)
@@ -98,24 +111,30 @@ namespace Aerolithe
                         // Set border color based on the sequence
                         Color borderColor = GetBorderColor(currentSequence);
 
-                        //// Create a new sequence FlowLayoutPanel if needed
-                        //if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
-                        //{
-                        //    currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
-                        //    SetFlowLayoutPanelWidth(currentSequenceFlowLayoutPanel, nombreImages5Degres, 200);
-                        //    SetFlowLayoutPanelWidth(flowLayoutPanel1, nombreImages5Degres, 200);
-                        //    flowLayoutPanel1.Invoke((MethodInvoker)delegate
-                        //    {
-                        //        flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
-                        //    });
-                        //}
-                                               
+                        // Create a new sequence FlowLayoutPanel if needed
+                        if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
+                        {
+                            int seq1 = int.Parse(txtBox_nbrImg5deg.Text);
+                            int seq2 = int.Parse(txtBox_nbrImg25deg.Text);
+                            int seq3 = int.Parse(txtBox_nbrImg45deg.Text);
 
-                        //// Add the PictureBox to the current sequence FlowLayoutPanel
-                        //currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
-                        //{
-                        //    currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
-                        //});
+                            int maxSeq = Math.Max(seq1, Math.Max(seq2, seq3));
+
+                            currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
+                            SetFlowLayoutPanelWidth(currentSequenceFlowLayoutPanel, maxSeq, 200);
+                            SetFlowLayoutPanelWidth(flowLayoutPanel1, maxSeq, 200);
+                            flowLayoutPanel1.Invoke((MethodInvoker)delegate
+                            {
+                                flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
+                            });
+                        }
+
+
+                        // Add the PictureBox to the current sequence FlowLayoutPanel
+                        currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
+                        {
+                            currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
+                        });
 
                         // Signal that the image is ready
                         imageReadyTcs?.TrySetResult(true);
@@ -179,31 +198,51 @@ namespace Aerolithe
         }
 
 
-        private void ManualFocus(double newFocusValue){
+        private void ManualFocus(int up, double newFocusValue){
 
             driveStep.Value = newFocusValue;
-            if (driveStep.Value > 0 && driveStep.Value < trkBar_focus.Maximum)
+            device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
+            if (up == 1)
             {
-                device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
-                // Drive focus based on the direction
-                if (newFocusValue > oldFocusValue)
-                {
-                    // Drive focus towards infinity
-                    device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
-                    AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_ClosestToInfinity... oldFocusValue = {oldFocusValue.ToString()}");
-                }
-                else
-                {
-                    // Drive focus towards close
-
-                    device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
-                    AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
-                }
-
-                // Update old focus value
-                oldFocusValue = newFocusValue;
+                //Drive focus towards infinity
+                device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
+                AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_ClosestToInfinity... oldFocusValue = {oldFocusValue.ToString()}");
             }
-            
+            else
+            {
+                device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
+                AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
+            }
+
+            //if (driveStep.Value > 0 && driveStep.Value < trkBar_focus.Maximum)
+            //{
+            //    device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
+            //    Drive focus based on the direction
+            //    if (newFocusValue > oldFocusValue)
+            //    {
+            //        Drive focus towards infinity
+            //        device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
+            //        AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_ClosestToInfinity... oldFocusValue = {oldFocusValue.ToString()}");
+            //    }
+            //    else
+            //    {
+            //        Drive focus towards close
+
+            //        device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
+            //        AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
+            //    }
+
+            //    Update old focus value
+            //    oldFocusValue = newFocusValue;
+            //    trkBar_focus.Value = (int)newFocusValue;
+
+            //}
+
+        }
+
+       private void AutomaticManualFocus()
+        {
+
         }
     }
 }

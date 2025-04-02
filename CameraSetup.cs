@@ -98,17 +98,17 @@ namespace Aerolithe
 
             // Get the drivestep range
             driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);
-            AppendTextToConsoleNL($"Drive Step Range: Min={driveStep.Min}, Max={driveStep.Max}");
-            trkBar_focus.Minimum = (int)driveStep.Min;
-            lbl_focusRangeMin.Text = driveStep.Min.ToString();
-            trkBar_focus.Maximum = (int)driveStep.Max;
-            lbl_focusRangeMax.Text = driveStep.Max.ToString();
+            AppendTextToConsoleNL($"Drive Step Range: Min={driveStep.Min}, Max={driveStep.Max}");            
+            lbl_driveStepMin.Text = driveStep.Min.ToString();
+            lbl_driveStepMax.Text = driveStep.Max.ToString();
+            hScrollBar_driveStep.Minimum = (int)driveStep.Min;
+            hScrollBar_driveStep.Maximum = (int)driveStep.Max;
             //SetCrosshair();
             //GetFocusRange();
             //textBox_Error.Text = "À venir";
-            
+
             //GetAperture();
-            
+
             //GetImageType();
             //GetExposureStatus();
             GetExposureModes();
@@ -158,8 +158,14 @@ namespace Aerolithe
                             // Convertit le byte array en Mat
                             CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
                             picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
+                            Task.Run(async () =>
+                            {
+                                await CalculateBlurriness(stream);
+                            });
+
                             backgroundSubstraction(stream);
                             calculerFlou();
+
                         }
                     }
                 }

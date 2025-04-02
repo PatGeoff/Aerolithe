@@ -9,7 +9,6 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         private Tuple<Button, Label>[] buttonLabelPairs;
-        private bool liveViewState = true;
 
         private void ButtonSetup()
         {

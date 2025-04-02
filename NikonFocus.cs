@@ -13,9 +13,18 @@ namespace Aerolithe
 
         public async Task nikonDoFocus()
         {
-            focusReadyTcs = new TaskCompletionSource<bool>();
-            await Task.Run(() => NikonAutofocus());
-            //MessageBox.Show("image capturée");
+            try
+            {
+                focusReadyTcs = new TaskCompletionSource<bool>();
+                await Task.Run(() => NikonAutofocus());
+                //MessageBox.Show("image capturée");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Autofocus failed due to an error: " + ex.Message);
+                
+            }
+           
         }
         public async Task NikonAutofocus()
         {
@@ -28,12 +37,12 @@ namespace Aerolithe
             while (true)
             {
                 try
-                {
-                    
+                {                    
                     device.Start(eNkMAIDCapability.kNkMAIDCapability_AutoFocus);
-                    //pictureBox_validationE2.Image = Properties.Resources.crochet;
-                    //ApplyButtonStyle(buttonLabelPairs[1], false);
-                    //ApplyButtonStyle(buttonLabelPairs[2], true);
+                    AppendTextToConsoleNL("Focus complété");
+                    // Signal that the image is ready
+                    
+                    break;
                 }
                 catch (NikonException ex)
                 {
@@ -46,19 +55,18 @@ namespace Aerolithe
                         //MessageBox.Show("Impossible de faire le focus");
                         AppendTextToConsoleNL("impossible de faire le focus");
                         //pictureBox_validationE2.Image = Properties.Resources.echec;
-                        break;
+                        throw new Exception("Autofocus failed due to an error: " + ex.Message);
                     }
-                }
-
+                }            
                 
             }
+            focusReadyTcs?.TrySetResult(true);
             device.LiveViewEnabled = true;
             await Task.Delay(100);
             liveViewTimer.Start();
-            liveViewState = true;
-            AppendTextToConsoleNL("Focus complété");
-            // Signal that the image is ready
-            focusReadyTcs?.TrySetResult(true);
+            
+
+
         }
        
        

@@ -91,45 +91,65 @@ namespace Aerolithe
                 return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
             }
             
-            turntablePositionReached = false;
-            actuatorPositionReached = false;
 
             await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
             while (turntablePosition > 10)
             {
                 await getTurntablePosFromWaveshare();
+                
             }
-            
+            AppendTextToConsoleNL("position de la table est 0");
 
             int divider = 4096 / serieId[serie];
 
-            for (int i = 1; i <= serieId[serie]; i++)
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                AppendTextToConsoleNL($"photo {i}/{serieId[serie]}");
-                int degres = i * divider;
-                imageIncr = i + paddingNbr[serie];
-
-                // Initialize the TaskCompletionSource for each image capture
-                imageReadyTcs = new TaskCompletionSource<bool>();
-
-                await nikonDoFocus();
-
-                // Take the picture asynchronously
-                await takePictureAsync();
-
-                // Wait for the image to be ready
-                await imageReadyTcs.Task;
-
-
-                // Send the turntable command immediately after the image is ready
-                await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-                while (turntablePosition < degres -10 || turntablePosition > degres + 10 )
+                for (int i = 1; i <= serieId[serie]; i++)
                 {
-                    await getTurntablePosFromWaveshare();
-                }               
+                    cancellationToken.ThrowIfCancellationRequested();
 
+                    AppendTextToConsoleNL($"photo {i}/{serieId[serie]}");
+                    int degres = i * divider;
+                    imageIncr = i + paddingNbr[serie];
+
+                    // Initialize the TaskCompletionSource for each image capture
+                    imageReadyTcs = new TaskCompletionSource<bool>();
+
+                    try
+                    {
+                        await nikonDoFocus();
+                    }
+                    catch (Exception e)
+                    {
+                        AppendTextToConsoleNL(e.Message);
+                        AppendTextToConsoleNL("Série Cancellée ici");
+                        device.LiveViewEnabled = true;
+                        await Task.Delay(100);
+                        liveViewTimer.Start();
+                        return;
+                    }
+
+
+                    // Take the picture asynchronously
+                    AppendTextToConsoleNL("prise de photo");
+                    await takePictureAsync();
+
+
+                    // Wait for the image to be ready
+                    await imageReadyTcs.Task;
+
+                    // Send the turntable command immediately after the image is ready
+                    await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
+                    while (turntablePosition < degres - 10 || turntablePosition > degres + 10)
+                    {
+                        await getTurntablePosFromWaveshare();
+                    }
+                    AppendTextToConsoleNL("position de la table est atteinte");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                AppendTextToConsoleNL("Photo sequence cancelled.");
             }
 
         }
