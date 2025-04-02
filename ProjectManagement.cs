@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using Newtonsoft.Json.Linq;
 using System.Net.Http.Json;
+using Emgu.CV.CvEnum;
 
 namespace Aerolithe
 {
@@ -255,7 +256,14 @@ namespace Aerolithe
             }
         }
 
-
+        private void PopulateColorConversionDropdown()
+        {
+            comboBox_EmguConversion.Items.Clear();
+            foreach (ColorConversion conversion in Enum.GetValues(typeof(ColorConversion)))
+            {
+                comboBox_EmguConversion.Items.Add(conversion);
+            }
+        }
 
     }
 }

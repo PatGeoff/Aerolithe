@@ -67,7 +67,7 @@
             lbl_E1 = new Label();
             lbl_E2 = new Label();
             tabPage3 = new TabPage();
-            button3 = new Button();
+            btn_AutomaticMFocus = new Button();
             lbl_drivestepValue = new Label();
             comboBox_shutterTime = new ComboBox();
             label17 = new Label();
@@ -191,6 +191,10 @@
             fichierToolStripMenuItem = new ToolStripMenuItem();
             ouvrirToolStripMenuItem = new ToolStripMenuItem();
             nouveauToolStripMenuItem = new ToolStripMenuItem();
+            comboBox_EmguConversion = new ComboBox();
+            label8 = new Label();
+            label39 = new Label();
+            comboBox_EmguColor = new ComboBox();
             panel6.SuspendLayout();
             panel_Console.SuspendLayout();
             panel2.SuspendLayout();
@@ -699,7 +703,7 @@
             // tabPage3
             // 
             tabPage3.BackColor = Color.FromArgb(40, 40, 40);
-            tabPage3.Controls.Add(button3);
+            tabPage3.Controls.Add(btn_AutomaticMFocus);
             tabPage3.Controls.Add(lbl_drivestepValue);
             tabPage3.Controls.Add(comboBox_shutterTime);
             tabPage3.Controls.Add(label17);
@@ -716,17 +720,18 @@
             tabPage3.TabIndex = 2;
             tabPage3.Text = "Caméra";
             // 
-            // button3
+            // btn_AutomaticMFocus
             // 
-            button3.BackColor = Color.FromArgb(30, 30, 30);
-            button3.FlatStyle = FlatStyle.Flat;
-            button3.ForeColor = Color.White;
-            button3.Location = new Point(649, 77);
-            button3.Name = "button3";
-            button3.Size = new Size(209, 46);
-            button3.TabIndex = 69;
-            button3.Text = "Focus de routine";
-            button3.UseVisualStyleBackColor = false;
+            btn_AutomaticMFocus.BackColor = Color.FromArgb(30, 30, 30);
+            btn_AutomaticMFocus.FlatStyle = FlatStyle.Flat;
+            btn_AutomaticMFocus.ForeColor = Color.White;
+            btn_AutomaticMFocus.Location = new Point(649, 77);
+            btn_AutomaticMFocus.Name = "btn_AutomaticMFocus";
+            btn_AutomaticMFocus.Size = new Size(209, 46);
+            btn_AutomaticMFocus.TabIndex = 69;
+            btn_AutomaticMFocus.Text = "Focus de routine";
+            btn_AutomaticMFocus.UseVisualStyleBackColor = false;
+            btn_AutomaticMFocus.Click += btn_AutomaticMFocus_Click;
             // 
             // lbl_drivestepValue
             // 
@@ -1600,6 +1605,10 @@
             // tabPage9
             // 
             tabPage9.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage9.Controls.Add(comboBox_EmguColor);
+            tabPage9.Controls.Add(label39);
+            tabPage9.Controls.Add(comboBox_EmguConversion);
+            tabPage9.Controls.Add(label8);
             tabPage9.Controls.Add(comboBox_AFMode);
             tabPage9.Controls.Add(label34);
             tabPage9.Controls.Add(lbl_AFMode);
@@ -1627,7 +1636,7 @@
             comboBox_AFMode.FormattingEnabled = true;
             comboBox_AFMode.Location = new Point(312, 289);
             comboBox_AFMode.Name = "comboBox_AFMode";
-            comboBox_AFMode.Size = new Size(305, 40);
+            comboBox_AFMode.Size = new Size(440, 40);
             comboBox_AFMode.TabIndex = 79;
             comboBox_AFMode.SelectedIndexChanged += comboBox_AFMode_SelectedIndexChanged;
             // 
@@ -1666,7 +1675,7 @@
             comboBox_FocusAeraMode.FormattingEnabled = true;
             comboBox_FocusAeraMode.Location = new Point(312, 411);
             comboBox_FocusAeraMode.Name = "comboBox_FocusAeraMode";
-            comboBox_FocusAeraMode.Size = new Size(305, 40);
+            comboBox_FocusAeraMode.Size = new Size(440, 40);
             comboBox_FocusAeraMode.TabIndex = 75;
             comboBox_FocusAeraMode.SelectedIndexChanged += comboBox_FocusAeraMode_SelectedIndexChanged;
             // 
@@ -1685,7 +1694,7 @@
             comboBox_AfcPriority.FormattingEnabled = true;
             comboBox_AfcPriority.Location = new Point(312, 353);
             comboBox_AfcPriority.Name = "comboBox_AfcPriority";
-            comboBox_AfcPriority.Size = new Size(305, 40);
+            comboBox_AfcPriority.Size = new Size(440, 40);
             comboBox_AfcPriority.TabIndex = 73;
             comboBox_AfcPriority.SelectedIndexChanged += comboBox_AfcPriority_SelectedIndexChanged;
             // 
@@ -1704,7 +1713,7 @@
             comboBox_ExpoMode.FormattingEnabled = true;
             comboBox_ExpoMode.Location = new Point(312, 175);
             comboBox_ExpoMode.Name = "comboBox_ExpoMode";
-            comboBox_ExpoMode.Size = new Size(305, 40);
+            comboBox_ExpoMode.Size = new Size(440, 40);
             comboBox_ExpoMode.TabIndex = 71;
             comboBox_ExpoMode.SelectedIndexChanged += comboBox_ExpoMode_SelectedIndexChanged;
             // 
@@ -1723,7 +1732,7 @@
             comboBox_TailleLiveView.FormattingEnabled = true;
             comboBox_TailleLiveView.Location = new Point(312, 65);
             comboBox_TailleLiveView.Name = "comboBox_TailleLiveView";
-            comboBox_TailleLiveView.Size = new Size(305, 40);
+            comboBox_TailleLiveView.Size = new Size(440, 40);
             comboBox_TailleLiveView.TabIndex = 69;
             comboBox_TailleLiveView.SelectedIndexChanged += comboBox_TailleLiveView_SelectedIndexChanged;
             // 
@@ -1732,7 +1741,7 @@
             comboBox_TaillePhotos.FormattingEnabled = true;
             comboBox_TaillePhotos.Location = new Point(312, 120);
             comboBox_TaillePhotos.Name = "comboBox_TaillePhotos";
-            comboBox_TaillePhotos.Size = new Size(305, 40);
+            comboBox_TaillePhotos.Size = new Size(440, 40);
             comboBox_TaillePhotos.TabIndex = 68;
             comboBox_TaillePhotos.SelectedIndexChanged += comboBox_TaillePhotos_SelectedIndexChanged;
             // 
@@ -2085,6 +2094,42 @@
             nouveauToolStripMenuItem.Text = "Nouveau";
             nouveauToolStripMenuItem.Click += nouveauToolStripMenuItem_Click;
             // 
+            // comboBox_EmguConversion
+            // 
+            comboBox_EmguConversion.FormattingEnabled = true;
+            comboBox_EmguConversion.Location = new Point(447, 466);
+            comboBox_EmguConversion.Name = "comboBox_EmguConversion";
+            comboBox_EmguConversion.Size = new Size(305, 40);
+            comboBox_EmguConversion.TabIndex = 81;
+            // 
+            // label8
+            // 
+            label8.AutoSize = true;
+            label8.ForeColor = SystemColors.ScrollBar;
+            label8.Location = new Point(17, 466);
+            label8.Name = "label8";
+            label8.Size = new Size(424, 32);
+            label8.TabIndex = 80;
+            label8.Text = "Emgu ColorConversion (calcul du flou)";
+            // 
+            // label39
+            // 
+            label39.AutoSize = true;
+            label39.ForeColor = SystemColors.ScrollBar;
+            label39.Location = new Point(17, 526);
+            label39.Name = "label39";
+            label39.Size = new Size(360, 32);
+            label39.TabIndex = 82;
+            label39.Text = "Couleur à utlisier (calcul du flou)";
+            // 
+            // comboBox_EmguColor
+            // 
+            comboBox_EmguColor.FormattingEnabled = true;
+            comboBox_EmguColor.Location = new Point(447, 518);
+            comboBox_EmguColor.Name = "comboBox_EmguColor";
+            comboBox_EmguColor.Size = new Size(305, 40);
+            comboBox_EmguColor.TabIndex = 83;
+            // 
             // Aerolithe
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -2315,11 +2360,15 @@
         private Label label35;
         private Label lbl_bluriness;
         private Label lbl_drivestepValue;
-        private Button button3;
+        private Button btn_AutomaticMFocus;
         private Label label36;
         private Label label38;
         private Label label37;
         private TextBox txtBox_DriveStep;
         private HScrollBar hScrollBar_driveStep;
+        private ComboBox comboBox_EmguColor;
+        private Label label39;
+        private ComboBox comboBox_EmguConversion;
+        private Label label8;
     }
 }

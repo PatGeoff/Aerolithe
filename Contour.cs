@@ -154,7 +154,7 @@ namespace Aerolithe
                     {
                         double variance = Math.Pow(stddevValues[0], 2);
                         //AppendTextToConsoleNL($"Variance: {variance}");
-
+                        blurrynessAmount = variance;
                         // Update the label on the UI thread
                         lbl_bluriness.Invoke((MethodInvoker)(() =>
                         {

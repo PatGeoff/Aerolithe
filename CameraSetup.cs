@@ -30,6 +30,7 @@ namespace Aerolithe
         private NikonLiveViewImage imageView = null;
         private Mat foreground, background, substractionResult, mask = null;
         public double oldFocusValue;
+        public double blurrynessAmount = 0;
 
         public void CamSetup()
         {
@@ -143,9 +144,9 @@ namespace Aerolithe
         {
             try
             {
+                if (!chkBox_liveView.Checked) chkBox_liveView.Checked = true;
                 // Attempt to get the live view image
-                imageView = device.GetLiveViewImage();
-
+                imageView = device.GetLiveViewImage();                
                 if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)
                 {
                     using (Mat background = new Mat())

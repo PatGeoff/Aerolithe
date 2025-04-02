@@ -214,35 +214,60 @@ namespace Aerolithe
                 AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
             }
 
-            //if (driveStep.Value > 0 && driveStep.Value < trkBar_focus.Maximum)
-            //{
-            //    device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
-            //    Drive focus based on the direction
-            //    if (newFocusValue > oldFocusValue)
-            //    {
-            //        Drive focus towards infinity
-            //        device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
-            //        AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_ClosestToInfinity... oldFocusValue = {oldFocusValue.ToString()}");
-            //    }
-            //    else
-            //    {
-            //        Drive focus towards close
-
-            //        device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
-            //        AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
-            //    }
-
-            //    Update old focus value
-            //    oldFocusValue = newFocusValue;
-            //    trkBar_focus.Value = (int)newFocusValue;
-
-            //}
-
         }
 
-       private void AutomaticManualFocus()
+        private async Task AutomaticMFocus()
         {
+            int maxStep = int.Parse(lbl_driveStepMax.Text);
+            int driveStepVal = 5; // Initial drive step value (never zero)
+            int direction = 1; // Initial direction (1 for one way, 0 for the other)
+            int moveCount = 0; // Counter for moves in the current direction
+            double highestBlurryness = double.MinValue; // Track the highest blurryness amount
+            int bestStep = 0; // Track the best step position
+            int initialPosition = 0; // Assume initial position is 0
 
+            if (device.LiveViewEnabled == false)
+            {
+                device.LiveViewEnabled = true;
+                liveViewTimer.Start();
+            }
+
+            while (moveCount < 100)
+            {
+                // Perform manual focus adjustment
+                ManualFocus(direction, driveStepVal);
+
+                // Wait for the live view timer to tick and calculate blurryness
+                await Task.Delay(35); // Adjust delay as needed to match live view timer interval
+                double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
+
+                if (currentBlurryness > highestBlurryness)
+                {
+                    // Update highest blurryness and best step position
+                    highestBlurryness = currentBlurryness;
+                    bestStep = moveCount * driveStepVal * (direction == 1 ? 1 : -1);
+                }
+
+                moveCount++;
+
+                if (moveCount == 100)
+                {
+                    // Return to the initial position
+                    ManualFocus(direction == 1 ? 0 : 1, moveCount * driveStepVal);
+                    moveCount = 0;
+                    direction = direction == 1 ? 0 : 1; // Change direction
+                }
+
+                // Ensure driveStepVal is never zero
+                driveStepVal = Math.Max(1, driveStepVal - 1);
+            }
+
+            // Move to the best step position
+            ManualFocus(bestStep > 0 ? 1 : 0, Math.Abs(bestStep));
+
+            //liveViewTimer.Stop();
         }
+
+
     }
 }

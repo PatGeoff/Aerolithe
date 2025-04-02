@@ -53,6 +53,7 @@ namespace Aerolithe
             listenUDP();
             Ping();
             SetupMainFlowLayoutPanel();
+            PopulateColorConversionDropdown();
             Task.Run(async () => await InitializeAsync());
         }
 
@@ -845,21 +846,21 @@ namespace Aerolithe
         {
             try
             {
-                ManualFocus(1,(double)hScrollBar_driveStep.Value);
+                ManualFocus(1, (double)hScrollBar_driveStep.Value);
             }
             catch (Exception)
             {
 
-                
+
             }
-            
+
         }
 
         private void btn_focusPlus_Click(object sender, EventArgs e)
         {
             try
             {
-                ManualFocus(0,(double)hScrollBar_driveStep.Value);
+                ManualFocus(0, (double)hScrollBar_driveStep.Value);
             }
             catch (Exception)
             {
@@ -923,8 +924,15 @@ namespace Aerolithe
             }
             catch (Exception)
             {
-                MessageBox.Show("Valeur Invalide");                
+                MessageBox.Show("Valeur Invalide");
             }
+        }
+
+       
+
+        private void btn_AutomaticMFocus_Click(object sender, EventArgs e)
+        {            
+            Task.Run(async () => await AutomaticMFocus());
         }
     }
 }
