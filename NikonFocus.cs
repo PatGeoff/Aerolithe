@@ -21,8 +21,10 @@ namespace Aerolithe
             }
             catch (Exception ex)
             {
-                throw new Exception("Autofocus failed due to an error: " + ex.Message);
-                
+                device.LiveViewEnabled = true;
+                Task.Delay(50);
+                liveViewTimer.Start();
+                throw new Exception("Autofocus failed due to an error: " + ex.Message);                
             }
            
         }

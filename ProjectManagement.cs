@@ -15,6 +15,8 @@ namespace Aerolithe
         private static string projectPath = null;
         private static string imagesFolderPath = null;
         private static string imageNameBase = null;
+        private ColorConversion selectedConversion = ColorConversion.BayerBg2Bgr;
+
 
         private void CreateNewProject()
         {
@@ -263,6 +265,17 @@ namespace Aerolithe
             {
                 comboBox_EmguConversion.Items.Add(conversion);
             }
+            comboBox_EmguConversion.SelectedIndex = 12;
+        }
+        private void PopulateColorColorDropdown()
+        {
+                                     
+            comboBox_EmguColor.Items.Add("Rouge");
+            comboBox_EmguColor.Items.Add("Vert");
+            comboBox_EmguColor.Items.Add("Bleu");
+            comboBox_EmguColor.Items.Add("Gris");
+            
+            comboBox_EmguColor.SelectedIndex = 3;
         }
 
     }

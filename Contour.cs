@@ -49,9 +49,10 @@ namespace Aerolithe
             try
             {
                 //// Définir le range pour séparer le min et max du masque                
-                MCvScalar lower = new MCvScalar(Int16.Parse(textBox_lowB_x.Text), Int16.Parse(textBox_lowB_y.Text), Int16.Parse(textBox_lowB_z.Text));
-                MCvScalar upper = new MCvScalar(Int16.Parse(textBox_upperB_x.Text), Int16.Parse(textBox_upperB_y.Text), Int16.Parse(textBox_upperB_z.Text));
-
+                MCvScalar lower = new MCvScalar(0,0,0);
+                MCvScalar upper = new MCvScalar(1,1,1);
+                //MCvScalar lower = new MCvScalar(Int16.Parse(textBox_lowB_x.Text), Int16.Parse(textBox_lowB_y.Text), Int16.Parse(textBox_lowB_z.Text));
+                //MCvScalar upper = new MCvScalar(Int16.Parse(textBox_upperB_x.Text), Int16.Parse(textBox_upperB_y.Text), Int16.Parse(textBox_upperB_z.Text));
                 //// créer le masque binaire en utilisant le range de couleur
                 CvInvoke.InRange(hsvImg, new ScalarArray(lower), new ScalarArray(upper), binaryMask);
                 //// inverser le masque
@@ -133,8 +134,34 @@ namespace Aerolithe
                 {
                     // Convert frame to grayscale
                     Mat gray = new Mat();
-                    CvInvoke.CvtColor(frame, gray, ColorConversion.Bgr2Gray);
+                    //ColorConversion colorConversion = (ColorConversion)comboBox_EmguConversion.SelectedIndex;
+                    //CvInvoke.CvtColor(frame, gray, colorConversion);
                     //AppendTextToConsoleNL("Converted to grayscale");
+                    CvInvoke.CvtColor(frame, gray, ColorConversion.Bgr2Gray);
+
+                    //Mat convertedFrame = new Mat();
+                    //int indx = comboBox_EmguColor.SelectedIndex;
+
+                    //switch (indx)
+                    //{
+                    //    case 0: // Red channel
+                    //        CvInvoke.ExtractChannel(frame, convertedFrame, 2); // 2 is the index for the red channel
+                    //        break;
+                    //    case 1: // Green channel
+                    //        CvInvoke.ExtractChannel(frame, convertedFrame, 1); // 1 is the index for the green channel
+                    //        break;
+                    //    case 2: // Blue channel
+                    //        CvInvoke.ExtractChannel(frame, convertedFrame, 0); // 0 is the index for the blue channel
+                    //        break;
+                    //    case 3: // Grayscale
+                    //        CvInvoke.CvtColor(frame, convertedFrame, ColorConversion.Bgr2Gray);
+                    //        break;
+                    //    default:
+                    //        CvInvoke.CvtColor(frame, convertedFrame, ColorConversion.Bgr2Gray); // Default to grayscale
+                    //        break;
+                    //}
+                    //Mat hsv = new Mat();
+                    //CvInvoke.CvtColor(convertedFrame, hsv, selectedConversion);
 
                     // Apply Laplacian filter
                     Mat laplacian = new Mat();

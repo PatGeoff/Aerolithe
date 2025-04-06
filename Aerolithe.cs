@@ -54,6 +54,7 @@ namespace Aerolithe
             Ping();
             SetupMainFlowLayoutPanel();
             PopulateColorConversionDropdown();
+            PopulateColorColorDropdown();
             Task.Run(async () => await InitializeAsync());
         }
 
@@ -928,11 +929,22 @@ namespace Aerolithe
             }
         }
 
-       
+
 
         private void btn_AutomaticMFocus_Click(object sender, EventArgs e)
-        {            
+        {
             Task.Run(async () => await AutomaticMFocus());
+        }
+
+        private void comboBox_EmguConversion_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            selectedConversion = (ColorConversion)comboBox_EmguConversion.SelectedItem;
+        }
+
+        private void comboBox_EmguColor_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBox_EmguColor.SelectedIndex == 3) { comboBox_EmguConversion.SelectedIndex = 12; }
+            else { comboBox_EmguConversion.SelectedIndex = 48; }
         }
     }
 }
