@@ -31,6 +31,7 @@ namespace Aerolithe
         private Mat foreground, background, substractionResult, mask = null;
         public double oldFocusValue;
         public double blurrynessAmount = 0;
+        private bool liveViewStatus = false;
 
         public void CamSetup()
         {
@@ -142,6 +143,7 @@ namespace Aerolithe
 
         void liveViewTimer_Tick(object? sender, EventArgs e)
         {
+            
             try
             {
                 if (!chkBox_liveView.Checked) chkBox_liveView.Checked = true;
@@ -149,6 +151,7 @@ namespace Aerolithe
                 imageView = device.GetLiveViewImage();                
                 if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)
                 {
+                    liveViewStatus = true;
                     using (Mat background = new Mat())
                     {
                         // Convertit le LiveCapture en stream
@@ -172,6 +175,7 @@ namespace Aerolithe
                 }
                 else
                 {
+                    liveViewStatus = false;
                     // Display placeholder image if live view is not enabled or image is invalid
                     picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
                 }
@@ -180,13 +184,7 @@ namespace Aerolithe
             {
                 // Handle Nikon-specific exceptions
                 Console.WriteLine("NikonException: " + ex.Message);
-                // Display placeholder image
-                picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
-            }
-            catch (Exception ex)
-            {
-                // Handle other exceptions
-                Console.WriteLine("Exception: " + ex.Message);
+                //AppendTextToConsoleNL("NikonException: " + ex.Message);
                 // Display placeholder image
                 picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
             }

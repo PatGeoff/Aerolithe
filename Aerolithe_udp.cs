@@ -13,6 +13,10 @@ using Emgu.CV;
 using System.Timers;
 using Aerolithe.Properties;
 using SharpOSC;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using Nikon;
+using System.Windows.Forms.VisualStyles;
+
 
 
 namespace Aerolithe
@@ -178,9 +182,16 @@ namespace Aerolithe
                     {
                         UdpReceiveResult result = await udpClient.ReceiveAsync();
                         string message = Encoding.UTF8.GetString(result.Buffer);
+
+                        var oscPacket = OscPacket.GetPacket(result.Buffer);
+                        if (oscPacket is OscMessage oscMessage)
+                        {
+                            message = oscMessage.Address + "#" + oscMessage.Arguments[0].ToString();
+                        }
+                        
                         Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
                         //AppendTextToConsoleNL(message);
-                        await CheckMessage(message);
+                        CheckMessage(message);
                     }
                 }
                 catch (Exception ex)
@@ -208,28 +219,14 @@ namespace Aerolithe
         }
 
 
-        public string SanitizeString(string input)
-        {
-            string[] hiddenChars = new string[] { "\u200B", "\u200C", "\u200D", "\uFEFF", "\u00A0", "\u00AD", "\u200E", "\u200F", "\u202A", "\u202B", "\u202D", "\u202E", "\u202C", "\u2028", "\u2029" };
-            foreach (string hiddenChar in hiddenChars)
-            {
-                input = input.Replace(hiddenChar, "");
-            }
-            return input;
-        }
+       
 
-
-        static bool IsOscMessage(string message)
-        {
-            // Check if the first character of the message is a forward slash
-            return !string.IsNullOrEmpty(message) && message[0] == '/';
-        }
+        
 
         private void OnOscTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             // Sanitize the input to remove hidden characters
-            string sanitizedMessage = SanitizeString(_lastOscMessage);
-            AppendTextToConsoleNL(sanitizedMessage);
+           
             
         }
         private async Task CheckMessage(string message)
@@ -283,7 +280,6 @@ namespace Aerolithe
             {
                 turntablePositionReached = true;
             }
-
             if (message.Contains("waveshare -> position"))
             {
                 string[] parts = message.Split(',');
@@ -308,6 +304,7 @@ namespace Aerolithe
 
             if (message.Contains("Encoder"))   
             {
+                AppendTextToConsoleNL(message);
                 string[] parts = message.Split(',');
                 if (parts[1] == "0") // 0 = Actuateur Linéaire
                 {
@@ -337,20 +334,74 @@ namespace Aerolithe
             }
             #endregion
             #region OSC
-            if (IsOscMessage(message))
-            {
-                
-                // Store the last OSC message
-                _lastOscMessage = message.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "");
+            
+            if (message.Contains("OSC"))
+            {                
+                string[] parts = message.Split('#');
+                string address = parts[0].Split("/")[1];
+                string arg = parts[1];
+                //AppendTextToConsoleNL($"addresse: {address}, argument: {arg}");
+                switch (address)
+                {
+                    case "camera_osc_autofocus_btn":
+                        await NikonAutofocus();
+                        break;
+                    case "camera_osc_motor_fader":
+                        udpSendStepperMotorData(int.Parse(arg)*400);
+                        break;
+                    case "btn_drivestep":
+                        driveStep.Value = double.Parse(arg);
+                        device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
+                        break;
+                    case "btn_camera_osc_drivestep":
+                        if (int.Parse(arg) > 0)
+                        {
+                            device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
+                        }
+                        else if (int.Parse(arg) < 0)
+                        {
+                            device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
+                        }
+                        break;
+                    case "lift_osc_fader":
+                        await udpSendScissorData(int.Parse(arg) * 1000);
+                        break;
+                    case "tableTournante_osc_fader":
+                        await UdpSendTurnTableMessageAsync($"turntable,{arg},{turntableSpeed}");
+                        break;
+                    case "actuator_osc_5_btn":
+                        break;
+                    case "actuator_osc_25_btn":
+                        break;
+                    case "actuator_osc_45_btn":
+                        break;
+                    case "actuator_osc_up_btn":
+                        await UdpSendActuatorMessageAsync("actuator up");
+                        break;
+                    case "actuator_osc_down_btn":
+                        await UdpSendActuatorMessageAsync("actuator down");
+                        break;
+                    default: break;
 
-                // Restart the timer
-                _oscTimer.Stop();
-                _oscTimer.Start();
+                }
+
+
             }
+           
+            //if (IsOscMessage(message))
+            //{
+
+            //    // Store the last OSC message
+            //    _lastOscMessage = message.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "");
+
+            //    // Restart the timer
+            //    _oscTimer.Stop();
+            //    _oscTimer.Start();
+            //}
             #endregion
         }
 
-
+       
 
         public void UdpChecker()
         {

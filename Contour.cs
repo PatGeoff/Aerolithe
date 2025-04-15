@@ -49,8 +49,8 @@ namespace Aerolithe
             try
             {
                 //// Définir le range pour séparer le min et max du masque                
-                MCvScalar lower = new MCvScalar(0,0,0);
-                MCvScalar upper = new MCvScalar(1,1,1);
+                MCvScalar lower = new MCvScalar(0,0,1);
+                MCvScalar upper = new MCvScalar(255,255,255);
                 //MCvScalar lower = new MCvScalar(Int16.Parse(textBox_lowB_x.Text), Int16.Parse(textBox_lowB_y.Text), Int16.Parse(textBox_lowB_z.Text));
                 //MCvScalar upper = new MCvScalar(Int16.Parse(textBox_upperB_x.Text), Int16.Parse(textBox_upperB_y.Text), Int16.Parse(textBox_upperB_z.Text));
                 //// créer le masque binaire en utilisant le range de couleur

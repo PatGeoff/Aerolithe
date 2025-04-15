@@ -60,18 +60,18 @@ namespace Aerolithe
 
         private async Task InitializeAsync()
         {
-            await CheckCommunication(); // Wait for CheckCommunication to complete
+            //await CheckCommunication(); // Wait for CheckCommunication to complete
 
-            if (waveshareAlive)
-            {
-                await getTurntablePosFromWaveshare(); // Wait for getTurntablePosFromWaveshare to complete
-            }
-            else
-            {
-                MessageBox.Show("Il y a un problème avec la table tournante.\n" +
-                                "Assurez-vous que le controlleur Waveshare est bien branché\n" +
-                                "Ensuite, redémarrez l'application.");
-            }
+            //if (waveshareAlive)
+            //{
+            //    await getTurntablePosFromWaveshare(); // Wait for getTurntablePosFromWaveshare to complete
+            //}
+            //else
+            //{
+            //    MessageBox.Show("Il y a un problème avec la table tournante.\n" +
+            //                    "Assurez-vous que le controlleur Waveshare est bien branché\n" +
+            //                    "Ensuite, redémarrez l'application.");
+            //}
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -106,7 +106,7 @@ namespace Aerolithe
         }
         private void btnAutofocus_Click(object sender, EventArgs e)
         {
-            //AutoCloseMessageBox.ShowAutoClose("Placer la météorite au centre de la table tournante et appuyer sur OK ci-bas", 650, 180, 3000);
+            AppendTextToConsoleNL("btnAutofocus_Click");
             NikonAutofocus();
         }
 
@@ -178,10 +178,7 @@ namespace Aerolithe
 
         #region CAMÉRA TAB
 
-        private void btn_Autofocus_StepperTab_Click(object sender, EventArgs e)
-        {
-            NikonAutofocus();
-        }
+
 
         private async void btn_takePicture_Click(object sender, EventArgs e)
         {
@@ -831,7 +828,21 @@ namespace Aerolithe
 
         private void chkBox_liveView_CheckedChanged(object sender, EventArgs e)
         {
-            device.LiveViewEnabled = chkBox_liveView.Checked ? true : false;
+            if (chkBox_liveView.Checked)
+            {
+
+                device.LiveViewEnabled = true;
+                Task.Run(async () => Task.Delay(100));
+                liveViewTimer.Start();
+
+            }
+            else
+            {
+                device.LiveViewEnabled = false;
+                liveViewTimer.Stop();
+            }
+
+
         }
 
         private void btn_cancelPhotoShoot_Click(object sender, EventArgs e)
@@ -946,5 +957,11 @@ namespace Aerolithe
             if (comboBox_EmguColor.SelectedIndex == 3) { comboBox_EmguConversion.SelectedIndex = 12; }
             else { comboBox_EmguConversion.SelectedIndex = 48; }
         }
+
+        private void btn_liveViewStatus_Click(object sender, EventArgs e)
+        {
+            AppendTextToConsoleNL(liveViewStatus.ToString());
+        }
+
     }
 }
