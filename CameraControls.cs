@@ -224,87 +224,191 @@ namespace Aerolithe
 
         }
 
+
+
+        //private async Task AutomaticMFocus()
+        //{
+        //    int maxStep = int.Parse(lbl_driveStepMax.Text);
+        //    int driveStepVal = 30; // Initial drive step value (never zero)
+        //    int direction = 1; // Initial direction (1 for one way, 0 for the other)
+        //    int moveCount = 0; // Counter for moves in the current direction
+        //    double highestBlurryness = 0.0; // Track the highest blurryness amount
+        //    int bestStep = 0; // Track the best step position
+        //    int initialPosition = 0; // Assume initial position is 0
+        //    double initialBlurryness = blurrynessAmount;
+        //    int moveBadCount = 0;
+
+        //    if (device.LiveViewEnabled == false)
+        //    {
+        //        device.LiveViewEnabled = true;
+        //        liveViewTimer.Start();
+        //    }
+        //    AppendTextToConsoleNL("Début du programme de focus");
+        //    // Move up by 100 steps
+        //    while (moveCount < 50)
+        //    {
+        //        ManualFocus(direction, driveStepVal);
+        //        await Task.Delay(100); // Adjust delay as needed to match live view timer interval
+        //        double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
+
+        //        if (currentBlurryness > highestBlurryness)
+        //        {
+        //            highestBlurryness = currentBlurryness;
+        //            bestStep = moveCount * driveStepVal;
+        //        } 
+        //        if (currentBlurryness < initialBlurryness)
+        //        {
+        //            if (moveBadCount > 4)
+        //            {
+        //                break;
+        //            }
+        //            moveBadCount++;
+        //        }
+        //        else
+        //        {
+        //            moveBadCount = 0; // Reset the counter if a good move is found
+        //        }
+
+        //        moveCount++;
+        //    }
+        //    AppendTextToConsoleNL("fin du premier tour");
+        //    AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
+
+
+
+        //    // Return to the initial position
+
+        //    ManualFocus(0, moveCount * driveStepVal);
+
+        //    Task.Delay(1000);
+        //    moveCount = 0;
+        //    while (moveCount < 50)
+        //    {
+        //        ManualFocus(0, driveStepVal);
+        //        await Task.Delay(100); // Adjust delay as needed to match live view timer interval
+        //        double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
+
+        //        if (currentBlurryness > highestBlurryness)
+        //        {
+        //            highestBlurryness = currentBlurryness;
+        //            bestStep = moveCount * driveStepVal;
+        //            //AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
+        //        }
+
+        //        moveCount++;
+        //    }
+        //    AppendTextToConsoleNL("Fin du deuxième tour");
+        //    AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
+
+        //       //Back or origin in order to move to the highestBluryness amount 
+        //    ManualFocus(1, moveCount * driveStepVal);
+
+        //    //ManualFocus(1, bestStep);
+
+
+        //}
+
         private async Task AutomaticMFocus()
         {
-            int maxStep = int.Parse(lbl_driveStepMax.Text);
-            int driveStepVal = 30; // Initial drive step value (never zero)
-            int direction = 1; // Initial direction (1 for one way, 0 for the other)
-            int moveCount = 0; // Counter for moves in the current direction
+            int maxStep = int.Parse(lbl_driveStepMax.Text); // Define maxStep based on your device's maximum allowable steps
+            int initialDriveStepVal = 200; // Larger initial drive step value
+            int minDriveStepVal = 1; // Minimum drive step value for precise adjustments
+            int driveStepVal = initialDriveStepVal; // Start with larger steps
+            int direction = 1; // Initial direction (1 for forward, -1 for backward)
             double highestBlurryness = 0.0; // Track the highest blurryness amount
             int bestStep = 0; // Track the best step position
-            int initialPosition = 0; // Assume initial position is 0
-            double initialBlurryness = blurrynessAmount;
             int moveBadCount = 0;
+            int currentStep = 0;
+            int bufferSize = 5; // Size of the buffer to track recent blurryness values
+            Queue<double> blurrynessBuffer = new Queue<double>();
+            int iterationCount = 0; // Track the number of iterations
+            int maxIterations = 100; // Set a maximum number of iterations to avoid infinite loop
 
-            if (device.LiveViewEnabled == false)
+            if (!device.LiveViewEnabled)
             {
                 device.LiveViewEnabled = true;
                 liveViewTimer.Start();
             }
             AppendTextToConsoleNL("Début du programme de focus");
-            // Move up by 100 steps
-            while (moveCount < 50)
+
+            while (iterationCount < maxIterations)
             {
                 ManualFocus(direction, driveStepVal);
-                await Task.Delay(100); // Adjust delay as needed to match live view timer interval
+                await Task.Delay(50); // Adjust delay to 50ms for quicker response
                 double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
 
-                if (currentBlurryness > highestBlurryness)
+                // Add current blurryness to buffer
+                blurrynessBuffer.Enqueue(currentBlurryness);
+                if (blurrynessBuffer.Count > bufferSize)
                 {
-                    highestBlurryness = currentBlurryness;
-                    bestStep = moveCount * driveStepVal;
+                    blurrynessBuffer.Dequeue(); // Maintain buffer size
                 }
-                if (currentBlurryness < initialBlurryness)
+
+                // Calculate average blurryness from buffer
+                double averageBlurryness = blurrynessBuffer.Average();
+
+                if (averageBlurryness > highestBlurryness)
                 {
-                    if (moveBadCount > 4)
+                    highestBlurryness = averageBlurryness;
+                    bestStep = currentStep;
+                }
+                else if (averageBlurryness < highestBlurryness)
+                {
+                    direction *= -1; // Change direction when average blurryness decreases
+                }
+
+                if (averageBlurryness < highestBlurryness)
+                {
+                    if (moveBadCount > 10) // Adjust moveBadCount to 10
                     {
-                        break;
+                        direction *= -1; // Change direction if too many bad moves
+                        moveBadCount = 0; // Reset bad move counter
                     }
-                    moveBadCount++;
+                    else
+                    {
+                        moveBadCount++;
+                    }
                 }
                 else
                 {
                     moveBadCount = 0; // Reset the counter if a good move is found
                 }
 
-                moveCount++;
-            }
-            AppendTextToConsoleNL("fin du premier tour");
-            AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
+                currentStep += direction * driveStepVal;
 
+                // Gradually decrease the drive step value
+                driveStepVal = Math.Max(minDriveStepVal, driveStepVal - 10);
 
-            
-            // Return to the initial position
+                iterationCount++; // Increment iteration count
 
-            ManualFocus(0, moveCount * driveStepVal);
-
-            Task.Delay(1000);
-            moveCount = 0;
-            while (moveCount < 50)
-            {
-                ManualFocus(0, driveStepVal);
-                await Task.Delay(100); // Adjust delay as needed to match live view timer interval
-                double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
-
-                if (currentBlurryness > highestBlurryness)
+                // Break condition to avoid infinite loop
+                if (Math.Abs(currentStep) > maxStep)
                 {
-                    highestBlurryness = currentBlurryness;
-                    bestStep = moveCount * driveStepVal;
-                    //AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
+                    break;
                 }
-
-                moveCount++;
             }
-            AppendTextToConsoleNL("Fin du deuxième tour");
-            AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
+            AppendTextToConsoleNL("Fin du programme de focus");
+            AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestStep: {bestStep}");
 
-               //Back or origin in order to move to the highestBluryness amount 
-            ManualFocus(1, moveCount * driveStepVal);
+            // Move to the position with the highest blurryness amount
+            ManualFocus(direction, bestStep);
+            await Task.Delay(1000); // Allow time for the move to complete
 
-            //ManualFocus(1, bestStep);
-
-
+            // Verify the final position
+            double finalBlurryness = blurrynessAmount;
+            AppendTextToConsoleNL($"Final Blurryness: {finalBlurryness}");
+            if (finalBlurryness < highestBlurryness)
+            {
+                AppendTextToConsoleNL("Adjusting to the best step position");
+                ManualFocus(direction, bestStep - currentStep); // Adjust to the best step position
+            }
         }
+
+
+
+
+
+
 
 
     }

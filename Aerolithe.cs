@@ -31,11 +31,13 @@ namespace Aerolithe
         public readonly int scissorLiftPort = 44477;  // Port sur lequel on reçoit les messages UDP au ESP32 du lift
         public readonly int M5Port = 44488;
         public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
+        private readonly int localPortOSC = 55545;
         public readonly int actuatorPort = 44499;
 
 
 
         private UdpClient udpClient;
+        private UdpClient udpClientOSC;
         private TaskCompletionSource<int> _turntablePositionTcs;
         private CancellationTokenSource tokenSource;
 
@@ -147,22 +149,22 @@ namespace Aerolithe
             working = true;
             cancellationTokenSource = new CancellationTokenSource();
 
-            try
-            {
+            //try
+            //{
 
-                await PrisePhotoSequenceAsync(cancellationTokenSource.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                AppendTextToConsoleNL("La prise de photos a été cancellée");
-            }
-            finally
-            {
-                working = false;
-                // Hide the cancel button and enable the start button
-                btn_cancelSequence.Visible = false;
-                btn_DemarrerPrisePhotos.Visible = true;
-            }
+            //    await PrisePhotoSequenceAsync(cancellationTokenSource.Token);
+            //}
+            //catch (OperationCanceledException)
+            //{
+            //    AppendTextToConsoleNL("La prise de photos a été cancellée");
+            //}
+            //finally
+            //{
+            //    working = false;
+            //    // Hide the cancel button and enable the start button
+            //    btn_cancelSequence.Visible = false;
+            //    btn_DemarrerPrisePhotos.Visible = true;
+            //}
 
         }
 
@@ -730,13 +732,13 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
+            //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
 
             Task.Run(async () =>
             {
-                await nikonDoFocus();
+                //await nikonDoFocus();
 
-                AppendTextToConsoleNL("on a fini le focus à ce qui paraît");
+                //AppendTextToConsoleNL("on a fini le focus à ce qui paraît");
                 //await UdpSendActuatorMessageAsync("actuator 5");
                 // await Task.Delay(4000); // Non-blocking wait
 

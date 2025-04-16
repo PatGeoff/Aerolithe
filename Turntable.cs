@@ -10,7 +10,7 @@ namespace Aerolithe
     {
         private int turntableDelay = 7000; // secondes
         public int turntableSpeed = 350;
-        public int turntablePosition = 0;
+        public int turntablePosition = 1000;
         public int previousPos = 0;
     }
 }

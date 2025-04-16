@@ -39,6 +39,7 @@ namespace Aerolithe
             try
             {
                 udpClient = new UdpClient(localPort); // Initialize UdpClient
+                udpClientOSC = new UdpClient(localPortOSC);
                 listenUDP();
 
             }
@@ -169,6 +170,7 @@ namespace Aerolithe
         public void listenUDP()
         {
             Task.Run(() => ListenForMessages());
+            Task.Run(() => ListenForOSCMessages());
         }
 
         private async Task ListenForMessages()
@@ -180,17 +182,9 @@ namespace Aerolithe
                 {
                     while (true)
                     {
-                        UdpReceiveResult result = await udpClient.ReceiveAsync();
-                        string message = Encoding.UTF8.GetString(result.Buffer);
-
-                        var oscPacket = OscPacket.GetPacket(result.Buffer);
-                        if (oscPacket is OscMessage oscMessage)
-                        {
-                            message = oscMessage.Address + "#" + oscMessage.Arguments[0].ToString();
-                        }
-                        
+                        UdpReceiveResult result = await udpClient.ReceiveAsync();                        
+                        string message = Encoding.UTF8.GetString(result.Buffer);                    
                         Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
-                        //AppendTextToConsoleNL(message);
                         CheckMessage(message);
                     }
                 }
@@ -204,6 +198,35 @@ namespace Aerolithe
 
         }
 
+        private async Task ListenForOSCMessages()
+        {
+
+            while (true)
+            {
+                try
+                {
+                    while (true)
+                    {
+                        UdpReceiveResult result = await udpClientOSC.ReceiveAsync();
+                        
+                        var oscPacket = OscPacket.GetPacket(result.Buffer);
+                        if (oscPacket is OscMessage oscMessage)
+                        {
+                            string message = oscMessage.Address + "#" + oscMessage.Arguments[0].ToString();
+                            Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
+                            CheckOSCMessage(message);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+
+                    Debug.WriteLine($"Exception: {ex.Message}");
+                }
+
+            }
+
+        }
 
         private void StepperMotorSetMaxValueEnableTrkbar(long position)
         {
@@ -276,25 +299,26 @@ namespace Aerolithe
                 picBox_waveshareCom.Image = Resources.crochet;
                 //Debug.WriteLine("Reçu un OK du Waveshare");
             }           
-            if (message.Contains("Message de Table Tournante: Position atteinte"))
+            //if (message.Contains("Message de Table Tournante: Position atteinte"))
+            //{
+            //    turntablePositionReached = true;
+            //}
+            if (message.Contains("position"))
             {
-                turntablePositionReached = true;
-            }
-            if (message.Contains("waveshare -> position"))
-            {
-                string[] parts = message.Split(',');
-
+                string[] parts = message.Split(',');                
                 
                 turntablePosition = int.Parse(parts[1].Trim());
+                AppendTextToConsoleNL($"Position de la table tournante reçue: {turntablePosition.ToString()}");
                 if (trkBar_turntable.InvokeRequired)
                 {
-                    if (turntablePosition == - 1) turntablePosition = 0;
+                    if (turntablePosition < 0) turntablePosition = 0;
                     trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
                 }
                 if (lbl_turntablePosition.InvokeRequired)
                 {
                     lbl_turntablePosition.Invoke(new Action(() => lbl_turntablePosition.Text = trkBar_turntable.Value.ToString()));
                 }
+
                 _turntablePositionTcs?.SetResult(turntablePosition); // vers Aerolithe.cs/getTurntablePosFromWaveshare()
 
 
@@ -333,10 +357,17 @@ namespace Aerolithe
                 }
             }
             #endregion
+           
+        }
+        private async Task CheckOSCMessage(string message)
+        {
+
+            //AppendTextToConsoleNL("Message Reçu: " + message);
+
             #region OSC
-            
+
             if (message.Contains("OSC"))
-            {                
+            {
                 string[] parts = message.Split('#');
                 string address = parts[0].Split("/")[1];
                 string arg = parts[1];
@@ -347,7 +378,7 @@ namespace Aerolithe
                         await NikonAutofocus();
                         break;
                     case "camera_osc_motor_fader":
-                        udpSendStepperMotorData(int.Parse(arg)*400);
+                        udpSendStepperMotorData(int.Parse(arg) * 400);
                         break;
                     case "btn_drivestep":
                         driveStep.Value = double.Parse(arg);
@@ -387,21 +418,11 @@ namespace Aerolithe
 
 
             }
-           
-            //if (IsOscMessage(message))
-            //{
 
-            //    // Store the last OSC message
-            //    _lastOscMessage = message.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "");
-
-            //    // Restart the timer
-            //    _oscTimer.Stop();
-            //    _oscTimer.Start();
-            //}
+          
             #endregion
         }
 
-       
 
         public void UdpChecker()
         {
