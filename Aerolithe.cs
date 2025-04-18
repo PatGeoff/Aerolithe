@@ -590,9 +590,9 @@ namespace Aerolithe
 
         private void SetupMainFlowLayoutPanel()
         {
-            flowLayoutPanel1.AutoScroll = true;
-            flowLayoutPanel1.FlowDirection = FlowDirection.TopDown;
-            flowLayoutPanel1.WrapContents = false;
+            flowLayoutPanel_PicLayout.AutoScroll = true;
+            flowLayoutPanel_PicLayout.FlowDirection = FlowDirection.TopDown;
+            flowLayoutPanel_PicLayout.WrapContents = false;
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
@@ -1029,6 +1029,16 @@ namespace Aerolithe
         {
             uint mode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFModeAtLiveView);
 
+        }
+
+        private void btn_clearPicLayout_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btn_clearPicReport_Click(object sender, EventArgs e)
+        {
+            richTextBox_PicReport.Clear();
         }
     }
 }

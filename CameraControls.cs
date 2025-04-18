@@ -223,7 +223,7 @@ namespace Aerolithe
         {
             return new PictureBox
             {
-                Name = $"img_{flowLayoutPanel1.Controls.Count:D3}",
+                Name = $"img_{flowLayoutPanel_PicLayout.Controls.Count:D3}",
                 Image = image,
                 SizeMode = PictureBoxSizeMode.Zoom,
                 Width = 200,
