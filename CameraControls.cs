@@ -18,23 +18,26 @@ namespace Aerolithe
         private FlowLayoutPanel currentSequenceFlowLayoutPanel;
         private int currentSequence = 1;
         private TaskCompletionSource<bool> imageReadyTcs;
-        
-        
+        private int lastPercent = -1;
+
+
         public async Task takePictureAsync()
         {
             //AppendTextToConsoleNL("prise de photo");
             imageReadyTcs = new TaskCompletionSource<bool>();
             try
             {
-                await Task.Run(() => device.Capture());
+                AppendTextToConsoleNL("device capture");
+                device.Capture();
+                AppendTextToConsoleNL("capture done");
             }
             catch (Exception e)
             {
-                AppendTextToConsoleNL(e.Message);
+                AppendTextToConsoleNL("takePictureAsync Error message: " +e.Message);
                 return;
             }
-            
-            
+
+            //AppendTextToConsoleNL("ici");
             //MessageBox.Show("image capturée");
         }
 
@@ -57,6 +60,7 @@ namespace Aerolithe
                                 if (imagesFolderPath != null && imageNameBase!= null && imageIncr!= null)
                                 {
                                     try
+
                                     {
                                         //MessageBox.Show(imageNameBase + "_" + imageIncr + ".jpg");
                                         // Reset the stream position to the beginning
@@ -65,11 +69,22 @@ namespace Aerolithe
                                         string outputPath = Path.Combine(imagesFolderPath, nomImage);
                                         //MessageBox.Show(outputPath);
                                         AppendTextToConsoleNL("Sauvegarde de la photo. Ceci peut prendre quelques secondes");
-                                        SaveStreamAsJpeg(memoryStream, outputPath);
+                                        //SaveStreamAsJpeg(memoryStream, outputPath);
+                                        var savingProgress = new Progress<int>(percent =>
+                                        {
+                                            if (percent != lastPercent)
+                                            {
+                                                AppendTextToConsoleNL($"Sauvegarde: {percent}%");
+                                                lastPercent = percent; // Update the last percentage value
+                                            }
+                                        });
 
+                                        SaveStreamAsJpegWithProgress(memoryStream, outputPath, savingProgress);
                                     }
-                                    catch (Exception)
+
+                                    catch (Exception ex)
                                     {
+                                        AppendTextToConsoleNL("NikonException: " + ex.Message);
                                         throw;
 
                                     }
@@ -90,51 +105,58 @@ namespace Aerolithe
 
                         // Reset the memory stream position after testing
                         memoryStream.Position = 0;
-                       
-                       
+
+
                         // Downsize and display the image in a PictureBox
-                        var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream);
+                        //var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream);
+                        //var resizingProgress = new Progress<int>(percent =>
+                        //{
+                        //    AppendTextToConsoleNL($"Progress: {percent}%");
+                        //});
 
-                        if (resizedImage != null)
-                        {
-                            picBox_pictureTaken.Image = resizedImage;
-                        }
-                        else
-                        {
-                            MessageBox.Show("Failed to resize the image.");
-                            return;
-                        }
+                        //var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream, resizingProgress);
 
-                        // Create a new PictureBox
-                        PictureBox pictureBox = CreatePictureBox(resizedImage);
+                        //if (resizedImage != null)
+                        //{
+                        //    picBox_pictureTaken.Image = resizedImage;
+                        //}
+                        //else
+                        //{
+                        //    MessageBox.Show("Failed to resize the image.");
+                        //    return;
+                        //}
+
+                        //// Create a new PictureBox
+                        //PictureBox pictureBox = CreatePictureBox(resizedImage);
 
                         // Set border color based on the sequence
-                        Color borderColor = GetBorderColor(currentSequence);
+                        //Color borderColor = GetBorderColor(currentSequence);
 
-                        // Create a new sequence FlowLayoutPanel if needed
-                        if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
-                        {
-                            int seq1 = int.Parse(txtBox_nbrImg5deg.Text);
-                            int seq2 = int.Parse(txtBox_nbrImg25deg.Text);
-                            int seq3 = int.Parse(txtBox_nbrImg45deg.Text);
+                        //flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
+                        //// Create a new sequence FlowLayoutPanel if needed
+                        //if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
+                        //{
+                        //    int seq1 = int.Parse(txtBox_nbrImg5deg.Text);
+                        //    int seq2 = int.Parse(txtBox_nbrImg25deg.Text);
+                        //    int seq3 = int.Parse(txtBox_nbrImg45deg.Text);
 
-                            int maxSeq = Math.Max(seq1, Math.Max(seq2, seq3));
+                        //    int maxSeq = Math.Max(seq1, Math.Max(seq2, seq3));
 
-                            currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
-                            SetFlowLayoutPanelWidth(currentSequenceFlowLayoutPanel, maxSeq, 200);
-                            SetFlowLayoutPanelWidth(flowLayoutPanel1, maxSeq, 200);
-                            flowLayoutPanel1.Invoke((MethodInvoker)delegate
-                            {
-                                flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
-                            });
-                        }
+                        //    currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
+                        //    SetFlowLayoutPanelWidth(currentSequenceFlowLayoutPanel, maxSeq, 200);
+                        //    SetFlowLayoutPanelWidth(flowLayoutPanel1, maxSeq, 200);
+                        //    flowLayoutPanel1.Invoke((MethodInvoker)delegate
+                        //    {
+                        //        flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
+                        //    });
+                        //}
 
 
                         // Add the PictureBox to the current sequence FlowLayoutPanel
-                        currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
-                        {
-                            currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
-                        });
+                        //currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
+                        //{
+                        //    currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
+                        //});
 
                         // Signal that the image is ready
                         imageReadyTcs?.TrySetResult(true);
@@ -150,16 +172,50 @@ namespace Aerolithe
             }
         }
 
-    
-        public async Task  SaveStreamAsJpeg(Stream imageStream, string outputPath)
+
+        //public async Task  SaveStreamAsJpeg(Stream imageStream, string outputPath)
+        //{
+        //    AppendTextToConsoleNL($"sauvegarde de l'image dans {outputPath}");
+
+        //    // Create an Image object from the stream
+        //    Image image = Image.FromStream(imageStream);
+
+        //    // Save the image as a JPEG file
+        //    image.Save(outputPath, ImageFormat.Jpeg);
+        //}
+        public void SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int> progress)
         {
-            AppendTextToConsoleNL($"sauvegarde de l'image dans {outputPath}");
+            AppendTextToConsoleNL($"Saving image to {outputPath}");
 
             // Create an Image object from the stream
             Image image = Image.FromStream(imageStream);
 
-            // Save the image as a JPEG file
-            image.Save(outputPath, ImageFormat.Jpeg);
+            // Save the image to a temporary stream
+            using (MemoryStream tempStream = new MemoryStream())
+            {
+                image.Save(tempStream, ImageFormat.Jpeg);
+                tempStream.Position = 0;
+
+                // Get the total length of the stream
+                long totalLength = tempStream.Length;
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                long totalBytesRead = 0;
+
+                // Open the output file stream
+                using (FileStream fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write))
+                {
+                    while ((bytesRead = tempStream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        fileStream.Write(buffer, 0, bytesRead);
+                        totalBytesRead += bytesRead;
+
+                        // Report progress
+                        int percentComplete = (int)((totalBytesRead * 100) / totalLength);
+                        progress.Report(percentComplete);
+                    }
+                }
+            }
         }
 
 

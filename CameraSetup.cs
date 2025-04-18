@@ -15,6 +15,7 @@ using Emgu.CV.Reg;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Numerics;
+using SharpOSC;
 
 namespace Aerolithe
 {
@@ -44,8 +45,10 @@ namespace Aerolithe
             manager = new NikonManager("Type0022.md3");
             manager.DeviceAdded += new DeviceAddedDelegate(manager_DeviceAdded);
             manager.DeviceRemoved += new DeviceRemovedDelegate(manager_DeviceRemoved);
-            
-            
+
+
+
+
         }
 
         void manager_DeviceAdded(NikonManager? sender, NikonDevice device)
@@ -65,10 +68,10 @@ namespace Aerolithe
                 device.ImageReady += new ImageReadyDelegate(device_ImageReady);
                 AppendTextToConsoleNL("device_ImageReady delegate added");
                 //device.ThumbnailReady += new ThumbnailReadyDelegate(OnThumbnailReady);
-                //device.CaptureComplete += new CaptureCompleteDelegate(device_CaptureComplete);
+                device.CaptureComplete += new CaptureCompleteDelegate(device_CaptureComplete);
                 //device.PreviewReady += new PreviewReadyDelegate(device_PreviewReady);
-
-
+                device.Progress += new ProgressDelegate(OnNikonProgress);
+                AppendTextToConsoleNL("device_OnProgress delegate added");
                 deviceLoaded();
             }
             catch (NikonException ex)
@@ -100,7 +103,7 @@ namespace Aerolithe
 
             // Get the drivestep range
             driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);
-            AppendTextToConsoleNL($"Drive Step Range: Min={driveStep.Min}, Max={driveStep.Max}");            
+            //AppendTextToConsoleNL($"Drive Step Range: Min={driveStep.Min}, Max={driveStep.Max}");            
             lbl_driveStepMin.Text = driveStep.Min.ToString();
             lbl_driveStepMax.Text = driveStep.Max.ToString();
             hScrollBar_driveStep.Minimum = (int)driveStep.Min;
@@ -119,15 +122,16 @@ namespace Aerolithe
             GetAfcPriority();
             GetShutterSpeed();
             GetFocusMode();
-            //GetAFMode();
+            GetAFMode();
+            //GetLiveViewAFMode();
             GetFocusAreaMode();
-          
+
 
             //GetIso();
             //GetWB();
             //SetFrameDim();
             //InitializeCrosshairPosition();
-            //device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_SaveMedia, (uint)eNkMAIDSaveMedia.kNkMAIDSaveMedia_SDRAM);
+            device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_SaveMedia, (uint)eNkMAIDSaveMedia.kNkMAIDSaveMedia_SDRAM);
         }
 
         void manager_DeviceRemoved(NikonManager sender, NikonDevice device)
@@ -143,12 +147,12 @@ namespace Aerolithe
 
         void liveViewTimer_Tick(object? sender, EventArgs e)
         {
-            
+
             try
             {
                 if (!chkBox_liveView.Checked) chkBox_liveView.Checked = true;
                 // Attempt to get the live view image
-                imageView = device.GetLiveViewImage();                
+                imageView = device.GetLiveViewImage();
                 if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)
                 {
                     liveViewStatus = true;
@@ -184,13 +188,21 @@ namespace Aerolithe
             {
                 // Handle Nikon-specific exceptions
                 Console.WriteLine("NikonException: " + ex.Message);
+                AppendTextToConsoleNL("NikonException: " + ex.Message);
                 //AppendTextToConsoleNL("NikonException: " + ex.Message);
                 // Display placeholder image
                 picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
             }
         }
 
-
+        private void device_CaptureComplete(NikonDevice device, int data)
+        {
+            AppendTextToConsoleNL("Capture Complete");
+        }
+        private void OnNikonProgress(NikonDevice sender, eNkMAIDDataObjType type, int done, int total)
+        {
+            AppendTextToConsoleNL($"Progress: {done}/{total} ({(done / (float)total) * 100}%)");
+        }
 
         #region CAMERA INFO
         private void GetImageSize()
@@ -234,11 +246,11 @@ namespace Aerolithe
 
         }
 
-       private void GetExposureModes()
+        private void GetExposureModes()
         {
-            NikonEnum modeSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);            
+            NikonEnum modeSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);
             comboBox_ExpoMode.Items.Add("Programmed Auto (P)");
-            comboBox_ExpoMode.Items.Add("Shutter Priority (S)");            
+            comboBox_ExpoMode.Items.Add("Shutter Priority (S)");
             comboBox_ExpoMode.Items.Add("Aperture Priority (A)");
             comboBox_ExpoMode.Items.Add("Manual (M)");
             comboBox_ExpoMode.SelectedIndex = modeSize.Index;
@@ -265,7 +277,7 @@ namespace Aerolithe
         }
 
         private void GetFocusMode() {
-            
+
             var focusMode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_FocusMode);
 
             switch (focusMode)
@@ -297,6 +309,17 @@ namespace Aerolithe
             comboBox_AFMode.Items.Add("MF selected");
             comboBox_AFMode.SelectedIndex = (int)focusMode;
         }
+        //private void GetLiveViewAFMode()
+        //{
+        //    var liveViewAfMode = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewAF);
+        //    comboBox_LiveViewAFMode.Items.Add("Face priority");
+        //    comboBox_LiveViewAFMode.Items.Add("Wide area");
+        //    comboBox_LiveViewAFMode.Items.Add("Normal area");
+        //    comboBox_LiveViewAFMode.Items.Add("Subject tracking");
+        //    comboBox_LiveViewAFMode.Items.Add("Spot area");
+        //    comboBox_LiveViewAFMode.SelectedIndex = liveViewAfMode.Index;
+
+        //}
 
         #endregion
 

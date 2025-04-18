@@ -57,7 +57,7 @@ namespace Aerolithe
             SetupMainFlowLayoutPanel();
             PopulateColorConversionDropdown();
             PopulateColorColorDropdown();
-            Task.Run(async () => await InitializeAsync());
+            //Task.Run(async () => await InitializeAsync());
         }
 
         private async Task InitializeAsync()
@@ -444,7 +444,7 @@ namespace Aerolithe
         }
 
 
-        private void AppendTextToConsoleNL(string message) // New Line
+        public void AppendTextToConsoleNL(string message) // New Line
         {
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
 
@@ -489,6 +489,30 @@ namespace Aerolithe
             }
         }
 
+        public void AppendTextToConsoleSLOverwrite(string message) // New Line
+        {
+            string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
+
+            if (txtBox_Console.InvokeRequired)
+            {
+                Debug.WriteLine("Invoke required");
+                txtBox_Console.Invoke(new Action(() =>
+                {
+                    //AppendFormattedText(timestamp, Color.Gray);
+                    AppendFormattedTextOL(message + Environment.NewLine, txtBox_Console.ForeColor);
+                    ScrollToBottom();
+                    //Debug.WriteLine("Message appended via Invoke");
+                }));
+            }
+            else
+            {
+                //AppendFormattedText(timestamp, Color.Gray);
+                AppendFormattedTextOL(message + Environment.NewLine, txtBox_Console.ForeColor);
+                //Debug.WriteLine("Message appended directly");
+                ScrollToBottom();
+            }
+        }
+
         private async Task UpdateConsoleMessageAsync(string message, CancellationToken token) // Permet de printer à chaque 2 secondes jusqu'à ce que le token soit envoyé
         {
             while (!token.IsCancellationRequested)
@@ -519,6 +543,33 @@ namespace Aerolithe
             txtBox_Console.AppendText(text);
             txtBox_Console.SelectionColor = txtBox_Console.ForeColor;
         }
+
+        private void AppendFormattedTextOL(string text, Color color)
+        {
+            txtBox_Console.SelectionStart = txtBox_Console.TextLength;
+            txtBox_Console.SelectionLength = 0;
+            txtBox_Console.SelectionColor = color;
+
+            string[] lines = txtBox_Console.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+
+            int lastLineIndex = txtBox_Console.Lines.Length - 1;
+
+            if (lines.Length > 0)
+            {
+                // Remove the last line
+                txtBox_Console.Text = string.Join(Environment.NewLine, lines, 0, lines.Length - 1);
+                // Append the new text
+                txtBox_Console.AppendText(Environment.NewLine + text);
+            }
+            else
+            {
+                txtBox_Console.Text = text;
+            }
+
+
+            txtBox_Console.SelectionColor = txtBox_Console.ForeColor;
+        }
+
 
         private void ScrollToBottom()
         {
@@ -910,18 +961,27 @@ namespace Aerolithe
 
         private void comboBox_AFMode_SelectedIndexChanged(object sender, EventArgs e)
         {
-            uint fm = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_FocusMode);
+            uint fm = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode);
             if (fm != 0)
             {
-                uint afm = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode);
+                try
+                {
+                    uint afm = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode);
 
-                fm = (uint)comboBox_AFMode.SelectedIndex;
-                device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode, fm);
+                    fm = (uint)comboBox_AFMode.SelectedIndex;
+                    device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode, fm);
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL(ex.Message);
+                }
+
             }
             else
             {
                 MessageBox.Show("La lentille et la caméra ne doivent pas être en mode manuel (MF)");
             }
+            GetFocusMode();
         }
 
         private void hScrollBar_driveStep_ValueChanged(object sender, EventArgs e)
@@ -965,5 +1025,10 @@ namespace Aerolithe
             AppendTextToConsoleNL(liveViewStatus.ToString());
         }
 
+        private void comboBox_LiveViewAFMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            uint mode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFModeAtLiveView);
+
+        }
     }
 }

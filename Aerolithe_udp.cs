@@ -308,7 +308,8 @@ namespace Aerolithe
                 string[] parts = message.Split(',');                
                 
                 turntablePosition = int.Parse(parts[1].Trim());
-                AppendTextToConsoleNL($"Position de la table tournante reçue: {turntablePosition.ToString()}");
+
+                //AppendTextToConsoleNL($"Position de la table tournante reçue: {turntablePosition.ToString()}");
                 if (trkBar_turntable.InvokeRequired)
                 {
                     if (turntablePosition < 0) turntablePosition = 0;

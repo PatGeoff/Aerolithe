@@ -54,5 +54,36 @@ namespace Aerolithe
 
             return bitmap;
         }
+        //public static Image DownsizeImageToFitPictureBox(PictureBox pictureBox, MemoryStream memoryStream, IProgress<int> progress)
+        //{
+        //    // Convert MemoryStream to Mat
+        //    Mat originalMat = MemoryStreamToMat(memoryStream);
+
+        //    // Calculate the new size
+        //    int newWidth = pictureBox.Width;
+        //    int newHeight = pictureBox.Height;
+
+        //    // Create a new Mat with the new size
+        //    Mat resizedMat = new Mat(newHeight, newWidth, originalMat.Depth, originalMat.NumberOfChannels);
+
+        //    // Resize the Mat to fit the PictureBox
+        //    CvInvoke.Resize(originalMat, resizedMat, new Size(newWidth, newHeight));
+
+        //    // Report progress
+        //    progress.Report(50); // Example progress reporting after resizing
+
+        //    // Convert the Mat to Bitmap
+        //    Bitmap bitmap = MatToBitmap(resizedMat);
+
+        //    // Report progress
+        //    progress.Report(100); // Example progress reporting after conversion
+
+        //    // Display the Bitmap in the PictureBox
+        //    DisplayImageInPictureBox(pictureBox, bitmap);
+            
+
+        //    return bitmap;
+        //}
+
     }
 }

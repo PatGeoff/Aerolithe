@@ -36,8 +36,6 @@
             button1 = new Button();
             txtBox_Console = new RichTextBox();
             flowLayoutPanel1 = new FlowLayoutPanel();
-            panel2 = new Panel();
-            panel10 = new Panel();
             tabControl1 = new TabControl();
             tabPage1 = new TabPage();
             tableLayoutPanel1 = new TableLayoutPanel();
@@ -150,6 +148,8 @@
             btn_prisePhotoSeq2 = new Button();
             btn_prisePhotoSeq1 = new Button();
             tabPage9 = new TabPage();
+            comboBox_LiveViewAFMode = new ComboBox();
+            label40 = new Label();
             btn_liveViewStatus = new Button();
             comboBox_EmguColor = new ComboBox();
             label39 = new Label();
@@ -201,8 +201,6 @@
             tableLayoutPanel2 = new TableLayoutPanel();
             tableLayoutPanelMAIN = new TableLayoutPanel();
             panel_Console.SuspendLayout();
-            flowLayoutPanel1.SuspendLayout();
-            panel2.SuspendLayout();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
@@ -321,31 +319,14 @@
             // 
             // flowLayoutPanel1
             // 
-            flowLayoutPanel1.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             flowLayoutPanel1.AutoScroll = true;
+            flowLayoutPanel1.AutoSize = true;
             flowLayoutPanel1.BackColor = Color.FromArgb(25, 25, 25);
-            flowLayoutPanel1.Controls.Add(panel2);
+            flowLayoutPanel1.Dock = DockStyle.Fill;
             flowLayoutPanel1.Location = new Point(4, 987);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Size = new Size(2856, 574);
+            flowLayoutPanel1.Size = new Size(2856, 585);
             flowLayoutPanel1.TabIndex = 27;
-            // 
-            // panel2
-            // 
-            panel2.Controls.Add(panel10);
-            panel2.Dock = DockStyle.Fill;
-            panel2.Location = new Point(3, 3);
-            panel2.Name = "panel2";
-            panel2.Size = new Size(2795, 0);
-            panel2.TabIndex = 28;
-            // 
-            // panel10
-            // 
-            panel10.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            panel10.Location = new Point(903, 0);
-            panel10.Name = "panel10";
-            panel10.Size = new Size(1858, 1033);
-            panel10.TabIndex = 42;
             // 
             // tabControl1
             // 
@@ -1680,6 +1661,8 @@
             // tabPage9
             // 
             tabPage9.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage9.Controls.Add(comboBox_LiveViewAFMode);
+            tabPage9.Controls.Add(label40);
             tabPage9.Controls.Add(btn_liveViewStatus);
             tabPage9.Controls.Add(comboBox_EmguColor);
             tabPage9.Controls.Add(label39);
@@ -1706,9 +1689,29 @@
             tabPage9.TabIndex = 1;
             tabPage9.Text = "Caméra";
             // 
+            // comboBox_LiveViewAFMode
+            // 
+            comboBox_LiveViewAFMode.Enabled = false;
+            comboBox_LiveViewAFMode.FormattingEnabled = true;
+            comboBox_LiveViewAFMode.Location = new Point(312, 577);
+            comboBox_LiveViewAFMode.Name = "comboBox_LiveViewAFMode";
+            comboBox_LiveViewAFMode.Size = new Size(440, 40);
+            comboBox_LiveViewAFMode.TabIndex = 86;
+            comboBox_LiveViewAFMode.SelectedIndexChanged += comboBox_LiveViewAFMode_SelectedIndexChanged;
+            // 
+            // label40
+            // 
+            label40.AutoSize = true;
+            label40.ForeColor = SystemColors.ScrollBar;
+            label40.Location = new Point(17, 585);
+            label40.Name = "label40";
+            label40.Size = new Size(211, 32);
+            label40.TabIndex = 85;
+            label40.Text = "LiveView AF Mode";
+            // 
             // btn_liveViewStatus
             // 
-            btn_liveViewStatus.Location = new Point(28, 609);
+            btn_liveViewStatus.Location = new Point(17, 747);
             btn_liveViewStatus.Name = "btn_liveViewStatus";
             btn_liveViewStatus.Size = new Size(222, 46);
             btn_liveViewStatus.TabIndex = 84;
@@ -1758,7 +1761,6 @@
             // 
             // comboBox_AFMode
             // 
-            comboBox_AFMode.Enabled = false;
             comboBox_AFMode.FormattingEnabled = true;
             comboBox_AFMode.Location = new Point(312, 289);
             comboBox_AFMode.Name = "comboBox_AFMode";
@@ -2261,8 +2263,6 @@
             Text = "Aerolithe";
             FormClosing += Aerolithe_FormClosing;
             panel_Console.ResumeLayout(false);
-            flowLayoutPanel1.ResumeLayout(false);
-            panel2.ResumeLayout(false);
             tabControl1.ResumeLayout(false);
             tabPage1.ResumeLayout(false);
             tableLayoutPanel1.ResumeLayout(false);
@@ -2327,6 +2327,7 @@
             panel13.ResumeLayout(false);
             tableLayoutPanel2.ResumeLayout(false);
             tableLayoutPanelMAIN.ResumeLayout(false);
+            tableLayoutPanelMAIN.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -2490,8 +2491,6 @@
         private ComboBox comboBox_EmguConversion;
         private Label label8;
         private FlowLayoutPanel flowLayoutPanel2;
-        private Panel panel2;
-        private Panel panel10;
         private TableLayoutPanel tableLayoutPanelPREFS;
         private Panel panel11;
         private Panel panel12;
@@ -2506,5 +2505,7 @@
         private TableLayoutPanel tableLayoutPanel3;
         private Panel panel15;
         private Button btn_liveViewStatus;
+        private ComboBox comboBox_LiveViewAFMode;
+        private Label label40;
     }
 }

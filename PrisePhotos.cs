@@ -197,6 +197,7 @@ namespace Aerolithe
                         AppendTextToConsoleNL("Focus effectué avec succès, prochaine étape: prise de photo");
                         await takePictureAsync();
                         // Wait for the image to be ready
+                        AppendTextToConsoleNL("Prise de photo et attente de imageReady");
                         await imageReadyTcs.Task;
                     }
                     catch (Exception e)
@@ -236,7 +237,7 @@ namespace Aerolithe
                     break;
                 }
                 await Task.Delay(50, cancellationToken); // Adjust delay as needed
-                AppendTextToConsoleNL(turntablePosition.ToString() + " ----> " + targetPosition.ToString());
+                AppendTextToConsoleNL("Position Table Tournante: " + turntablePosition.ToString() + " ----> " + targetPosition.ToString() + " (cible)");
                 retryCount++;
             }
 
