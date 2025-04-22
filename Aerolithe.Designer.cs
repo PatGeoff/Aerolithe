@@ -32,7 +32,6 @@
             panel1 = new Panel();
             txtBox_Console = new RichTextBox();
             btn_clearConsole = new Button();
-            flowLayoutPanel_PicLayout = new FlowLayoutPanel();
             tabControl1 = new TabControl();
             tabPage1 = new TabPage();
             tableLayoutPanel1 = new TableLayoutPanel();
@@ -198,8 +197,14 @@
             tableLayoutPanelMAIN = new TableLayoutPanel();
             tableLayoutPanel4 = new TableLayoutPanel();
             btn_clearPicReport = new Button();
-            btn_clearPicLayout = new Button();
             richTextBox_PicReport = new RichTextBox();
+            tableLayoutPanel7 = new TableLayoutPanel();
+            flowLayoutPanel1 = new FlowLayoutPanel();
+            flowLayoutPanel2 = new FlowLayoutPanel();
+            flowLayoutPanel3 = new FlowLayoutPanel();
+            flowLayoutPanel4 = new FlowLayoutPanel();
+            btn_clearPicLayout = new Button();
+            Lbl_SaveProgress = new Label();
             tableLayoutPanel6 = new TableLayoutPanel();
             button5 = new Button();
             button4 = new Button();
@@ -252,6 +257,8 @@
             tableLayoutPanel2.SuspendLayout();
             tableLayoutPanelMAIN.SuspendLayout();
             tableLayoutPanel4.SuspendLayout();
+            tableLayoutPanel7.SuspendLayout();
+            flowLayoutPanel4.SuspendLayout();
             tableLayoutPanel6.SuspendLayout();
             tableLayoutPanel5.SuspendLayout();
             SuspendLayout();
@@ -270,6 +277,7 @@
             txtBox_Console.BorderStyle = BorderStyle.None;
             txtBox_Console.Dock = DockStyle.Fill;
             txtBox_Console.ForeColor = Color.White;
+            txtBox_Console.HideSelection = false;
             txtBox_Console.Location = new Point(3, 39);
             txtBox_Console.Name = "txtBox_Console";
             txtBox_Console.Size = new Size(2844, 367);
@@ -290,16 +298,6 @@
             btn_clearConsole.TabIndex = 19;
             btn_clearConsole.UseVisualStyleBackColor = false;
             btn_clearConsole.Click += btn_clearConsole_Click;
-            // 
-            // flowLayoutPanel_PicLayout
-            // 
-            flowLayoutPanel_PicLayout.AutoScroll = true;
-            flowLayoutPanel_PicLayout.BackColor = Color.FromArgb(25, 25, 25);
-            flowLayoutPanel_PicLayout.Dock = DockStyle.Fill;
-            flowLayoutPanel_PicLayout.Location = new Point(3, 39);
-            flowLayoutPanel_PicLayout.Name = "flowLayoutPanel_PicLayout";
-            flowLayoutPanel_PicLayout.Size = new Size(2359, 549);
-            flowLayoutPanel_PicLayout.TabIndex = 27;
             // 
             // tabControl1
             // 
@@ -2219,15 +2217,16 @@
             tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 83F));
             tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 17F));
             tableLayoutPanel4.Controls.Add(btn_clearPicReport, 1, 0);
-            tableLayoutPanel4.Controls.Add(btn_clearPicLayout, 0, 0);
-            tableLayoutPanel4.Controls.Add(flowLayoutPanel_PicLayout, 0, 1);
             tableLayoutPanel4.Controls.Add(richTextBox_PicReport, 1, 1);
+            tableLayoutPanel4.Controls.Add(tableLayoutPanel7, 0, 1);
+            tableLayoutPanel4.Controls.Add(flowLayoutPanel4, 0, 0);
             tableLayoutPanel4.Dock = DockStyle.Fill;
             tableLayoutPanel4.Location = new Point(4, 997);
             tableLayoutPanel4.Name = "tableLayoutPanel4";
-            tableLayoutPanel4.RowCount = 2;
+            tableLayoutPanel4.RowCount = 3;
             tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
             tableLayoutPanel4.Size = new Size(2850, 591);
             tableLayoutPanel4.TabIndex = 30;
             // 
@@ -2246,6 +2245,69 @@
             btn_clearPicReport.UseVisualStyleBackColor = false;
             btn_clearPicReport.Click += btn_clearPicReport_Click;
             // 
+            // richTextBox_PicReport
+            // 
+            richTextBox_PicReport.BackColor = Color.FromArgb(22, 22, 22);
+            richTextBox_PicReport.Dock = DockStyle.Fill;
+            richTextBox_PicReport.Location = new Point(2368, 39);
+            richTextBox_PicReport.Name = "richTextBox_PicReport";
+            richTextBox_PicReport.Size = new Size(479, 529);
+            richTextBox_PicReport.TabIndex = 28;
+            richTextBox_PicReport.Text = "";
+            // 
+            // tableLayoutPanel7
+            // 
+            tableLayoutPanel7.ColumnCount = 1;
+            tableLayoutPanel7.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel7.Controls.Add(flowLayoutPanel1, 0, 0);
+            tableLayoutPanel7.Controls.Add(flowLayoutPanel2, 0, 1);
+            tableLayoutPanel7.Controls.Add(flowLayoutPanel3, 0, 2);
+            tableLayoutPanel7.Dock = DockStyle.Fill;
+            tableLayoutPanel7.Location = new Point(3, 39);
+            tableLayoutPanel7.Name = "tableLayoutPanel7";
+            tableLayoutPanel7.RowCount = 3;
+            tableLayoutPanel7.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel7.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel7.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel7.Size = new Size(2359, 529);
+            tableLayoutPanel7.TabIndex = 31;
+            // 
+            // flowLayoutPanel1
+            // 
+            flowLayoutPanel1.AutoScroll = true;
+            flowLayoutPanel1.Dock = DockStyle.Fill;
+            flowLayoutPanel1.Location = new Point(3, 3);
+            flowLayoutPanel1.Name = "flowLayoutPanel1";
+            flowLayoutPanel1.Size = new Size(2353, 170);
+            flowLayoutPanel1.TabIndex = 0;
+            flowLayoutPanel1.WrapContents = false;
+            // 
+            // flowLayoutPanel2
+            // 
+            flowLayoutPanel2.Dock = DockStyle.Fill;
+            flowLayoutPanel2.Location = new Point(3, 179);
+            flowLayoutPanel2.Name = "flowLayoutPanel2";
+            flowLayoutPanel2.Size = new Size(2353, 170);
+            flowLayoutPanel2.TabIndex = 1;
+            // 
+            // flowLayoutPanel3
+            // 
+            flowLayoutPanel3.Dock = DockStyle.Fill;
+            flowLayoutPanel3.Location = new Point(3, 355);
+            flowLayoutPanel3.Name = "flowLayoutPanel3";
+            flowLayoutPanel3.Size = new Size(2353, 171);
+            flowLayoutPanel3.TabIndex = 2;
+            // 
+            // flowLayoutPanel4
+            // 
+            flowLayoutPanel4.Controls.Add(btn_clearPicLayout);
+            flowLayoutPanel4.Controls.Add(Lbl_SaveProgress);
+            flowLayoutPanel4.Dock = DockStyle.Fill;
+            flowLayoutPanel4.Location = new Point(3, 3);
+            flowLayoutPanel4.Name = "flowLayoutPanel4";
+            flowLayoutPanel4.Size = new Size(2359, 30);
+            flowLayoutPanel4.TabIndex = 32;
+            // 
             // btn_clearPicLayout
             // 
             btn_clearPicLayout.BackColor = Color.Black;
@@ -2261,15 +2323,14 @@
             btn_clearPicLayout.UseVisualStyleBackColor = false;
             btn_clearPicLayout.Click += btn_clearPicLayout_Click;
             // 
-            // richTextBox_PicReport
+            // Lbl_SaveProgress
             // 
-            richTextBox_PicReport.BackColor = Color.FromArgb(22, 22, 22);
-            richTextBox_PicReport.Dock = DockStyle.Fill;
-            richTextBox_PicReport.Location = new Point(2368, 39);
-            richTextBox_PicReport.Name = "richTextBox_PicReport";
-            richTextBox_PicReport.Size = new Size(479, 549);
-            richTextBox_PicReport.TabIndex = 28;
-            richTextBox_PicReport.Text = "";
+            Lbl_SaveProgress.ForeColor = Color.White;
+            Lbl_SaveProgress.Location = new Point(76, 0);
+            Lbl_SaveProgress.Margin = new Padding(40, 0, 3, 0);
+            Lbl_SaveProgress.Name = "Lbl_SaveProgress";
+            Lbl_SaveProgress.Size = new Size(304, 33);
+            Lbl_SaveProgress.TabIndex = 0;
             // 
             // tableLayoutPanel6
             // 
@@ -2427,6 +2488,8 @@
             tableLayoutPanel2.ResumeLayout(false);
             tableLayoutPanelMAIN.ResumeLayout(false);
             tableLayoutPanel4.ResumeLayout(false);
+            tableLayoutPanel7.ResumeLayout(false);
+            flowLayoutPanel4.ResumeLayout(false);
             tableLayoutPanel6.ResumeLayout(false);
             tableLayoutPanel5.ResumeLayout(false);
             ResumeLayout(false);
@@ -2437,7 +2500,6 @@
         private Panel panel1;
         private Button btn_clearConsole;
         private RichTextBox txtBox_Console;
-        private FlowLayoutPanel flowLayoutPanel_PicLayout;
         public TabControl tabControl1;
         private TabPage tabPage1;
         private PictureBox pictureBox_validationE4;
@@ -2613,5 +2675,11 @@
         private Button button3;
         private Button btn_clearPicReport;
         private Button btn_clearPicLayout;
+        private TableLayoutPanel tableLayoutPanel7;
+        private FlowLayoutPanel flowLayoutPanel1;
+        private FlowLayoutPanel flowLayoutPanel2;
+        private FlowLayoutPanel flowLayoutPanel3;
+        private Label Lbl_SaveProgress;
+        private FlowLayoutPanel flowLayoutPanel4;
     }
 }

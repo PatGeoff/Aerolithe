@@ -158,6 +158,9 @@ namespace Aerolithe
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)
         {
+            await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
+            Task.Delay(200);
+
             int[] serieId = { int.Parse(txtBox_nbrImg5deg.Text), int.Parse(txtBox_nbrImg25deg.Text), int.Parse(txtBox_nbrImg45deg.Text) };
             int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad1.Text) };
 
@@ -186,7 +189,7 @@ namespace Aerolithe
 
                     AppendTextToConsoleNL($"photo {i}/{serieId[serie]}");
                     int degres = i * divider;
-                    imageIncr = i + paddingNbr[serie];
+                    imageIncr = i-1 + paddingNbr[serie];
 
                     // Initialize the TaskCompletionSource for each image capture
                     imageReadyTcs = new TaskCompletionSource<bool>();
@@ -197,7 +200,7 @@ namespace Aerolithe
                         AppendTextToConsoleNL("Focus effectué avec succès, prochaine étape: prise de photo");
                         await takePictureAsync();
                         // Wait for the image to be ready
-                        AppendTextToConsoleNL("Prise de photo et attente de imageReady");
+                        AppendTextToConsoleNL("Prise de photo et attente de la Nikon");
                         await imageReadyTcs.Task;
                     }
                     catch (Exception e)

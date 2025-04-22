@@ -116,15 +116,15 @@ namespace Aerolithe
 
             //GetImageType();
             //GetExposureStatus();
-            GetExposureModes();
+            //GetExposureModes();
             GetImageSize();
             GetLiveViewSize();
-            GetAfcPriority();
+            //GetAfcPriority();
             GetShutterSpeed();
-            GetFocusMode();
-            GetAFMode();
+            //GetFocusMode();
+            //GetAFMode();
             //GetLiveViewAFMode();
-            GetFocusAreaMode();
+            //GetFocusAreaMode();
 
 
             //GetIso();

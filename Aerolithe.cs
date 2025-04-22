@@ -43,6 +43,7 @@ namespace Aerolithe
 
         private bool calibrationDone = true;
 
+
         public Aerolithe()
         {
             InitializeComponent();
@@ -53,11 +54,12 @@ namespace Aerolithe
             ButtonSetup();
             InitializeUdpClient();
             listenUDP();
-            Ping();
-            SetupMainFlowLayoutPanel();
+            Ping();            
             PopulateColorConversionDropdown();
             PopulateColorColorDropdown();
             //Task.Run(async () => await InitializeAsync());
+
+
         }
 
         private async Task InitializeAsync()
@@ -455,7 +457,7 @@ namespace Aerolithe
                 {
                     AppendFormattedText(timestamp, Color.Gray);
                     AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
-                    ScrollToBottom();
+                    //ScrollToBottom();
                     //Debug.WriteLine("Message appended via Invoke");
                 }));
             }
@@ -464,7 +466,7 @@ namespace Aerolithe
                 AppendFormattedText(timestamp, Color.Gray);
                 AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
                 //Debug.WriteLine("Message appended directly");
-                ScrollToBottom();
+                //ScrollToBottom();
             }
         }
 
@@ -477,7 +479,7 @@ namespace Aerolithe
                 txtBox_Console.Invoke(new Action(() =>
                 {
                     AppendFormattedText(message, txtBox_Console.ForeColor);
-                    ScrollToBottom();
+                    //ScrollToBottom();
                     //Debug.WriteLine("Message appended via Invoke");
                 }));
             }
@@ -485,7 +487,7 @@ namespace Aerolithe
             {
                 AppendFormattedText(message, txtBox_Console.ForeColor);
                 //Debug.WriteLine("Message appended directly");
-                ScrollToBottom();
+                //ScrollToBottom();
             }
         }
 
@@ -500,7 +502,7 @@ namespace Aerolithe
                 {
                     //AppendFormattedText(timestamp, Color.Gray);
                     AppendFormattedTextOL(message + Environment.NewLine, txtBox_Console.ForeColor);
-                    ScrollToBottom();
+                    //ScrollToBottom();
                     //Debug.WriteLine("Message appended via Invoke");
                 }));
             }
@@ -509,7 +511,7 @@ namespace Aerolithe
                 //AppendFormattedText(timestamp, Color.Gray);
                 AppendFormattedTextOL(message + Environment.NewLine, txtBox_Console.ForeColor);
                 //Debug.WriteLine("Message appended directly");
-                ScrollToBottom();
+                //ScrollToBottom();
             }
         }
 
@@ -531,6 +533,7 @@ namespace Aerolithe
                 message += ".";
             }
             AppendTextToConsoleSL("Exiting UpdateConsoleMessageAsync.");
+
         }
 
 
@@ -542,6 +545,8 @@ namespace Aerolithe
             txtBox_Console.SelectionColor = color;
             txtBox_Console.AppendText(text);
             txtBox_Console.SelectionColor = txtBox_Console.ForeColor;
+            Task.Run(() => ManageRichTextBoxContent());
+
         }
 
         private void AppendFormattedTextOL(string text, Color color)
@@ -560,6 +565,7 @@ namespace Aerolithe
                 txtBox_Console.Text = string.Join(Environment.NewLine, lines, 0, lines.Length - 1);
                 // Append the new text
                 txtBox_Console.AppendText(Environment.NewLine + text);
+                Task.Run ( () => ManageRichTextBoxContent());
             }
             else
             {
@@ -571,11 +577,21 @@ namespace Aerolithe
         }
 
 
-        private void ScrollToBottom()
-        {
-            txtBox_Console.SelectionStart = txtBox_Console.Text.Length;
-            txtBox_Console.ScrollToCaret();
-        }
+        //private void ScrollToBottom()
+        //{
+
+        //    if (txtBox_Console != null && !string.IsNullOrEmpty(txtBox_Console.Text))
+        //    {
+        //        //txtBox_Console.Focus(); // Ensure the TextBox has focus
+        //        //int textLength = txtBox_Console.Text.Length;
+        //        //if (textLength >= 0)
+        //        //{
+        //        //    txtBox_Console.SelectionStart = textLength;
+        //        //    txtBox_Console.ScrollToCaret();
+        //        //}
+        //    }
+
+        //}
         private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
         {
             Application.Exit();
@@ -588,12 +604,6 @@ namespace Aerolithe
             }
         }
 
-        private void SetupMainFlowLayoutPanel()
-        {
-            flowLayoutPanel_PicLayout.AutoScroll = true;
-            flowLayoutPanel_PicLayout.FlowDirection = FlowDirection.TopDown;
-            flowLayoutPanel_PicLayout.WrapContents = false;
-        }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
@@ -784,7 +794,7 @@ namespace Aerolithe
         private void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
         {
             //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
-
+            currentSequence = 0;
             Task.Run(async () =>
             {
                 //await nikonDoFocus();
@@ -805,7 +815,7 @@ namespace Aerolithe
         private void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
         {
             MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
-
+            currentSequence = 1;
 
             Task.Run(async () =>
             {
@@ -823,6 +833,7 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
         {
+            currentSequence = 2;
             MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
             Task.Run(async () => await nikonDoFocus());
             Task.Run(async () =>
@@ -1040,5 +1051,6 @@ namespace Aerolithe
         {
             richTextBox_PicReport.Clear();
         }
+
     }
 }

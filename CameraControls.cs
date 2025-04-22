@@ -16,10 +16,10 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         private FlowLayoutPanel currentSequenceFlowLayoutPanel;
-        private int currentSequence = 1;
+        private int currentSequence = 0;
         private TaskCompletionSource<bool> imageReadyTcs;
         private int lastPercent = -1;
-
+        
 
         public async Task takePictureAsync()
         {
@@ -43,6 +43,8 @@ namespace Aerolithe
 
         void device_ImageReady(NikonDevice sender, NikonImage image)
         {
+            FlowLayoutPanel[] flowLatoutPanels = { flowLayoutPanel1, flowLayoutPanel2, flowLayoutPanel3 };
+           
             AppendTextToConsoleNL("image capturée, sauvegarde de l'image");
             try
             {
@@ -50,8 +52,10 @@ namespace Aerolithe
                 {
                     using (MemoryStream memoryStream = new MemoryStream(image.Buffer))
                     {
+                        string nomImage = "";
                         try
                         {
+                            
                             // Test if the image buffer is valid
                             Image testImage = Image.FromStream(memoryStream);
                             // Save image if needed
@@ -65,7 +69,7 @@ namespace Aerolithe
                                         //MessageBox.Show(imageNameBase + "_" + imageIncr + ".jpg");
                                         // Reset the stream position to the beginning
                                         memoryStream.Position = 0;
-                                        string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
+                                        nomImage = imageNameBase + "_" + imageIncr + ".jpg";
                                         string outputPath = Path.Combine(imagesFolderPath, nomImage);
                                         //MessageBox.Show(outputPath);
                                         AppendTextToConsoleNL("Sauvegarde de la photo. Ceci peut prendre quelques secondes");
@@ -75,11 +79,77 @@ namespace Aerolithe
                                             if (percent != lastPercent)
                                             {
                                                 AppendTextToConsoleNL($"Sauvegarde: {percent}%");
+                                                Lbl_SaveProgress.Text = $"Sauvegarde: {percent}%";
                                                 lastPercent = percent; // Update the last percentage value
+
                                             }
                                         });
 
                                         SaveStreamAsJpegWithProgress(memoryStream, outputPath, savingProgress);
+                                        Lbl_SaveProgress.Text = "";
+
+                                        try
+                                        {
+                                            string imagePath = outputPath;
+
+                                            using (Image originalImage = Image.FromFile(imagePath))
+                                            {
+                                                Image resizedImage = ResizeImage(originalImage, (int)(flowLayoutPanel1.Height*1.5), flowLayoutPanel1.Height - 30); // Resize to desired dimensions
+
+                                                PictureBox pictureBox = new PictureBox();
+                                                pictureBox.Image = resizedImage;
+                                                pictureBox.Size = new Size((int)(flowLayoutPanel1.Height * 1.5), flowLayoutPanel1.Height);
+                                                pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+
+                                                flowLatoutPanels[currentSequence].Controls.Add(pictureBox);
+                                            }
+
+                                        }
+
+                                        catch (Exception ex)
+                                        {
+                                            AppendTextToConsoleNL($"An error occurred: {ex.Message}");
+                                        }
+
+
+                                        // Reset the memory stream position after testing
+
+
+
+                                        //memoryStream.Position = 0;
+                                        //Image resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream);
+                                        //if (resizedImage != null)
+                                        //{
+                                        //    picBox_pictureTaken.Image = resizedImage;
+                                        //    //// Create a new PictureBox
+                                        //    PictureBox pictureBox = CreatePictureBox(flowLatoutPanels[currentSequence], resizedImage);
+
+                                        //    // Set border color based on the sequence
+                                        //    Color borderColor = GetBorderColor(currentSequence);
+
+                                        //    // Create a ToolTip instance
+                                        //    ToolTip toolTip = new ToolTip();
+
+                                        //    // Set the tooltip text
+                                        //    toolTip.SetToolTip(pictureBox, nomImage);
+
+
+                                        //    flowLatoutPanels[currentSequence].Controls.Add(pictureBox);
+
+
+
+                                        //}
+                                        //else
+                                        //{
+                                        //    MessageBox.Show("Failed to resize the image.");
+                                        //    return;
+                                        //}
+
+
+
+
+
+
                                     }
 
                                     catch (Exception ex)
@@ -103,12 +173,11 @@ namespace Aerolithe
                             return;
                         }
 
-                        // Reset the memory stream position after testing
-                        memoryStream.Position = 0;
+                        
 
 
                         // Downsize and display the image in a PictureBox
-                        //var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream);
+                        
                         //var resizingProgress = new Progress<int>(percent =>
                         //{
                         //    AppendTextToConsoleNL($"Progress: {percent}%");
@@ -116,23 +185,9 @@ namespace Aerolithe
 
                         //var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream, resizingProgress);
 
-                        //if (resizedImage != null)
-                        //{
-                        //    picBox_pictureTaken.Image = resizedImage;
-                        //}
-                        //else
-                        //{
-                        //    MessageBox.Show("Failed to resize the image.");
-                        //    return;
-                        //}
+                       
 
-                        //// Create a new PictureBox
-                        //PictureBox pictureBox = CreatePictureBox(resizedImage);
 
-                        // Set border color based on the sequence
-                        //Color borderColor = GetBorderColor(currentSequence);
-
-                        //flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
                         //// Create a new sequence FlowLayoutPanel if needed
                         //if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
                         //{
@@ -173,16 +228,34 @@ namespace Aerolithe
         }
 
 
-        //public async Task  SaveStreamAsJpeg(Stream imageStream, string outputPath)
-        //{
-        //    AppendTextToConsoleNL($"sauvegarde de l'image dans {outputPath}");
+        private Image ResizeImage(Image image, int width, int height)
+        {
+            var destRect = new Rectangle(0, 0, width, height);
+            var destImage = new Bitmap(width, height);
 
-        //    // Create an Image object from the stream
-        //    Image image = Image.FromStream(imageStream);
+            destImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
 
-        //    // Save the image as a JPEG file
-        //    image.Save(outputPath, ImageFormat.Jpeg);
-        //}
+            using (var graphics = Graphics.FromImage(destImage))
+            {
+                graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+                using (var wrapMode = new System.Drawing.Imaging.ImageAttributes())
+                {
+                    wrapMode.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
+                    graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
+                }
+            }
+
+            return destImage;
+        }
+
+
+
+
         public void SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int> progress)
         {
             AppendTextToConsoleNL($"Saving image to {outputPath}");
@@ -219,15 +292,15 @@ namespace Aerolithe
         }
 
 
-        private PictureBox CreatePictureBox(Image image)
+        private PictureBox CreatePictureBox(FlowLayoutPanel flowlayoutpanel, Image image)
         {
             return new PictureBox
             {
-                Name = $"img_{flowLayoutPanel_PicLayout.Controls.Count:D3}",
+                Name = $"img_{flowlayoutpanel.Controls.Count:D3}",
                 Image = image,
                 SizeMode = PictureBoxSizeMode.Zoom,
-                Width = 200,
-                Height = 132,
+                Height = flowlayoutpanel.Height,
+                Width = (int)(Height / 1.5),
                 Margin = new Padding(0),
                 Padding = new Padding(0),
                 BorderStyle = BorderStyle.FixedSingle
@@ -464,6 +537,7 @@ namespace Aerolithe
 
 
 
+       
 
 
 

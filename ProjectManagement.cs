@@ -7,6 +7,7 @@ using System.IO;
 using Newtonsoft.Json.Linq;
 using System.Net.Http.Json;
 using Emgu.CV.CvEnum;
+using System.Windows.Forms;
 
 namespace Aerolithe
 {
@@ -277,6 +278,25 @@ namespace Aerolithe
             
             comboBox_EmguColor.SelectedIndex = 3;
         }
+
+
+        private async Task ManageRichTextBoxContent()
+        {
+            int maxLength = 2147483647; // Maximum length for RichTextBox
+            int threshold = (int)(maxLength * 0.5); // 50% of the maximum length
+
+            if (txtBox_Console.Text.Length > threshold)
+            {
+                // Find the position to start removing text
+                int removeLength = txtBox_Console.Text.Length - threshold;
+
+                // Remove the oldest lines
+                txtBox_Console.Text = txtBox_Console.Text.Substring(removeLength);
+            }
+        }
+
+
+       
 
     }
 }

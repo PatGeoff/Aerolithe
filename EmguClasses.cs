@@ -54,6 +54,11 @@ namespace Aerolithe
 
             return bitmap;
         }
+
+
+        
+
+
         //public static Image DownsizeImageToFitPictureBox(PictureBox pictureBox, MemoryStream memoryStream, IProgress<int> progress)
         //{
         //    // Convert MemoryStream to Mat
@@ -80,7 +85,7 @@ namespace Aerolithe
 
         //    // Display the Bitmap in the PictureBox
         //    DisplayImageInPictureBox(pictureBox, bitmap);
-            
+
 
         //    return bitmap;
         //}
