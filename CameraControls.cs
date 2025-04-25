@@ -20,6 +20,7 @@ namespace Aerolithe
         private int currentSequence = 0;
         private TaskCompletionSource<bool> imageReadyTcs;
         private int lastPercent = -1;
+        private Size panelSize = new Size(250, 200);
         
 
         public async Task takePictureAsync()
@@ -94,26 +95,37 @@ namespace Aerolithe
                                             {
                                                 Image resizedImage = ResizeImage(originalImage, 150,100); // Resize to desired dimensions
 
+
+                                                Panel borderPanel = new Panel();
+                                                borderPanel.Size = panelSize; // Adjust size as needed
+                                                borderPanel.BorderStyle = BorderStyle.FixedSingle; // This adds the border
+
                                                 // Create a panel to hold the label and picture box
-                                                Panel panel = new Panel();
-                                                panel.Size = new Size(150, 140); // Adjust size as needed
-                                                panel.BorderStyle = BorderStyle.FixedSingle;
+                                                TableLayoutPanel tableLayoutPanel = new TableLayoutPanel();
+
+                                                tableLayoutPanel.ColumnCount = 1;
+                                                tableLayoutPanel.RowCount = 2;
+                                                tableLayoutPanel.Dock = DockStyle.Fill;
+                                                tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+                                                tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 75F));
+                                                
+
 
                                                 // Create and configure the label
                                                 Label label = new Label();
                                                 label.Text = nomImage;
-                                                label.Size = new Size(150, 30); // Adjust size as needed
+                                                //label.Size = new Size(150, 30); // Adjust size as needed
                                                 label.TextAlign = ContentAlignment.MiddleCenter;
                                                 label.ForeColor = Color.White;
-                                                label.Dock = DockStyle.Top;
+                                                label.Dock = DockStyle.Fill;
                                                 label.Font = new Font(label.Font.FontFamily, 6);
 
                                                 // Create and configure the picture box
                                                 PictureBox pictureBox = new PictureBox();
                                                 pictureBox.Image = resizedImage;
-                                                pictureBox.Size = new Size(150, 100);
+                                                //pictureBox.Size = new Size(150, 100);
                                                 pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
-                                                pictureBox.Dock = DockStyle.Bottom;
+                                                pictureBox.Dock = DockStyle.Fill;
                                                 ToolTip toolTip = new ToolTip();
                                                 toolTip.SetToolTip(pictureBox, nomImage);
 
@@ -130,11 +142,14 @@ namespace Aerolithe
                                                 };
 
                                                 // Add the label and picture box to the panel
-                                                panel.Controls.Add(label);
-                                                panel.Controls.Add(pictureBox);
+
+                                                tableLayoutPanel.Controls.Add( label, 0,0 );
+                                                tableLayoutPanel.Controls.Add( pictureBox, 0, 1 );
+                                                borderPanel.Controls.Add(tableLayoutPanel);
 
                                                 // Add the panel to the flow layout panel
-                                                flowLayoutPanel1.Controls.Add(panel);
+                                                flowLayoutPanel1.Controls.Add(borderPanel);
+                                                flowLayoutPanel1.ScrollControlIntoView(borderPanel);
                                             }
                                         }
 
@@ -213,6 +228,31 @@ namespace Aerolithe
             // Create an Image object from the stream
             Image image = Image.FromStream(imageStream);
 
+            if (customPen.IsVisible)
+            {
+
+                // Create a Graphics object from the image
+                using (Graphics g = Graphics.FromImage(image))
+                {
+                    // Calculate the scaling ratio
+                    float scaleX = (float)image.Width / pnl_DrawingLiveView.Width;
+                    float scaleY = (float)image.Height / pnl_DrawingLiveView.Height;
+
+                    // Scale the brush drawing to the image ratio
+                    int scaledY = (int)(startY * scaleY);
+                    int scaledHeight = (int)((pnl_DrawingLiveView.Height - startY) * scaleY);
+
+                    // Draw the brush on the image
+                    using (Brush brush = new SolidBrush(Color.White)) // Zero transparency white brush
+                    {
+                        g.FillRectangle(brush, 0, scaledY, image.Width, scaledHeight);
+                    }
+                }
+
+            }
+
+
+
             // Save the image to a temporary stream
             using (MemoryStream tempStream = new MemoryStream())
             {
@@ -242,40 +282,6 @@ namespace Aerolithe
         }
 
 
-        private PictureBox CreatePictureBox(FlowLayoutPanel flowlayoutpanel, Image image)
-        {
-            return new PictureBox
-            {
-                Name = $"img_{flowlayoutpanel.Controls.Count:D3}",
-                Image = image,
-                SizeMode = PictureBoxSizeMode.Zoom,
-                Height = flowlayoutpanel.Height,
-                Width = (int)(Height / 1.5),
-                Margin = new Padding(0),
-                Padding = new Padding(0),
-                BorderStyle = BorderStyle.FixedSingle
-            };
-        }
-
-        private Color GetBorderColor(int sequence)
-        {
-            return sequence switch
-            {
-                1 => Color.Green,
-                2 => Color.Orange,
-                3 => Color.Purple,
-                _ => Color.Transparent
-            };
-        }
-        private void SetFlowLayoutPanelWidth(FlowLayoutPanel panel, int nombreImages, int pictureBoxWidth)
-        {
-            // Calculate the total width needed for the FlowLayoutPanel
-            int totalWidth = nombreImages * pictureBoxWidth;
-
-            // Set the width of the FlowLayoutPanel
-            panel.Width = totalWidth;
-        }
-
 
         private void ManualFocus(int up, double newFocusValue){
 
@@ -304,88 +310,6 @@ namespace Aerolithe
         }
 
 
-
-        //private async Task AutomaticMFocus()
-        //{
-        //    int maxStep = int.Parse(lbl_driveStepMax.Text);
-        //    int driveStepVal = 30; // Initial drive step value (never zero)
-        //    int direction = 1; // Initial direction (1 for one way, 0 for the other)
-        //    int moveCount = 0; // Counter for moves in the current direction
-        //    double highestBlurryness = 0.0; // Track the highest blurryness amount
-        //    int bestStep = 0; // Track the best step position
-        //    int initialPosition = 0; // Assume initial position is 0
-        //    double initialBlurryness = blurrynessAmount;
-        //    int moveBadCount = 0;
-
-        //    if (device.LiveViewEnabled == false)
-        //    {
-        //        device.LiveViewEnabled = true;
-        //        liveViewTimer.Start();
-        //    }
-        //    AppendTextToConsoleNL("Début du programme de focus");
-        //    // Move up by 100 steps
-        //    while (moveCount < 50)
-        //    {
-        //        ManualFocus(direction, driveStepVal);
-        //        await Task.Delay(100); // Adjust delay as needed to match live view timer interval
-        //        double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
-
-        //        if (currentBlurryness > highestBlurryness)
-        //        {
-        //            highestBlurryness = currentBlurryness;
-        //            bestStep = moveCount * driveStepVal;
-        //        } 
-        //        if (currentBlurryness < initialBlurryness)
-        //        {
-        //            if (moveBadCount > 4)
-        //            {
-        //                break;
-        //            }
-        //            moveBadCount++;
-        //        }
-        //        else
-        //        {
-        //            moveBadCount = 0; // Reset the counter if a good move is found
-        //        }
-
-        //        moveCount++;
-        //    }
-        //    AppendTextToConsoleNL("fin du premier tour");
-        //    AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
-
-
-
-        //    // Return to the initial position
-
-        //    ManualFocus(0, moveCount * driveStepVal);
-
-        //    Task.Delay(1000);
-        //    moveCount = 0;
-        //    while (moveCount < 50)
-        //    {
-        //        ManualFocus(0, driveStepVal);
-        //        await Task.Delay(100); // Adjust delay as needed to match live view timer interval
-        //        double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
-
-        //        if (currentBlurryness > highestBlurryness)
-        //        {
-        //            highestBlurryness = currentBlurryness;
-        //            bestStep = moveCount * driveStepVal;
-        //            //AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
-        //        }
-
-        //        moveCount++;
-        //    }
-        //    AppendTextToConsoleNL("Fin du deuxième tour");
-        //    AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestSetp: {bestStep}");
-
-        //       //Back or origin in order to move to the highestBluryness amount 
-        //    ManualFocus(1, moveCount * driveStepVal);
-
-        //    //ManualFocus(1, bestStep);
-
-
-        //}
 
         private async Task AutomaticMFocus()
         {

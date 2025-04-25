@@ -48,19 +48,28 @@ namespace Aerolithe
             Mat binaryMask = new Mat();
             try
             {
-                //// Définir le range pour séparer le min et max du masque                
-                MCvScalar lower = new MCvScalar(0,0,1);
-                MCvScalar upper = new MCvScalar(255,255,255);
-                //MCvScalar lower = new MCvScalar(Int16.Parse(textBox_lowB_x.Text), Int16.Parse(textBox_lowB_y.Text), Int16.Parse(textBox_lowB_z.Text));
-                //MCvScalar upper = new MCvScalar(Int16.Parse(textBox_upperB_x.Text), Int16.Parse(textBox_upperB_y.Text), Int16.Parse(textBox_upperB_z.Text));
-                //// créer le masque binaire en utilisant le range de couleur
-                CvInvoke.InRange(hsvImg, new ScalarArray(lower), new ScalarArray(upper), binaryMask);
-                //// inverser le masque
-                Mat invertedMask = 255 - binaryMask;
+                //// Définir le range pour séparer le min et max du masque    
+                try
+                {
+                    MCvScalar lower = new MCvScalar(int.Parse(textBox_lowerB_x.Text), int.Parse(textBox_lowerB_y.Text), int.Parse(textBox_lowerB_z.Text));
+                    MCvScalar upper = new MCvScalar(int.Parse(textBox_upperB_x.Text), int.Parse(textBox_upperB_y.Text), int.Parse(textBox_upperB_z.Text));
+                    //MCvScalar lower = new MCvScalar(Int16.Parse(textBox_lowB_x.Text), Int16.Parse(textBox_lowB_y.Text), Int16.Parse(textBox_lowB_z.Text));
+                    //MCvScalar upper = new MCvScalar(Int16.Parse(textBox_upperB_x.Text), Int16.Parse(textBox_upperB_y.Text), Int16.Parse(textBox_upperB_z.Text));
+                    //// créer le masque binaire en utilisant le range de couleur
+                    CvInvoke.InRange(hsvImg, new ScalarArray(lower), new ScalarArray(upper), binaryMask);
+                    //// inverser le masque
+                    Mat invertedMask = 255 - binaryMask;
 
-                pictureBox_imageMasquage.Image = invertedMask.ToImage<Bgr, Byte>().ToBitmap();
+                    pictureBox_imageMasquage.Image = invertedMask.ToImage<Bgr, Byte>().ToBitmap();
 
-                applyMask(binaryMask, foreground);
+                    applyMask(binaryMask, foreground);
+                }
+                catch (Exception)
+                {
+                    
+                    throw;
+                }
+                
 
             }
             catch (Exception ex)

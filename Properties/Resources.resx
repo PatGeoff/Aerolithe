@@ -127,10 +127,13 @@
   <data name="camera_offline" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\camera_offline.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="camera_horsLigne" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\MyResources\Images\camera_horsLigne.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="echec" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\echec.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="camera_horsLigne" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\MyResources\Images\camera_horsLigne.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="afficherLignes" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\MyResources\Images\afficherLignes.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

@@ -23,156 +23,25 @@ namespace Aerolithe
         private int imageIncr = 0;
         public CancellationTokenSource cancellationTokenSource;
 
-        //private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken)
-        //{
-        //    if (projectPath == null) {
-        //        SaveProject();  // Demande à setter le projet
-        //    }
-        //    if (projectPath == null)
-        //    {
-        //        return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
-        //    }
-        //    AppendTextToConsoleNL("Demade de position à la table tournante.. en attente");
-
-
-
-        //    turntablePositionReached = false;
-        //    actuatorPositionReached = false;
-        //    int total = 0;
-        //    await UdpSendActuatorMessageAsync("actuator 5");
-        //    await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
-        //    await WaitForTargetPositionConfirmation(turntableDelay, "En attente de la table tournante ", cancellationToken);
-        //    int divider = 4096 / nombreImages5Degres;
-
-        //    currentSequence = 1; // Sequence 1
-        //    for (int i = 1; i < nombreImages5Degres; i++)
-        //    {
-        //        cancellationToken.ThrowIfCancellationRequested();
-        //        AppendTextToConsoleNL($"photo {i}/{nombreImages5Degres}");
-        //        int degres = i * divider;
-
-        //        // Initialize the TaskCompletionSource for each image capture
-        //        imageReadyTcs = new TaskCompletionSource<bool>();
-
-        //        // Take the picture asynchronously
-        //        await takePictureAsync();
-
-        //        // Wait for the image to be ready
-        //        await imageReadyTcs.Task;
-
-
-        //        // Send the turntable command immediately after the image is ready
-        //        await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-
-        //        // Add a delay after the image is ready
-        //        await Task.Delay(delayTimePhotoShoot); // Delay for x seconds
-
-        //        AppendTextToConsoleNL($"prise de photo #{total}");
-        //        total += 1;
-
-        //        // Wait for the turntable to reach the target position
-        //        //await WaitForTargetPositionConfirmation(turntableDelay, "En attente de la table tournante ", cancellationToken);
-        //    }
-
-        //    AppendTextToConsoleNL($"Série 1 terminée");
-        //    // Continue with the rest of your sequences...
-        //}
-
-        //private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)
-        //{
-        //    int[] serieId = { int.Parse(txtBox_nbrImg5deg.Text), int.Parse(txtBox_nbrImg25deg.Text), int.Parse(txtBox_nbrImg45deg.Text) };
-        //    int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad1.Text) };
-
-
-        //    if (projectPath == null)
-        //    {
-        //        SaveProject();  // Demande à setter le projet
-        //    }
-        //    if (projectPath == null)
-        //    {
-        //        return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
-        //    }
-
-
-        //    await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
-        //    while (turntablePosition > 10)
-        //    {
-        //        await getTurntablePosFromWaveshare();
-
-        //    }
-        //    AppendTextToConsoleNL("position de la table est 0");
-
-        //    int divider = 4096 / serieId[serie];
-
-        //    try
-        //    {
-        //        for (int i = 1; i <= serieId[serie]; i++)
-        //        {
-        //            cancellationToken.ThrowIfCancellationRequested();
-
-        //            AppendTextToConsoleNL($"photo {i}/{serieId[serie]}");
-        //            int degres = i * divider;
-        //            imageIncr = i + paddingNbr[serie];
-
-        //            // Initialize the TaskCompletionSource for each image capture
-        //            imageReadyTcs = new TaskCompletionSource<bool>();
-
-        //            try
-        //            {
-        //                await nikonDoFocus();
-        //            }
-        //            catch (Exception e)
-        //            {
-        //                AppendTextToConsoleNL(e.Message);
-        //                AppendTextToConsoleNL("Série Cancellée ici");
-        //                device.LiveViewEnabled = true;
-        //                await Task.Delay(100);
-        //                liveViewTimer.Start();
-        //                return;
-        //            }
-
-
-        //            // Take the picture asynchronously
-        //            AppendTextToConsoleNL("prise de photo");
-        //            await takePictureAsync();
-
-
-        //            // Wait for the image to be ready
-        //            await imageReadyTcs.Task;
-
-        //            // Send the turntable command immediately after the image is ready
-        //            await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-        //            while (turntablePosition < degres - 10 || turntablePosition > degres + 10)
-        //            {
-        //                await getTurntablePosFromWaveshare();
-        //            }
-        //            AppendTextToConsoleNL("position de la table est atteinte");
-        //        }
-        //    }
-        //    catch (OperationCanceledException)
-        //    {
-        //        AppendTextToConsoleNL("Photo sequence cancelled.");
-        //    }
-
-        //}
-
+      
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)
         {
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
             Task.Delay(200);
 
             int[] serieId = { int.Parse(txtBox_nbrImg5deg.Text), int.Parse(txtBox_nbrImg25deg.Text), int.Parse(txtBox_nbrImg45deg.Text) };
-            int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad1.Text) };
+            int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad2.Text), int.Parse(txtBox_seqPad3.Text) };
 
             if (projectPath == null)
             {
-                SaveProject();  // Demande à setter le projet
+                {
+                    SaveProject();  // Demande à setter le projet
+                }
+                if (projectPath == null)
+                {
+                    return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
+                }
             }
-            if (projectPath == null)
-            {
-                return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
-            }
-
             await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
             cancellationToken.ThrowIfCancellationRequested();
             await WaitForTurntablePositionAsync(0, cancellationToken);
@@ -190,6 +59,7 @@ namespace Aerolithe
                     AppendTextToConsoleNL($"photo {i}/{serieId[serie]}");
                     int degres = i * divider;
                     imageIncr = i-1 + paddingNbr[serie];
+                    
 
                     // Initialize the TaskCompletionSource for each image capture
                     imageReadyTcs = new TaskCompletionSource<bool>();

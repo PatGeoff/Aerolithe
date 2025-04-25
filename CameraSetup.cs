@@ -188,7 +188,7 @@ namespace Aerolithe
             {
                 // Handle Nikon-specific exceptions
                 Console.WriteLine("NikonException: " + ex.Message);
-                AppendTextToConsoleNL("NikonException: " + ex.Message);
+                //AppendTextToConsoleNL("NikonException: " + ex.Message);
                 //AppendTextToConsoleNL("NikonException: " + ex.Message);
                 // Display placeholder image
                 picBox_LiveView_Main.Image = Properties.Resources.camera_offline;

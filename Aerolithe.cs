@@ -16,6 +16,7 @@ using System.Threading;
 using Emgu.CV.XPhoto;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static Emgu.Util.Platform;
+using System.Drawing.Printing;
 
 namespace Aerolithe
 {
@@ -65,9 +66,10 @@ namespace Aerolithe
             ButtonSetup();
             InitializeUdpClient();
             listenUDP();
-            Ping();            
+            Ping();
             PopulateColorConversionDropdown();
             PopulateColorColorDropdown();
+            setupPen();
             //Task.Run(async () => await InitializeAsync());
 
 
@@ -494,14 +496,17 @@ namespace Aerolithe
 
             Action updateRichTextBox = () =>
             {
-                
-                // Append the imageName and degrees in white
-                richTextBox_PicReport.SelectionColor = Color.White;
-                richTextBox_PicReport.AppendText($"{imageName}\t{degrees} degrés\t");
-
                 // Append the success status in green or red
                 richTextBox_PicReport.SelectionColor = success ? Color.Green : Color.Red;
-                richTextBox_PicReport.AppendText(success ? "Réussi\n" : "Échec\n");
+                richTextBox_PicReport.AppendText(success ? "Réussi\t" : "Échec\t");
+
+                // Append the imageName and degrees in white
+                richTextBox_PicReport.SelectionColor = Color.White;
+                richTextBox_PicReport.AppendText($"{imageName}\t{degrees} degrés\n");
+
+                richTextBox_PicReport.ScrollToCaret();
+
+
             };
 
             if (richTextBox_PicReport.InvokeRequired)
@@ -551,7 +556,7 @@ namespace Aerolithe
             }
         }
 
-      
+
         private async Task UpdateConsoleMessageAsync(string message, CancellationToken token) // Permet de printer à chaque 2 secondes jusqu'à ce que le token soit envoyé
         {
             while (!token.IsCancellationRequested)
@@ -625,7 +630,7 @@ namespace Aerolithe
                 txtBox_Console.Text = string.Join(Environment.NewLine, lines, 0, lines.Length - 1);
                 // Append the new text
                 txtBox_Console.AppendText(Environment.NewLine + text);
-                Task.Run ( () => ManageRichTextBoxContent());
+                Task.Run(() => ManageRichTextBoxContent());
             }
             else
             {
@@ -971,10 +976,13 @@ namespace Aerolithe
 
         private void btn_cancelPhotoShoot_Click(object sender, EventArgs e)
         {
-            if (tokenSource != null)
+            Task.Run(() =>
             {
-                tokenSource.Cancel();
-            }
+                if (tokenSource != null)
+                {
+                    tokenSource.Cancel();
+                }
+            });
         }
 
 
@@ -1104,12 +1112,115 @@ namespace Aerolithe
 
         private void btn_clearPicLayout_Click(object sender, EventArgs e)
         {
-
+            flowLayoutPanel1.Controls.Clear();
         }
 
         private void btn_clearPicReport_Click(object sender, EventArgs e)
         {
             richTextBox_PicReport.Clear();
+        }
+
+
+
+        private void pnl_LiveView_Main_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                isDrawing = true;
+                startY = e.Y;
+                currentY = e.Y;
+                pnl_DrawingLiveView.Invalidate(); // Redraw the panel
+            }
+        }
+
+        private void pnl_LiveView_Main_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isDrawing)
+            {
+                currentY = e.Y;
+                pnl_DrawingLiveView.Invalidate(); // Redraw the panel
+            }
+        }
+
+        private void pnl_LiveView_Main_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (isDrawing)
+            {
+                isDrawing = false;
+                pnl_DrawingLiveView.Invalidate(); // Redraw the panel
+            }
+        }
+
+
+        private void pnl_LiveView_Paint(object sender, PaintEventArgs e)
+        {
+            if (isDrawing || currentY > 0)
+            {
+                if (customPen.IsVisible)
+                {
+                    using (Pen pen = customPen.GetPen())
+                    {
+                        e.Graphics.DrawLine(pen, 0, startY, pnl_DrawingLiveView.Width, startY);
+                    }
+                }
+                if (customBrush.IsVisible)
+                {
+                    DrawBlackBelowLine(startY, e.Graphics);
+                }
+            }
+        }
+
+
+        private void btn_displayLineBlack_Click(object sender, EventArgs e)
+        {
+
+            customPen.IsVisible = !customPen.IsVisible; // Toggle pen visibility
+            customBrush.IsVisible = !customBrush.IsVisible; // Toggle brush visibility
+            pnl_DrawingLiveView.Invalidate(); // Redraw the panel
+
+        }
+
+
+        private void btn_plusSizePic_Click(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                panelSize = new Size(panelSize.Width + 20, panelSize.Height + 20);
+                await ResizePanelsAsync(panelSize);
+            });
+
+
+        }
+
+        private void btn_minusSizePic_Click(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                panelSize = new Size(panelSize.Width - 20, panelSize.Height - 20);
+                await ResizePanelsAsync(panelSize);
+            });
+
+        }
+
+        private async Task ResizePanelsAsync(Size newSize)
+        {
+            foreach (Panel panel in flowLayoutPanel1.Controls.OfType<Panel>())
+            {
+
+                await Task.Run(() =>
+                {
+                    this.Invoke((System.Windows.Forms.MethodInvoker)delegate
+                    {
+                        panel.Size = newSize;
+                    });
+                });
+
+            }
+        }
+
+        private void btn_PrisePhotoSeqTotale_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

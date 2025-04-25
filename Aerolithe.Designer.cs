@@ -128,6 +128,7 @@
             tabPage7 = new TabPage();
             tabControl2 = new TabControl();
             tabPage10 = new TabPage();
+            btn_PrisePhotoSeqTotale = new Button();
             label25 = new Label();
             btn_cancelPhotoShoot = new Button();
             label26 = new Label();
@@ -147,10 +148,6 @@
             comboBox_LiveViewAFMode = new ComboBox();
             label40 = new Label();
             btn_liveViewStatus = new Button();
-            comboBox_EmguColor = new ComboBox();
-            label39 = new Label();
-            comboBox_EmguConversion = new ComboBox();
-            label8 = new Label();
             comboBox_AFMode = new ComboBox();
             label34 = new Label();
             lbl_AFMode = new Label();
@@ -181,6 +178,18 @@
             lbl_lastTimePing = new Label();
             btn_esp32Reset = new Button();
             label20 = new Label();
+            Contour = new TabPage();
+            comboBox_EmguColor = new ComboBox();
+            label39 = new Label();
+            comboBox_EmguConversion = new ComboBox();
+            label8 = new Label();
+            tableLayoutPanel9 = new TableLayoutPanel();
+            textBox_lowerB_y = new TextBox();
+            textBox_upperB_z = new TextBox();
+            textBox_upperB_y = new TextBox();
+            textBox_upperB_x = new TextBox();
+            textBox_lowerB_z = new TextBox();
+            textBox_lowerB_x = new TextBox();
             pictureBox_imageSoustraction = new PictureBox();
             pictureBox_imageMasquage = new PictureBox();
             picBox_imageFond = new PictureBox();
@@ -191,6 +200,10 @@
             nouveauToolStripMenuItem = new ToolStripMenuItem();
             tableLayoutPanelPREFS = new TableLayoutPanel();
             panel11 = new Panel();
+            tableLayoutPanel8 = new TableLayoutPanel();
+            pnl_DrawingLiveView = new Panel();
+            flowLayoutPanel2 = new FlowLayoutPanel();
+            btn_displayLineBlack = new Button();
             panel12 = new Panel();
             panel13 = new Panel();
             tableLayoutPanel2 = new TableLayoutPanel();
@@ -202,12 +215,10 @@
             flowLayoutPanel1 = new FlowLayoutPanel();
             flowLayoutPanel4 = new FlowLayoutPanel();
             btn_clearPicLayout = new Button();
+            btn_minusSizePic = new Button();
+            btn_plusSizePic = new Button();
             tableLayoutPanel6 = new TableLayoutPanel();
-            button5 = new Button();
-            button4 = new Button();
-            button3 = new Button();
             tableLayoutPanel5 = new TableLayoutPanel();
-            tableLayoutPanel8 = new TableLayoutPanel();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
@@ -243,6 +254,8 @@
             tabPage8.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_esp32Com).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_waveshareCom).BeginInit();
+            Contour.SuspendLayout();
+            tableLayoutPanel9.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox_imageSoustraction).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_imageMasquage).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_imageFond).BeginInit();
@@ -250,6 +263,9 @@
             menuStrip1.SuspendLayout();
             tableLayoutPanelPREFS.SuspendLayout();
             panel11.SuspendLayout();
+            tableLayoutPanel8.SuspendLayout();
+            pnl_DrawingLiveView.SuspendLayout();
+            flowLayoutPanel2.SuspendLayout();
             panel12.SuspendLayout();
             panel13.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
@@ -259,7 +275,6 @@
             flowLayoutPanel4.SuspendLayout();
             tableLayoutPanel6.SuspendLayout();
             tableLayoutPanel5.SuspendLayout();
-            tableLayoutPanel8.SuspendLayout();
             SuspendLayout();
             // 
             // panel1
@@ -279,7 +294,7 @@
             txtBox_Console.HideSelection = false;
             txtBox_Console.Location = new Point(3, 39);
             txtBox_Console.Name = "txtBox_Console";
-            txtBox_Console.Size = new Size(2844, 367);
+            txtBox_Console.Size = new Size(2844, 290);
             txtBox_Console.TabIndex = 20;
             txtBox_Console.Text = "";
             // 
@@ -312,7 +327,7 @@
             tabControl1.Location = new Point(4, 4);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(894, 978);
+            tabControl1.Size = new Size(894, 971);
             tabControl1.TabIndex = 27;
             // 
             // tabPage1
@@ -327,7 +342,7 @@
             tabPage1.Location = new Point(4, 44);
             tabPage1.Name = "tabPage1";
             tabPage1.Padding = new Padding(3);
-            tabPage1.Size = new Size(886, 930);
+            tabPage1.Size = new Size(886, 923);
             tabPage1.TabIndex = 0;
             tabPage1.Text = "Procédure";
             // 
@@ -670,7 +685,7 @@
             tabPage3.Location = new Point(4, 44);
             tabPage3.Name = "tabPage3";
             tabPage3.Padding = new Padding(3);
-            tabPage3.Size = new Size(886, 930);
+            tabPage3.Size = new Size(886, 923);
             tabPage3.TabIndex = 2;
             tabPage3.Text = "Caméra";
             // 
@@ -688,7 +703,7 @@
             tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 21.8212986F));
             tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 58.3150978F));
             tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 19.9124718F));
-            tableLayoutPanel3.Size = new Size(880, 924);
+            tableLayoutPanel3.Size = new Size(880, 917);
             tableLayoutPanel3.TabIndex = 39;
             // 
             // panel15
@@ -706,7 +721,7 @@
             panel15.Controls.Add(comboBox_shutterTime);
             panel15.Location = new Point(3, 3);
             panel15.Name = "panel15";
-            panel15.Size = new Size(874, 189);
+            panel15.Size = new Size(874, 182);
             panel15.TabIndex = 0;
             // 
             // btn_AutomaticMFocus
@@ -843,9 +858,9 @@
             panel4.Controls.Add(lbl_driveStepMax);
             panel4.Controls.Add(label5);
             panel4.Controls.Add(label6);
-            panel4.Location = new Point(3, 742);
+            panel4.Location = new Point(3, 737);
             panel4.Name = "panel4";
-            panel4.Size = new Size(874, 179);
+            panel4.Size = new Size(874, 177);
             panel4.TabIndex = 21;
             // 
             // hScrollBar_driveStep
@@ -964,9 +979,9 @@
             // 
             // picBox_pictureTaken
             // 
-            picBox_pictureTaken.Location = new Point(3, 204);
+            picBox_pictureTaken.Location = new Point(3, 203);
             picBox_pictureTaken.Name = "picBox_pictureTaken";
-            picBox_pictureTaken.Size = new Size(869, 526);
+            picBox_pictureTaken.Size = new Size(869, 497);
             picBox_pictureTaken.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_pictureTaken.TabIndex = 23;
             picBox_pictureTaken.TabStop = false;
@@ -998,7 +1013,7 @@
             tabPage4.Location = new Point(4, 44);
             tabPage4.Name = "tabPage4";
             tabPage4.Padding = new Padding(3);
-            tabPage4.Size = new Size(886, 930);
+            tabPage4.Size = new Size(886, 923);
             tabPage4.TabIndex = 3;
             tabPage4.Text = "Linéaire";
             // 
@@ -1174,7 +1189,7 @@
             tabPage5.Location = new Point(4, 44);
             tabPage5.Name = "tabPage5";
             tabPage5.Padding = new Padding(3);
-            tabPage5.Size = new Size(886, 930);
+            tabPage5.Size = new Size(886, 923);
             tabPage5.TabIndex = 4;
             tabPage5.Text = "Table Tournante";
             // 
@@ -1239,7 +1254,7 @@
             tabPage2.Location = new Point(4, 44);
             tabPage2.Name = "tabPage2";
             tabPage2.Padding = new Padding(3);
-            tabPage2.Size = new Size(886, 930);
+            tabPage2.Size = new Size(886, 923);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "Élévateur";
             // 
@@ -1344,7 +1359,7 @@
             tabPage6.Location = new Point(4, 44);
             tabPage6.Name = "tabPage6";
             tabPage6.Padding = new Padding(3);
-            tabPage6.Size = new Size(886, 930);
+            tabPage6.Size = new Size(886, 923);
             tabPage6.TabIndex = 5;
             tabPage6.Text = "Actuateur";
             // 
@@ -1425,7 +1440,7 @@
             tabPage7.Location = new Point(4, 44);
             tabPage7.Name = "tabPage7";
             tabPage7.Padding = new Padding(3);
-            tabPage7.Size = new Size(886, 930);
+            tabPage7.Size = new Size(886, 923);
             tabPage7.TabIndex = 6;
             tabPage7.Text = "Settings";
             // 
@@ -1435,6 +1450,7 @@
             tabControl2.Controls.Add(tabPage9);
             tabControl2.Controls.Add(tabPage11);
             tabControl2.Controls.Add(tabPage8);
+            tabControl2.Controls.Add(Contour);
             tabControl2.Location = new Point(0, 1);
             tabControl2.Name = "tabControl2";
             tabControl2.SelectedIndex = 0;
@@ -1444,6 +1460,7 @@
             // tabPage10
             // 
             tabPage10.BackColor = Color.FromArgb(30, 30, 30);
+            tabPage10.Controls.Add(btn_PrisePhotoSeqTotale);
             tabPage10.Controls.Add(label25);
             tabPage10.Controls.Add(btn_cancelPhotoShoot);
             tabPage10.Controls.Add(label26);
@@ -1465,6 +1482,16 @@
             tabPage10.Size = new Size(871, 926);
             tabPage10.TabIndex = 2;
             tabPage10.Text = "Prise d'images";
+            // 
+            // btn_PrisePhotoSeqTotale
+            // 
+            btn_PrisePhotoSeqTotale.Location = new Point(18, 212);
+            btn_PrisePhotoSeqTotale.Name = "btn_PrisePhotoSeqTotale";
+            btn_PrisePhotoSeqTotale.Size = new Size(547, 46);
+            btn_PrisePhotoSeqTotale.TabIndex = 49;
+            btn_PrisePhotoSeqTotale.Text = "Prise de photos en séquence totale";
+            btn_PrisePhotoSeqTotale.UseVisualStyleBackColor = true;
+            btn_PrisePhotoSeqTotale.Click += btn_PrisePhotoSeqTotale_Click;
             // 
             // label25
             // 
@@ -1634,10 +1661,6 @@
             tabPage9.Controls.Add(comboBox_LiveViewAFMode);
             tabPage9.Controls.Add(label40);
             tabPage9.Controls.Add(btn_liveViewStatus);
-            tabPage9.Controls.Add(comboBox_EmguColor);
-            tabPage9.Controls.Add(label39);
-            tabPage9.Controls.Add(comboBox_EmguConversion);
-            tabPage9.Controls.Add(label8);
             tabPage9.Controls.Add(comboBox_AFMode);
             tabPage9.Controls.Add(label34);
             tabPage9.Controls.Add(lbl_AFMode);
@@ -1688,46 +1711,6 @@
             btn_liveViewStatus.Text = "Live View Status";
             btn_liveViewStatus.UseVisualStyleBackColor = true;
             btn_liveViewStatus.Click += btn_liveViewStatus_Click;
-            // 
-            // comboBox_EmguColor
-            // 
-            comboBox_EmguColor.Enabled = false;
-            comboBox_EmguColor.FormattingEnabled = true;
-            comboBox_EmguColor.Location = new Point(447, 518);
-            comboBox_EmguColor.Name = "comboBox_EmguColor";
-            comboBox_EmguColor.Size = new Size(305, 40);
-            comboBox_EmguColor.TabIndex = 83;
-            comboBox_EmguColor.SelectedIndexChanged += comboBox_EmguColor_SelectedIndexChanged;
-            // 
-            // label39
-            // 
-            label39.AutoSize = true;
-            label39.ForeColor = SystemColors.ScrollBar;
-            label39.Location = new Point(17, 526);
-            label39.Name = "label39";
-            label39.Size = new Size(360, 32);
-            label39.TabIndex = 82;
-            label39.Text = "Couleur à utlisier (calcul du flou)";
-            // 
-            // comboBox_EmguConversion
-            // 
-            comboBox_EmguConversion.Enabled = false;
-            comboBox_EmguConversion.FormattingEnabled = true;
-            comboBox_EmguConversion.Location = new Point(447, 466);
-            comboBox_EmguConversion.Name = "comboBox_EmguConversion";
-            comboBox_EmguConversion.Size = new Size(305, 40);
-            comboBox_EmguConversion.TabIndex = 81;
-            comboBox_EmguConversion.SelectedIndexChanged += comboBox_EmguConversion_SelectedIndexChanged;
-            // 
-            // label8
-            // 
-            label8.AutoSize = true;
-            label8.ForeColor = SystemColors.ScrollBar;
-            label8.Location = new Point(17, 466);
-            label8.Name = "label8";
-            label8.Size = new Size(424, 32);
-            label8.TabIndex = 80;
-            label8.Text = "Emgu ColorConversion (calcul du flou)";
             // 
             // comboBox_AFMode
             // 
@@ -2050,14 +2033,152 @@
             label20.TabIndex = 20;
             label20.Text = "Esp32";
             // 
+            // Contour
+            // 
+            Contour.BackColor = Color.FromArgb(30, 30, 30);
+            Contour.Controls.Add(comboBox_EmguColor);
+            Contour.Controls.Add(label39);
+            Contour.Controls.Add(comboBox_EmguConversion);
+            Contour.Controls.Add(label8);
+            Contour.Controls.Add(tableLayoutPanel9);
+            Contour.Location = new Point(8, 46);
+            Contour.Name = "Contour";
+            Contour.Padding = new Padding(3);
+            Contour.Size = new Size(871, 926);
+            Contour.TabIndex = 4;
+            Contour.Text = "Contour";
+            // 
+            // comboBox_EmguColor
+            // 
+            comboBox_EmguColor.Enabled = false;
+            comboBox_EmguColor.FormattingEnabled = true;
+            comboBox_EmguColor.Location = new Point(498, 469);
+            comboBox_EmguColor.Name = "comboBox_EmguColor";
+            comboBox_EmguColor.Size = new Size(305, 40);
+            comboBox_EmguColor.TabIndex = 87;
+            // 
+            // label39
+            // 
+            label39.AutoSize = true;
+            label39.ForeColor = SystemColors.ScrollBar;
+            label39.Location = new Point(68, 477);
+            label39.Name = "label39";
+            label39.Size = new Size(360, 32);
+            label39.TabIndex = 86;
+            label39.Text = "Couleur à utlisier (calcul du flou)";
+            // 
+            // comboBox_EmguConversion
+            // 
+            comboBox_EmguConversion.FormattingEnabled = true;
+            comboBox_EmguConversion.Location = new Point(498, 417);
+            comboBox_EmguConversion.Name = "comboBox_EmguConversion";
+            comboBox_EmguConversion.Size = new Size(305, 40);
+            comboBox_EmguConversion.TabIndex = 85;
+            // 
+            // label8
+            // 
+            label8.AutoSize = true;
+            label8.ForeColor = SystemColors.ScrollBar;
+            label8.Location = new Point(68, 417);
+            label8.Name = "label8";
+            label8.Size = new Size(424, 32);
+            label8.TabIndex = 84;
+            label8.Text = "Emgu ColorConversion (calcul du flou)";
+            // 
+            // tableLayoutPanel9
+            // 
+            tableLayoutPanel9.ColumnCount = 3;
+            tableLayoutPanel9.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel9.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel9.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel9.Controls.Add(textBox_lowerB_y, 1, 0);
+            tableLayoutPanel9.Controls.Add(textBox_upperB_z, 2, 1);
+            tableLayoutPanel9.Controls.Add(textBox_upperB_y, 1, 1);
+            tableLayoutPanel9.Controls.Add(textBox_upperB_x, 0, 1);
+            tableLayoutPanel9.Controls.Add(textBox_lowerB_z, 2, 0);
+            tableLayoutPanel9.Controls.Add(textBox_lowerB_x, 0, 0);
+            tableLayoutPanel9.Location = new Point(68, 539);
+            tableLayoutPanel9.Name = "tableLayoutPanel9";
+            tableLayoutPanel9.RowCount = 2;
+            tableLayoutPanel9.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel9.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel9.Size = new Size(250, 81);
+            tableLayoutPanel9.TabIndex = 0;
+            // 
+            // textBox_lowerB_y
+            // 
+            textBox_lowerB_y.BackColor = Color.FromArgb(20, 20, 20);
+            textBox_lowerB_y.ForeColor = Color.White;
+            textBox_lowerB_y.Location = new Point(86, 3);
+            textBox_lowerB_y.Name = "textBox_lowerB_y";
+            textBox_lowerB_y.Size = new Size(77, 39);
+            textBox_lowerB_y.TabIndex = 6;
+            textBox_lowerB_y.Text = "0";
+            textBox_lowerB_y.TextAlign = HorizontalAlignment.Center;
+            // 
+            // textBox_upperB_z
+            // 
+            textBox_upperB_z.BackColor = Color.FromArgb(20, 20, 20);
+            textBox_upperB_z.ForeColor = Color.White;
+            textBox_upperB_z.Location = new Point(169, 43);
+            textBox_upperB_z.Name = "textBox_upperB_z";
+            textBox_upperB_z.Size = new Size(77, 39);
+            textBox_upperB_z.TabIndex = 5;
+            textBox_upperB_z.Text = "255";
+            textBox_upperB_z.TextAlign = HorizontalAlignment.Center;
+            // 
+            // textBox_upperB_y
+            // 
+            textBox_upperB_y.BackColor = Color.FromArgb(20, 20, 20);
+            textBox_upperB_y.ForeColor = Color.White;
+            textBox_upperB_y.Location = new Point(86, 43);
+            textBox_upperB_y.Name = "textBox_upperB_y";
+            textBox_upperB_y.Size = new Size(77, 39);
+            textBox_upperB_y.TabIndex = 4;
+            textBox_upperB_y.Text = "255";
+            textBox_upperB_y.TextAlign = HorizontalAlignment.Center;
+            // 
+            // textBox_upperB_x
+            // 
+            textBox_upperB_x.BackColor = Color.FromArgb(20, 20, 20);
+            textBox_upperB_x.ForeColor = Color.White;
+            textBox_upperB_x.Location = new Point(3, 43);
+            textBox_upperB_x.Name = "textBox_upperB_x";
+            textBox_upperB_x.Size = new Size(77, 39);
+            textBox_upperB_x.TabIndex = 3;
+            textBox_upperB_x.Text = "255";
+            textBox_upperB_x.TextAlign = HorizontalAlignment.Center;
+            // 
+            // textBox_lowerB_z
+            // 
+            textBox_lowerB_z.BackColor = Color.FromArgb(20, 20, 20);
+            textBox_lowerB_z.ForeColor = Color.White;
+            textBox_lowerB_z.Location = new Point(169, 3);
+            textBox_lowerB_z.Name = "textBox_lowerB_z";
+            textBox_lowerB_z.Size = new Size(77, 39);
+            textBox_lowerB_z.TabIndex = 2;
+            textBox_lowerB_z.Text = "15";
+            textBox_lowerB_z.TextAlign = HorizontalAlignment.Center;
+            // 
+            // textBox_lowerB_x
+            // 
+            textBox_lowerB_x.BackColor = Color.FromArgb(20, 20, 20);
+            textBox_lowerB_x.ForeColor = Color.White;
+            textBox_lowerB_x.Location = new Point(3, 3);
+            textBox_lowerB_x.Name = "textBox_lowerB_x";
+            textBox_lowerB_x.Size = new Size(77, 39);
+            textBox_lowerB_x.TabIndex = 0;
+            textBox_lowerB_x.Text = "0";
+            textBox_lowerB_x.TextAlign = HorizontalAlignment.Center;
+            // 
             // pictureBox_imageSoustraction
             // 
             pictureBox_imageSoustraction.BackColor = Color.FromArgb(30, 30, 30);
             pictureBox_imageSoustraction.BackgroundImageLayout = ImageLayout.Stretch;
             pictureBox_imageSoustraction.Dock = DockStyle.Fill;
-            pictureBox_imageSoustraction.Location = new Point(3, 653);
+            pictureBox_imageSoustraction.Location = new Point(3, 649);
             pictureBox_imageSoustraction.Name = "pictureBox_imageSoustraction";
-            pictureBox_imageSoustraction.Size = new Size(473, 322);
+            pictureBox_imageSoustraction.Size = new Size(533, 319);
             pictureBox_imageSoustraction.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox_imageSoustraction.TabIndex = 29;
             pictureBox_imageSoustraction.TabStop = false;
@@ -2067,9 +2188,9 @@
             pictureBox_imageMasquage.BackColor = Color.FromArgb(30, 30, 30);
             pictureBox_imageMasquage.BackgroundImageLayout = ImageLayout.Stretch;
             pictureBox_imageMasquage.Dock = DockStyle.Fill;
-            pictureBox_imageMasquage.Location = new Point(3, 328);
+            pictureBox_imageMasquage.Location = new Point(3, 326);
             pictureBox_imageMasquage.Name = "pictureBox_imageMasquage";
-            pictureBox_imageMasquage.Size = new Size(473, 319);
+            pictureBox_imageMasquage.Size = new Size(533, 317);
             pictureBox_imageMasquage.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox_imageMasquage.TabIndex = 32;
             pictureBox_imageMasquage.TabStop = false;
@@ -2081,19 +2202,24 @@
             picBox_imageFond.Dock = DockStyle.Fill;
             picBox_imageFond.Location = new Point(3, 3);
             picBox_imageFond.Name = "picBox_imageFond";
-            picBox_imageFond.Size = new Size(473, 319);
+            picBox_imageFond.Size = new Size(533, 317);
             picBox_imageFond.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_imageFond.TabIndex = 28;
             picBox_imageFond.TabStop = false;
             // 
             // picBox_LiveView_Main
             // 
-            picBox_LiveView_Main.Location = new Point(3, 33);
+            picBox_LiveView_Main.Dock = DockStyle.Fill;
+            picBox_LiveView_Main.Location = new Point(0, 0);
             picBox_LiveView_Main.Name = "picBox_LiveView_Main";
-            picBox_LiveView_Main.Size = new Size(1449, 942);
+            picBox_LiveView_Main.Size = new Size(1389, 927);
             picBox_LiveView_Main.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_LiveView_Main.TabIndex = 38;
             picBox_LiveView_Main.TabStop = false;
+            picBox_LiveView_Main.Paint += pnl_LiveView_Paint;
+            picBox_LiveView_Main.MouseDown += pnl_LiveView_Main_MouseDown;
+            picBox_LiveView_Main.MouseMove += pnl_LiveView_Main_MouseMove;
+            picBox_LiveView_Main.MouseUp += pnl_LiveView_Main_MouseUp;
             // 
             // menuStrip1
             // 
@@ -2131,8 +2257,8 @@
             tableLayoutPanelPREFS.CellBorderStyle = TableLayoutPanelCellBorderStyle.Single;
             tableLayoutPanelPREFS.ColumnCount = 3;
             tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 900F));
-            tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 75.11497F));
-            tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 24.88503F));
+            tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 72F));
+            tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28F));
             tableLayoutPanelPREFS.Controls.Add(tabControl1, 0, 0);
             tableLayoutPanelPREFS.Controls.Add(panel11, 1, 0);
             tableLayoutPanelPREFS.Controls.Add(panel12, 2, 0);
@@ -2141,7 +2267,7 @@
             tableLayoutPanelPREFS.Name = "tableLayoutPanelPREFS";
             tableLayoutPanelPREFS.RowCount = 1;
             tableLayoutPanelPREFS.RowStyles.Add(new RowStyle(SizeType.Absolute, 923F));
-            tableLayoutPanelPREFS.Size = new Size(2850, 986);
+            tableLayoutPanelPREFS.Size = new Size(2850, 979);
             tableLayoutPanelPREFS.TabIndex = 29;
             // 
             // panel11
@@ -2150,16 +2276,63 @@
             panel11.Dock = DockStyle.Fill;
             panel11.Location = new Point(905, 4);
             panel11.Name = "panel11";
-            panel11.Size = new Size(1455, 978);
+            panel11.Size = new Size(1395, 971);
             panel11.TabIndex = 28;
+            // 
+            // tableLayoutPanel8
+            // 
+            tableLayoutPanel8.BackColor = Color.Transparent;
+            tableLayoutPanel8.ColumnCount = 1;
+            tableLayoutPanel8.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel8.Controls.Add(pnl_DrawingLiveView, 0, 1);
+            tableLayoutPanel8.Controls.Add(flowLayoutPanel2, 0, 0);
+            tableLayoutPanel8.Dock = DockStyle.Fill;
+            tableLayoutPanel8.Location = new Point(0, 0);
+            tableLayoutPanel8.Name = "tableLayoutPanel8";
+            tableLayoutPanel8.RowCount = 2;
+            tableLayoutPanel8.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            tableLayoutPanel8.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel8.Size = new Size(1395, 971);
+            tableLayoutPanel8.TabIndex = 39;
+            // 
+            // pnl_DrawingLiveView
+            // 
+            pnl_DrawingLiveView.Controls.Add(picBox_LiveView_Main);
+            pnl_DrawingLiveView.Dock = DockStyle.Fill;
+            pnl_DrawingLiveView.Location = new Point(3, 41);
+            pnl_DrawingLiveView.Name = "pnl_DrawingLiveView";
+            pnl_DrawingLiveView.Size = new Size(1389, 927);
+            pnl_DrawingLiveView.TabIndex = 0;
+            // 
+            // flowLayoutPanel2
+            // 
+            flowLayoutPanel2.Controls.Add(btn_displayLineBlack);
+            flowLayoutPanel2.Dock = DockStyle.Fill;
+            flowLayoutPanel2.Location = new Point(3, 3);
+            flowLayoutPanel2.Name = "flowLayoutPanel2";
+            flowLayoutPanel2.Size = new Size(1389, 32);
+            flowLayoutPanel2.TabIndex = 1;
+            // 
+            // btn_displayLineBlack
+            // 
+            btn_displayLineBlack.BackColor = Color.FromArgb(40, 40, 40);
+            btn_displayLineBlack.BackgroundImage = (Image)resources.GetObject("btn_displayLineBlack.BackgroundImage");
+            btn_displayLineBlack.BackgroundImageLayout = ImageLayout.Zoom;
+            btn_displayLineBlack.FlatStyle = FlatStyle.Flat;
+            btn_displayLineBlack.Location = new Point(3, 3);
+            btn_displayLineBlack.Name = "btn_displayLineBlack";
+            btn_displayLineBlack.Size = new Size(30, 30);
+            btn_displayLineBlack.TabIndex = 1;
+            btn_displayLineBlack.UseVisualStyleBackColor = false;
+            btn_displayLineBlack.Click += btn_displayLineBlack_Click;
             // 
             // panel12
             // 
             panel12.Controls.Add(panel13);
             panel12.Dock = DockStyle.Fill;
-            panel12.Location = new Point(2367, 4);
+            panel12.Location = new Point(2307, 4);
             panel12.Name = "panel12";
-            panel12.Size = new Size(479, 978);
+            panel12.Size = new Size(539, 971);
             panel12.TabIndex = 29;
             // 
             // panel13
@@ -2168,7 +2341,7 @@
             panel13.Dock = DockStyle.Fill;
             panel13.Location = new Point(0, 0);
             panel13.Name = "panel13";
-            panel13.Size = new Size(479, 978);
+            panel13.Size = new Size(539, 971);
             panel13.TabIndex = 29;
             // 
             // tableLayoutPanel2
@@ -2186,12 +2359,11 @@
             tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
             tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
             tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tableLayoutPanel2.Size = new Size(479, 978);
+            tableLayoutPanel2.Size = new Size(539, 971);
             tableLayoutPanel2.TabIndex = 39;
             // 
             // tableLayoutPanelMAIN
             // 
-            tableLayoutPanelMAIN.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             tableLayoutPanelMAIN.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             tableLayoutPanelMAIN.CellBorderStyle = TableLayoutPanelCellBorderStyle.Single;
             tableLayoutPanelMAIN.ColumnCount = 1;
@@ -2199,33 +2371,34 @@
             tableLayoutPanelMAIN.Controls.Add(tableLayoutPanelPREFS, 0, 0);
             tableLayoutPanelMAIN.Controls.Add(tableLayoutPanel4, 0, 1);
             tableLayoutPanelMAIN.Controls.Add(tableLayoutPanel6, 0, 2);
-            tableLayoutPanelMAIN.Location = new Point(3, 45);
+            tableLayoutPanelMAIN.Dock = DockStyle.Fill;
+            tableLayoutPanelMAIN.Location = new Point(3, 3);
             tableLayoutPanelMAIN.Name = "tableLayoutPanelMAIN";
             tableLayoutPanelMAIN.RowCount = 3;
-            tableLayoutPanelMAIN.RowStyles.Add(new RowStyle(SizeType.Percent, 48.0449677F));
-            tableLayoutPanelMAIN.RowStyles.Add(new RowStyle(SizeType.Percent, 28.9345055F));
-            tableLayoutPanelMAIN.RowStyles.Add(new RowStyle(SizeType.Percent, 22.9108429F));
-            tableLayoutPanelMAIN.Size = new Size(2858, 2068);
+            tableLayoutPanelMAIN.RowStyles.Add(new RowStyle(SizeType.Percent, 56.4125671F));
+            tableLayoutPanelMAIN.RowStyles.Add(new RowStyle(SizeType.Percent, 24.3258228F));
+            tableLayoutPanelMAIN.RowStyles.Add(new RowStyle(SizeType.Percent, 19.26161F));
+            tableLayoutPanelMAIN.Size = new Size(2858, 1751);
             tableLayoutPanelMAIN.TabIndex = 29;
             // 
             // tableLayoutPanel4
             // 
             tableLayoutPanel4.BackColor = Color.FromArgb(10, 10, 10);
             tableLayoutPanel4.ColumnCount = 2;
-            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 75F));
-            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 80F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             tableLayoutPanel4.Controls.Add(btn_clearPicReport, 1, 0);
             tableLayoutPanel4.Controls.Add(richTextBox_PicReport, 1, 1);
             tableLayoutPanel4.Controls.Add(tableLayoutPanel7, 0, 1);
             tableLayoutPanel4.Controls.Add(flowLayoutPanel4, 0, 0);
             tableLayoutPanel4.Dock = DockStyle.Fill;
-            tableLayoutPanel4.Location = new Point(4, 997);
+            tableLayoutPanel4.Location = new Point(4, 990);
             tableLayoutPanel4.Name = "tableLayoutPanel4";
             tableLayoutPanel4.RowCount = 3;
             tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tableLayoutPanel4.Size = new Size(2850, 591);
+            tableLayoutPanel4.Size = new Size(2850, 418);
             tableLayoutPanel4.TabIndex = 30;
             // 
             // btn_clearPicReport
@@ -2236,7 +2409,7 @@
             btn_clearPicReport.FlatAppearance.BorderSize = 0;
             btn_clearPicReport.FlatStyle = FlatStyle.Flat;
             btn_clearPicReport.ForeColor = Color.White;
-            btn_clearPicReport.Location = new Point(2140, 3);
+            btn_clearPicReport.Location = new Point(2283, 3);
             btn_clearPicReport.Name = "btn_clearPicReport";
             btn_clearPicReport.Size = new Size(30, 30);
             btn_clearPicReport.TabIndex = 30;
@@ -2248,9 +2421,10 @@
             richTextBox_PicReport.BackColor = Color.FromArgb(10, 10, 10);
             richTextBox_PicReport.BorderStyle = BorderStyle.None;
             richTextBox_PicReport.Dock = DockStyle.Fill;
-            richTextBox_PicReport.Location = new Point(2140, 39);
+            richTextBox_PicReport.Location = new Point(2283, 39);
             richTextBox_PicReport.Name = "richTextBox_PicReport";
-            richTextBox_PicReport.Size = new Size(707, 529);
+            richTextBox_PicReport.ReadOnly = true;
+            richTextBox_PicReport.Size = new Size(564, 356);
             richTextBox_PicReport.TabIndex = 28;
             richTextBox_PicReport.Text = "";
             // 
@@ -2264,7 +2438,7 @@
             tableLayoutPanel7.Name = "tableLayoutPanel7";
             tableLayoutPanel7.RowCount = 1;
             tableLayoutPanel7.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanel7.Size = new Size(2131, 529);
+            tableLayoutPanel7.Size = new Size(2274, 356);
             tableLayoutPanel7.TabIndex = 31;
             // 
             // flowLayoutPanel1
@@ -2273,16 +2447,18 @@
             flowLayoutPanel1.Dock = DockStyle.Fill;
             flowLayoutPanel1.Location = new Point(3, 3);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Size = new Size(2125, 523);
+            flowLayoutPanel1.Size = new Size(2268, 350);
             flowLayoutPanel1.TabIndex = 0;
             // 
             // flowLayoutPanel4
             // 
             flowLayoutPanel4.Controls.Add(btn_clearPicLayout);
+            flowLayoutPanel4.Controls.Add(btn_minusSizePic);
+            flowLayoutPanel4.Controls.Add(btn_plusSizePic);
             flowLayoutPanel4.Dock = DockStyle.Fill;
             flowLayoutPanel4.Location = new Point(3, 3);
             flowLayoutPanel4.Name = "flowLayoutPanel4";
-            flowLayoutPanel4.Size = new Size(2131, 30);
+            flowLayoutPanel4.Size = new Size(2274, 30);
             flowLayoutPanel4.TabIndex = 32;
             // 
             // btn_clearPicLayout
@@ -2300,97 +2476,67 @@
             btn_clearPicLayout.UseVisualStyleBackColor = false;
             btn_clearPicLayout.Click += btn_clearPicLayout_Click;
             // 
+            // btn_minusSizePic
+            // 
+            btn_minusSizePic.BackColor = Color.FromArgb(10, 10, 10);
+            btn_minusSizePic.BackgroundImage = (Image)resources.GetObject("btn_minusSizePic.BackgroundImage");
+            btn_minusSizePic.BackgroundImageLayout = ImageLayout.Stretch;
+            btn_minusSizePic.FlatAppearance.BorderSize = 0;
+            btn_minusSizePic.FlatStyle = FlatStyle.Flat;
+            btn_minusSizePic.ForeColor = Color.White;
+            btn_minusSizePic.Location = new Point(56, 3);
+            btn_minusSizePic.Margin = new Padding(20, 3, 3, 3);
+            btn_minusSizePic.Name = "btn_minusSizePic";
+            btn_minusSizePic.Size = new Size(30, 30);
+            btn_minusSizePic.TabIndex = 30;
+            btn_minusSizePic.UseVisualStyleBackColor = false;
+            btn_minusSizePic.Click += btn_minusSizePic_Click;
+            // 
+            // btn_plusSizePic
+            // 
+            btn_plusSizePic.BackColor = Color.FromArgb(10, 10, 10);
+            btn_plusSizePic.BackgroundImage = (Image)resources.GetObject("btn_plusSizePic.BackgroundImage");
+            btn_plusSizePic.BackgroundImageLayout = ImageLayout.Stretch;
+            btn_plusSizePic.FlatAppearance.BorderSize = 0;
+            btn_plusSizePic.FlatStyle = FlatStyle.Flat;
+            btn_plusSizePic.ForeColor = Color.White;
+            btn_plusSizePic.Location = new Point(94, 3);
+            btn_plusSizePic.Margin = new Padding(5, 3, 3, 3);
+            btn_plusSizePic.Name = "btn_plusSizePic";
+            btn_plusSizePic.Size = new Size(30, 30);
+            btn_plusSizePic.TabIndex = 31;
+            btn_plusSizePic.UseVisualStyleBackColor = false;
+            btn_plusSizePic.Click += btn_plusSizePic_Click;
+            // 
             // tableLayoutPanel6
             // 
             tableLayoutPanel6.BackColor = Color.FromArgb(10, 10, 10);
             tableLayoutPanel6.ColumnCount = 1;
             tableLayoutPanel6.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel6.Controls.Add(button5, 0, 4);
-            tableLayoutPanel6.Controls.Add(button4, 0, 3);
-            tableLayoutPanel6.Controls.Add(button3, 0, 2);
-            tableLayoutPanel6.Controls.Add(txtBox_Console, 0, 1);
             tableLayoutPanel6.Controls.Add(btn_clearConsole, 0, 0);
+            tableLayoutPanel6.Controls.Add(txtBox_Console, 0, 1);
             tableLayoutPanel6.Dock = DockStyle.Fill;
-            tableLayoutPanel6.Location = new Point(4, 1595);
+            tableLayoutPanel6.Location = new Point(4, 1415);
             tableLayoutPanel6.Name = "tableLayoutPanel6";
-            tableLayoutPanel6.RowCount = 5;
+            tableLayoutPanel6.RowCount = 2;
             tableLayoutPanel6.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tableLayoutPanel6.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel6.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tableLayoutPanel6.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tableLayoutPanel6.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tableLayoutPanel6.Size = new Size(2850, 469);
+            tableLayoutPanel6.Size = new Size(2850, 332);
             tableLayoutPanel6.TabIndex = 31;
-            // 
-            // button5
-            // 
-            button5.BackColor = Color.Black;
-            button5.BackgroundImage = (Image)resources.GetObject("button5.BackgroundImage");
-            button5.BackgroundImageLayout = ImageLayout.Stretch;
-            button5.FlatAppearance.BorderSize = 0;
-            button5.FlatStyle = FlatStyle.Flat;
-            button5.ForeColor = Color.White;
-            button5.Location = new Point(3, 452);
-            button5.Name = "button5";
-            button5.Size = new Size(30, 14);
-            button5.TabIndex = 23;
-            button5.UseVisualStyleBackColor = false;
-            // 
-            // button4
-            // 
-            button4.BackColor = Color.Black;
-            button4.BackgroundImage = (Image)resources.GetObject("button4.BackgroundImage");
-            button4.BackgroundImageLayout = ImageLayout.Stretch;
-            button4.FlatAppearance.BorderSize = 0;
-            button4.FlatStyle = FlatStyle.Flat;
-            button4.ForeColor = Color.White;
-            button4.Location = new Point(3, 432);
-            button4.Name = "button4";
-            button4.Size = new Size(30, 14);
-            button4.TabIndex = 22;
-            button4.UseVisualStyleBackColor = false;
-            // 
-            // button3
-            // 
-            button3.BackColor = Color.Black;
-            button3.BackgroundImage = (Image)resources.GetObject("button3.BackgroundImage");
-            button3.BackgroundImageLayout = ImageLayout.Stretch;
-            button3.FlatAppearance.BorderSize = 0;
-            button3.FlatStyle = FlatStyle.Flat;
-            button3.ForeColor = Color.White;
-            button3.Location = new Point(3, 412);
-            button3.Name = "button3";
-            button3.Size = new Size(30, 14);
-            button3.TabIndex = 21;
-            button3.UseVisualStyleBackColor = false;
             // 
             // tableLayoutPanel5
             // 
-            tableLayoutPanel5.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             tableLayoutPanel5.ColumnCount = 1;
             tableLayoutPanel5.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel5.Controls.Add(tableLayoutPanelMAIN, 0, 1);
+            tableLayoutPanel5.Controls.Add(tableLayoutPanelMAIN, 0, 0);
+            tableLayoutPanel5.Dock = DockStyle.Fill;
             tableLayoutPanel5.Location = new Point(0, 40);
             tableLayoutPanel5.Name = "tableLayoutPanel5";
-            tableLayoutPanel5.RowCount = 2;
-            tableLayoutPanel5.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
-            tableLayoutPanel5.RowStyles.Add(new RowStyle());
-            tableLayoutPanel5.Size = new Size(2864, 2116);
+            tableLayoutPanel5.RowCount = 1;
+            tableLayoutPanel5.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel5.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel5.Size = new Size(2864, 1757);
             tableLayoutPanel5.TabIndex = 30;
-            // 
-            // tableLayoutPanel8
-            // 
-            tableLayoutPanel8.ColumnCount = 1;
-            tableLayoutPanel8.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel8.Controls.Add(picBox_LiveView_Main, 0, 1);
-            tableLayoutPanel8.Dock = DockStyle.Fill;
-            tableLayoutPanel8.Location = new Point(0, 0);
-            tableLayoutPanel8.Name = "tableLayoutPanel8";
-            tableLayoutPanel8.RowCount = 2;
-            tableLayoutPanel8.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tableLayoutPanel8.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel8.Size = new Size(1455, 978);
-            tableLayoutPanel8.TabIndex = 39;
             // 
             // Aerolithe
             // 
@@ -2398,13 +2544,12 @@
             AutoScaleMode = AutoScaleMode.Font;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             BackColor = Color.FromArgb(40, 40, 40);
-            ClientSize = new Size(2864, 2047);
+            ClientSize = new Size(2864, 1797);
             Controls.Add(tableLayoutPanel5);
             Controls.Add(menuStrip1);
             MainMenuStrip = menuStrip1;
             Name = "Aerolithe";
             SizeGripStyle = SizeGripStyle.Show;
-            Text = "Aerolithe";
             FormClosing += Aerolithe_FormClosing;
             tabControl1.ResumeLayout(false);
             tabPage1.ResumeLayout(false);
@@ -2457,6 +2602,10 @@
             tabPage8.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_esp32Com).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_waveshareCom).EndInit();
+            Contour.ResumeLayout(false);
+            Contour.PerformLayout();
+            tableLayoutPanel9.ResumeLayout(false);
+            tableLayoutPanel9.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox_imageSoustraction).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox_imageMasquage).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_imageFond).EndInit();
@@ -2465,6 +2614,9 @@
             menuStrip1.PerformLayout();
             tableLayoutPanelPREFS.ResumeLayout(false);
             panel11.ResumeLayout(false);
+            tableLayoutPanel8.ResumeLayout(false);
+            pnl_DrawingLiveView.ResumeLayout(false);
+            flowLayoutPanel2.ResumeLayout(false);
             panel12.ResumeLayout(false);
             panel13.ResumeLayout(false);
             tableLayoutPanel2.ResumeLayout(false);
@@ -2474,7 +2626,6 @@
             flowLayoutPanel4.ResumeLayout(false);
             tableLayoutPanel6.ResumeLayout(false);
             tableLayoutPanel5.ResumeLayout(false);
-            tableLayoutPanel8.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -2629,10 +2780,6 @@
         private Label label37;
         private TextBox txtBox_DriveStep;
         private HScrollBar hScrollBar_driveStep;
-        private ComboBox comboBox_EmguColor;
-        private Label label39;
-        private ComboBox comboBox_EmguConversion;
-        private Label label8;
         private TableLayoutPanel tableLayoutPanelPREFS;
         private Panel panel11;
         private Panel panel12;
@@ -2653,14 +2800,30 @@
         private RichTextBox richTextBox_PicReport;
         private TableLayoutPanel tableLayoutPanel5;
         private TableLayoutPanel tableLayoutPanel6;
-        private Button button5;
-        private Button button4;
-        private Button button3;
         private Button btn_clearPicReport;
         private Button btn_clearPicLayout;
         private TableLayoutPanel tableLayoutPanel7;
         private FlowLayoutPanel flowLayoutPanel4;
         private FlowLayoutPanel flowLayoutPanel1;
         private TableLayoutPanel tableLayoutPanel8;
+        private Panel pnl_DrawingLiveView;
+        private Button btn_displayLineBlack;
+        private FlowLayoutPanel flowLayoutPanel2;
+        private Button btn_minusSizePic;
+        private Button btn_plusSizePic;
+        private Button btn_PrisePhotoSeqTotale;
+        private TabPage Contour;
+        private TableLayoutPanel tableLayoutPanel9;
+        private TextBox textBox2;
+        private TextBox textBox_lowerB_x;
+        private ComboBox comboBox_EmguColor;
+        private Label label39;
+        private ComboBox comboBox_EmguConversion;
+        private Label label8;
+        private TextBox textBox_upperB_z;
+        private TextBox textBox_upperB_y;
+        private TextBox textBox_upperB_x;
+        private TextBox textBox_lowerB_z;
+        private TextBox textBox_lowerB_y;
     }
 }
