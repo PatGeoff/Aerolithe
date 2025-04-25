@@ -35,54 +35,6 @@ namespace Aerolithe
 
        
 
-        //public async Task NikonAutofocus()
-        //{
-        //    //AppendTextToConsoleNL("Live view status before autofocus: " + device.LiveViewEnabled);
-        //    if (device.LiveViewEnabled)
-        //    {
-        //        device.LiveViewEnabled = false;
-        //        await Task.Delay(100);
-        //        //liveViewTimer.Stop();
-        //    }
-            
-        //    device.Start(eNkMAIDCapability.kNkMAIDCapability_AutoFocus);
-        //    bool focusCompleted = false;
-        //    while (!focusCompleted)
-        //    {
-        //        try
-        //        {
-        //            focusCompleted = true; 
-        //        }
-        //        catch (NikonException ex)
-        //        {
-        //            //AppendTextToConsoleNL(ex.Message);
-        //            if (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
-        //            {
-        //                continue;
-        //            }
-        //            else
-        //            {
-        //                //AppendTextToConsoleNL("Impossible de faire le focus");
-        //                if (!device.LiveViewEnabled)
-        //                {
-        //                    device.LiveViewEnabled = true;
-        //                    await Task.Delay(100);
-        //                    liveViewTimer.Start();
-        //                }
-        //                //throw new Exception("Autofocus failed due to an error: " + ex.Message);
-        //            }
-        //        }
-        //    }
-        //    //AppendTextToConsoleNL("Focus complété");
-        //    //AppendTextToConsoleNL("Live view status after autofocus: " + liveViewStatus);
-        //    if (!device.LiveViewEnabled)
-        //    {
-        //        device.LiveViewEnabled = true;
-        //        await Task.Delay(100);
-        //        liveViewTimer.Start();                
-        //    }
-        //    //AppendTextToConsoleNL("Live view status after autofocus: " + liveViewStatus);
-        //}
         public async Task NikonAutofocus()
         {
             // AppendTextToConsoleNL("Live view status before autofocus: " + device.LiveViewEnabled);

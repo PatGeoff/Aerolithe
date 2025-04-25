@@ -35,6 +35,12 @@ namespace Aerolithe
         public readonly int actuatorPort = 44499;
 
 
+        private bool isDragging = false;
+        private Point startPoint;
+        private int scrollStart;
+
+
+
 
         private UdpClient udpClient;
         private UdpClient udpClientOSC;
@@ -44,9 +50,14 @@ namespace Aerolithe
         private bool calibrationDone = true;
 
 
+        //private CustomFlowLayoutPanel customFlowLayoutPanel1, customFlowLayoutPanel2, customFlowLayoutPanel3;
+
+
+
         public Aerolithe()
         {
             InitializeComponent();
+            //CreateCustomFlowLayouPanels();
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true; // Ensure the form receives key events
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
@@ -61,6 +72,39 @@ namespace Aerolithe
 
 
         }
+
+        //private void CreateCustomFlowLayouPanels()
+        //{
+
+        //    customFlowLayoutPanel1 = new CustomFlowLayoutPanel
+        //    {
+        //        AutoScroll = false, // Disable AutoScroll
+        //        Dock = DockStyle.Fill // Adjust as needed
+        //    };
+        //    tableLayoutPanel7.Controls.Add(customFlowLayoutPanel1);
+        //    tableLayoutPanel7.SetRow(customFlowLayoutPanel1, 0);
+        //    tableLayoutPanel7.SetColumn(customFlowLayoutPanel1, 0);
+
+        //    customFlowLayoutPanel2 = new CustomFlowLayoutPanel
+        //    {
+        //        AutoScroll = false, // Disable AutoScroll
+        //        Dock = DockStyle.Fill // Adjust as needed
+        //    };
+        //    tableLayoutPanel7.Controls.Add(customFlowLayoutPanel2);
+        //    tableLayoutPanel7.SetRow(customFlowLayoutPanel2, 1);
+        //    tableLayoutPanel7.SetColumn(customFlowLayoutPanel2, 0);
+
+        //    customFlowLayoutPanel3 = new CustomFlowLayoutPanel
+        //    {
+        //        AutoScroll = false, // Disable AutoScroll
+        //        Dock = DockStyle.Fill // Adjust as needed
+        //    };
+        //    tableLayoutPanel7.Controls.Add(customFlowLayoutPanel3);
+        //    tableLayoutPanel7.SetRow(customFlowLayoutPanel3, 2);
+        //    tableLayoutPanel7.SetColumn(customFlowLayoutPanel3, 0);
+
+        //}
+
 
         private async Task InitializeAsync()
         {
@@ -445,8 +489,32 @@ namespace Aerolithe
             txtBox_Console.Clear();
         }
 
+        public async Task PhotoSuccess(string imageName, int degrees, bool success)
+        {
 
-        public void AppendTextToConsoleNL(string message) // New Line
+            Action updateRichTextBox = () =>
+            {
+                
+                // Append the imageName and degrees in white
+                richTextBox_PicReport.SelectionColor = Color.White;
+                richTextBox_PicReport.AppendText($"{imageName}\t{degrees} degrés\t");
+
+                // Append the success status in green or red
+                richTextBox_PicReport.SelectionColor = success ? Color.Green : Color.Red;
+                richTextBox_PicReport.AppendText(success ? "Réussi\n" : "Échec\n");
+            };
+
+            if (richTextBox_PicReport.InvokeRequired)
+            {
+                richTextBox_PicReport.Invoke(updateRichTextBox);
+            }
+            else
+            {
+                updateRichTextBox();
+            }
+
+        }
+        public async Task AppendTextToConsoleNL(string message) // New Line
         {
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
 
@@ -457,20 +525,16 @@ namespace Aerolithe
                 {
                     AppendFormattedText(timestamp, Color.Gray);
                     AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
-                    //ScrollToBottom();
-                    //Debug.WriteLine("Message appended via Invoke");
                 }));
             }
             else
             {
                 AppendFormattedText(timestamp, Color.Gray);
                 AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
-                //Debug.WriteLine("Message appended directly");
-                //ScrollToBottom();
             }
         }
 
-        private void AppendTextToConsoleSL(string message) // Single Line
+        private async Task AppendTextToConsoleSL(string message) // Single Line
         {
 
             if (txtBox_Console.InvokeRequired)
@@ -479,42 +543,15 @@ namespace Aerolithe
                 txtBox_Console.Invoke(new Action(() =>
                 {
                     AppendFormattedText(message, txtBox_Console.ForeColor);
-                    //ScrollToBottom();
-                    //Debug.WriteLine("Message appended via Invoke");
                 }));
             }
             else
             {
                 AppendFormattedText(message, txtBox_Console.ForeColor);
-                //Debug.WriteLine("Message appended directly");
-                //ScrollToBottom();
             }
         }
 
-        public void AppendTextToConsoleSLOverwrite(string message) // New Line
-        {
-            string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
-
-            if (txtBox_Console.InvokeRequired)
-            {
-                Debug.WriteLine("Invoke required");
-                txtBox_Console.Invoke(new Action(() =>
-                {
-                    //AppendFormattedText(timestamp, Color.Gray);
-                    AppendFormattedTextOL(message + Environment.NewLine, txtBox_Console.ForeColor);
-                    //ScrollToBottom();
-                    //Debug.WriteLine("Message appended via Invoke");
-                }));
-            }
-            else
-            {
-                //AppendFormattedText(timestamp, Color.Gray);
-                AppendFormattedTextOL(message + Environment.NewLine, txtBox_Console.ForeColor);
-                //Debug.WriteLine("Message appended directly");
-                //ScrollToBottom();
-            }
-        }
-
+      
         private async Task UpdateConsoleMessageAsync(string message, CancellationToken token) // Permet de printer à chaque 2 secondes jusqu'à ce que le token soit envoyé
         {
             while (!token.IsCancellationRequested)
@@ -537,7 +574,28 @@ namespace Aerolithe
         }
 
 
-        private void AppendFormattedText(string text, Color color)
+        private async Task AppendFormattedText(string text, Color color)
+        {
+
+
+            if (txtBox_Console.InvokeRequired)
+            {
+                txtBox_Console.Invoke((System.Windows.Forms.MethodInvoker)delegate
+                {
+                    AppendFormattedTextInternal(text, color);
+                });
+            }
+            else
+            {
+                AppendFormattedTextInternal(text, color);
+            }
+
+            ManageRichTextBoxContent();
+
+        }
+
+
+        private void AppendFormattedTextInternal(string text, Color color)
         {
             txtBox_Console.SelectionStart = txtBox_Console.TextLength;
             txtBox_Console.SelectionLength = 0;
@@ -545,9 +603,11 @@ namespace Aerolithe
             txtBox_Console.SelectionColor = color;
             txtBox_Console.AppendText(text);
             txtBox_Console.SelectionColor = txtBox_Console.ForeColor;
-            Task.Run(() => ManageRichTextBoxContent());
-
+            ManageRichTextBoxContent();
         }
+
+
+
 
         private void AppendFormattedTextOL(string text, Color color)
         {
@@ -814,12 +874,12 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
+            //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
             currentSequence = 1;
 
             Task.Run(async () =>
             {
-                await nikonDoFocus();
+                //await nikonDoFocus();
                 //await UdpSendActuatorMessageAsync("actuator 25");
                 //await Task.Delay(4000); // Non-blocking wait
 
@@ -834,13 +894,13 @@ namespace Aerolithe
         private void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
         {
             currentSequence = 2;
-            MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
-            Task.Run(async () => await nikonDoFocus());
+            //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
+            //Task.Run(async () => await nikonDoFocus());
             Task.Run(async () =>
             {
                 //await UdpSendActuatorMessageAsync("actuator 45");
                 // await Task.Delay(4000); // Non-blocking wait
-
+                //await nikonDoFocus();
 
                 tokenSource = new CancellationTokenSource();
 
@@ -1051,6 +1111,5 @@ namespace Aerolithe
         {
             richTextBox_PicReport.Clear();
         }
-
     }
 }

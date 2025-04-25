@@ -10,6 +10,7 @@ using Emgu.CV.Structure;
 using Emgu.CV;
 using System.Drawing.Imaging;
 using Emgu.CV.Util;
+using System.Diagnostics;
 
 namespace Aerolithe
 {
@@ -27,13 +28,13 @@ namespace Aerolithe
             imageReadyTcs = new TaskCompletionSource<bool>();
             try
             {
-                AppendTextToConsoleNL("device capture");
+                //AppendTextToConsoleNL("Prise de photo");
                 device.Capture();
-                AppendTextToConsoleNL("capture done");
+                AppendTextToConsoleNL("Photo prise ... en traitement");
             }
             catch (Exception e)
             {
-                AppendTextToConsoleNL("takePictureAsync Error message: " +e.Message);
+                //AppendTextToConsoleNL("takePictureAsync Error message: " +e.Message);
                 return;
             }
 
@@ -43,7 +44,7 @@ namespace Aerolithe
 
         void device_ImageReady(NikonDevice sender, NikonImage image)
         {
-            FlowLayoutPanel[] flowLatoutPanels = { flowLayoutPanel1, flowLayoutPanel2, flowLayoutPanel3 };
+            //CustomFlowLayoutPanel[] flowLayoutPanels = { customFlowLayoutPanel1, customFlowLayoutPanel1, customFlowLayoutPanel1 };
            
             AppendTextToConsoleNL("image capturée, sauvegarde de l'image");
             try
@@ -79,14 +80,11 @@ namespace Aerolithe
                                             if (percent != lastPercent)
                                             {
                                                 AppendTextToConsoleNL($"Sauvegarde: {percent}%");
-                                                Lbl_SaveProgress.Text = $"Sauvegarde: {percent}%";
                                                 lastPercent = percent; // Update the last percentage value
-
                                             }
-                                        });
 
+                                        });
                                         SaveStreamAsJpegWithProgress(memoryStream, outputPath, savingProgress);
-                                        Lbl_SaveProgress.Text = "";
 
                                         try
                                         {
@@ -94,72 +92,65 @@ namespace Aerolithe
 
                                             using (Image originalImage = Image.FromFile(imagePath))
                                             {
-                                                Image resizedImage = ResizeImage(originalImage, (int)(flowLayoutPanel1.Height*1.5), flowLayoutPanel1.Height - 30); // Resize to desired dimensions
+                                                Image resizedImage = ResizeImage(originalImage, 150,100); // Resize to desired dimensions
 
+                                                // Create a panel to hold the label and picture box
+                                                Panel panel = new Panel();
+                                                panel.Size = new Size(150, 140); // Adjust size as needed
+                                                panel.BorderStyle = BorderStyle.FixedSingle;
+
+                                                // Create and configure the label
+                                                Label label = new Label();
+                                                label.Text = nomImage;
+                                                label.Size = new Size(150, 30); // Adjust size as needed
+                                                label.TextAlign = ContentAlignment.MiddleCenter;
+                                                label.ForeColor = Color.White;
+                                                label.Dock = DockStyle.Top;
+                                                label.Font = new Font(label.Font.FontFamily, 6);
+
+                                                // Create and configure the picture box
                                                 PictureBox pictureBox = new PictureBox();
                                                 pictureBox.Image = resizedImage;
-                                                pictureBox.Size = new Size((int)(flowLayoutPanel1.Height * 1.5), flowLayoutPanel1.Height);
+                                                pictureBox.Size = new Size(150, 100);
                                                 pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+                                                pictureBox.Dock = DockStyle.Bottom;
+                                                ToolTip toolTip = new ToolTip();
+                                                toolTip.SetToolTip(pictureBox, nomImage);
 
-                                                flowLatoutPanels[currentSequence].Controls.Add(pictureBox);
+                                                pictureBox.Click += (sender, e) =>
+                                                {
+                                                    try
+                                                    {
+                                                        Process.Start("explorer.exe", $"/select,\"{imagePath}\"");
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        MessageBox.Show($"Failed to open image: {ex.Message}");
+                                                    }
+                                                };
+
+                                                // Add the label and picture box to the panel
+                                                panel.Controls.Add(label);
+                                                panel.Controls.Add(pictureBox);
+
+                                                // Add the panel to the flow layout panel
+                                                flowLayoutPanel1.Controls.Add(panel);
                                             }
-
                                         }
+
 
                                         catch (Exception ex)
                                         {
-                                            AppendTextToConsoleNL($"An error occurred: {ex.Message}");
+                                            //AppendTextToConsoleNL($"An error occurred: {ex.Message}");
                                         }
-
-
-                                        // Reset the memory stream position after testing
-
-
-
-                                        //memoryStream.Position = 0;
-                                        //Image resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream);
-                                        //if (resizedImage != null)
-                                        //{
-                                        //    picBox_pictureTaken.Image = resizedImage;
-                                        //    //// Create a new PictureBox
-                                        //    PictureBox pictureBox = CreatePictureBox(flowLatoutPanels[currentSequence], resizedImage);
-
-                                        //    // Set border color based on the sequence
-                                        //    Color borderColor = GetBorderColor(currentSequence);
-
-                                        //    // Create a ToolTip instance
-                                        //    ToolTip toolTip = new ToolTip();
-
-                                        //    // Set the tooltip text
-                                        //    toolTip.SetToolTip(pictureBox, nomImage);
-
-
-                                        //    flowLatoutPanels[currentSequence].Controls.Add(pictureBox);
-
-
-
-                                        //}
-                                        //else
-                                        //{
-                                        //    MessageBox.Show("Failed to resize the image.");
-                                        //    return;
-                                        //}
-
-
-
-
-
-
                                     }
 
                                     catch (Exception ex)
                                     {
-                                        AppendTextToConsoleNL("NikonException: " + ex.Message);
+                                        //AppendTextToConsoleNL("NikonException: " + ex.Message);
                                         throw;
-
                                     }
                                 }
-
                                 else
                                 {
                                     MessageBox.Show("Il faut sélectionner un dossier d'images");
@@ -172,51 +163,7 @@ namespace Aerolithe
                             MessageBox.Show("Invalid image buffer: " + ex.Message);
                             return;
                         }
-
-                        
-
-
-                        // Downsize and display the image in a PictureBox
-                        
-                        //var resizingProgress = new Progress<int>(percent =>
-                        //{
-                        //    AppendTextToConsoleNL($"Progress: {percent}%");
-                        //});
-
-                        //var resizedImage = ImageResizer.DownsizeImageToFitPictureBox(picBox_pictureTaken, memoryStream, resizingProgress);
-
-                       
-
-
-                        //// Create a new sequence FlowLayoutPanel if needed
-                        //if (currentSequenceFlowLayoutPanel == null || currentSequenceFlowLayoutPanel.BackColor != borderColor)
-                        //{
-                        //    int seq1 = int.Parse(txtBox_nbrImg5deg.Text);
-                        //    int seq2 = int.Parse(txtBox_nbrImg25deg.Text);
-                        //    int seq3 = int.Parse(txtBox_nbrImg45deg.Text);
-
-                        //    int maxSeq = Math.Max(seq1, Math.Max(seq2, seq3));
-
-                        //    currentSequenceFlowLayoutPanel = CreateSequenceFlowLayoutPanel(borderColor);
-                        //    SetFlowLayoutPanelWidth(currentSequenceFlowLayoutPanel, maxSeq, 200);
-                        //    SetFlowLayoutPanelWidth(flowLayoutPanel1, maxSeq, 200);
-                        //    flowLayoutPanel1.Invoke((MethodInvoker)delegate
-                        //    {
-                        //        flowLayoutPanel1.Controls.Add(currentSequenceFlowLayoutPanel);
-                        //    });
-                        //}
-
-
-                        // Add the PictureBox to the current sequence FlowLayoutPanel
-                        //currentSequenceFlowLayoutPanel.Invoke((MethodInvoker)delegate
-                        //{
-                        //    currentSequenceFlowLayoutPanel.Controls.Add(pictureBox);
-                        //});
-
-                        // Signal that the image is ready
-                        imageReadyTcs?.TrySetResult(true);
-
-                       
+                        imageReadyTcs?.TrySetResult(true);                       
                     }
                 }
             }
@@ -226,6 +173,9 @@ namespace Aerolithe
                 imageReadyTcs?.TrySetException(ex);
             }
         }
+
+
+        
 
 
         private Image ResizeImage(Image image, int width, int height)

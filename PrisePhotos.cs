@@ -194,23 +194,34 @@ namespace Aerolithe
                     // Initialize the TaskCompletionSource for each image capture
                     imageReadyTcs = new TaskCompletionSource<bool>();
 
-                    try
+                    int essai = 0;
+                    bool success = false;
+
+                    while (essai < 3 && !success)
                     {
-                        await NikonAutofocus();                        
-                        AppendTextToConsoleNL("Focus effectué avec succès, prochaine étape: prise de photo");
-                        await takePictureAsync();
-                        // Wait for the image to be ready
-                        AppendTextToConsoleNL("Prise de photo et attente de la Nikon");
-                        await imageReadyTcs.Task;
+                        try
+                        {
+                            await NikonAutofocus();
+                            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true);
+                            AppendTextToConsoleNL("Focus effectué avec succès, prochaine étape: prise de photo");
+                            await takePictureAsync();
+                            // Wait for the image to be ready
+                            AppendTextToConsoleNL("En attente de la Nikon");
+                            await imageReadyTcs.Task;
+                            success = true; // Set success to true if everything goes well
+                        }
+                        catch (Exception e)
+                        {
+                            //AppendTextToConsoleNL(e.Message);
+                            essai += 1;
+                            if (essai >= 3)
+                            {
+                                AppendTextToConsoleNL($"Focus a échoué pour la photo {i}/{serieId[serie]}, passe cette photo.");
+                                await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, false);
+                            }
+                        }
                     }
-                    catch (Exception e)
-                    {
-                        AppendTextToConsoleNL(e.Message);
-                        AppendTextToConsoleNL($"Focus a échoué pour la photo {i}/{serieId[serie]}, passe cette photo.");
-                        // Skip the current iteration and continue with the next one                        
-                        //continue;
-                    }                                      
-                    
+
 
                     // Send the turntable command immediately after the image is ready
                     await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
@@ -255,22 +266,5 @@ namespace Aerolithe
         }
 
 
-
-        private FlowLayoutPanel CreateSequenceFlowLayoutPanel(Color borderColor)
-        {
-            FlowLayoutPanel sequenceFlowLayoutPanel = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                Margin = new Padding(1),
-                Padding = new Padding(0), // Add padding to make the border appear larger
-                BackColor = borderColor
-            };
-            return sequenceFlowLayoutPanel;
-        }
-
-       
     }
 }
