@@ -24,16 +24,16 @@ namespace Aerolithe
         {
             using (Brush brush = customBrush.GetBrush())
             {
-                g.FillRectangle(brush, 0, y, pnl_DrawingLiveView.Width, pnl_DrawingLiveView.Height - y);
+                g.FillRectangle(brush, 0 , y, pnl_DrawingLiveView.Width , pnl_DrawingLiveView.Height - y);
             }
         }
 
 
 
-        private void setupPen()
+        private void SetupPen()
         {
             customPen = new CustomPen(Color.Red, 2.0f, 128, false); // Example: semi-transparent black pen
-            customBrush = new CustomBrush(Color.White, 128, false);
+            customBrush = new CustomBrush(Color.White, 180, false);
         }
 
 
@@ -44,6 +44,8 @@ namespace Aerolithe
             public float Width { get; set; }
             public int Transparency { get; set; }
             public bool IsVisible { get; set; }
+
+
 
             public CustomPen(Color color, float width, int transparency, bool isVisible)
             {

@@ -58,7 +58,6 @@ namespace Aerolithe
         public Aerolithe()
         {
             InitializeComponent();
-            //CreateCustomFlowLayouPanels();
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true; // Ensure the form receives key events
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
@@ -69,9 +68,18 @@ namespace Aerolithe
             Ping();
             PopulateColorConversionDropdown();
             PopulateColorColorDropdown();
-            setupPen();
-            //Task.Run(async () => await InitializeAsync());
+            SetupPen();
+            SetTooltips();
 
+        }
+
+
+        private void SetTooltips()
+        {
+            System.Windows.Forms.ToolTip toolTipMask = new System.Windows.Forms.ToolTip();
+            toolTipMask.SetToolTip(btn_applyMask, "Appliquer le masque");
+            System.Windows.Forms.ToolTip toolTipCutoff = new System.Windows.Forms.ToolTip();
+            toolTipCutoff.SetToolTip(btn_displayLineBlack, "Afficher le cutoff");
 
         }
 
@@ -168,7 +176,7 @@ namespace Aerolithe
             {
                 Task.Run(async () =>
                 {
-                    await getBackgroundImage();
+                    await GetBackgroundImage();
                 });
 
                 pictureBox_validationE3.Image = Properties.Resources.crochet;
@@ -1160,7 +1168,7 @@ namespace Aerolithe
                 {
                     using (Pen pen = customPen.GetPen())
                     {
-                        e.Graphics.DrawLine(pen, 0, startY, pnl_DrawingLiveView.Width, startY);
+                        e.Graphics.DrawLine(pen, 0, startY,pnl_DrawingLiveView.Width, startY);
                     }
                 }
                 if (customBrush.IsVisible)
@@ -1221,6 +1229,24 @@ namespace Aerolithe
         private void btn_PrisePhotoSeqTotale_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void btn_applyMask_Click(object sender, EventArgs e)
+        {
+            applyMaskToLiveView = applyMaskToLiveView ? false : true;
+        }
+
+        private void btn_toggleBW_Click(object sender, EventArgs e)
+        {
+            customBrush.Color = customBrush.Color == Color.White ? Color.Black : (customBrush.Color == Color.Black ? Color.White : customBrush.Color);
+
+
+        }
+
+        private void Aerolithe_SizeChanged(object sender, EventArgs e)
+        {
+            pnl_DrawingLiveView.Width = picBox_LiveView_Main.Width;
+            pnl_DrawingLiveView.Height = picBox_LiveView_Main.Height;
         }
     }
 }

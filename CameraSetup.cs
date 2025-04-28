@@ -16,6 +16,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Numerics;
 using SharpOSC;
+using Emgu.CV.Cuda;
 
 namespace Aerolithe
 {
@@ -33,12 +34,14 @@ namespace Aerolithe
         public double oldFocusValue;
         public double blurrynessAmount = 0;
         private bool liveViewStatus = false;
+        private Image liveViewCompositedImage;
+        private readonly object imageLock = new object();
 
         public void CamSetup()
         {
             // Initialize live view timer
             liveViewTimer = new Timer();
-            liveViewTimer.Tick += new EventHandler(liveViewTimer_Tick);
+            liveViewTimer.Tick += new EventHandler(LiveViewTimer_Tick);
             liveViewTimer.Interval = 1000 / 30;
 
             // Initialize Nikon manager
@@ -117,10 +120,12 @@ namespace Aerolithe
             //GetImageType();
             //GetExposureStatus();
             //GetExposureModes();
+            
             GetImageSize();
-            GetLiveViewSize();
+            
             //GetAfcPriority();
             GetShutterSpeed();
+            GetLiveViewSize();
             //GetFocusMode();
             //GetAFMode();
             //GetLiveViewAFMode();
@@ -145,7 +150,7 @@ namespace Aerolithe
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
         }
 
-        void liveViewTimer_Tick(object? sender, EventArgs e)
+        async void LiveViewTimer_Tick(object? sender, EventArgs e)
         {
 
             try
@@ -165,15 +170,9 @@ namespace Aerolithe
                             byte[] imageBytes = stream.ToArray();
                             // Convertit le byte array en Mat
                             CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
-                            picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
-                            Task.Run(async () =>
-                            {
-                                await CalculateBlurriness(stream);
-                            });
-
-                            backgroundSubstraction(stream);
-                            calculerFlou();
-
+                            picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();  
+                            BackgroundSubtraction(stream);
+                            
                         }
                     }
                 }
@@ -183,6 +182,32 @@ namespace Aerolithe
                     // Display placeholder image if live view is not enabled or image is invalid
                     picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
                 }
+
+
+                
+
+                //picBox_LiveView_Main.Invoke((MethodInvoker)delegate
+                //{
+                //    lock (imageLock)
+                //    {
+                        //liveViewCompositedImage = picBox_LiveView_Main.Image;
+                //    }
+                //});
+
+                //using (MemoryStream ms = new MemoryStream())
+                //{
+                //    liveViewCompositedImage.Save(ms, ImageFormat.Jpeg);
+                    
+                //    byte[] imageBytes = ms.ToArray();
+
+                //    // Create a new MemoryStream from the byte array
+                //    MemoryStream stream = new MemoryStream(imageBytes);
+
+                //    // Call your CalculDuFlou method asynchronously
+                //    CalculDuFlou(stream);
+                //}
+
+
             }
             catch (NikonException ex)
             {
@@ -243,6 +268,7 @@ namespace Aerolithe
                     comboBox_TailleLiveView.SelectedIndex = 2;
                     break;
             }
+            comboBox_TailleLiveView.SelectedIndex = liveviewSize.Index;
 
         }
 

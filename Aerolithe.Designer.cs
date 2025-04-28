@@ -204,6 +204,11 @@
             pnl_DrawingLiveView = new Panel();
             flowLayoutPanel2 = new FlowLayoutPanel();
             btn_displayLineBlack = new Button();
+            btn_toggleBW = new Button();
+            btn_applyMask = new Button();
+            label41 = new Label();
+            trkbar_chokeMask = new TrackBar();
+            lbl_blurinessView = new Label();
             panel12 = new Panel();
             panel13 = new Panel();
             tableLayoutPanel2 = new TableLayoutPanel();
@@ -266,6 +271,7 @@
             tableLayoutPanel8.SuspendLayout();
             pnl_DrawingLiveView.SuspendLayout();
             flowLayoutPanel2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)trkbar_chokeMask).BeginInit();
             panel12.SuspendLayout();
             panel13.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
@@ -2307,6 +2313,11 @@
             // flowLayoutPanel2
             // 
             flowLayoutPanel2.Controls.Add(btn_displayLineBlack);
+            flowLayoutPanel2.Controls.Add(btn_toggleBW);
+            flowLayoutPanel2.Controls.Add(btn_applyMask);
+            flowLayoutPanel2.Controls.Add(label41);
+            flowLayoutPanel2.Controls.Add(trkbar_chokeMask);
+            flowLayoutPanel2.Controls.Add(lbl_blurinessView);
             flowLayoutPanel2.Dock = DockStyle.Fill;
             flowLayoutPanel2.Location = new Point(3, 3);
             flowLayoutPanel2.Name = "flowLayoutPanel2";
@@ -2325,6 +2336,68 @@
             btn_displayLineBlack.TabIndex = 1;
             btn_displayLineBlack.UseVisualStyleBackColor = false;
             btn_displayLineBlack.Click += btn_displayLineBlack_Click;
+            // 
+            // btn_toggleBW
+            // 
+            btn_toggleBW.BackColor = Color.FromArgb(40, 40, 40);
+            btn_toggleBW.BackgroundImage = (Image)resources.GetObject("btn_toggleBW.BackgroundImage");
+            btn_toggleBW.BackgroundImageLayout = ImageLayout.Zoom;
+            btn_toggleBW.FlatStyle = FlatStyle.Flat;
+            btn_toggleBW.Location = new Point(42, 3);
+            btn_toggleBW.Margin = new Padding(6, 3, 3, 3);
+            btn_toggleBW.Name = "btn_toggleBW";
+            btn_toggleBW.Size = new Size(30, 30);
+            btn_toggleBW.TabIndex = 4;
+            btn_toggleBW.UseVisualStyleBackColor = false;
+            btn_toggleBW.Click += btn_toggleBW_Click;
+            // 
+            // btn_applyMask
+            // 
+            btn_applyMask.BackColor = Color.FromArgb(40, 40, 40);
+            btn_applyMask.BackgroundImage = (Image)resources.GetObject("btn_applyMask.BackgroundImage");
+            btn_applyMask.BackgroundImageLayout = ImageLayout.Zoom;
+            btn_applyMask.FlatStyle = FlatStyle.Flat;
+            btn_applyMask.Location = new Point(81, 3);
+            btn_applyMask.Margin = new Padding(6, 3, 3, 3);
+            btn_applyMask.Name = "btn_applyMask";
+            btn_applyMask.Size = new Size(30, 30);
+            btn_applyMask.TabIndex = 2;
+            btn_applyMask.UseVisualStyleBackColor = false;
+            btn_applyMask.Click += btn_applyMask_Click;
+            // 
+            // label41
+            // 
+            label41.AutoSize = true;
+            label41.Font = new Font("Segoe UI", 7.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            label41.ForeColor = Color.Gray;
+            label41.Location = new Point(126, 0);
+            label41.Margin = new Padding(12, 0, 3, 0);
+            label41.Name = "label41";
+            label41.Size = new Size(126, 30);
+            label41.TabIndex = 7;
+            label41.Text = "Choke Mask";
+            // 
+            // trkbar_chokeMask
+            // 
+            trkbar_chokeMask.AutoSize = false;
+            trkbar_chokeMask.BackColor = Color.FromArgb(40, 40, 40);
+            trkbar_chokeMask.Location = new Point(258, 3);
+            trkbar_chokeMask.Minimum = -10;
+            trkbar_chokeMask.Name = "trkbar_chokeMask";
+            trkbar_chokeMask.Size = new Size(100, 30);
+            trkbar_chokeMask.TabIndex = 6;
+            // 
+            // lbl_blurinessView
+            // 
+            lbl_blurinessView.AutoSize = true;
+            lbl_blurinessView.BackColor = Color.FromArgb(40, 40, 40);
+            lbl_blurinessView.ForeColor = Color.Gray;
+            lbl_blurinessView.Location = new Point(1200, 36);
+            lbl_blurinessView.Margin = new Padding(1200, 0, 3, 0);
+            lbl_blurinessView.Name = "lbl_blurinessView";
+            lbl_blurinessView.Size = new Size(91, 32);
+            lbl_blurinessView.TabIndex = 3;
+            lbl_blurinessView.Text = "label41";
             // 
             // panel12
             // 
@@ -2551,6 +2624,7 @@
             Name = "Aerolithe";
             SizeGripStyle = SizeGripStyle.Show;
             FormClosing += Aerolithe_FormClosing;
+            SizeChanged += Aerolithe_SizeChanged;
             tabControl1.ResumeLayout(false);
             tabPage1.ResumeLayout(false);
             tableLayoutPanel1.ResumeLayout(false);
@@ -2617,6 +2691,8 @@
             tableLayoutPanel8.ResumeLayout(false);
             pnl_DrawingLiveView.ResumeLayout(false);
             flowLayoutPanel2.ResumeLayout(false);
+            flowLayoutPanel2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trkbar_chokeMask).EndInit();
             panel12.ResumeLayout(false);
             panel13.ResumeLayout(false);
             tableLayoutPanel2.ResumeLayout(false);
@@ -2825,5 +2901,10 @@
         private TextBox textBox_upperB_x;
         private TextBox textBox_lowerB_z;
         private TextBox textBox_lowerB_y;
+        private Button btn_applyMask;
+        private Label lbl_blurinessView;
+        private Button btn_toggleBW;
+        private TrackBar trkbar_chokeMask;
+        private Label label41;
     }
 }
