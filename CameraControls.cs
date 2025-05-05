@@ -221,7 +221,7 @@ namespace Aerolithe
 
 
 
-        public void SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int>? progress, bool addBrush)
+        public async Task SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int>? progress, bool addBrush)
         {
             AppendTextToConsoleNL($"Saving image to {outputPath}");
 

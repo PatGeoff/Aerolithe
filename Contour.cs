@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
 using Emgu.CV.Util;
 using System.Drawing.Imaging;
+using System.Diagnostics;
 
 // RÉFÉRENCES: https://stackoverflow.com/questions/62866191/emgucv-crop-detected-shape-automatically
 // Autre ref: https://stackoverflow.com/questions/35460986/morphological-operations-on-image
@@ -21,7 +22,7 @@ namespace Aerolithe
 
 
 
-        private async Task GetBackgroundImage(int index)
+        private async Task GetBackgroundImage(string bgImage)
             // Étant donné que ceci n'est exécuté qu'une fois sur demande, le background est fixé à l'image prise à cet instant
         {
             try
@@ -33,13 +34,16 @@ namespace Aerolithe
                 }
                 else
                 {                    
-                    //background = new Mat();
+                    
                     //// Convertit le LiveCapture en stream
                     using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
                     {
-                        string name = "backgroundImage_" + index + ".jpg";
-                        string outputPath = Path.Combine(projectDirectory, name);
-                        SaveStreamAsJpegWithProgress(stream, outputPath, null, false);
+                        string name = bgImage + ".jpg";
+                        string outputPath = Path.Combine(projectDirectory, name);                        
+                        await SaveStreamAsJpegWithProgress(stream, outputPath, null, false);                   
+                        WritePrefs(bgImage, outputPath);
+                        LoadPrefs(); // Assure que l'image loadée est bien l'image qu'on vient d'écrire dans pref.
+
                         //    byte[] imageBytes = stream.ToArray();
                         //    // Convertit le byte array en Mat
 
@@ -62,26 +66,31 @@ namespace Aerolithe
         }
         private void BackgroundSubtraction(MemoryStream stream)
         {
-            if (background != null)
-            {
-                using (Mat foreground = new Mat())
-                using (Mat result = new Mat())
+
+
+            if (applyMaskToLiveView)
+            {               
+                if (background != null)
                 {
-                    byte[] imageBytes = stream.ToArray();
-                    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, foreground);
-                    CvInvoke.Subtract(background, foreground, result);
-                    //Mat result = foreground.AbsDiff(background);
-                    CreateMask(result, foreground);
-                    //pictureBox_imageMasquage.Image = mask.ToImage<Bgr, Byte>().ToBitmap();
-
-                    //applyMaskToPicture(foreground);
-                    //pictureBox_imageSoustraction.Image = applyMaskToPicture(foreground).ToImage<Bgr, Byte>().ToBitmap();
-
-                    if (applyMaskToLiveView)
+                    using (Mat foreground = new Mat())
+                    using (Mat result = new Mat())
                     {
+                        byte[] imageBytes = stream.ToArray();
+                        CvInvoke.Imdecode(imageBytes, ImreadModes.Color, foreground);
+                        CvInvoke.Subtract(background, foreground, result);
+                        //Mat result = foreground.AbsDiff(background);
+                        Debug.WriteLine("applying mask");
+                        CreateMask(result, foreground);
+                        //pictureBox_imageMasquage.Image = mask.ToImage<Bgr, Byte>().ToBitmap();
+
+                        //applyMaskToPicture(foreground);
+                        //pictureBox_imageSoustraction.Image = applyMaskToPicture(foreground).ToImage<Bgr, Byte>().ToBitmap();
+
+                     
                         picBox_LiveView_Main.Image = applyMaskToPicture(foreground).ToImage<Bgr, Byte>().ToBitmap();
+                        
                     }
-                }
+                }               
             }
             Task.Run(async () => await CalculDuFlou(stream));
         }

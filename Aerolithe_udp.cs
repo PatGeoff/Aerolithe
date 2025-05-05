@@ -373,36 +373,14 @@ namespace Aerolithe
                 //AppendTextToConsoleNL("ici");
                 string[] parts = message.Split(',');
                 actuatorAngle = double.Parse(parts[1].Trim());
-                await AppendTextToConsoleNL($"Angle de l'actuateur: {actuatorAngle.ToString()}");
-                _actuatorAngleTcs?.SetResult(actuatorAngle);
-                if (lbl_actuatorAngle.InvokeRequired)
+                lbl_actuatorAngle.Invoke((MethodInvoker)(() =>
                 {
-
-                    Debug.WriteLine("Current thread ID: " + Thread.CurrentThread.ManagedThreadId);
-
-                    lbl_actuatorAngle.BeginInvoke(new Action(() =>
-                    {
-                        try
-                        {
-                            Debug.WriteLine("Current thread ID: " + Thread.CurrentThread.ManagedThreadId);
-                            Debug.WriteLine("BeginInvoke: Updating label");
-                            lbl_actuatorAngle.Text = actuatorAngle.ToString();
-                            System.Windows.Forms.Application.DoEvents();
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine("Error updating label: " + ex.Message);
-                        }
-                    }));
-
-
-                }
-                else
-                {
-
                     lbl_actuatorAngle.Text = actuatorAngle.ToString();
-                    lbl_actuatorAngle.Refresh(); // Force redraw
-                }
+                    AppendTextToConsoleNL("Label updated");
+                }));
+                await AppendTextToConsoleNL($"Angle de l'actuateur: {actuatorAngle.ToString()}");
+                _actuatorAngleTcs?.SetResult(actuatorAngle);             
+            
             }
             #endregion
 

@@ -118,6 +118,8 @@
             label11 = new Label();
             trkBar_Lift = new TrackBar();
             tabPage6 = new TabPage();
+            btn_gotCustomAngle = new Button();
+            txtBox_customAngle = new TextBox();
             btn_stopActuatorMoving = new Button();
             lbl_actuatorAngle = new Label();
             label46 = new Label();
@@ -190,18 +192,21 @@
             picBox_imageFond_1 = new PictureBox();
             picBox_imageFond_2 = new PictureBox();
             flowLayoutPanel7 = new FlowLayoutPanel();
-            button6 = new Button();
+            btn_getImageBkground_3 = new Button();
             button7 = new Button();
             label44 = new Label();
+            chkBox_background3 = new CheckBox();
             flowLayoutPanel6 = new FlowLayoutPanel();
-            button4 = new Button();
+            btn_getImageBkground_2 = new Button();
             button5 = new Button();
             label43 = new Label();
+            chkBox_background2 = new CheckBox();
             flowLayoutPanel3 = new FlowLayoutPanel();
             flowLayoutPanel5 = new FlowLayoutPanel();
             btn_getImageBkground_1 = new Button();
             btn_openBkgroundImg_1 = new Button();
             label42 = new Label();
+            chkBox_background1 = new CheckBox();
             comboBox_EmguColor = new ComboBox();
             label39 = new Label();
             comboBox_EmguConversion = new ComboBox();
@@ -244,8 +249,6 @@
             btn_plusSizePic = new Button();
             tableLayoutPanel6 = new TableLayoutPanel();
             tableLayoutPanel5 = new TableLayoutPanel();
-            txtBox_customAngle = new TextBox();
-            btn_gotCustomAngle = new Button();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
@@ -1399,6 +1402,26 @@
             tabPage6.TabIndex = 5;
             tabPage6.Text = "Actuateur";
             // 
+            // btn_gotCustomAngle
+            // 
+            btn_gotCustomAngle.Location = new Point(125, 356);
+            btn_gotCustomAngle.Name = "btn_gotCustomAngle";
+            btn_gotCustomAngle.Size = new Size(92, 40);
+            btn_gotCustomAngle.TabIndex = 12;
+            btn_gotCustomAngle.Text = "Go";
+            btn_gotCustomAngle.UseVisualStyleBackColor = true;
+            btn_gotCustomAngle.Click += btn_gotCustomAngle_Click;
+            // 
+            // txtBox_customAngle
+            // 
+            txtBox_customAngle.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            txtBox_customAngle.Location = new Point(67, 356);
+            txtBox_customAngle.Name = "txtBox_customAngle";
+            txtBox_customAngle.Size = new Size(52, 39);
+            txtBox_customAngle.TabIndex = 11;
+            txtBox_customAngle.Text = "10";
+            txtBox_customAngle.TextAlign = HorizontalAlignment.Center;
+            // 
             // btn_stopActuatorMoving
             // 
             btn_stopActuatorMoving.Location = new Point(356, 280);
@@ -2204,26 +2227,28 @@
             // 
             // flowLayoutPanel7
             // 
-            flowLayoutPanel7.Controls.Add(button6);
+            flowLayoutPanel7.Controls.Add(btn_getImageBkground_3);
             flowLayoutPanel7.Controls.Add(button7);
             flowLayoutPanel7.Controls.Add(label44);
+            flowLayoutPanel7.Controls.Add(chkBox_background3);
             flowLayoutPanel7.Location = new Point(3, 571);
             flowLayoutPanel7.Name = "flowLayoutPanel7";
             flowLayoutPanel7.Size = new Size(400, 32);
             flowLayoutPanel7.TabIndex = 43;
             // 
-            // button6
+            // btn_getImageBkground_3
             // 
-            button6.BackColor = Color.FromArgb(30, 30, 30);
-            button6.BackgroundImage = (Image)resources.GetObject("button6.BackgroundImage");
-            button6.BackgroundImageLayout = ImageLayout.Zoom;
-            button6.FlatAppearance.BorderSize = 0;
-            button6.FlatStyle = FlatStyle.Flat;
-            button6.Location = new Point(3, 3);
-            button6.Name = "button6";
-            button6.Size = new Size(36, 32);
-            button6.TabIndex = 40;
-            button6.UseVisualStyleBackColor = false;
+            btn_getImageBkground_3.BackColor = Color.FromArgb(30, 30, 30);
+            btn_getImageBkground_3.BackgroundImage = (Image)resources.GetObject("btn_getImageBkground_3.BackgroundImage");
+            btn_getImageBkground_3.BackgroundImageLayout = ImageLayout.Zoom;
+            btn_getImageBkground_3.FlatAppearance.BorderSize = 0;
+            btn_getImageBkground_3.FlatStyle = FlatStyle.Flat;
+            btn_getImageBkground_3.Location = new Point(3, 3);
+            btn_getImageBkground_3.Name = "btn_getImageBkground_3";
+            btn_getImageBkground_3.Size = new Size(36, 32);
+            btn_getImageBkground_3.TabIndex = 40;
+            btn_getImageBkground_3.UseVisualStyleBackColor = false;
+            btn_getImageBkground_3.Click += btn_getImageBkground_3_Click;
             // 
             // button7
             // 
@@ -2245,32 +2270,46 @@
             label44.ForeColor = Color.Gray;
             label44.Location = new Point(87, 0);
             label44.Name = "label44";
-            label44.Size = new Size(92, 30);
+            label44.Size = new Size(103, 30);
             label44.TabIndex = 42;
-            label44.Text = "5 degrés";
+            label44.Text = "45 degrés";
+            // 
+            // chkBox_background3
+            // 
+            chkBox_background3.AutoSize = true;
+            chkBox_background3.Font = new Font("Segoe UI", 7.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            chkBox_background3.ForeColor = Color.White;
+            chkBox_background3.Location = new Point(196, 3);
+            chkBox_background3.Name = "chkBox_background3";
+            chkBox_background3.Size = new Size(28, 27);
+            chkBox_background3.TabIndex = 44;
+            chkBox_background3.UseVisualStyleBackColor = true;
+            chkBox_background3.CheckedChanged += chkBox_background_CheckedChanged;
             // 
             // flowLayoutPanel6
             // 
-            flowLayoutPanel6.Controls.Add(button4);
+            flowLayoutPanel6.Controls.Add(btn_getImageBkground_2);
             flowLayoutPanel6.Controls.Add(button5);
             flowLayoutPanel6.Controls.Add(label43);
+            flowLayoutPanel6.Controls.Add(chkBox_background2);
             flowLayoutPanel6.Location = new Point(3, 287);
             flowLayoutPanel6.Name = "flowLayoutPanel6";
             flowLayoutPanel6.Size = new Size(400, 32);
             flowLayoutPanel6.TabIndex = 43;
             // 
-            // button4
+            // btn_getImageBkground_2
             // 
-            button4.BackColor = Color.FromArgb(30, 30, 30);
-            button4.BackgroundImage = (Image)resources.GetObject("button4.BackgroundImage");
-            button4.BackgroundImageLayout = ImageLayout.Zoom;
-            button4.FlatAppearance.BorderSize = 0;
-            button4.FlatStyle = FlatStyle.Flat;
-            button4.Location = new Point(3, 3);
-            button4.Name = "button4";
-            button4.Size = new Size(36, 32);
-            button4.TabIndex = 40;
-            button4.UseVisualStyleBackColor = false;
+            btn_getImageBkground_2.BackColor = Color.FromArgb(30, 30, 30);
+            btn_getImageBkground_2.BackgroundImage = (Image)resources.GetObject("btn_getImageBkground_2.BackgroundImage");
+            btn_getImageBkground_2.BackgroundImageLayout = ImageLayout.Zoom;
+            btn_getImageBkground_2.FlatAppearance.BorderSize = 0;
+            btn_getImageBkground_2.FlatStyle = FlatStyle.Flat;
+            btn_getImageBkground_2.Location = new Point(3, 3);
+            btn_getImageBkground_2.Name = "btn_getImageBkground_2";
+            btn_getImageBkground_2.Size = new Size(36, 32);
+            btn_getImageBkground_2.TabIndex = 40;
+            btn_getImageBkground_2.UseVisualStyleBackColor = false;
+            btn_getImageBkground_2.Click += btn_getImageBkground_2_Click;
             // 
             // button5
             // 
@@ -2292,9 +2331,21 @@
             label43.ForeColor = Color.Gray;
             label43.Location = new Point(87, 0);
             label43.Name = "label43";
-            label43.Size = new Size(92, 30);
+            label43.Size = new Size(103, 30);
             label43.TabIndex = 42;
-            label43.Text = "5 degrés";
+            label43.Text = "25 degrés";
+            // 
+            // chkBox_background2
+            // 
+            chkBox_background2.AutoSize = true;
+            chkBox_background2.Font = new Font("Segoe UI", 7.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            chkBox_background2.ForeColor = Color.White;
+            chkBox_background2.Location = new Point(196, 3);
+            chkBox_background2.Name = "chkBox_background2";
+            chkBox_background2.Size = new Size(28, 27);
+            chkBox_background2.TabIndex = 44;
+            chkBox_background2.UseVisualStyleBackColor = true;
+            chkBox_background2.CheckedChanged += chkBox_background_CheckedChanged;
             // 
             // flowLayoutPanel3
             // 
@@ -2309,6 +2360,7 @@
             flowLayoutPanel5.Controls.Add(btn_getImageBkground_1);
             flowLayoutPanel5.Controls.Add(btn_openBkgroundImg_1);
             flowLayoutPanel5.Controls.Add(label42);
+            flowLayoutPanel5.Controls.Add(chkBox_background1);
             flowLayoutPanel5.Location = new Point(3, 3);
             flowLayoutPanel5.Name = "flowLayoutPanel5";
             flowLayoutPanel5.Size = new Size(400, 34);
@@ -2351,6 +2403,19 @@
             label42.Size = new Size(92, 30);
             label42.TabIndex = 42;
             label42.Text = "5 degrés";
+            // 
+            // chkBox_background1
+            // 
+            chkBox_background1.Checked = true;
+            chkBox_background1.CheckState = CheckState.Checked;
+            chkBox_background1.Font = new Font("Segoe UI", 7.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            chkBox_background1.ForeColor = Color.White;
+            chkBox_background1.Location = new Point(185, 3);
+            chkBox_background1.Name = "chkBox_background1";
+            chkBox_background1.Size = new Size(26, 26);
+            chkBox_background1.TabIndex = 43;
+            chkBox_background1.UseVisualStyleBackColor = true;
+            chkBox_background1.CheckedChanged += chkBox_background_CheckedChanged;
             // 
             // comboBox_EmguColor
             // 
@@ -2866,26 +2931,6 @@
             tableLayoutPanel5.Size = new Size(2864, 1757);
             tableLayoutPanel5.TabIndex = 30;
             // 
-            // txtBox_customAngle
-            // 
-            txtBox_customAngle.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            txtBox_customAngle.Location = new Point(67, 356);
-            txtBox_customAngle.Name = "txtBox_customAngle";
-            txtBox_customAngle.Size = new Size(52, 39);
-            txtBox_customAngle.TabIndex = 11;
-            txtBox_customAngle.Text = "10";
-            txtBox_customAngle.TextAlign = HorizontalAlignment.Center;
-            // 
-            // btn_gotCustomAngle
-            // 
-            btn_gotCustomAngle.Location = new Point(125, 356);
-            btn_gotCustomAngle.Name = "btn_gotCustomAngle";
-            btn_gotCustomAngle.Size = new Size(92, 40);
-            btn_gotCustomAngle.TabIndex = 12;
-            btn_gotCustomAngle.Text = "Go";
-            btn_gotCustomAngle.UseVisualStyleBackColor = true;
-            btn_gotCustomAngle.Click += btn_gotCustomAngle_Click;
-            // 
             // Aerolithe
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -3190,11 +3235,11 @@
         private FlowLayoutPanel flowLayoutPanel5;
         private Button btn_getImageBkground_1;
         private FlowLayoutPanel flowLayoutPanel7;
-        private Button button6;
+        private Button btn_getImageBkground_3;
         private Button button7;
         private Label label44;
         private FlowLayoutPanel flowLayoutPanel6;
-        private Button button4;
+        private Button btn_getImageBkground_2;
         private Button button5;
         private Label label43;
         private Button btn_openBkgroundImg_1;
@@ -3209,5 +3254,8 @@
         private Button btn_stopActuatorMoving;
         private Button btn_gotCustomAngle;
         private TextBox txtBox_customAngle;
+        private CheckBox chkBox_background3;
+        private CheckBox chkBox_background2;
+        private CheckBox chkBox_background1;
     }
 }

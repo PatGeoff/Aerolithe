@@ -40,6 +40,8 @@ namespace Aerolithe
         private Point startPoint;
         private int scrollStart;
 
+        private bool isChangingCheckState = false;
+
 
 
 
@@ -330,7 +332,7 @@ namespace Aerolithe
 
         private void btn_queryTurntablePos_Click(object sender, EventArgs e)
         {
-            AppendTextToConsoleNL("Aero: Position demandée à la table tournante. Si plus rien ne répond c'est que la communication est perdue");
+            //AppendTextToConsoleNL("Aero: Position demandée à la table tournante. Si plus rien ne répond c'est que la communication est perdue");
             Task.Run(async () => await getTurntablePosFromWaveshare());
         }
 
@@ -346,7 +348,7 @@ namespace Aerolithe
         }
         private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
         {
-            if (waveshareAlive)
+            try
             {
                 _turntablePositionTcs = new TaskCompletionSource<int>();
                 await UdpSendTurnTableMessageAsync("Aerolithe_Asks_GetPosition");
@@ -365,7 +367,14 @@ namespace Aerolithe
                     lbl_turntablePosition.Text = turntablePosition.ToString();
                 }
             }
-            //else { MessageBox.Show("Il y a un problème avec la table tournante.\nAssurez-vous que le controlleur Waveshare est bien branché"); }
+            catch (Exception e)
+            {
+
+                AppendTextToConsoleNL(e.Message);
+            }
+
+
+
         }
 
         private async Task getActuatorAngleFromEsp32()
@@ -1220,6 +1229,47 @@ namespace Aerolithe
         private void btn_applyMask_Click(object sender, EventArgs e)
         {
             applyMaskToLiveView = applyMaskToLiveView ? false : true;
+            
+
+            if (chkBox_background1.Checked)
+            {
+                try
+                {
+                    background = CvInvoke.Imread(backgroundImage_1, ImreadModes.Color);
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL(ex.Message);
+                    return;
+                }
+
+            }
+            else if (chkBox_background2.Checked)
+            {
+                try
+                {
+                    background = CvInvoke.Imread(backgroundImage_2, ImreadModes.Color);
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL(ex.Message);
+                    return;
+                }
+
+            }
+            else if (chkBox_background3.Checked)
+            {
+                try
+                {
+                    background = CvInvoke.Imread(backgroundImage_3, ImreadModes.Color);
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL(ex.Message);
+                    return;
+                }
+
+            }
         }
 
         private void btn_toggleBW_Click(object sender, EventArgs e)
@@ -1239,11 +1289,66 @@ namespace Aerolithe
         {
             Task.Run(async () =>
             {
-                await GetBackgroundImage(0);
+                await GetBackgroundImage("backgroundImage_1");
+                if (File.Exists(backgroundImage_1))
+                {
+                    LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
+
+                }
+                else
+                {
+                    AppendTextToConsoleNL("pas d'image à " + backgroundImage_1);
+                }
             });
+
+        }
+        private void btn_getImageBkground_2_Click(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                await GetBackgroundImage("backgroundImage_2");
+                if (File.Exists(backgroundImage_2))
+                {
+                    LoadAndResizeImage(backgroundImage_2, picBox_imageFond_2);
+
+                }
+                else
+                {
+                    AppendTextToConsoleNL("pas d'image à " + backgroundImage_2);
+                }
+            });
+        }
+        private void btn_getImageBkground_3_Click(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                await GetBackgroundImage("backgroundImage_3");
+                if (File.Exists(backgroundImage_3))
+                {
+                    LoadAndResizeImage(backgroundImage_3, picBox_imageFond_3);
+
+                }
+                else
+                {
+                    AppendTextToConsoleNL("pas d'image à " + backgroundImage_3);
+                }
+            });
+        }
+
+        private async Task loadBackgroundMasks()
+        {
+
             if (File.Exists(backgroundImage_1))
             {
                 LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
+            }
+            if (File.Exists(backgroundImage_2))
+            {
+                LoadAndResizeImage(backgroundImage_2, picBox_imageFond_2);
+            }
+            if (File.Exists(backgroundImage_3))
+            {
+                LoadAndResizeImage(backgroundImage_3, picBox_imageFond_3);
             }
         }
 
@@ -1286,6 +1391,37 @@ namespace Aerolithe
             else
             {
                 MessageBox.Show("Svp entrer une valeur valide pour l'angle", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void chkBox_background_CheckedChanged(object sender, EventArgs e)
+        {
+            if (isChangingCheckState) return;
+
+            var changedBox = sender as CheckBox;
+
+            if (changedBox.Checked)
+            {
+                isChangingCheckState = true;
+
+                // Uncheck all others
+                foreach (var box in new[] { chkBox_background1, chkBox_background2, chkBox_background3 })
+                {
+                    if (box != changedBox)
+                        box.Checked = false;
+                }
+
+                isChangingCheckState = false;
+            }
+            else
+            {
+                // Prevent unchecking the only selected checkbox
+                if (!chkBox_background1.Checked && !chkBox_background2.Checked && !chkBox_background3.Checked)
+                {
+                    isChangingCheckState = true;
+                    changedBox.Checked = true;
+                    isChangingCheckState = false;
+                }
             }
         }
 
