@@ -85,7 +85,7 @@ namespace Aerolithe
                                             }
 
                                         });
-                                        SaveStreamAsJpegWithProgress(memoryStream, outputPath, savingProgress);
+                                        SaveStreamAsJpegWithProgress(memoryStream, outputPath, savingProgress, true);
 
                                         try
                                         {
@@ -221,14 +221,15 @@ namespace Aerolithe
 
 
 
-        public void SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int> progress)
+        public void SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int>? progress, bool addBrush)
         {
             AppendTextToConsoleNL($"Saving image to {outputPath}");
 
             // Create an Image object from the stream
             Image image = Image.FromStream(imageStream);
 
-            if (customPen.IsVisible)
+
+            if (customPen.IsVisible & addBrush)
             {
 
                 // Create a Graphics object from the image
@@ -273,9 +274,12 @@ namespace Aerolithe
                         fileStream.Write(buffer, 0, bytesRead);
                         totalBytesRead += bytesRead;
 
-                        // Report progress
-                        int percentComplete = (int)((totalBytesRead * 100) / totalLength);
-                        progress.Report(percentComplete);
+                        if (progress != null) {
+                            // Report progress
+                            int percentComplete = (int)((totalBytesRead * 100) / totalLength);
+                            progress.Report(percentComplete);
+                        }
+                        
                     }
                 }
             }

@@ -16,6 +16,7 @@ using SharpOSC;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Nikon;
 using System.Windows.Forms.VisualStyles;
+using System.Drawing;
 
 
 
@@ -40,7 +41,7 @@ namespace Aerolithe
             {
                 udpClient = new UdpClient(localPort); // Initialize UdpClient
                 udpClientOSC = new UdpClient(localPortOSC);
-                listenUDP();
+                Task.Run(() => listenUDP());
 
             }
             catch (Exception ex)
@@ -61,7 +62,6 @@ namespace Aerolithe
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
-                    AppendTextToConsoleNL("sent " + message + " to Actuator");
                     await client.SendAsync(bytes, bytes.Length, new IPEndPoint(actuatorIpAddress, actuatorPort));
                 }
             }
@@ -130,7 +130,7 @@ namespace Aerolithe
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-            
+
         public async Task UdpSendM5MessageAsync(string position)
         {
             try
@@ -167,11 +167,21 @@ namespace Aerolithe
 
         }
 
-        public void listenUDP()
+        public async Task listenUDP()
         {
-            Task.Run(() => ListenForMessages());
-            Task.Run(() => ListenForOSCMessages());
+            // Start listening for messages in the background
+            Task listenMessagesTask = Task.Run(() => ListenForMessages());
+
+            // Optional delay to stagger the start of the second listener
+            await Task.Delay(20);
+
+            // Start listening for OSC messages in the background
+            Task listenOSCMessagesTask = Task.Run(() => ListenForOSCMessages());
+
+            // Optionally await both if you want to wait for them to complete
+            // await Task.WhenAll(listenMessagesTask, listenOSCMessagesTask);
         }
+
 
         private async Task ListenForMessages()
         {
@@ -182,9 +192,10 @@ namespace Aerolithe
                 {
                     while (true)
                     {
-                        UdpReceiveResult result = await udpClient.ReceiveAsync();                        
-                        string message = Encoding.UTF8.GetString(result.Buffer);                    
+                        UdpReceiveResult result = await udpClient.ReceiveAsync();
+                        string message = Encoding.UTF8.GetString(result.Buffer);
                         Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
+                        //AppendTextToConsoleNL($"Received message from {result.RemoteEndPoint}: {message}");
                         CheckMessage(message);
                     }
                 }
@@ -192,7 +203,7 @@ namespace Aerolithe
                 {
 
                     Debug.WriteLine($"Exception: {ex.Message}");
-                } 
+                }
 
             }
 
@@ -208,7 +219,7 @@ namespace Aerolithe
                     while (true)
                     {
                         UdpReceiveResult result = await udpClientOSC.ReceiveAsync();
-                        
+
                         var oscPacket = OscPacket.GetPacket(result.Buffer);
                         if (oscPacket is OscMessage oscMessage)
                         {
@@ -242,19 +253,19 @@ namespace Aerolithe
         }
 
 
-       
 
-        
+
+
 
         private void OnOscTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             // Sanitize the input to remove hidden characters
-           
-            
+
+
         }
         private async Task CheckMessage(string message)
         {
-
+            //AppendTextToConsoleNL("là");
             //AppendTextToConsoleNL("Message Reçu: " + message);
             #region stepMotor
             if (message.Contains("calibration done, steppermotor maxPosition: "))
@@ -295,18 +306,18 @@ namespace Aerolithe
             // Waveshare
             if (message.Contains("waveshare --> status ok"))
             {
-                waveshareAlive = true;                
+                waveshareAlive = true;
                 picBox_waveshareCom.Image = Resources.crochet;
                 //Debug.WriteLine("Reçu un OK du Waveshare");
-            }           
+            }
             //if (message.Contains("Message de Table Tournante: Position atteinte"))
             //{
             //    turntablePositionReached = true;
             //}
             if (message.Contains("position"))
             {
-                string[] parts = message.Split(',');                
-                
+                string[] parts = message.Split(',');
+
                 turntablePosition = int.Parse(parts[1].Trim());
 
                 //AppendTextToConsoleNL($"Position de la table tournante reçue: {turntablePosition.ToString()}");
@@ -321,13 +332,11 @@ namespace Aerolithe
                 }
 
                 _turntablePositionTcs?.SetResult(turntablePosition); // vers Aerolithe.cs/getTurntablePosFromWaveshare()
-
-
             }
             #endregion
             #region M5
 
-            if (message.Contains("Encoder"))   
+            if (message.Contains("Encoder"))
             {
                 AppendTextToConsoleNL(message);
                 string[] parts = message.Split(',');
@@ -345,7 +354,7 @@ namespace Aerolithe
                 }
                 if (parts[1] == "2") // 2 = Table Tounante
                 {
-                    int value = int.Parse(parts[2]);                    
+                    int value = int.Parse(parts[2]);
                     encoderRotationTurnTable(value);
 
 
@@ -358,7 +367,45 @@ namespace Aerolithe
                 }
             }
             #endregion
-           
+            #region Actuator
+            if (message.Contains("actuator_angle"))
+            {
+                //AppendTextToConsoleNL("ici");
+                string[] parts = message.Split(',');
+                actuatorAngle = double.Parse(parts[1].Trim());
+                await AppendTextToConsoleNL($"Angle de l'actuateur: {actuatorAngle.ToString()}");
+                _actuatorAngleTcs?.SetResult(actuatorAngle);
+                if (lbl_actuatorAngle.InvokeRequired)
+                {
+
+                    Debug.WriteLine("Current thread ID: " + Thread.CurrentThread.ManagedThreadId);
+
+                    lbl_actuatorAngle.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            Debug.WriteLine("Current thread ID: " + Thread.CurrentThread.ManagedThreadId);
+                            Debug.WriteLine("BeginInvoke: Updating label");
+                            lbl_actuatorAngle.Text = actuatorAngle.ToString();
+                            System.Windows.Forms.Application.DoEvents();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine("Error updating label: " + ex.Message);
+                        }
+                    }));
+
+
+                }
+                else
+                {
+
+                    lbl_actuatorAngle.Text = actuatorAngle.ToString();
+                    lbl_actuatorAngle.Refresh(); // Force redraw
+                }
+            }
+            #endregion
+
         }
         private async Task CheckOSCMessage(string message)
         {
@@ -402,10 +449,13 @@ namespace Aerolithe
                         await UdpSendTurnTableMessageAsync($"turntable,{arg},{turntableSpeed}");
                         break;
                     case "actuator_osc_5_btn":
+                        await UdpSendActuatorMessageAsync("actuator 5");
                         break;
                     case "actuator_osc_25_btn":
+                        await UdpSendActuatorMessageAsync("actuator 25");
                         break;
                     case "actuator_osc_45_btn":
+                        await UdpSendActuatorMessageAsync("actuator 45");
                         break;
                     case "actuator_osc_up_btn":
                         await UdpSendActuatorMessageAsync("actuator up");
@@ -420,7 +470,7 @@ namespace Aerolithe
 
             }
 
-          
+
             #endregion
         }
 
@@ -448,7 +498,7 @@ namespace Aerolithe
         }
         private void CheckDevices(object? sender, ElapsedEventArgs e)
         {
-            Task.Run(async() => await CheckCommunication());
+            Task.Run(async () => await CheckCommunication());
             Ping();
         }
 

@@ -11,6 +11,7 @@ namespace Aerolithe
         private int turntableDelay = 7000; // secondes
         public int turntableSpeed = 350;
         public int turntablePosition = 1000;
+        public double actuatorAngle = 0.0;
         public int previousPos = 0;
     }
 }

@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms.VisualStyles;
 using Emgu.CV.XImgproc;
+using System.Threading;
 
 namespace Aerolithe
 {
@@ -104,6 +105,36 @@ namespace Aerolithe
                 AppendTextToConsoleNL("Photo sequence cancelled.");
             }
         }
+        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
+        {
+            await UdpSendActuatorMessageAsync("actuator 5");
+            cancellationToken.ThrowIfCancellationRequested();
+            await WaitForActuatorPosition(5, cancellationToken);
+            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());           
+            currentSequence = 0;
+            tokenSource = new CancellationTokenSource();
+            await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+            AppendTextToConsoleNL("Séquence 1 terminée");
+
+            await UdpSendActuatorMessageAsync("actuator 25");
+            cancellationToken.ThrowIfCancellationRequested();
+            await WaitForActuatorPosition(25, cancellationToken);
+            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
+            currentSequence = 1;
+            tokenSource = new CancellationTokenSource();
+            await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+            AppendTextToConsoleNL("Séquence 2 terminée");
+
+            await UdpSendActuatorMessageAsync("actuator 45");
+            cancellationToken.ThrowIfCancellationRequested();
+            await WaitForActuatorPosition(45, cancellationToken);
+            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
+            currentSequence = 2;
+            tokenSource = new CancellationTokenSource();
+            await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+            AppendTextToConsoleNL("Séquence 3 terminée");
+        }
+
 
         private async Task WaitForTurntablePositionAsync(int targetPosition, CancellationToken cancellationToken)
         {
@@ -135,6 +166,34 @@ namespace Aerolithe
             }
         }
 
+        private async Task WaitForActuatorPosition(int targetPosition, CancellationToken cancellationToken)
+        {
+            int tolerance = 1;
+            int maxRetries = 100; // Maximum number of retries to avoid infinite loop
+            int retryCount = 0;
+            bool positionReached = false;
 
+            while (retryCount < maxRetries)
+            {
+                await getActuatorAngleFromEsp32();
+                if (actuatorAngle >= targetPosition - tolerance && actuatorAngle <= targetPosition + tolerance)
+                {
+                    positionReached = true;
+                    break;
+                }
+                await Task.Delay(50, cancellationToken); // Adjust delay as needed
+                AppendTextToConsoleNL("Angle de l'actuateur: " + actuatorAngle.ToString() + " ----> " + targetPosition.ToString() + " (cible)");
+                retryCount++;
+            }
+
+            if (positionReached)
+            {
+                AppendTextToConsoleNL("L'actuateur a atteint sa position.");
+            }
+            else
+            {
+                AppendTextToConsoleNL("L'actuateur n'a pas atteint sa position après 100 essais.");
+            }
+        }
     }
 }

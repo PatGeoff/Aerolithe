@@ -21,30 +21,44 @@ namespace Aerolithe
 
 
 
-        private async Task GetBackgroundImage()
+        private async Task GetBackgroundImage(int index)
             // Étant donné que ceci n'est exécuté qu'une fois sur demande, le background est fixé à l'image prise à cet instant
         {
-            if (!device.LiveViewEnabled)
+            try
             {
-                device.LiveViewEnabled = true;
-                while (!device.LiveViewEnabled) { }                
-            }
-            else
-            {
-                background = new Mat();
-                // Convertit le LiveCapture en stream
-                using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
+                if (!device.LiveViewEnabled)
                 {
-                    byte[] imageBytes = stream.ToArray();
-                    // Convertit le byte array en Mat
-
-                    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
-
-                    picBox_imageFond.Image = background.ToImage<Bgr, Byte>().ToBitmap();
-
-                    if (background == null) MessageBox.Show("Impossible de saisir l'image");
+                    device.LiveViewEnabled = true;
+                    while (!device.LiveViewEnabled) { }
                 }
+                else
+                {                    
+                    //background = new Mat();
+                    //// Convertit le LiveCapture en stream
+                    using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
+                    {
+                        string name = "backgroundImage_" + index + ".jpg";
+                        string outputPath = Path.Combine(projectDirectory, name);
+                        SaveStreamAsJpegWithProgress(stream, outputPath, null, false);
+                        //    byte[] imageBytes = stream.ToArray();
+                        //    // Convertit le byte array en Mat
+
+                        //    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
+
+                        //    picBox_imageFond_1.Image = background.ToImage<Bgr, Byte>().ToBitmap();
+
+                        //    if (background == null) MessageBox.Show("Impossible de saisir l'image");
+
+                    }
+
             }
+            }
+            catch (Exception e)
+            {
+
+                AppendTextToConsoleNL(e.Message);
+            }
+            
         }
         private void BackgroundSubtraction(MemoryStream stream)
         {
@@ -140,6 +154,59 @@ namespace Aerolithe
 
             return resultat.ToImage<Bgr, Byte>().ToBitmap();
         }
+        //private Bitmap applyMaskToPicture(Mat picture)
+        //{
+        //    if (mask == null || mask.Rows == 0 || mask.Cols == 0)
+        //    {
+        //        throw new InvalidOperationException("Mask is not properly loaded or is empty.");
+        //    }
+
+        //    if (picture == null || picture.Rows == 0 || picture.Cols == 0)
+        //    {
+        //        throw new InvalidOperationException("Picture is not properly loaded or is empty.");
+        //    }
+
+        //    Mat resultat = new Mat();
+        //    try
+        //    {
+        //        // Calculate the choke factor based on the slider value
+        //        int chokeValue = trkbar_chokeMask.Value; // Adjusted for -10 to +10 range
+
+        //        // Convert the mask to a binary image
+        //        Mat grayMask = new Mat();
+        //        CvInvoke.CvtColor(mask, grayMask, ColorConversion.Bgr2Gray);
+        //        CvInvoke.Threshold(grayMask, grayMask, 128, 255, ThresholdType.Binary);
+
+        //        // Apply morphological operations to expand or retract the mask
+        //        Mat kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(Math.Abs(chokeValue), Math.Abs(chokeValue)), new Point(-1, -1));
+        //        if (chokeValue > 0)
+        //        {
+        //            CvInvoke.Dilate(grayMask, grayMask, kernel, new Point(-1, -1), chokeValue, BorderType.Constant, new MCvScalar(0));
+        //        }
+        //        else if (chokeValue < 0)
+        //        {
+        //            CvInvoke.Erode(grayMask, grayMask, kernel, new Point(-1, -1), -chokeValue, BorderType.Constant, new MCvScalar(0));
+        //        }
+
+        //        // Apply the modified mask to the picture
+        //        Mat blackMaskedPicture = new Mat();
+        //        CvInvoke.BitwiseAnd(picture, picture, blackMaskedPicture, mask: grayMask);
+
+        //        // Create an inverted mask where white areas become black and black areas become white
+        //        Mat invertedMask = new Mat();
+        //        CvInvoke.BitwiseNot(grayMask, invertedMask);
+
+        //        // Apply the inverted mask to keep white areas as colored
+        //        CvInvoke.BitwiseOr(blackMaskedPicture, picture, resultat, mask: invertedMask);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        AppendTextToConsoleSL($"picture channels: {picture.NumberOfChannels}" + Environment.NewLine + $"mask channels: {mask.NumberOfChannels}" + Environment.NewLine + ex.ToString());
+        //    }
+
+        //    return resultat.ToImage<Bgr, Byte>().ToBitmap();
+        //}
+
 
 
 

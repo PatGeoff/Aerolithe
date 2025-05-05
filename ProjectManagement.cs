@@ -14,8 +14,10 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         private static string projectPath = null;
+        private static string projectDirectory = null;
         private static string imagesFolderPath = null;
         private static string imageNameBase = null;
+        private static string backgroundImage_1, backgroundImage_2, backgroundImage_3;
         private ColorConversion selectedConversion = ColorConversion.BayerBg2Bgr;
 
 
@@ -51,7 +53,7 @@ namespace Aerolithe
                     }
 
                     btn_goToProjectFolder.Enabled = true;
-                    string projectDirectory = Path.GetDirectoryName(projectPath);
+                    projectDirectory = Path.GetDirectoryName(projectPath);
                     btn_goToProjectFolder.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(projectPath)}";
                     WritePrefs("projectPath", projectPath);
                     SetImageFolder();
@@ -76,7 +78,7 @@ namespace Aerolithe
                     projectPath = openFileDialog.FileName;
 
                     btn_goToProjectFolder.Enabled = true;
-                    string projectDirectory = Path.GetDirectoryName(projectPath);
+                    projectDirectory = Path.GetDirectoryName(projectPath);
                     string projectName = Path.GetFileName(projectPath);
                     btn_goToProjectFolder.Text = $"{Path.GetFileName(projectDirectory)}/{projectName}";
                     LoadPrefs();
@@ -295,8 +297,34 @@ namespace Aerolithe
             }
         }
 
+        private async Task PrisePhotoBackground(int index)
+        {
 
-       
+        }
+
+        private void LoadAndResizeImage(string imagePath, PictureBox pictureBox)
+        {
+            using (Image originalImage = Image.FromFile(imagePath))
+            {
+                // Get the dimensions of the PictureBox
+                int newWidth = pictureBox.Width;
+                int newHeight = pictureBox.Height;
+
+                // Create a new bitmap with the dimensions of the PictureBox
+                Bitmap resizedImage = new Bitmap(newWidth, newHeight);
+
+                // Draw the original image onto the new bitmap
+                using (Graphics graphics = Graphics.FromImage(resizedImage))
+                {
+                    graphics.DrawImage(originalImage, 0, 0, newWidth, newHeight);
+                }
+
+                // Set the PictureBox image to the resized image
+                pictureBox.Image = resizedImage;
+            }
+        }
+
+
 
     }
 }

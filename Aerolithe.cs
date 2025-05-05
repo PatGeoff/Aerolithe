@@ -46,6 +46,7 @@ namespace Aerolithe
         private UdpClient udpClient;
         private UdpClient udpClientOSC;
         private TaskCompletionSource<int> _turntablePositionTcs;
+        private TaskCompletionSource<double> _actuatorAngleTcs;
         private CancellationTokenSource tokenSource;
 
         private bool calibrationDone = true;
@@ -64,12 +65,13 @@ namespace Aerolithe
             CamSetup();
             ButtonSetup();
             InitializeUdpClient();
-            listenUDP();
+            Task.Run(() => listenUDP());
             Ping();
             PopulateColorConversionDropdown();
             PopulateColorColorDropdown();
             SetupPen();
             SetTooltips();
+            getActuatorAngleFromEsp32();
 
         }
 
@@ -135,6 +137,7 @@ namespace Aerolithe
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             udpClient?.Close();
+            udpClientOSC?.Close();
             base.OnFormClosing(e);
         }
 
@@ -171,22 +174,9 @@ namespace Aerolithe
 
         private void btn_imageFond_Click(object sender, EventArgs e)
         {
-            DialogResult result = AutoCloseMessageBox.ShowPressClose("Enlever la météorite, allumer la lumière de la table tournante et appuyer sur le bouton OK ci-bas", 650, 180);
-            if (result == DialogResult.OK)
-            {
-                Task.Run(async () =>
-                {
-                    await GetBackgroundImage();
-                });
-
-                pictureBox_validationE3.Image = Properties.Resources.crochet;
-                ApplyButtonStyle(buttonLabelPairs[2], false);
-                ApplyButtonStyle(buttonLabelPairs[3], true);
-            }
+            tabControl1.SelectedIndex = 6;
+            tabControl2.SelectedIndex = 4;
         }
-
-
-
 
         private async void btn_DemarrerPrisePhotos_Click(object sender, EventArgs e)
         {
@@ -378,6 +368,23 @@ namespace Aerolithe
             //else { MessageBox.Show("Il y a un problème avec la table tournante.\nAssurez-vous que le controlleur Waveshare est bien branché"); }
         }
 
+        private async Task getActuatorAngleFromEsp32()
+        {
+
+            try
+            {
+                _actuatorAngleTcs = new TaskCompletionSource<double>();
+                await UdpSendActuatorMessageAsync("actuator angle");
+                actuatorAngle = await _actuatorAngleTcs.Task;
+                //AppendTextToConsoleNL("angle: " + actuatorAngle.ToString());
+
+            }
+            catch (Exception e)
+            {
+                AppendTextToConsoleNL(e.Message);
+            }
+        }
+
         #endregion
 
         #region ÉLÉVATEUR TAB
@@ -467,10 +474,6 @@ namespace Aerolithe
 
         }
 
-        private void trkBar_Actuator_MouseUp(object sender, MouseEventArgs e)
-        {
-            UdpSendActuatorMessageAsync("actuator move " + trkBar_Actuator.Value.ToString());
-        }
 
         private void btn_Actuator_Down_Click(object sender, EventArgs e)
         {
@@ -859,7 +862,14 @@ namespace Aerolithe
         #endregion
 
 
-
+        private void btn_PrisePhotoSeqTotale_Click(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                tokenSource = new CancellationTokenSource();
+                await SequencePrisePhotoTotale(tokenSource.Token);
+            });
+        }
 
 
 
@@ -870,17 +880,8 @@ namespace Aerolithe
             currentSequence = 0;
             Task.Run(async () =>
             {
-                //await nikonDoFocus();
-
-                //AppendTextToConsoleNL("on a fini le focus à ce qui paraît");
-                //await UdpSendActuatorMessageAsync("actuator 5");
-                // await Task.Delay(4000); // Non-blocking wait
-
-
                 tokenSource = new CancellationTokenSource();
-
                 await PrisePhotoSequenceAsync(tokenSource.Token, 0);
-
             });
 
         }
@@ -892,13 +893,7 @@ namespace Aerolithe
 
             Task.Run(async () =>
             {
-                //await nikonDoFocus();
-                //await UdpSendActuatorMessageAsync("actuator 25");
-                //await Task.Delay(4000); // Non-blocking wait
-
-
                 tokenSource = new CancellationTokenSource();
-
                 await PrisePhotoSequenceAsync(tokenSource.Token, 1);
             });
 
@@ -907,14 +902,8 @@ namespace Aerolithe
         private void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
         {
             currentSequence = 2;
-            //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
-            //Task.Run(async () => await nikonDoFocus());
             Task.Run(async () =>
             {
-                //await UdpSendActuatorMessageAsync("actuator 45");
-                // await Task.Delay(4000); // Non-blocking wait
-                //await nikonDoFocus();
-
                 tokenSource = new CancellationTokenSource();
 
                 await PrisePhotoSequenceAsync(tokenSource.Token, 2);
@@ -1168,7 +1157,7 @@ namespace Aerolithe
                 {
                     using (Pen pen = customPen.GetPen())
                     {
-                        e.Graphics.DrawLine(pen, 0, startY,pnl_DrawingLiveView.Width, startY);
+                        e.Graphics.DrawLine(pen, 0, startY, pnl_DrawingLiveView.Width, startY);
                     }
                 }
                 if (customBrush.IsVisible)
@@ -1226,10 +1215,7 @@ namespace Aerolithe
             }
         }
 
-        private void btn_PrisePhotoSeqTotale_Click(object sender, EventArgs e)
-        {
 
-        }
 
         private void btn_applyMask_Click(object sender, EventArgs e)
         {
@@ -1248,5 +1234,60 @@ namespace Aerolithe
             pnl_DrawingLiveView.Width = picBox_LiveView_Main.Width;
             pnl_DrawingLiveView.Height = picBox_LiveView_Main.Height;
         }
+
+        private void btn_getImageBkground_1_Click(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                await GetBackgroundImage(0);
+            });
+            if (File.Exists(backgroundImage_1))
+            {
+                LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            AppendTextToConsoleNL($"LiveView size = ");
+        }
+
+        private void btn_getActuatorAngle_Click(object sender, EventArgs e)
+        {
+            //AppendTextToConsoleNL("Angle demandé à l'actuateur: ");
+            Task.Run(async () => await getActuatorAngleFromEsp32());
+
+
+        }
+
+        private void btn_threadCount_Click(object sender, EventArgs e)
+        {
+            AppendTextToConsoleNL("Thread count: " + Process.GetCurrentProcess().Threads.Count);
+        }
+
+        private void btn_stopActuatorMoving_Click(object sender, EventArgs e)
+        {
+            UdpSendActuatorMessageAsync("actuator stop");
+        }
+
+        private void btn_gotCustomAngle_Click(object sender, EventArgs e)
+        {
+            if (int.TryParse(txtBox_customAngle.Text, out int angle))
+            {
+                if (angle <= 55)
+                {
+                    UdpSendActuatorMessageAsync($"actuator custom, {angle}");
+                }
+                else
+                {
+                    MessageBox.Show("L'angle ne doit pas dépasser 55 degrés", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Svp entrer une valeur valide pour l'angle", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
     }
 }

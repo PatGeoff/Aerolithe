@@ -172,7 +172,7 @@ namespace Aerolithe
                             CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
                             picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();  
                             BackgroundSubtraction(stream);
-                            
+                            lbl_LiveViewStreamSize.Text = $"Width: {background.Width} Height: {background.Height};";
                         }
                     }
                 }
