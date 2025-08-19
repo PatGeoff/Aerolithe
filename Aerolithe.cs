@@ -17,11 +17,13 @@ using Emgu.CV.XPhoto;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static Emgu.Util.Platform;
 using System.Drawing.Printing;
+using System.Runtime.CompilerServices;
 
 namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
+        // THIS IP ADDRESS 192.168.2.4 //
         public readonly IPAddress stepperIpAddress = IPAddress.Parse("192.168.2.11");
         public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
         public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
@@ -36,11 +38,13 @@ namespace Aerolithe
         public readonly int actuatorPort = 44499;
 
 
+
         private bool isDragging = false;
         private Point startPoint;
         private int scrollStart;
 
         private bool isChangingCheckState = false;
+        //private string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MyResources\\Models", "u2net.onnx");
 
 
 
@@ -50,6 +54,8 @@ namespace Aerolithe
         private TaskCompletionSource<int> _turntablePositionTcs;
         private TaskCompletionSource<double> _actuatorAngleTcs;
         private CancellationTokenSource tokenSource;
+
+
 
         private bool calibrationDone = true;
 
@@ -64,6 +70,26 @@ namespace Aerolithe
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true; // Ensure the form receives key events
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
+            settings = settings.Load();
+            if (!string.IsNullOrEmpty(settings.ProjectPath))
+            {
+                try
+                {
+                    prefs = prefs.Load(settings.ProjectPath);
+                    OpenProject(settings.ProjectPath);
+                    if (!string.IsNullOrWhiteSpace(prefs.ImageFolderPath))
+                        imagesFolderPath = prefs.ImageFolderPath;
+
+                    if (!string.IsNullOrWhiteSpace(prefs.ImageName))
+                        imageNameBase = prefs.ImageName;
+
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine("Erreur:" + e);
+                }
+
+            }
             CamSetup();
             ButtonSetup();
             InitializeUdpClient();
@@ -74,6 +100,8 @@ namespace Aerolithe
             SetupPen();
             SetTooltips();
             getActuatorAngleFromEsp32();
+            // _session = new InferenceSession(modelPath);
+
 
         }
 
@@ -232,7 +260,6 @@ namespace Aerolithe
 
         private async void btn_takePicture_Click(object sender, EventArgs e)
         {
-
             await takePictureAsync();
         }
 
@@ -266,7 +293,6 @@ namespace Aerolithe
         {
             AppendTextToConsoleNL("Calibrating" + Environment.NewLine);
             UdpSendStepperMessageAsync("stepmotor calibration");
-            picBox_CalibrationCheck.Image = Properties.Resources.crochet;
             stepperMotor_trkbar.Enabled = true;
             stepperMotor_trkbar.Value = 30000;
             UdpSendStepperMessageAsync("stepmotor calibration");
@@ -696,7 +722,7 @@ namespace Aerolithe
             if ((e.Control || e.KeyCode == Keys.LWin || e.KeyCode == Keys.RWin) && e.KeyCode == Keys.S)
             {
 
-                SaveProject();
+                SavePrefsSettings();
 
             }
         }
@@ -925,7 +951,7 @@ namespace Aerolithe
         {
             if (projectPath == null)
             {
-                SaveProject();  // Demande à setter le projet
+                SavePrefsSettings();  // Demande à setter le projet
             }
             if (projectPath == null)
             {
@@ -948,7 +974,9 @@ namespace Aerolithe
             if (txtBox_nomImages.Text != null)
             {
                 imageNameBase = txtBox_nomImages.Text;
-                WritePrefs("imageName", imageNameBase);
+                //WritePrefs("imageName", imageNameBase);
+                prefs.ImageName = imageNameBase;
+                SavePrefsSettings();
             }
         }
 
@@ -957,7 +985,9 @@ namespace Aerolithe
             if (txtBox_nomImages.Text != null && e.KeyCode == Keys.Enter)
             {
                 imageNameBase = txtBox_nomImages.Text;
-                WritePrefs("imageName", imageNameBase);
+                //WritePrefs("imageName", imageNameBase);
+                prefs.ImageName = imageNameBase;
+                SavePrefsSettings();
             }
         }
 
@@ -1116,6 +1146,14 @@ namespace Aerolithe
 
         }
 
+        private void comboBox_ImageType_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            var imageType = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_CompressionLevel);
+            imageType.Index = comboBox_ImageType.SelectedIndex;
+            device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_CompressionLevel, imageType);
+        }
+
+
         private void btn_clearPicLayout_Click(object sender, EventArgs e)
         {
             flowLayoutPanel1.Controls.Clear();
@@ -1229,7 +1267,7 @@ namespace Aerolithe
         private void btn_applyMask_Click(object sender, EventArgs e)
         {
             applyMaskToLiveView = applyMaskToLiveView ? false : true;
-            
+
 
             if (chkBox_background1.Checked)
             {
@@ -1285,72 +1323,72 @@ namespace Aerolithe
             pnl_DrawingLiveView.Height = picBox_LiveView_Main.Height;
         }
 
-        private void btn_getImageBkground_1_Click(object sender, EventArgs e)
-        {
-            Task.Run(async () =>
-            {
-                await GetBackgroundImage("backgroundImage_1");
-                if (File.Exists(backgroundImage_1))
-                {
-                    LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
+        //private void btn_getImageBkground_1_Click(object sender, EventArgs e)
+        //{
+        //    Task.Run(async () =>
+        //    {
+        //        await GetBackgroundImage("backgroundImage_1");
+        //        if (File.Exists(backgroundImage_1))
+        //        {
+        //            LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
 
-                }
-                else
-                {
-                    AppendTextToConsoleNL("pas d'image à " + backgroundImage_1);
-                }
-            });
+        //        }
+        //        else
+        //        {
+        //            AppendTextToConsoleNL("pas d'image à " + backgroundImage_1);
+        //        }
+        //    });
 
-        }
-        private void btn_getImageBkground_2_Click(object sender, EventArgs e)
-        {
-            Task.Run(async () =>
-            {
-                await GetBackgroundImage("backgroundImage_2");
-                if (File.Exists(backgroundImage_2))
-                {
-                    LoadAndResizeImage(backgroundImage_2, picBox_imageFond_2);
+        //}
+        //private void btn_getImageBkground_2_Click(object sender, EventArgs e)
+        //{
+        //    Task.Run(async () =>
+        //    {
+        //        await GetBackgroundImage("backgroundImage_2");
+        //        if (File.Exists(backgroundImage_2))
+        //        {
+        //            LoadAndResizeImage(backgroundImage_2, picBox_imageFond_2);
 
-                }
-                else
-                {
-                    AppendTextToConsoleNL("pas d'image à " + backgroundImage_2);
-                }
-            });
-        }
-        private void btn_getImageBkground_3_Click(object sender, EventArgs e)
-        {
-            Task.Run(async () =>
-            {
-                await GetBackgroundImage("backgroundImage_3");
-                if (File.Exists(backgroundImage_3))
-                {
-                    LoadAndResizeImage(backgroundImage_3, picBox_imageFond_3);
+        //        }
+        //        else
+        //        {
+        //            AppendTextToConsoleNL("pas d'image à " + backgroundImage_2);
+        //        }
+        //    });
+        //}
+        //private void btn_getImageBkground_3_Click(object sender, EventArgs e)
+        //{
+        //    Task.Run(async () =>
+        //    {
+        //        await GetBackgroundImage("backgroundImage_3");
+        //        if (File.Exists(backgroundImage_3))
+        //        {
+        //            LoadAndResizeImage(backgroundImage_3, picBox_imageFond_3);
 
-                }
-                else
-                {
-                    AppendTextToConsoleNL("pas d'image à " + backgroundImage_3);
-                }
-            });
-        }
+        //        }
+        //        else
+        //        {
+        //            AppendTextToConsoleNL("pas d'image à " + backgroundImage_3);
+        //        }
+        //    });
+        //}
 
-        private async Task loadBackgroundMasks()
-        {
+        //private async Task loadBackgroundMasks()
+        //{
 
-            if (File.Exists(backgroundImage_1))
-            {
-                LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
-            }
-            if (File.Exists(backgroundImage_2))
-            {
-                LoadAndResizeImage(backgroundImage_2, picBox_imageFond_2);
-            }
-            if (File.Exists(backgroundImage_3))
-            {
-                LoadAndResizeImage(backgroundImage_3, picBox_imageFond_3);
-            }
-        }
+        //    if (File.Exists(backgroundImage_1))
+        //    {
+        //        LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
+        //    }
+        //    if (File.Exists(backgroundImage_2))
+        //    {
+        //        LoadAndResizeImage(backgroundImage_2, picBox_imageFond_2);
+        //    }
+        //    if (File.Exists(backgroundImage_3))
+        //    {
+        //        LoadAndResizeImage(backgroundImage_3, picBox_imageFond_3);
+        //    }
+        //}
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -1425,5 +1463,96 @@ namespace Aerolithe
             }
         }
 
+        private void tableLayoutPanel41_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void btn_loadSharpImage_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Title = "Select an Image";
+                openFileDialog.Filter = "Image Files|*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tif;*.tiff";
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Load the selected image into the PictureBox
+                    picBox_SharpImage.Image = new Bitmap(openFileDialog.FileName);
+                    picBox_SharpImage.SizeMode = PictureBoxSizeMode.Zoom; // Optional: scales image to fit
+                }
+            }
+        }
+
+        private void btn_applySharpMask_Click(object sender, EventArgs e)
+        {
+            MasqueAvecPixels();
+        }
+
+        private void picBox_pictureTaken_DoubleClick(object sender, EventArgs e)
+        {
+            if (picBox_pictureTaken.Image != null && imagesFolderPath != null && imageNameBase != null)
+            {
+                string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
+                string imagePath = Path.Combine(imagesFolderPath, nomImage);
+
+                if (File.Exists(imagePath))
+                {
+                    ImageViewerForm viewer = new ImageViewerForm(imagePath);
+                    viewer.Show();
+                }
+                else
+                {
+                    MessageBox.Show("Image introuvable : " + imagePath + Environment.NewLine + "Il faut choisir un projet");
+                }
+            }
+            else
+            {
+                MessageBox.Show($"le dossier de l'image ({imagesFolderPath}) et le nom de l'image ({imageNameBase}) ne sont pas bons");
+            }
+        }
+
+
+        public partial class ImageViewerForm : Form
+        {
+            public ImageViewerForm(string imagePath)
+            {
+
+
+                this.Text = "Aperçu de l'image";
+                this.WindowState = FormWindowState.Maximized;
+
+                PictureBox pictureBox = new PictureBox
+                {
+                    Image = Image.FromFile(imagePath),
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    Dock = DockStyle.Fill
+                };
+
+                this.Controls.Add(pictureBox);
+            }
+        }
+
+        private void hScrollBar_blurAmountMask_Scroll(object sender, ScrollEventArgs e)
+        {
+
+
+            // Ajuster la valeur pour qu'elle soit impaire
+            if (hScrollBar_blurAmountMask.Value % 2 == 0)
+            {
+                hScrollBar_blurAmountMask.Value += 1;
+            }
+            if (hScrollBar_liveMaskThresh.Value < 1) hScrollBar_liveMaskThresh.Value = 1;
+            if (hScrollBar_liveMaskThresh.Value > 51) hScrollBar_liveMaskThresh.Value = 51;
+
+            // Afficher la valeur ou l'utiliser ailleurs
+            lbl_blurMaskAmount.Text = hScrollBar_blurAmountMask.Value.ToString();
+
+        }
+
+        private void hScrollBar_liveMaskThresh_Scroll(object sender, ScrollEventArgs e)
+        {
+            lbl_maskAmount.Text = hScrollBar_liveMaskThresh.Value.ToString();
+        }
     }
 }

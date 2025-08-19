@@ -11,6 +11,7 @@ using Emgu.CV;
 using System.Drawing.Imaging;
 using Emgu.CV.Util;
 using System.Diagnostics;
+using System.Drawing.Text;
 
 namespace Aerolithe
 {
@@ -21,7 +22,8 @@ namespace Aerolithe
         private TaskCompletionSource<bool> imageReadyTcs;
         private int lastPercent = -1;
         private Size panelSize = new Size(250, 200);
-        
+        private int oldImgIncr = -1;
+
 
         public async Task takePictureAsync()
         {
@@ -45,142 +47,220 @@ namespace Aerolithe
 
         void device_ImageReady(NikonDevice sender, NikonImage image)
         {
-            //CustomFlowLayoutPanel[] flowLayoutPanels = { customFlowLayoutPanel1, customFlowLayoutPanel1, customFlowLayoutPanel1 };
-           
+            
+            //CustomFlowLayoutPanel[] flowLayoutPanels = { customFlowLayoutPanel1, customFlowLayoutPanel1, customFlowLayoutPanel1 };            
             AppendTextToConsoleNL("image capturée, sauvegarde de l'image");
             try
             {
                 if (image.Type == NikonImageType.Jpeg)
                 {
-                    using (MemoryStream memoryStream = new MemoryStream(image.Buffer))
+                    
+                    AppendTextToConsoleNL("Image capturée, traitement en cours...");
+
+                    try
                     {
-                        string nomImage = "";
-                        try
+                        using (var memoryStream = new MemoryStream(image.Buffer))
+                        using (var originalBitmap = new Bitmap(memoryStream))
                         {
-                            
-                            // Test if the image buffer is valid
-                            Image testImage = Image.FromStream(memoryStream);
-                            // Save image if needed
-                            if (chkBox_savePicture.Checked)
+                            Bitmap finalBitmap;
+
+                            if (chkBox_applyMask.Checked)
+                            { 
+                                var sourceImage = originalBitmap.ToImage<Bgr, byte>();
+                                var maskGray = maskBitmapLive.ToImage<Gray, byte>();
+                                var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
+                                CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(hScrollBar_blurAmountMask.Value, hScrollBar_blurAmountMask.Value), 0); // applique un flou, il faut un nombre impair
+                                var invertedMask = resizedMask.Not();
+                                var maskBgr = invertedMask.Convert<Bgr, byte>();
+
+                                sourceImage._And(maskBgr);
+                                finalBitmap = sourceImage.ToBitmap();
+
+                                // Libération manuelle
+                                maskGray.Dispose();
+                                resizedMask.Dispose();
+                                invertedMask.Dispose();
+                                maskBgr.Dispose();
+                                sourceImage.Dispose();
+                            }
+                            else
                             {
-                                if (imagesFolderPath != null && imageNameBase!= null && imageIncr!= null)
+                                finalBitmap = new Bitmap(originalBitmap);
+                            }
+
+                            picBox_pictureTaken.Image?.Dispose();
+                            picBox_pictureTaken.Image = finalBitmap;
+                            
+                            // Sauvegarde si activée
+                            //if (chkBox_savePicture.Checked && imagesFolderPath != null && imageNameBase != null && imageIncr != null)
+                            if (chkBox_savePicture.Checked && imagesFolderPath != null && imageNameBase != null)
                                 {
-                                    try
 
+                                if (imageIncr == oldImgIncr)
+                                {
+                                    imageIncr++;
+                                }
+                                oldImgIncr = imageIncr;
+
+                                string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
+                                string outputPath = Path.Combine(imagesFolderPath, nomImage);
+
+                                AppendTextToConsoleNL("Sauvegarde de la photo. Ceci peut prendre quelques secondes...");
+
+                                using (var saveStream = new MemoryStream())
+                                {
+                                    finalBitmap.Save(saveStream, ImageFormat.Jpeg);
+                                    saveStream.Position = 0;
+
+                                    var savingProgress = new Progress<int>(percent =>
                                     {
-                                        //MessageBox.Show(imageNameBase + "_" + imageIncr + ".jpg");
-                                        // Reset the stream position to the beginning
-                                        memoryStream.Position = 0;
-                                        nomImage = imageNameBase + "_" + imageIncr + ".jpg";
-                                        string outputPath = Path.Combine(imagesFolderPath, nomImage);
-                                        //MessageBox.Show(outputPath);
-                                        AppendTextToConsoleNL("Sauvegarde de la photo. Ceci peut prendre quelques secondes");
-                                        //SaveStreamAsJpeg(memoryStream, outputPath);
-                                        var savingProgress = new Progress<int>(percent =>
+                                        if (percent != lastPercent)
                                         {
-                                            if (percent != lastPercent)
+                                            Invoke((MethodInvoker)(() =>
                                             {
-                                                AppendTextToConsoleNL($"Sauvegarde: {percent}%");
-                                                lastPercent = percent; // Update the last percentage value
-                                            }
+                                                progressBar_ImageSave.Value = percent;
+                                            }));
+                                            lastPercent = percent;
+                                        }
+                                    });
 
-                                        });
-                                        SaveStreamAsJpegWithProgress(memoryStream, outputPath, savingProgress, true);
 
-                                        try
+                                    SaveStreamAsJpegWithProgress(saveStream, outputPath, savingProgress, true);
+                                }
+
+                                // Affichage miniature
+                                try
+                                {
+                                    using (Image originalImage = Image.FromFile(outputPath))
+                                    {
+                                        Image resizedImage = ResizeImage(originalImage, 150, 100);
+
+                                        Panel borderPanel = new Panel
                                         {
-                                            string imagePath = outputPath;
+                                            Size = panelSize,
+                                            BorderStyle = BorderStyle.FixedSingle
+                                        };
 
-                                            using (Image originalImage = Image.FromFile(imagePath))
+                                        TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
+                                        {
+                                            ColumnCount = 2,
+                                            RowCount = 2,
+                                            Dock = DockStyle.Fill
+                                        };
+
+                                        // Ajout des colonnes
+                                        tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 85F)); // Pour le label
+                                        tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F)); // Pour le bouton
+
+                                        // Ajout des lignes
+                                        tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F)); // Ligne du label + bouton
+                                        tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Ligne de l'image
+
+                                        Button deleteButton = new Button
+                                        {
+                                            Text = "X",
+                                            Dock = DockStyle.Fill,
+                                            Font = new Font(FontFamily.GenericSansSerif, 6),
+                                            BackColor = Color.Black,
+                                            ForeColor = Color.White,
+                                            Margin = new Padding(0),
+                                            FlatStyle = FlatStyle.Flat
+                                        };
+
+                                        deleteButton.Click += (s, e) =>
+                                        {
+                                            var result = MessageBox.Show(
+                                                "Voulez-vous aussi supprimer le fichier sur le disque ?",
+                                                "Suppression de l'image",
+                                                MessageBoxButtons.YesNo,
+                                                MessageBoxIcon.Question
+                                            );
+
+                                            if (result == DialogResult.Yes)
                                             {
-                                                Image resizedImage = ResizeImage(originalImage, 150,100); // Resize to desired dimensions
-
-
-                                                Panel borderPanel = new Panel();
-                                                borderPanel.Size = panelSize; // Adjust size as needed
-                                                borderPanel.BorderStyle = BorderStyle.FixedSingle; // This adds the border
-
-                                                // Create a panel to hold the label and picture box
-                                                TableLayoutPanel tableLayoutPanel = new TableLayoutPanel();
-
-                                                tableLayoutPanel.ColumnCount = 1;
-                                                tableLayoutPanel.RowCount = 2;
-                                                tableLayoutPanel.Dock = DockStyle.Fill;
-                                                tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-                                                tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 75F));
-                                                
-
-
-                                                // Create and configure the label
-                                                Label label = new Label();
-                                                label.Text = nomImage;
-                                                //label.Size = new Size(150, 30); // Adjust size as needed
-                                                label.TextAlign = ContentAlignment.MiddleCenter;
-                                                label.ForeColor = Color.White;
-                                                label.Dock = DockStyle.Fill;
-                                                label.Font = new Font(label.Font.FontFamily, 6);
-
-                                                // Create and configure the picture box
-                                                PictureBox pictureBox = new PictureBox();
-                                                pictureBox.Image = resizedImage;
-                                                //pictureBox.Size = new Size(150, 100);
-                                                pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
-                                                pictureBox.Dock = DockStyle.Fill;
-                                                ToolTip toolTip = new ToolTip();
-                                                toolTip.SetToolTip(pictureBox, nomImage);
-
-                                                pictureBox.Click += (sender, e) =>
+                                                try
                                                 {
-                                                    try
+                                                    string imagePath = Path.Combine(imagesFolderPath, nomImage);
+                                                    if (File.Exists(imagePath))
                                                     {
-                                                        Process.Start("explorer.exe", $"/select,\"{imagePath}\"");
+                                                        File.Delete(imagePath);
                                                     }
-                                                    catch (Exception ex)
-                                                    {
-                                                        MessageBox.Show($"Failed to open image: {ex.Message}");
-                                                    }
-                                                };
-
-                                                // Add the label and picture box to the panel
-
-                                                tableLayoutPanel.Controls.Add( label, 0,0 );
-                                                tableLayoutPanel.Controls.Add( pictureBox, 0, 1 );
-                                                borderPanel.Controls.Add(tableLayoutPanel);
-
-                                                // Add the panel to the flow layout panel
-                                                flowLayoutPanel1.Controls.Add(borderPanel);
-                                                flowLayoutPanel1.ScrollControlIntoView(borderPanel);
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    MessageBox.Show($"Erreur lors de la suppression du fichier : {ex.Message}");
+                                                }
                                             }
-                                        }
+
+                                            flowLayoutPanel1.Controls.Remove(borderPanel);
+                                            borderPanel.Dispose();
+                                        };
 
 
-                                        catch (Exception ex)
+
+                                        Label label = new Label
                                         {
-                                            //AppendTextToConsoleNL($"An error occurred: {ex.Message}");
-                                        }
-                                    }
+                                            Text = nomImage,
+                                            TextAlign = ContentAlignment.MiddleCenter,
+                                            ForeColor = Color.White,
+                                            Dock = DockStyle.Fill,
+                                            Font = new Font(FontFamily.GenericSansSerif, 8)
+                                        };
 
-                                    catch (Exception ex)
-                                    {
-                                        //AppendTextToConsoleNL("NikonException: " + ex.Message);
-                                        throw;
+                                        PictureBox pictureBox = new PictureBox
+                                        {
+                                            Image = resizedImage,
+                                            SizeMode = PictureBoxSizeMode.Zoom,
+                                            Dock = DockStyle.Fill
+                                        };
+
+                                        new ToolTip().SetToolTip(pictureBox, nomImage);
+
+                                        string imagePath = Path.Combine(imagesFolderPath, nomImage); // nomImage = label.Text
+
+
+                                        pictureBox.Click += (sender, e) =>
+                                        {
+                                            try
+                                            {
+                                                ImageViewerForm viewer = new ImageViewerForm(imagePath);
+                                                viewer.Show();
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                MessageBox.Show($"Erreur à l'ouverture de l'image : {ex.Message}");
+                                            }
+                                        };
+
+
+                                        tableLayoutPanel.Controls.Add(label, 0, 0);
+                                        tableLayoutPanel.Controls.Add(deleteButton, 1, 0);
+                                        tableLayoutPanel.SetColumnSpan(pictureBox, 2); // image sur toute la largeur
+                                        tableLayoutPanel.Controls.Add(pictureBox, 0, 1);
+
+                                        borderPanel.Controls.Add(tableLayoutPanel);
+
+                                        flowLayoutPanel1.Controls.Add(borderPanel);
+                                        flowLayoutPanel1.ScrollControlIntoView(borderPanel);
                                     }
                                 }
-                                else
+                                catch (Exception ex)
                                 {
-                                    MessageBox.Show("Il faut sélectionner un dossier d'images");
-                                    return;
+                                    AppendTextToConsoleNL($"Erreur lors de l'affichage miniature : {ex.Message}");
                                 }
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show("Invalid image buffer: " + ex.Message);
-                            return;
-                        }
-                        imageReadyTcs?.TrySetResult(true);                       
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Erreur lors du traitement de l'image : " + ex.Message);
                     }
                 }
+                else
+                {
+                    MessageBox.Show("Il y a une erreur, l'image doit être du type jpeg. Aller dans l'onglet Settings/Caméra/Type D'images et choisir Jpeg dans le menu déroulant");
+                }
+
             }
             catch (Exception ex)
             {
@@ -188,9 +268,6 @@ namespace Aerolithe
                 imageReadyTcs?.TrySetException(ex);
             }
         }
-
-
-        
 
 
         private Image ResizeImage(Image image, int width, int height)
@@ -229,7 +306,7 @@ namespace Aerolithe
             Image image = Image.FromStream(imageStream);
 
 
-            if (customPen.IsVisible & addBrush)
+            if (customPen.IsVisible && addBrush)
             {
 
                 // Create a Graphics object from the image
@@ -252,8 +329,6 @@ namespace Aerolithe
 
             }
 
-
-
             // Save the image to a temporary stream
             using (MemoryStream tempStream = new MemoryStream())
             {
@@ -274,12 +349,13 @@ namespace Aerolithe
                         fileStream.Write(buffer, 0, bytesRead);
                         totalBytesRead += bytesRead;
 
-                        if (progress != null) {
+                        if (progress != null)
+                        {
                             // Report progress
                             int percentComplete = (int)((totalBytesRead * 100) / totalLength);
                             progress.Report(percentComplete);
                         }
-                        
+
                     }
                 }
             }
@@ -287,7 +363,8 @@ namespace Aerolithe
 
 
 
-        private void ManualFocus(int up, double newFocusValue){
+        private void ManualFocus(int up, double newFocusValue)
+        {
 
             driveStep.Value = newFocusValue;
             device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
@@ -307,30 +384,114 @@ namespace Aerolithe
             }
             catch (Exception ex)
             {
-               // if (ex.Message Z= eNkMAIDResult.kNkMAIDResult_DeviceBusy) 
+                // if (ex.Message Z= eNkMAIDResult.kNkMAIDResult_DeviceBusy) 
             }
-          
+
 
         }
 
 
 
+        //private async Task AutomaticMFocus()
+        //{
+        //    int maxStep = int.Parse(lbl_driveStepMax.Text); // Define maxStep based on your device's maximum allowable steps
+        //    int initialDriveStepVal = 200; // Larger initial drive step value
+        //    int minDriveStepVal = 1; // Minimum drive step value for precise adjustments
+        //    int driveStepVal = initialDriveStepVal; // Start with larger steps
+        //    int direction = 1; // Initial direction (1 for forward, -1 for backward)
+        //    double highestBlurryness = 0.0; // Track the highest blurryness amount
+        //    int bestStep = 0; // Track the best step position
+        //    int moveBadCount = 0;
+        //    int currentStep = 0;
+        //    int bufferSize = 5; // Size of the buffer to track recent blurryness values
+        //    Queue<double> blurrynessBuffer = new Queue<double>();
+        //    int iterationCount = 0; // Track the number of iterations
+        //    int maxIterations = 100; // Set a maximum number of iterations to avoid infinite loop
+
+        //    if (!device.LiveViewEnabled)
+        //    {
+        //        device.LiveViewEnabled = true;
+        //        liveViewTimer.Start();
+        //    }
+        //    AppendTextToConsoleNL("Début du programme de focus");
+
+        //    while (iterationCount < maxIterations)
+        //    {
+        //        ManualFocus(direction, driveStepVal);
+        //        await Task.Delay(50); // Adjust delay to 50ms for quicker response
+        //        double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
+
+        //        // Add current blurryness to buffer
+        //        blurrynessBuffer.Enqueue(currentBlurryness);
+        //        if (blurrynessBuffer.Count > bufferSize)
+        //        {
+        //            blurrynessBuffer.Dequeue(); // Maintain buffer size
+        //        }
+
+        //        // Calculate average blurryness from buffer
+        //        double averageBlurryness = blurrynessBuffer.Average();
+
+        //        if (averageBlurryness > highestBlurryness)
+        //        {
+        //            highestBlurryness = averageBlurryness;
+        //            bestStep = currentStep;
+        //        }
+        //        else if (averageBlurryness < highestBlurryness)
+        //        {
+        //            direction *= -1; // Change direction when average blurryness decreases
+        //        }
+
+        //        if (averageBlurryness < highestBlurryness)
+        //        {
+        //            if (moveBadCount > 10) // Adjust moveBadCount to 10
+        //            {
+        //                direction *= -1; // Change direction if too many bad moves
+        //                moveBadCount = 0; // Reset bad move counter
+        //            }
+        //            else
+        //            {
+        //                moveBadCount++;
+        //            }
+        //        }
+        //        else
+        //        {
+        //            moveBadCount = 0; // Reset the counter if a good move is found
+        //        }
+
+        //        currentStep += direction * driveStepVal;
+
+        //        // Gradually decrease the drive step value
+        //        driveStepVal = Math.Max(minDriveStepVal, driveStepVal - 10);
+
+        //        iterationCount++; // Increment iteration count
+
+        //        // Break condition to avoid infinite loop
+        //        if (Math.Abs(currentStep) > maxStep)
+        //        {
+        //            break;
+        //        }
+        //    }
+        //    AppendTextToConsoleNL("Fin du programme de focus");
+        //    AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestStep: {bestStep}");
+
+        //    // Move to the position with the highest blurryness amount
+        //    ManualFocus(direction, bestStep);
+        //    await Task.Delay(1000); // Allow time for the move to complete
+
+        //    // Verify the final position
+        //    double finalBlurryness = blurrynessAmount;
+        //    AppendTextToConsoleNL($"Final Blurryness: {finalBlurryness}");
+        //    if (finalBlurryness < highestBlurryness)
+        //    {
+        //        AppendTextToConsoleNL("Adjusting to the best step position");
+        //        ManualFocus(direction, bestStep - currentStep); // Adjust to the best step position
+        //    }
+        //}
+
+
         private async Task AutomaticMFocus()
         {
-            int maxStep = int.Parse(lbl_driveStepMax.Text); // Define maxStep based on your device's maximum allowable steps
-            int initialDriveStepVal = 200; // Larger initial drive step value
-            int minDriveStepVal = 1; // Minimum drive step value for precise adjustments
-            int driveStepVal = initialDriveStepVal; // Start with larger steps
-            int direction = 1; // Initial direction (1 for forward, -1 for backward)
-            double highestBlurryness = 0.0; // Track the highest blurryness amount
-            int bestStep = 0; // Track the best step position
-            int moveBadCount = 0;
-            int currentStep = 0;
-            int bufferSize = 5; // Size of the buffer to track recent blurryness values
-            Queue<double> blurrynessBuffer = new Queue<double>();
-            int iterationCount = 0; // Track the number of iterations
-            int maxIterations = 100; // Set a maximum number of iterations to avoid infinite loop
-
+            int initialDriveStepVal = 200;
             if (!device.LiveViewEnabled)
             {
                 device.LiveViewEnabled = true;
@@ -338,84 +499,12 @@ namespace Aerolithe
             }
             AppendTextToConsoleNL("Début du programme de focus");
 
-            while (iterationCount < maxIterations)
-            {
-                ManualFocus(direction, driveStepVal);
-                await Task.Delay(50); // Adjust delay to 50ms for quicker response
-                double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
 
-                // Add current blurryness to buffer
-                blurrynessBuffer.Enqueue(currentBlurryness);
-                if (blurrynessBuffer.Count > bufferSize)
-                {
-                    blurrynessBuffer.Dequeue(); // Maintain buffer size
-                }
 
-                // Calculate average blurryness from buffer
-                double averageBlurryness = blurrynessBuffer.Average();
-
-                if (averageBlurryness > highestBlurryness)
-                {
-                    highestBlurryness = averageBlurryness;
-                    bestStep = currentStep;
-                }
-                else if (averageBlurryness < highestBlurryness)
-                {
-                    direction *= -1; // Change direction when average blurryness decreases
-                }
-
-                if (averageBlurryness < highestBlurryness)
-                {
-                    if (moveBadCount > 10) // Adjust moveBadCount to 10
-                    {
-                        direction *= -1; // Change direction if too many bad moves
-                        moveBadCount = 0; // Reset bad move counter
-                    }
-                    else
-                    {
-                        moveBadCount++;
-                    }
-                }
-                else
-                {
-                    moveBadCount = 0; // Reset the counter if a good move is found
-                }
-
-                currentStep += direction * driveStepVal;
-
-                // Gradually decrease the drive step value
-                driveStepVal = Math.Max(minDriveStepVal, driveStepVal - 10);
-
-                iterationCount++; // Increment iteration count
-
-                // Break condition to avoid infinite loop
-                if (Math.Abs(currentStep) > maxStep)
-                {
-                    break;
-                }
-            }
-            AppendTextToConsoleNL("Fin du programme de focus");
-            AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestStep: {bestStep}");
-
-            // Move to the position with the highest blurryness amount
-            ManualFocus(direction, bestStep);
-            await Task.Delay(1000); // Allow time for the move to complete
-
-            // Verify the final position
-            double finalBlurryness = blurrynessAmount;
-            AppendTextToConsoleNL($"Final Blurryness: {finalBlurryness}");
-            if (finalBlurryness < highestBlurryness)
-            {
-                AppendTextToConsoleNL("Adjusting to the best step position");
-                ManualFocus(direction, bestStep - currentStep); // Adjust to the best step position
-            }
         }
 
 
 
-
-
-       
 
 
 

@@ -1,0 +1,11 @@
+﻿Voici comment setter la Nikon et la lentille
+
+Lentille
+	- Mode AF pour la Sigma 105 mm
+	- A/M pour la Nikon Nikkor 60mm
+
+D850
+	- Mettre l'appareil en mode AF (bouton près de la lentille)
+	- Mode Manuel (Peser sur le bouton "mode" sur la molette en haute à gauche et tourner la
+	  roulette à droite de l'appareil, en haut de l'écran à côté du bouton AF-ON) jusqu'à "M"
+	- 

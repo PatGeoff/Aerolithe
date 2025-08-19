@@ -11,6 +11,11 @@ using Emgu.CV.Util;
 using System.Drawing.Imaging;
 using System.Diagnostics;
 
+
+//using Microsoft.ML.OnnxRuntime;
+//using Microsoft.ML.OnnxRuntime.Tensors;
+
+
 // RÉFÉRENCES: https://stackoverflow.com/questions/62866191/emgucv-crop-detected-shape-automatically
 // Autre ref: https://stackoverflow.com/questions/35460986/morphological-operations-on-image
 
@@ -20,54 +25,125 @@ namespace Aerolithe
     {
         private bool applyMaskToLiveView = false;
 
+        //private readonly InferenceSession _session;
+
+       //public async Task<Bitmap> RunU2NetFromMemoryStreamAsync(MemoryStream stream)
+       // {
+       //     return await Task.Run(() =>
+       //     {
+       //         using Bitmap original = new Bitmap(stream);
+       //         using Bitmap resized = new Bitmap(original, new Size(320, 320));
+
+       //         DenseTensor<float> inputTensor = new DenseTensor<float>(new[] { 1, 3, 320, 320 });
+
+       //         for (int y = 0; y < 319; y++)
+       //         {
+       //             for (int x = 0; x < 319; x++)
+       //             {
+       //                 Color pixel = resized.GetPixel(x, y);
+       //                 inputTensor[0, 0, y, x] = pixel.R / 255f;
+       //                 inputTensor[0, 1, y, x] = pixel.G / 255f;
+       //                 inputTensor[0, 2, y, x] = pixel.B / 255f;
+       //             }
+       //         }
+
+       //         var inputs = new List<NamedOnnxValue>
+       // {
+       //     NamedOnnxValue.CreateFromTensor("input.1", inputTensor)
+       // };
+
+       //         using IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = _session.Run(inputs);
+       //         DenseTensor<float> outputTensor = (DenseTensor<float>)results.First().AsTensor<float>();
+
+       //         // Create grayscale bitmap directly from output tensor
+       //         Bitmap bitmap = new Bitmap(1024, 1024, PixelFormat.Format8bppIndexed);
+
+       //         // Set grayscale palette
+       //         ColorPalette palette = bitmap.Palette;
+       //         for (int i = 0; i < 256; i++)
+       //         {
+       //             palette.Entries[i] = Color.FromArgb(i, i, i);
+       //         }
+       //         bitmap.Palette = palette;
+
+       //         // Lock bitmap data
+       //         BitmapData data = bitmap.LockBits(
+       //             new Rectangle(0, 0, 320, 320),
+       //             ImageLockMode.WriteOnly,
+       //             PixelFormat.Format8bppIndexed);
+
+       //         unsafe
+       //         {
+       //             byte* ptr = (byte*)data.Scan0;
+       //             int stride = data.Stride;
+
+       //             for (int y = 0; y < 320; y++)
+       //             {
+       //                 for (int x = 0; x < 320; x++)
+       //                 {
+       //                     float value = outputTensor[0, 0, y, x];
+       //                     byte gray = (byte)(Math.Clamp(value, 0f, 1f) * 255f);
+       //                     ptr[y * stride + x] = gray;
+       //                 }
+       //             }
+       //         }
+
+       //         bitmap.UnlockBits(data);
+       //         return bitmap;
+       //     });
+       // }
 
 
-        private async Task GetBackgroundImage(string bgImage)
-            // Étant donné que ceci n'est exécuté qu'une fois sur demande, le background est fixé à l'image prise à cet instant
-        {
-            try
-            {
-                if (!device.LiveViewEnabled)
-                {
-                    device.LiveViewEnabled = true;
-                    while (!device.LiveViewEnabled) { }
-                }
-                else
-                {                    
+
+
+
+        //private async Task GetBackgroundImage(string bgImage)
+        //    // Étant donné que ceci n'est exécuté qu'une fois sur demande, le background est fixé à l'image prise à cet instant
+        //{
+        //    try
+        //    {
+        //        if (!device.LiveViewEnabled)
+        //        {
+        //            device.LiveViewEnabled = true;
+        //            while (!device.LiveViewEnabled) { }
+        //        }
+        //        else
+        //        {                    
                     
-                    //// Convertit le LiveCapture en stream
-                    using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
-                    {
-                        string name = bgImage + ".jpg";
-                        string outputPath = Path.Combine(projectDirectory, name);                        
-                        await SaveStreamAsJpegWithProgress(stream, outputPath, null, false);                   
-                        WritePrefs(bgImage, outputPath);
-                        LoadPrefs(); // Assure que l'image loadée est bien l'image qu'on vient d'écrire dans pref.
+        //            //// Convertit le LiveCapture en stream
+        //            using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
+        //            {
+        //                string name = bgImage + ".jpg";
+        //                string outputPath = Path.Combine(projectDirectory, name);                        
+        //                await SaveStreamAsJpegWithProgress(stream, outputPath, null, false);
+        //                prefs.bgImage
+        //                WritePrefs(bgImage, outputPath);
+        //                LoadPrefs(); // Assure que l'image loadée est bien l'image qu'on vient d'écrire dans pref.
 
-                        //    byte[] imageBytes = stream.ToArray();
-                        //    // Convertit le byte array en Mat
+        //                //    byte[] imageBytes = stream.ToArray();
+        //                //    // Convertit le byte array en Mat
 
-                        //    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
+        //                //    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
 
-                        //    picBox_imageFond_1.Image = background.ToImage<Bgr, Byte>().ToBitmap();
+        //                //    picBox_imageFond_1.Image = background.ToImage<Bgr, Byte>().ToBitmap();
 
-                        //    if (background == null) MessageBox.Show("Impossible de saisir l'image");
+        //                //    if (background == null) MessageBox.Show("Impossible de saisir l'image");
 
-                    }
+        //            }
 
-            }
-            }
-            catch (Exception e)
-            {
+        //    }
+        //    }
+        //    catch (Exception e)
+        //    {
 
-                AppendTextToConsoleNL(e.Message);
-            }
+        //        AppendTextToConsoleNL(e.Message);
+        //    }
             
-        }
-        private void BackgroundSubtraction(MemoryStream stream)
+        //}
+        private async Task BackgroundSubtraction(MemoryStream stream)
         {
 
-
+            
             if (applyMaskToLiveView)
             {               
                 if (background != null)
@@ -93,6 +169,76 @@ namespace Aerolithe
                 }               
             }
             Task.Run(async () => await CalculDuFlou(stream));
+        }
+
+        private Bitmap BlobMaskingLiveView(MemoryStream stream, int maskOffset = 0)
+        {
+            // Load image from stream into Mat
+            Mat image;
+            using (Bitmap bitmap = new Bitmap(stream))
+            {
+                image = bitmap.ToMat();
+            }
+
+            // Convert to grayscale
+            Mat gray = new Mat();
+            CvInvoke.CvtColor(image, gray, ColorConversion.Bgr2Gray);
+
+            // Apply adaptive thresholding for better blob detection
+            Mat binary = new Mat();
+            CvInvoke.AdaptiveThreshold(gray, binary, 255, AdaptiveThresholdType.MeanC, ThresholdType.BinaryInv,11, 2);
+
+            // Find contours
+            VectorOfVectorOfPoint contours = new VectorOfVectorOfPoint();
+            Mat hierarchy = new Mat();
+            CvInvoke.FindContours(binary, contours, hierarchy, RetrType.External, ChainApproxMethod.ChainApproxSimple);
+
+            // Create filled mask
+            Mat mask = new Mat(binary.Rows, binary.Cols, DepthType.Cv8U, 1);
+            mask.SetTo(new MCvScalar(0));
+            for (int i = 0; i < contours.Size; i++)
+            {
+                CvInvoke.DrawContours(mask, contours, i, new MCvScalar(255), -1);
+            }
+
+            // Grow or shrink the mask
+            if (maskOffset != 0)
+            {
+                Mat kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
+                if (maskOffset > 0)
+                {
+                    CvInvoke.Dilate(mask, mask, kernel, new Point(-1, -1), maskOffset, BorderType.Default, new MCvScalar(0));
+                }
+                else
+                {
+                    CvInvoke.Erode(mask, mask, kernel, new Point(-1, -1), -maskOffset, BorderType.Default, new MCvScalar(0));
+                }
+            }
+
+            // Apply the mask to the original image
+            Mat maskedImage = new Mat();
+            CvInvoke.BitwiseAnd(image, image, maskedImage, mask);
+
+            // Return the masked image as a Bitmap
+            return maskedImage.ToBitmap();
+        }
+
+        private Bitmap BrightnessMaskFromStream(MemoryStream stream, int threshold = 100)
+        {
+            // Decode JPEG stream into Mat
+            byte[] imageBytes = stream.ToArray();
+            Mat image = new Mat();
+            CvInvoke.Imdecode(imageBytes, ImreadModes.Color, image);
+
+            // Convert to grayscale
+            Mat gray = new Mat();
+            CvInvoke.CvtColor(image, gray, ColorConversion.Bgr2Gray);
+
+            // Apply binary threshold
+            Mat binary = new Mat();
+            CvInvoke.Threshold(gray, binary, threshold, 255, ThresholdType.Binary);
+
+            return binary.ToBitmap();
         }
 
 
@@ -217,8 +363,6 @@ namespace Aerolithe
         //}
 
 
-
-
         private void createMaskLiveView(Mat stream, Mat foreground)
         {
             //conversion de BGR à HSV 
@@ -282,10 +426,6 @@ namespace Aerolithe
 
         }
      
-
-
-
-
 
 
         private async Task CalculDuFlou(MemoryStream memoryStream)
@@ -494,7 +634,7 @@ namespace Aerolithe
 
             return scalar.V0;
         }
-      
+
 
         // public async Task backgroundSubstractionOnImage()
         //{
@@ -505,5 +645,52 @@ namespace Aerolithe
         //    await imageReadyTcs.Task;
 
         //}
+        public void MasqueAvecPixels()
+        {
+            Bitmap original = (Bitmap)picBox_SharpImage.Image;
+            Bitmap mask = new Bitmap(original.Width, original.Height, PixelFormat.Format24bppRgb);
+
+            int threshold = hScrollBar_ThresholdMaskValue.Value;
+            Rectangle rect = new Rectangle(0, 0, original.Width, original.Height);
+
+            BitmapData originalData = original.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            BitmapData maskData = mask.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            int stride = originalData.Stride;
+            int bytes = stride * original.Height;
+            byte[] pixelBuffer = new byte[bytes];
+            byte[] resultBuffer = new byte[bytes];
+
+            System.Runtime.InteropServices.Marshal.Copy(originalData.Scan0, pixelBuffer, 0, bytes);
+
+            for (int y = 0; y < original.Height; y++)
+            {
+                int rowOffset = y * stride;
+                for (int x = 0; x < original.Width; x++)
+                {
+                    int index = rowOffset + x * 3;
+
+                    byte b = pixelBuffer[index];
+                    byte g = pixelBuffer[index + 1];
+                    byte r = pixelBuffer[index + 2];
+
+                    int brightness = (int)(r * 0.299 + g * 0.587 + b * 0.114);
+                    byte color = (brightness < threshold) ? (byte)0 : (byte)255;
+
+                    resultBuffer[index] = color;
+                    resultBuffer[index + 1] = color;
+                    resultBuffer[index + 2] = color;
+                }
+            }
+
+            System.Runtime.InteropServices.Marshal.Copy(resultBuffer, 0, maskData.Scan0, bytes);
+
+            original.UnlockBits(originalData);
+            mask.UnlockBits(maskData);
+
+            picBox_SharpImageMask.Image = mask;
+        }
+
     }
+
 }

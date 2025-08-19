@@ -1,4 +1,7 @@
-﻿- En ouvrant l'application, on ouvre la caméra et on voit le livestream, sinon un icône demande d'allumer la caméra et de checker le setup
+﻿
+-- L'adresse IP du PC doit être 192.168.2.4 sur le réseau WIFI Aerolithe
+
+- En ouvrant l'application, on ouvre la caméra et on voit le livestream, sinon un icône demande d'allumer la caméra et de checker le setup
 - On demande de mettre la météorite sur la table tournante et d'appuyer sur AL:Mise au point
 - La table tournante devrait faire un 360 aller-retour et la caméra devrait se placer de façon a être optimale. Aucune image hors frame mais la plus grosse possible.
 - On demande de retirer la météorite, d'allumer la lumière de la table tournante et d'appuyer sur AL:Prendre une photo
@@ -39,3 +42,12 @@ le steppermoteur pour la caméra a des valeurs entre 0  et 60000 avec une vitess
 **********************************************
 
 Implémentation finale, ne pas oublier de pousser les projets dans les esp32 avec le bon nom de windows_hostname. 
+
+
+**********
+FOCUS STACK
+**********
+
+Utiliser focus-stack.exe avec des ligne de commande comme
+"C:\Program Files\focus-stack_Windows\focus-stack\focus-stack.exe" --output="C:\Mac\Home\Documents\Aerolithe\Test Meteorites\Focus Stack\Images\stacked.jpg" "C:\Mac\Home\Documents\Aerolithe\Test Meteorites\Focus Stack\Images\focusStack_2.jpg" "C:\Mac\Home\Documents\Aerolithe\Test Meteorites\Focus Stack\Images\focusStack_3.jpg" etc.
+

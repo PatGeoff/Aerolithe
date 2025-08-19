@@ -36,6 +36,7 @@ namespace Aerolithe
         private bool liveViewStatus = false;
         private Image liveViewCompositedImage;
         private readonly object imageLock = new object();
+        public Bitmap maskBitmapLive;
 
         public void CamSetup()
         {
@@ -117,7 +118,7 @@ namespace Aerolithe
 
             //GetAperture();
 
-            //GetImageType();
+            GetImageType();
             //GetExposureStatus();
             //GetExposureModes();
             
@@ -126,7 +127,8 @@ namespace Aerolithe
             //GetAfcPriority();
             GetShutterSpeed();
             GetLiveViewSize();
-            //GetFocusMode();
+           
+            GetFocusMode();
             //GetAFMode();
             //GetLiveViewAFMode();
             //GetFocusAreaMode();
@@ -171,7 +173,19 @@ namespace Aerolithe
                             // Convertit le byte array en Mat
                             CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
                             picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();  
-                            BackgroundSubtraction(stream);
+                            Task.Run (() =>BackgroundSubtraction(stream));
+
+                            //Bitmap maskBitmap = await RunU2NetFromMemoryStreamAsync(stream);
+
+                            //Bitmap maskBitmap = BlobMaskingLiveView(stream,0);
+                            //picBox_MLMask.Image = maskBitmap;
+
+
+                            maskBitmapLive = BrightnessMaskFromStream(stream, hScrollBar_liveMaskThresh.Value);
+                            picBox_liveMaskLum.Image = maskBitmapLive;
+
+
+
                             lbl_LiveViewStreamSize.Text = $"Width: {background.Width} Height: {background.Height};";
                         }
                     }
@@ -220,6 +234,9 @@ namespace Aerolithe
             }
         }
 
+
+
+
         private void device_CaptureComplete(NikonDevice device, int data)
         {
             AppendTextToConsoleNL("Capture Complete");
@@ -239,6 +256,17 @@ namespace Aerolithe
             }
             comboBox_TaillePhotos.SelectedIndex = imgSize.Index;
         }
+
+        private void GetImageType()
+        {
+            NikonEnum imgType = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_CompressionLevel);
+            for (int i = 0; i < imgType.Length; i++)
+            {
+                comboBox_ImageType.Items.Add(imgType[i].ToString());
+            }
+            comboBox_ImageType.SelectedIndex = imgType.Index;
+        }
+
 
         private void GetShutterSpeed()
         {

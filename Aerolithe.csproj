@@ -19,6 +19,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="MyResources\Models\silueta.onnx" />
+    <None Remove="MyResources\Models\u2net.onnx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="MyResources\Models\u2net.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="MyResources\Images\echec.png" />
     <EmbeddedResource Include="MyResources\Images\crochet.png" />
   </ItemGroup>
@@ -27,6 +38,7 @@
     <PackageReference Include="Emgu.CV" Version="4.9.0.5494" />
     <PackageReference Include="Emgu.CV.Bitmap" Version="4.9.0.5494" />
     <PackageReference Include="Emgu.CV.runtime.windows" Version="4.9.0.5494" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 

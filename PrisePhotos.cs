@@ -36,7 +36,7 @@ namespace Aerolithe
             if (projectPath == null)
             {
                 {
-                    SaveProject();  // Demande à setter le projet
+                    SavePrefsSettings();  // Demande à setter le projet
                 }
                 if (projectPath == null)
                 {
