@@ -261,6 +261,7 @@ namespace Aerolithe
         private async void btn_takePicture_Click(object sender, EventArgs e)
         {
             await takePictureAsync();
+            //takePictureAsync();
         }
 
 
@@ -861,13 +862,21 @@ namespace Aerolithe
             NikonEnum imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
             imgSize.Index = comboBox_TaillePhotos.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize, imgSize);
+            imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
+            //AppendTextToConsoleNL("la dimension des images prises est l'index : " + imgSize.Index.ToString());
         }
 
         private void comboBox_TailleLiveView_SelectedIndexChanged(object sender, EventArgs e)
         {
             NikonEnum lvSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
-            lvSize.Index = comboBox_TaillePhotos.SelectedIndex;
+            lvSize.Index = comboBox_TailleLiveView.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, lvSize);
+            //uint WBM = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_SpotWBMode);
+            //AppendTextToConsoleNL("le mode de SpotWMMode est de " + WBM.ToString());
+            //uint MUS = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MirrorUpStatus);
+            //AppendTextToConsoleNL("le mode MirrorUpStatus est " + MUS.ToString());
+            //lvSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
+            //AppendTextToConsoleNL("la dimension du Liveview de la cam est l'index : " + lvSize.Index.ToString());
         }
         private void comboBox_ExpoMode_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -1157,6 +1166,31 @@ namespace Aerolithe
         private void btn_clearPicLayout_Click(object sender, EventArgs e)
         {
             flowLayoutPanel1.Controls.Clear();
+            var result = MessageBox.Show(
+                                               "Voulez-vous aussi supprimer toutes les images sur le disque?",
+                                               "Suppression de l'image",
+                                               MessageBoxButtons.YesNo,
+                                               MessageBoxIcon.Question
+                                           );
+
+            if (result == DialogResult.Yes)
+            {
+                try
+                {
+                    string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.jpg"); // ou *.png, *.jpeg, etc.
+                    foreach (string file in imageFiles)
+                    {
+                        File.Delete(file);
+                    }
+
+                    MessageBox.Show("Toutes les images ont été supprimées avec succès.", "Suppression terminée", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Erreur lors de la suppression des fichiers : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+
         }
 
         private void btn_clearPicReport_Click(object sender, EventArgs e)
@@ -1553,6 +1587,14 @@ namespace Aerolithe
         private void hScrollBar_liveMaskThresh_Scroll(object sender, ScrollEventArgs e)
         {
             lbl_maskAmount.Text = hScrollBar_liveMaskThresh.Value.ToString();
+        }
+
+        private void btn_goToImgFolder_Click(object sender, EventArgs e)
+        {
+            if (btn_goToImageFolder.Enabled)
+            {
+                OpenExplorerAtProjectPath(imagesFolderPath);
+            }
         }
     }
 }

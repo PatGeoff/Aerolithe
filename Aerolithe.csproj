@@ -10,23 +10,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="MyResources\Models\**" />
     <Compile Remove="nikoncswrapper\**" />
     <Compile Remove="MyResources\Images\**" />
+    <EmbeddedResource Remove="MyResources\Models\**" />
     <EmbeddedResource Remove="nikoncswrapper\**" />
     <EmbeddedResource Remove="MyResources\Images\**" />
+    <None Remove="MyResources\Models\**" />
     <None Remove="nikoncswrapper\**" />
     <None Remove="MyResources\Images\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="MyResources\Models\silueta.onnx" />
-    <None Remove="MyResources\Models\u2net.onnx" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="MyResources\Models\u2net.onnx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>

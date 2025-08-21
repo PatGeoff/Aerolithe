@@ -50,7 +50,7 @@ namespace Aerolithe
             await Task.Delay(1000);
 
             int divider = 4096 / serieId[serie];
-
+            AppendTextToConsoleNL("on se rend ici");
             try
             {
                 for (int i = 1; i <= serieId[serie]; i++)
@@ -73,13 +73,17 @@ namespace Aerolithe
                         try
                         {
                             await NikonAutofocus();
-                            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true);
+                           
+                            
                             AppendTextToConsoleNL("Focus effectué avec succès, prochaine étape: prise de photo");
                             await takePictureAsync();
-                            // Wait for the image to be ready
-                            AppendTextToConsoleNL("En attente de la Nikon");
+                            //takePictureAsync();
+
+                            AppendTextToConsoleNL("En attente que l'image soit sauvegardée sur l'ordi");
                             await imageReadyTcs.Task;
+                            AppendTextToConsoleNL("image sauvegardée");
                             success = true; // Set success to true if everything goes well
+                            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true);
                         }
                         catch (Exception e)
                         {
@@ -139,32 +143,56 @@ namespace Aerolithe
         private async Task WaitForTurntablePositionAsync(int targetPosition, CancellationToken cancellationToken)
         {
             int tolerance = 10;
-            int maxRetries = 100; // Maximum number of retries to avoid infinite loop
+            int maxRetries = 100;
             int retryCount = 0;
             bool positionReached = false;
 
             while (retryCount < maxRetries)
             {
                 await getTurntablePosFromWaveshare();
+
+                // Mise à jour des labels via Invoke
+                if (lbl_ttCurrentPos.InvokeRequired)
+                {
+                    lbl_ttCurrentPos.Invoke(new Action(() =>
+                    {
+                        lbl_ttCurrentPos.Text = turntablePosition.ToString();
+                    }));
+                }
+                else
+                {
+                    lbl_ttCurrentPos.Text = turntablePosition.ToString();
+                }
+
+                if (lbl_ttTargetPos.InvokeRequired)
+                {
+                    lbl_ttTargetPos.Invoke(new Action(() =>
+                    {
+                        lbl_ttTargetPos.Text = targetPosition.ToString();
+                    }));
+                }
+                else
+                {
+                    lbl_ttTargetPos.Text = targetPosition.ToString();
+                }
+
                 if (turntablePosition >= targetPosition - tolerance && turntablePosition <= targetPosition + tolerance)
                 {
                     positionReached = true;
                     break;
                 }
-                await Task.Delay(50, cancellationToken); // Adjust delay as needed
-                AppendTextToConsoleNL("Position Table Tournante: " + turntablePosition.ToString() + " ----> " + targetPosition.ToString() + " (cible)");
+
+                await Task.Delay(50, cancellationToken);
                 retryCount++;
             }
 
-            if (positionReached)
-            {
-                AppendTextToConsoleNL("La table tourante a atteint sa position.");
-            }
-            else
-            {
-                AppendTextToConsoleNL("La table tourante n'a pas atteint sa position après 100 essais.");
-            }
+            string message = positionReached
+                ? "La table tournante a atteint sa position."
+                : "La table tournante n'a pas atteint sa position après 100 essais.";
+
+            AppendTextToConsoleNL(message);
         }
+
 
         private async Task WaitForActuatorPosition(int targetPosition, CancellationToken cancellationToken)
         {

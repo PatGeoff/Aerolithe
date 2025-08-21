@@ -194,7 +194,7 @@ namespace Aerolithe
                     {
                         UdpReceiveResult result = await udpClient.ReceiveAsync();
                         string message = Encoding.UTF8.GetString(result.Buffer);
-                        Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
+                        //Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
                         //AppendTextToConsoleNL($"Received message from {result.RemoteEndPoint}: {message}");
                         CheckMessage(message);
                     }
@@ -376,7 +376,7 @@ namespace Aerolithe
                 lbl_actuatorAngle.Invoke((MethodInvoker)(() =>
                 {
                     lbl_actuatorAngle.Text = actuatorAngle.ToString();
-                    AppendTextToConsoleNL("Label updated");
+                    //AppendTextToConsoleNL("Label updated");
                 }));
                 await AppendTextToConsoleNL($"Angle de l'actuateur: {actuatorAngle.ToString()}");
                 _actuatorAngleTcs?.SetResult(actuatorAngle);             

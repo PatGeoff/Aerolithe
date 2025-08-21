@@ -182,11 +182,11 @@ namespace Aerolithe
 
 
                             maskBitmapLive = BrightnessMaskFromStream(stream, hScrollBar_liveMaskThresh.Value);
+
                             picBox_liveMaskLum.Image = maskBitmapLive;
 
 
-
-                            lbl_LiveViewStreamSize.Text = $"Width: {background.Width} Height: {background.Height};";
+                            lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";
                         }
                     }
                 }

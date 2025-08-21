@@ -28,6 +28,19 @@ namespace Aerolithe
         public async Task takePictureAsync()
         {
             //AppendTextToConsoleNL("prise de photo");
+            if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
+            {
+                picBox_holdOn.Invoke(new Action(() =>
+                {
+                    picBox_holdOn.Visible = true;
+                    progressBar_ImageSave.Value = 0;
+                }));
+            }
+            else
+            {
+                picBox_holdOn.Visible = true;
+            }
+
             imageReadyTcs = new TaskCompletionSource<bool>();
             try
             {
@@ -37,12 +50,9 @@ namespace Aerolithe
             }
             catch (Exception e)
             {
-                //AppendTextToConsoleNL("takePictureAsync Error message: " +e.Message);
+                AppendTextToConsoleNL("takePictureAsync Error message: " +e.Message);
                 return;
             }
-
-            //AppendTextToConsoleNL("ici");
-            //MessageBox.Show("image capturée");
         }
 
         void device_ImageReady(NikonDevice sender, NikonImage image)
@@ -51,11 +61,12 @@ namespace Aerolithe
             //CustomFlowLayoutPanel[] flowLayoutPanels = { customFlowLayoutPanel1, customFlowLayoutPanel1, customFlowLayoutPanel1 };            
             AppendTextToConsoleNL("image capturée, sauvegarde de l'image");
             try
-            {
+            {             
+
                 if (image.Type == NikonImageType.Jpeg)
                 {
                     
-                    AppendTextToConsoleNL("Image capturée, traitement en cours...");
+                    AppendTextToConsoleNL("Image importée, traitement en cours...");
 
                     try
                     {
@@ -63,11 +74,13 @@ namespace Aerolithe
                         using (var originalBitmap = new Bitmap(memoryStream))
                         {
                             Bitmap finalBitmap;
-
+                           
                             if (chkBox_applyMask.Checked)
-                            { 
+                            {
                                 var sourceImage = originalBitmap.ToImage<Bgr, byte>();
                                 var maskGray = maskBitmapLive.ToImage<Gray, byte>();
+                                //AppendTextToConsoleNL("Dimensions du LiveView (Masque): " + maskGray.Width.ToString() + " x " + maskGray.Height.ToString());
+                                //AppendTextToConsoleNL("Dimensions de l'image capturée: " + sourceImage.Width.ToString() + " x " + sourceImage.Height.ToString());
                                 var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
                                 CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(hScrollBar_blurAmountMask.Value, hScrollBar_blurAmountMask.Value), 0); // applique un flou, il faut un nombre impair
                                 var invertedMask = resizedMask.Not();
@@ -123,9 +136,21 @@ namespace Aerolithe
                                             lastPercent = percent;
                                         }
                                     });
+                                    SaveStreamAsJpegWithProgress(saveStream, outputPath, savingProgress, true).GetAwaiter().GetResult(); ;
+                                    imageReadyTcs.SetResult(true);
 
-
-                                    SaveStreamAsJpegWithProgress(saveStream, outputPath, savingProgress, true);
+                                    if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
+                                    {
+                                        picBox_holdOn.Invoke(new Action(() =>
+                                        {
+                                            picBox_holdOn.Visible = false;
+                                            progressBar_ImageSave.Value = 0;
+                                        }));
+                                    }
+                                    else
+                                    {
+                                        picBox_holdOn.Visible = false;
+                                    }
                                 }
 
                                 // Affichage miniature
@@ -269,7 +294,6 @@ namespace Aerolithe
             }
         }
 
-
         private Image ResizeImage(Image image, int width, int height)
         {
             var destRect = new Rectangle(0, 0, width, height);
@@ -294,8 +318,6 @@ namespace Aerolithe
 
             return destImage;
         }
-
-
 
 
         public async Task SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int>? progress, bool addBrush)

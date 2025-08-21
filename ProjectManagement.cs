@@ -304,7 +304,8 @@ namespace Aerolithe
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     projectPath = saveFileDialog.FileName;
-                    string projectName = Path.GetFileNameWithoutExtension(projectPath);
+                    string projectName = Path.GetFileNameWithoutExtension(projectPath).Replace(" ", "_");
+
 
                     if (projectName.Contains("."))
                     {

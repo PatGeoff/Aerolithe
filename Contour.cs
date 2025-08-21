@@ -155,8 +155,9 @@ namespace Aerolithe
                         CvInvoke.Imdecode(imageBytes, ImreadModes.Color, foreground);
                         CvInvoke.Subtract(background, foreground, result);
                         //Mat result = foreground.AbsDiff(background);
-                        Debug.WriteLine("applying mask");
+                        //Debug.WriteLine("applying mask");
                         CreateMask(result, foreground);
+
                         //pictureBox_imageMasquage.Image = mask.ToImage<Bgr, Byte>().ToBitmap();
 
                         //applyMaskToPicture(foreground);
@@ -227,7 +228,7 @@ namespace Aerolithe
         {
             // Decode JPEG stream into Mat
             byte[] imageBytes = stream.ToArray();
-            Mat image = new Mat();
+            Mat image = new Mat();            
             CvInvoke.Imdecode(imageBytes, ImreadModes.Color, image);
 
             // Convert to grayscale
@@ -647,49 +648,49 @@ namespace Aerolithe
         //}
         public void MasqueAvecPixels()
         {
-            Bitmap original = (Bitmap)picBox_SharpImage.Image;
-            Bitmap mask = new Bitmap(original.Width, original.Height, PixelFormat.Format24bppRgb);
+    //        Bitmap original = (Bitmap)picBox_SharpImage.Image;
+    //        Bitmap mask = new Bitmap(original.Width, original.Height, PixelFormat.Format24bppRgb);
 
-            int threshold = hScrollBar_ThresholdMaskValue.Value;
-            Rectangle rect = new Rectangle(0, 0, original.Width, original.Height);
+    //        int threshold = hScrollBar_ThresholdMaskValue.Value;
+    //        Rectangle rect = new Rectangle(0, 0, original.Width, original.Height);
 
-            BitmapData originalData = original.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-            BitmapData maskData = mask.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+    //        BitmapData originalData = original.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+    //        BitmapData maskData = mask.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
 
-            int stride = originalData.Stride;
-            int bytes = stride * original.Height;
-            byte[] pixelBuffer = new byte[bytes];
-            byte[] resultBuffer = new byte[bytes];
+    //        int stride = originalData.Stride;
+    //        int bytes = stride * original.Height;
+    //        byte[] pixelBuffer = new byte[bytes];
+    //        byte[] resultBuffer = new byte[bytes];
 
-            System.Runtime.InteropServices.Marshal.Copy(originalData.Scan0, pixelBuffer, 0, bytes);
+    //        System.Runtime.InteropServices.Marshal.Copy(originalData.Scan0, pixelBuffer, 0, bytes);
 
-            for (int y = 0; y < original.Height; y++)
-            {
-                int rowOffset = y * stride;
-                for (int x = 0; x < original.Width; x++)
-                {
-                    int index = rowOffset + x * 3;
+    //        for (int y = 0; y < original.Height; y++)
+    //        {
+    //            int rowOffset = y * stride;
+    //            for (int x = 0; x < original.Width; x++)
+    //            {
+    //                int index = rowOffset + x * 3;
 
-                    byte b = pixelBuffer[index];
-                    byte g = pixelBuffer[index + 1];
-                    byte r = pixelBuffer[index + 2];
+    //                byte b = pixelBuffer[index];
+    //                byte g = pixelBuffer[index + 1];
+    //                byte r = pixelBuffer[index + 2];
 
-                    int brightness = (int)(r * 0.299 + g * 0.587 + b * 0.114);
-                    byte color = (brightness < threshold) ? (byte)0 : (byte)255;
+    //                int brightness = (int)(r * 0.299 + g * 0.587 + b * 0.114);
+    //                byte color = (brightness < threshold) ? (byte)0 : (byte)255;
 
-                    resultBuffer[index] = color;
-                    resultBuffer[index + 1] = color;
-                    resultBuffer[index + 2] = color;
-                }
-            }
+    //                resultBuffer[index] = color;
+    //                resultBuffer[index + 1] = color;
+    //                resultBuffer[index + 2] = color;
+    //            }
+    //        }
 
-            System.Runtime.InteropServices.Marshal.Copy(resultBuffer, 0, maskData.Scan0, bytes);
+    //        System.Runtime.InteropServices.Marshal.Copy(resultBuffer, 0, maskData.Scan0, bytes);
 
-            original.UnlockBits(originalData);
-            mask.UnlockBits(maskData);
+    //        original.UnlockBits(originalData);
+    //        mask.UnlockBits(maskData);
 
-            picBox_SharpImageMask.Image = mask;
-        }
+    //        picBox_SharpImageMask.Image = mask;
+       }
 
     }
 
