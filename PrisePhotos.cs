@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms.VisualStyles;
 using Emgu.CV.XImgproc;
 using System.Threading;
+using System.CodeDom;
 
 namespace Aerolithe
 {
@@ -24,84 +25,50 @@ namespace Aerolithe
         private int imageIncr = 0;
         public CancellationTokenSource cancellationTokenSource;
 
-      
+
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)
         {
+            if (projectPath == null)
+            {
+                SavePrefsSettings();  // Demande à setter le projet
+                if (projectPath == null)
+                {
+                    MessageBox.Show("Pour faire la prise de photo en séquence, il faut définir un projet");
+                    return;
+                }
+            }
+
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
-            Task.Delay(200);
+            await Task.Delay(200);
 
             int[] serieId = { int.Parse(txtBox_nbrImg5deg.Text), int.Parse(txtBox_nbrImg25deg.Text), int.Parse(txtBox_nbrImg45deg.Text) };
             int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad2.Text), int.Parse(txtBox_seqPad3.Text) };
 
-            if (projectPath == null)
-            {
-                {
-                    SavePrefsSettings();  // Demande à setter le projet
-                }
-                if (projectPath == null)
-                {
-                    return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
-                }
-            }
             await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
             cancellationToken.ThrowIfCancellationRequested();
             await WaitForTurntablePositionAsync(0, cancellationToken);
-            AppendTextToConsoleNL("position de la table est de " + turntablePosition.ToString() );
-            await Task.Delay(1000);
-
+            await Task.Delay(200);
             int divider = 4096 / serieId[serie];
-            AppendTextToConsoleNL("on se rend ici");
+
             try
             {
                 for (int i = 1; i <= serieId[serie]; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    AppendTextToConsoleNL($"photo {i}/{serieId[serie]}");
-                    int degres = i * divider;
-                    imageIncr = i-1 + paddingNbr[serie];
-                    
+                    int degres = (i - 1) * divider;
+                    AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres} degrés d'écart");
 
-                    // Initialize the TaskCompletionSource for each image capture
-                    imageReadyTcs = new TaskCompletionSource<bool>();
+                    imageIncr = i - 1 + paddingNbr[serie];
 
-                    int essai = 0;
-                    bool success = false;
+                    bool success = await EssayerPrendrePhotoAsync(imageIncr, degres);
 
-                    while (essai < 3 && !success)
+                    if (i < serieId[serie])
                     {
-                        try
-                        {
-                            await NikonAutofocus();
-                           
-                            
-                            AppendTextToConsoleNL("Focus effectué avec succès, prochaine étape: prise de photo");
-                            await takePictureAsync();
-                            //takePictureAsync();
-
-                            AppendTextToConsoleNL("En attente que l'image soit sauvegardée sur l'ordi");
-                            await imageReadyTcs.Task;
-                            AppendTextToConsoleNL("image sauvegardée");
-                            success = true; // Set success to true if everything goes well
-                            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true);
-                        }
-                        catch (Exception e)
-                        {
-                            //AppendTextToConsoleNL(e.Message);
-                            essai += 1;
-                            if (essai >= 3)
-                            {
-                                AppendTextToConsoleNL($"Focus a échoué pour la photo {i}/{serieId[serie]}, passe cette photo.");
-                                await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, false);
-                            }
-                        }
+                        await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
+                        await WaitForTurntablePositionAsync(degres, cancellationToken);
+                        AppendTextToConsoleNL("nouvelle position de la table est atteinte");
                     }
-
-
-                    // Send the turntable command immediately after the image is ready
-                    await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-                    await WaitForTurntablePositionAsync(degres, cancellationToken);
-                    AppendTextToConsoleNL("nouvelle position de la table est atteinte");
                 }
             }
             catch (OperationCanceledException)
@@ -109,6 +76,41 @@ namespace Aerolithe
                 AppendTextToConsoleNL("Photo sequence cancelled.");
             }
         }
+
+        private async Task<bool> EssayerPrendrePhotoAsync(int imageIncr, int degres)
+        {
+            int essai = 0;
+            while (essai < 3)
+            {
+                try
+                {
+                    await NikonAutofocus();
+                    AppendTextToConsoleNL("Focus effectué avec succès");
+
+                    await takePictureAsync(); // attend que imageReadyTcs soit résolu
+
+                    AppendTextToConsoleNL("Image sauvegardée");
+                    await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true);
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    essai++;
+                    AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
+                    if (essai >= 3)
+                    {
+                        await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, false);
+                        return false;
+                    }
+                }
+            }
+            return false;
+        }
+
+
+
+
+
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
         {
             await UdpSendActuatorMessageAsync("actuator 5");
@@ -118,6 +120,7 @@ namespace Aerolithe
             currentSequence = 0;
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+            //PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             AppendTextToConsoleNL("Séquence 1 terminée");
 
             await UdpSendActuatorMessageAsync("actuator 25");
@@ -127,6 +130,7 @@ namespace Aerolithe
             currentSequence = 1;
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+            //PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             AppendTextToConsoleNL("Séquence 2 terminée");
 
             await UdpSendActuatorMessageAsync("actuator 45");
@@ -136,6 +140,7 @@ namespace Aerolithe
             currentSequence = 2;
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+            //PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             AppendTextToConsoleNL("Séquence 3 terminée");
         }
 

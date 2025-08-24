@@ -27,7 +27,9 @@ namespace Aerolithe
 
         public async Task takePictureAsync()
         {
-            //AppendTextToConsoleNL("prise de photo");
+            //Initialize the TaskCompletionSource for each image capture
+            imageReadyTcs = new TaskCompletionSource<bool>();
+
             if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
             {
                 picBox_holdOn.Invoke(new Action(() =>
@@ -41,12 +43,12 @@ namespace Aerolithe
                 picBox_holdOn.Visible = true;
             }
 
-            imageReadyTcs = new TaskCompletionSource<bool>();
+            
             try
             {
-                //AppendTextToConsoleNL("Prise de photo");
                 device.Capture();
-                AppendTextToConsoleNL("Photo prise ... en traitement");
+                await imageReadyTcs.Task;
+                AppendTextToConsoleNL("Photo prise ... en téléchargement vers le pc");
             }
             catch (Exception e)
             {
@@ -57,24 +59,19 @@ namespace Aerolithe
 
         void device_ImageReady(NikonDevice sender, NikonImage image)
         {
-            
-            //CustomFlowLayoutPanel[] flowLayoutPanels = { customFlowLayoutPanel1, customFlowLayoutPanel1, customFlowLayoutPanel1 };            
-            AppendTextToConsoleNL("image capturée, sauvegarde de l'image");
             try
-            {             
-
+            {
                 if (image.Type == NikonImageType.Jpeg)
                 {
-                    
+                   
                     AppendTextToConsoleNL("Image importée, traitement en cours...");
-
                     try
                     {
                         using (var memoryStream = new MemoryStream(image.Buffer))
                         using (var originalBitmap = new Bitmap(memoryStream))
                         {
                             Bitmap finalBitmap;
-                           
+
                             if (chkBox_applyMask.Checked)
                             {
                                 var sourceImage = originalBitmap.ToImage<Bgr, byte>();
@@ -103,11 +100,20 @@ namespace Aerolithe
 
                             picBox_pictureTaken.Image?.Dispose();
                             picBox_pictureTaken.Image = finalBitmap;
-                            
+
+
+
+                            if (imageReadyTcs != null && !imageReadyTcs.Task.IsCompleted)
+                            {
+                                imageReadyTcs.SetResult(true);
+                            }
+
+
+
                             // Sauvegarde si activée
                             //if (chkBox_savePicture.Checked && imagesFolderPath != null && imageNameBase != null && imageIncr != null)
                             if (chkBox_savePicture.Checked && imagesFolderPath != null && imageNameBase != null)
-                                {
+                            {
 
                                 if (imageIncr == oldImgIncr)
                                 {
@@ -137,7 +143,7 @@ namespace Aerolithe
                                         }
                                     });
                                     SaveStreamAsJpegWithProgress(saveStream, outputPath, savingProgress, true).GetAwaiter().GetResult(); ;
-                                    imageReadyTcs.SetResult(true);
+                                   
 
                                     if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
                                     {
@@ -322,7 +328,7 @@ namespace Aerolithe
 
         public async Task SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int>? progress, bool addBrush)
         {
-            AppendTextToConsoleNL($"Saving image to {outputPath}");
+            //AppendTextToConsoleNL($"Saving image to {outputPath}");
 
             // Create an Image object from the stream
             Image image = Image.FromStream(imageStream);

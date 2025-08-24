@@ -1,4 +1,4 @@
-//Aerolithe.cs
+ï»¿//Aerolithe.cs
 
 using Aerolithe.Properties;
 using System.Diagnostics;
@@ -30,10 +30,10 @@ namespace Aerolithe
         public readonly IPAddress M5ipAddress = IPAddress.Parse("192.168.2.6");
         public readonly IPAddress actuatorIpAddress = IPAddress.Parse("192.168.2.15");
         public readonly int stepperPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
-        public readonly int turntablePort = 44466;  // Port sur lequel on reçoit les messages UDP au ESP32 de la table tournante
-        public readonly int scissorLiftPort = 44477;  // Port sur lequel on reçoit les messages UDP au ESP32 du lift
+        public readonly int turntablePort = 44466;  // Port sur lequel on reÃ§oit les messages UDP au ESP32 de la table tournante
+        public readonly int scissorLiftPort = 44477;  // Port sur lequel on reÃ§oit les messages UDP au ESP32 du lift
         public readonly int M5Port = 44488;
-        public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
+        public readonly int localPort = 55544;      // Port sur lequel on reÃ§oit les messages UDP
         private readonly int localPortOSC = 55545;
         public readonly int actuatorPort = 44499;
 
@@ -69,7 +69,7 @@ namespace Aerolithe
             InitializeComponent();
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true; // Ensure the form receives key events
-            picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
+            picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre Ã§a ici parce que Visual Studio fait chier 
             settings = settings.Load();
             if (!string.IsNullOrEmpty(settings.ProjectPath))
             {
@@ -158,9 +158,9 @@ namespace Aerolithe
             //}
             //else
             //{
-            //    MessageBox.Show("Il y a un problème avec la table tournante.\n" +
-            //                    "Assurez-vous que le controlleur Waveshare est bien branché\n" +
-            //                    "Ensuite, redémarrez l'application.");
+            //    MessageBox.Show("Il y a un problÃ¨me avec la table tournante.\n" +
+            //                    "Assurez-vous que le controlleur Waveshare est bien branchÃ©\n" +
+            //                    "Ensuite, redÃ©marrez l'application.");
             //}
         }
 
@@ -172,19 +172,19 @@ namespace Aerolithe
         }
 
 
-        #region PROCÉDURE TAB
+        #region PROCÃ‰DURE TAB
         private void btn_Validation_Click(object sender, EventArgs e)
         {
-            string message = "1- Est-ce que les deux tables tournantes sont branchées et que leur lumière est verte?" + Environment.NewLine +
-                             "    si non, s'assurer que la borne wifi Aerolithe est bien allumée." + Environment.NewLine +
-                             "2- Est-ce que l'ordinateur est connecté sur le réseau Aerolithe? " + Environment.NewLine +
+            string message = "1- Est-ce que les deux tables tournantes sont branchÃ©es et que leur lumiÃ¨re est verte?" + Environment.NewLine +
+                             "    si non, s'assurer que la borne wifi Aerolithe est bien allumÃ©e." + Environment.NewLine +
+                             "2- Est-ce que l'ordinateur est connectÃ© sur le rÃ©seau Aerolithe? " + Environment.NewLine +
                              "    si non, il lui faut une adresse statique du genre 192.168.2.15, subnet 255.255.255.0, router 192.168.2.1" + Environment.NewLine +
-                             "3- Est ce que la lumière des bras motorisés est allumée?" + Environment.NewLine +
-                             "    si non, s'assurer qu'ils soient allumés." + Environment.NewLine +
-                             "4- Est-ce que les caméras sont bien ouvertes? Elles doivent être en mode photo" + Environment.NewLine +
+                             "3- Est ce que la lumiÃ¨re des bras motorisÃ©s est allumÃ©e?" + Environment.NewLine +
+                             "    si non, s'assurer qu'ils soient allumÃ©s." + Environment.NewLine +
+                             "4- Est-ce que les camÃ©ras sont bien ouvertes? Elles doivent Ãªtre en mode photo" + Environment.NewLine +
                              "5- Est-ce que la lentille est en mode M/A et que l'appareil est en mode AF?"
                              ;
-            string caption = "Vérification Initiale";
+            string caption = "VÃ©rification Initiale";
             MessageBoxButtons buttons = MessageBoxButtons.OK;
 
             //MessageBox.Show(message, caption, buttons, icon);
@@ -197,8 +197,7 @@ namespace Aerolithe
         }
         private void btnAutofocus_Click(object sender, EventArgs e)
         {
-            AppendTextToConsoleNL("btnAutofocus_Click");
-            NikonAutofocus();
+            nikonDoFocus();
         }
 
 
@@ -218,7 +217,7 @@ namespace Aerolithe
             btn_DemarrerPrisePhotos.Visible = false;
             if (working)
             {
-                MessageBox.Show("La prise de photo est déjà en cours");
+                MessageBox.Show("La prise de photo est dÃ©jÃ  en cours");
                 return;
             }
 
@@ -232,7 +231,7 @@ namespace Aerolithe
             //}
             //catch (OperationCanceledException)
             //{
-            //    AppendTextToConsoleNL("La prise de photos a été cancellée");
+            //    AppendTextToConsoleNL("La prise de photos a Ã©tÃ© cancellÃ©e");
             //}
             //finally
             //{
@@ -254,13 +253,14 @@ namespace Aerolithe
 
         #endregion
 
-        #region CAMÉRA TAB
+        #region CAMÃ‰RA TAB
 
 
 
         private async void btn_takePicture_Click(object sender, EventArgs e)
         {
             await takePictureAsync();
+            AppendTextToConsoleNL("takePictureAsync a mis ImageReadyTcs Ã  true");
             //takePictureAsync();
         }
 
@@ -268,7 +268,7 @@ namespace Aerolithe
 
         #endregion
 
-        #region LINÉAIRE TAB
+        #region LINÃ‰AIRE TAB
         private void btn_setStepperZeroPosition(object sender, EventArgs e)
         {
             UdpSendStepperMessageAsync("stepmotor setZero");
@@ -359,7 +359,7 @@ namespace Aerolithe
 
         private void btn_queryTurntablePos_Click(object sender, EventArgs e)
         {
-            //AppendTextToConsoleNL("Aero: Position demandée à la table tournante. Si plus rien ne répond c'est que la communication est perdue");
+            //AppendTextToConsoleNL("Aero: Position demandÃ©e Ã  la table tournante. Si plus rien ne rÃ©pond c'est que la communication est perdue");
             Task.Run(async () => await getTurntablePosFromWaveshare());
         }
 
@@ -373,7 +373,7 @@ namespace Aerolithe
             lbl_turntablePosition.Text = trkBar_turntable.Value.ToString();
 
         }
-        private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
+        private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une rÃ©ponse du waveshare avant de continuer. 
         {
             try
             {
@@ -423,7 +423,7 @@ namespace Aerolithe
 
         #endregion
 
-        #region ÉLÉVATEUR TAB
+        #region Ã‰LÃ‰VATEUR TAB
 
         private void btn_liftMaxDown_Click(object sender, EventArgs e)
         {
@@ -490,19 +490,19 @@ namespace Aerolithe
         {
             if (position == 4)
             {
-                AppendTextToConsoleNL("Actuateur à 5 degrés");
+                AppendTextToConsoleNL("Actuateur Ã  5 degrÃ©s");
                 UdpSendActuatorMessageAsync("actuator 5");
                 UdpSendActuatorMessageAsync("actuator 45");
             }
             else if (position == 8)
             {
-                AppendTextToConsoleNL("Actuateur à 25 degrés");
+                AppendTextToConsoleNL("Actuateur Ã  25 degrÃ©s");
                 UdpSendActuatorMessageAsync("actuator 25");
                 UdpSendActuatorMessageAsync("actuator 45");
             }
             else if (position == 12)
             {
-                AppendTextToConsoleNL("Actuateur à 45 degrés");
+                AppendTextToConsoleNL("Actuateur Ã  45 degrÃ©s");
                 UdpSendActuatorMessageAsync("actuator 45");
                 UdpSendActuatorMessageAsync("actuator 45");
             }
@@ -510,7 +510,24 @@ namespace Aerolithe
 
         }
 
-
+        private void btn_gotCustomAngle_Click(object sender, EventArgs e)
+        {
+            if (int.TryParse(txtBox_customAngle.Text, out int angle))
+            {
+                if (angle >= 0 && angle <= 55)
+                {
+                    UdpSendActuatorMessageAsync($"actuator custom, {angle}");
+                }
+                else
+                {
+                    MessageBox.Show("L'angle ne doit pas dÃ©passer 55 degrÃ©s", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Svp entrer une valeur valide pour l'angle", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
         private void btn_Actuator_Down_Click(object sender, EventArgs e)
         {
             UdpSendActuatorMessageAsync("actuator down");
@@ -545,11 +562,11 @@ namespace Aerolithe
             {
                 // Append the success status in green or red
                 richTextBox_PicReport.SelectionColor = success ? Color.Green : Color.Red;
-                richTextBox_PicReport.AppendText(success ? "Réussi\t" : "Échec\t");
+                richTextBox_PicReport.AppendText(success ? "RÃ©ussi\t" : "Ã‰chec\t");
 
                 // Append the imageName and degrees in white
                 richTextBox_PicReport.SelectionColor = Color.White;
-                richTextBox_PicReport.AppendText($"{imageName}\t{degrees} degrés\n");
+                richTextBox_PicReport.AppendText($"{imageName}\t{degrees} degrÃ©s\n");
 
                 richTextBox_PicReport.ScrollToCaret();
 
@@ -604,7 +621,7 @@ namespace Aerolithe
         }
 
 
-        private async Task UpdateConsoleMessageAsync(string message, CancellationToken token) // Permet de printer à chaque 2 secondes jusqu'à ce que le token soit envoyé
+        private async Task UpdateConsoleMessageAsync(string message, CancellationToken token) // Permet de printer Ã  chaque 2 secondes jusqu'Ã  ce que le token soit envoyÃ©
         {
             while (!token.IsCancellationRequested)
             {
@@ -789,8 +806,8 @@ namespace Aerolithe
 
             //string host = "192.168.2.1";
             //bool result = PingHost(host);
-            //AppendTextToConsoleNL($"Ping --> routeur: {(result ? "succès" : "échec")}");
-            ////txtBox_Console.Text += ($"Ping --> routeur: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            //AppendTextToConsoleNL($"Ping --> routeur: {(result ? "succÃ¨s" : "Ã©chec")}");
+            ////txtBox_Console.Text += ($"Ping --> routeur: {(result ? "succÃ¨s" : "Ã©chec")}" + Environment.NewLine);
             //if (result)
             //{
             //    picBox_routerPing.Image = Resources.crochet;
@@ -810,8 +827,8 @@ namespace Aerolithe
             //{
             //    picBox_wavesharePing.Image = Resources.echec;
             //}
-            //AppendTextToConsoleNL($"Ping --> table tournante: {(result ? "succès" : "échec")}");
-            ////txtBox_Console.Text += ($"Ping --> table tournante: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            //AppendTextToConsoleNL($"Ping --> table tournante: {(result ? "succÃ¨s" : "Ã©chec")}");
+            ////txtBox_Console.Text += ($"Ping --> table tournante: {(result ? "succÃ¨s" : "Ã©chec")}" + Environment.NewLine);
             //Thread.Sleep(200);
             //host = "192.168.2.11";
             //result = PingHost(host);
@@ -823,8 +840,8 @@ namespace Aerolithe
             //{
             //    picBox_esp32Ping.Image = Resources.echec;
             //}
-            //AppendTextToConsoleNL($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}");
-            ////txtBox_Console.Text += ($"Ping --> le reste des équipements: {(result ? "succès" : "échec")}" + Environment.NewLine);
+            //AppendTextToConsoleNL($"Ping --> le reste des Ã©quipements: {(result ? "succÃ¨s" : "Ã©chec")}");
+            ////txtBox_Console.Text += ($"Ping --> le reste des Ã©quipements: {(result ? "succÃ¨s" : "Ã©chec")}" + Environment.NewLine);
         }
 
 
@@ -862,7 +879,7 @@ namespace Aerolithe
             NikonEnum imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
             imgSize.Index = comboBox_TaillePhotos.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize, imgSize);
-            imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
+            //imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
             //AppendTextToConsoleNL("la dimension des images prises est l'index : " + imgSize.Index.ToString());
         }
 
@@ -890,7 +907,7 @@ namespace Aerolithe
             NikonEnum expoMode = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);
             if (expoMode.Index != 3)
             {
-                MessageBox.Show("Il faut mettre le mode d'exposition à Manuel");
+                MessageBox.Show("Il faut mettre le mode d'exposition Ã  Manuel");
             }
             else
             {
@@ -920,7 +937,7 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
         {
-            //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
+            //MessageBox.Show("Les images seront enregistrÃ©es en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
             currentSequence = 0;
             Task.Run(async () =>
             {
@@ -932,7 +949,7 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
         {
-            //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
+            //MessageBox.Show("Les images seront enregistrÃ©es en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
             currentSequence = 1;
 
             Task.Run(async () =>
@@ -960,11 +977,11 @@ namespace Aerolithe
         {
             if (projectPath == null)
             {
-                SavePrefsSettings();  // Demande à setter le projet
+                SavePrefsSettings();  // Demande Ã  setter le projet
             }
             if (projectPath == null)
             {
-                return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
+                return;  // Cancel la prise de photo si le projet n'est pas settÃ© parce que Cancel a Ã©tÃ© choisi
             }
         }
 
@@ -1103,7 +1120,7 @@ namespace Aerolithe
             }
             else
             {
-                MessageBox.Show("La lentille et la caméra ne doivent pas être en mode manuel (MF)");
+                MessageBox.Show("La lentille et la camÃ©ra ne doivent pas Ãªtre en mode manuel (MF)");
             }
             GetFocusMode();
         }
@@ -1130,7 +1147,7 @@ namespace Aerolithe
 
         private void btn_AutomaticMFocus_Click(object sender, EventArgs e)
         {
-            Task.Run(async () => await AutomaticMFocus());
+            AutomaticFocusRoutine();
         }
 
         private void comboBox_EmguConversion_SelectedIndexChanged(object sender, EventArgs e)
@@ -1151,7 +1168,7 @@ namespace Aerolithe
 
         private void comboBox_LiveViewAFMode_SelectedIndexChanged(object sender, EventArgs e)
         {
-            uint mode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFModeAtLiveView);
+            //uint mode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFModeAtLiveView);
 
         }
 
@@ -1183,7 +1200,7 @@ namespace Aerolithe
                         File.Delete(file);
                     }
 
-                    MessageBox.Show("Toutes les images ont été supprimées avec succès.", "Suppression terminée", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Toutes les images ont Ã©tÃ© supprimÃ©es avec succÃ¨s.", "Suppression terminÃ©e", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {
@@ -1357,72 +1374,6 @@ namespace Aerolithe
             pnl_DrawingLiveView.Height = picBox_LiveView_Main.Height;
         }
 
-        //private void btn_getImageBkground_1_Click(object sender, EventArgs e)
-        //{
-        //    Task.Run(async () =>
-        //    {
-        //        await GetBackgroundImage("backgroundImage_1");
-        //        if (File.Exists(backgroundImage_1))
-        //        {
-        //            LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
-
-        //        }
-        //        else
-        //        {
-        //            AppendTextToConsoleNL("pas d'image à " + backgroundImage_1);
-        //        }
-        //    });
-
-        //}
-        //private void btn_getImageBkground_2_Click(object sender, EventArgs e)
-        //{
-        //    Task.Run(async () =>
-        //    {
-        //        await GetBackgroundImage("backgroundImage_2");
-        //        if (File.Exists(backgroundImage_2))
-        //        {
-        //            LoadAndResizeImage(backgroundImage_2, picBox_imageFond_2);
-
-        //        }
-        //        else
-        //        {
-        //            AppendTextToConsoleNL("pas d'image à " + backgroundImage_2);
-        //        }
-        //    });
-        //}
-        //private void btn_getImageBkground_3_Click(object sender, EventArgs e)
-        //{
-        //    Task.Run(async () =>
-        //    {
-        //        await GetBackgroundImage("backgroundImage_3");
-        //        if (File.Exists(backgroundImage_3))
-        //        {
-        //            LoadAndResizeImage(backgroundImage_3, picBox_imageFond_3);
-
-        //        }
-        //        else
-        //        {
-        //            AppendTextToConsoleNL("pas d'image à " + backgroundImage_3);
-        //        }
-        //    });
-        //}
-
-        //private async Task loadBackgroundMasks()
-        //{
-
-        //    if (File.Exists(backgroundImage_1))
-        //    {
-        //        LoadAndResizeImage(backgroundImage_1, picBox_imageFond_1);
-        //    }
-        //    if (File.Exists(backgroundImage_2))
-        //    {
-        //        LoadAndResizeImage(backgroundImage_2, picBox_imageFond_2);
-        //    }
-        //    if (File.Exists(backgroundImage_3))
-        //    {
-        //        LoadAndResizeImage(backgroundImage_3, picBox_imageFond_3);
-        //    }
-        //}
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -1431,7 +1382,7 @@ namespace Aerolithe
 
         private void btn_getActuatorAngle_Click(object sender, EventArgs e)
         {
-            //AppendTextToConsoleNL("Angle demandé à l'actuateur: ");
+            //AppendTextToConsoleNL("Angle demandÃ© Ã  l'actuateur: ");
             Task.Run(async () => await getActuatorAngleFromEsp32());
 
 
@@ -1447,24 +1398,7 @@ namespace Aerolithe
             UdpSendActuatorMessageAsync("actuator stop");
         }
 
-        private void btn_gotCustomAngle_Click(object sender, EventArgs e)
-        {
-            if (int.TryParse(txtBox_customAngle.Text, out int angle))
-            {
-                if (angle <= 55)
-                {
-                    UdpSendActuatorMessageAsync($"actuator custom, {angle}");
-                }
-                else
-                {
-                    MessageBox.Show("L'angle ne doit pas dépasser 55 degrés", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-            }
-            else
-            {
-                MessageBox.Show("Svp entrer une valeur valide pour l'angle", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+
 
         private void chkBox_background_CheckedChanged(object sender, EventArgs e)
         {
@@ -1512,8 +1446,8 @@ namespace Aerolithe
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     // Load the selected image into the PictureBox
-                    picBox_SharpImage.Image = new Bitmap(openFileDialog.FileName);
-                    picBox_SharpImage.SizeMode = PictureBoxSizeMode.Zoom; // Optional: scales image to fit
+                    picBox_FocusStackedImage.Image = new Bitmap(openFileDialog.FileName);
+                    picBox_FocusStackedImage.SizeMode = PictureBoxSizeMode.Zoom; // Optional: scales image to fit
                 }
             }
         }
@@ -1553,7 +1487,7 @@ namespace Aerolithe
             {
 
 
-                this.Text = "Aperçu de l'image";
+                this.Text = "AperÃ§u de l'image";
                 this.WindowState = FormWindowState.Maximized;
 
                 PictureBox pictureBox = new PictureBox
@@ -1595,6 +1529,55 @@ namespace Aerolithe
             {
                 OpenExplorerAtProjectPath(imagesFolderPath);
             }
+        }
+
+        private async void button1_Click_1(object sender, EventArgs e)
+        {
+            for (int i = 0; i < int.Parse(txtBox_nbrImg5deg.Text); i++)
+            {
+                NikonAutofocus();
+
+                await WaitUntilDeviceReady();
+
+                takePictureAsync();
+
+            }
+        }
+
+        private async Task WaitUntilDeviceReady()
+        {
+
+
+            while (true)                //wait until device is no longer busy 
+            {
+                try
+                {
+                    device.Start(eNkMAIDCapability.kNkMAIDCapability_DeviceReady);
+                }
+                catch (NikonException ex)
+                {
+                    if (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
+                    {
+                        Thread.Sleep(150);
+                        Debug.WriteLine(ex.Message);
+                        continue;                   //continue waiting
+                    }
+                    else
+                    {
+                        //received something like 'Not Supported', 'OutOfFocus', 'DriveEnd',       //..'BulbReleaseBusy','CaptureFailure' or 'UnexpectedError'.
+                        //.. break for anything you expect, otherwise throw
+                        throw;
+                    }
+                }
+                break;                              //stop waiting
+            }
+
+            AppendTextToConsoleNL("âœ… Device prÃªt.");
+        }
+
+        private void btn_SelectFocusStackImg_Click(object sender, EventArgs e)
+        {
+            MakeFocusStack();
         }
     }
 }

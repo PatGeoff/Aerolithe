@@ -33,6 +33,7 @@ namespace Aerolithe
         private Mat foreground, background, substractionResult, mask = null;
         public double oldFocusValue;
         public double blurrynessAmount = 0;
+        public double blurrynessAmountMask = 0;
         private bool liveViewStatus = false;
         private Image liveViewCompositedImage;
         private readonly object imageLock = new object();
@@ -127,7 +128,6 @@ namespace Aerolithe
             //GetAfcPriority();
             GetShutterSpeed();
             GetLiveViewSize();
-           
             GetFocusMode();
             //GetAFMode();
             //GetLiveViewAFMode();
@@ -163,33 +163,58 @@ namespace Aerolithe
                 if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)
                 {
                     liveViewStatus = true;
+
                     using (Mat background = new Mat())
                     {
-                        // Convertit le LiveCapture en stream
                         using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
                         {
-                            // Convertit le stream en byte array
                             byte[] imageBytes = stream.ToArray();
-                            // Convertit le byte array en Mat
                             CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
-                            picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();  
-                            Task.Run (() =>BackgroundSubtraction(stream));
 
-                            //Bitmap maskBitmap = await RunU2NetFromMemoryStreamAsync(stream);
+                            // Affichage brut du LiveView
+                            picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
 
-                            //Bitmap maskBitmap = BlobMaskingLiveView(stream,0);
-                            //picBox_MLMask.Image = maskBitmap;
+                            
 
-
+                            // Génération du masque de luminosité
                             maskBitmapLive = BrightnessMaskFromStream(stream, hScrollBar_liveMaskThresh.Value);
-
                             picBox_liveMaskLum.Image = maskBitmapLive;
 
+                            // Application du masque à l'image LiveView
+                            var sourceImage = background.ToImage<Bgr, byte>();
+                            var maskGray = maskBitmapLive.ToImage<Gray, byte>();
+
+                            var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
+                            //CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(hScrollBar_blurAmountMask.Value, hScrollBar_blurAmountMask.Value), 0);
+                            CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(3,3), 0);
+                            CvInvoke.Threshold(resizedMask, resizedMask, 128, 255, ThresholdType.Binary);
+
+                            //CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(0,0), 0);
+
+                            var invertedMask = resizedMask.Not();
+                            var maskBgr = invertedMask.Convert<Bgr, byte>();
+
+                            sourceImage._And(maskBgr);
+                            picBox_MLMask.Image = sourceImage.ToBitmap();
+
+                            // Calcul du flou en tâche de fond
+                            Task.Run(async () => await CalculDuFlou(stream));
+                            await Task.Run(async () => await CalculDuFlouFromImage(sourceImage));
+
+                            // Libération mémoire
+                            maskGray.Dispose();
+                            resizedMask.Dispose();
+                            invertedMask.Dispose();
+                            maskBgr.Dispose();
+                            sourceImage.Dispose();
 
                             lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";
+
+                           
                         }
                     }
                 }
+
                 else
                 {
                     liveViewStatus = false;
@@ -239,12 +264,36 @@ namespace Aerolithe
 
         private void device_CaptureComplete(NikonDevice device, int data)
         {
-            AppendTextToConsoleNL("Capture Complete");
+            //AppendTextToConsoleNL("Capture Complete");
         }
         private void OnNikonProgress(NikonDevice sender, eNkMAIDDataObjType type, int done, int total)
         {
-            AppendTextToConsoleNL($"Progress: {done}/{total} ({(done / (float)total) * 100}%)");
+            int percent = (int)((done / (float)total) * 100);
+
+            if (progressBar_ImageSave.InvokeRequired)
+            {
+                progressBar_ImageSave.Invoke(new Action(() =>
+                {
+                    progressBar_ImageSave.Value = Math.Min(percent, 100);
+
+                    // Remise à zéro une fois le transfert terminé
+                    if (done >= total)
+                    {
+                        progressBar_ImageSave.Value = 0;
+                    }
+                }));
+            }
+            else
+            {
+                progressBar_ImageSave.Value = Math.Min(percent, 100);
+
+                if (done >= total)
+                {
+                    progressBar_ImageSave.Value = 0;
+                }
+            }
         }
+
 
         #region CAMERA INFO
         private void GetImageSize()
@@ -363,6 +412,9 @@ namespace Aerolithe
             comboBox_AFMode.Items.Add("MF selected");
             comboBox_AFMode.SelectedIndex = (int)focusMode;
         }
+
+       
+         
         //private void GetLiveViewAFMode()
         //{
         //    var liveViewAfMode = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewAF);

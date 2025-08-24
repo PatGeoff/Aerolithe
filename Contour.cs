@@ -154,22 +154,28 @@ namespace Aerolithe
                         byte[] imageBytes = stream.ToArray();
                         CvInvoke.Imdecode(imageBytes, ImreadModes.Color, foreground);
                         CvInvoke.Subtract(background, foreground, result);
+
                         //Mat result = foreground.AbsDiff(background);
                         //Debug.WriteLine("applying mask");
-                        CreateMask(result, foreground);
+
+                        //CreateMask(result, foreground);
 
                         //pictureBox_imageMasquage.Image = mask.ToImage<Bgr, Byte>().ToBitmap();
 
                         //applyMaskToPicture(foreground);
-                        //pictureBox_imageSoustraction.Image = applyMaskToPicture(foreground).ToImage<Bgr, Byte>().ToBitmap();
 
-                     
+                        
+
+
+                        //picBox_MLMask.Image = applyMaskToPicture(foreground).ToImage<Bgr, Byte>().ToBitmap();
+
+
                         picBox_LiveView_Main.Image = applyMaskToPicture(foreground).ToImage<Bgr, Byte>().ToBitmap();
                         
                     }
                 }               
             }
-            Task.Run(async () => await CalculDuFlou(stream));
+            //Task.Run(async () => await CalculDuFlou(stream));
         }
 
         private Bitmap BlobMaskingLiveView(MemoryStream stream, int maskOffset = 0)
@@ -509,15 +515,71 @@ namespace Aerolithe
                     }
                     else
                     {
-                        AppendTextToConsoleNL("Failed to retrieve standard deviation values");
+                        //AppendTextToConsoleNL("Failed to retrieve standard deviation values");
                     }
                 }
                 else
                 {
-                    AppendTextToConsoleNL("Frame is empty");
+                    //AppendTextToConsoleNL("Frame is empty");
                 }
             }
         }
+
+        private async Task CalculDuFlouFromImage(Image<Bgr, byte> image)
+        {
+            
+
+            try
+            {
+                // Convertir en niveaux de gris
+                using (Mat gray = new Mat())
+                {
+                    CvInvoke.CvtColor(image, gray, ColorConversion.Bgr2Gray);
+
+                    // Appliquer le filtre Laplacien
+                    using (Mat laplacian = new Mat())
+                    {
+                        CvInvoke.Laplacian(gray, laplacian, DepthType.Cv64F);
+
+                        // Calculer la moyenne et l'écart-type
+                        using (Mat mean = new Mat())
+                        using (Mat stddev = new Mat())
+                        {
+                            CvInvoke.MeanStdDev(laplacian, mean, stddev);
+
+                            double[] stddevValues = new double[stddev.Rows * stddev.Cols];
+                            stddev.CopyTo(stddevValues);
+
+                            if (stddevValues.Length > 0)
+                            {
+                                double variance = Math.Pow(stddevValues[0], 2);
+                                blurrynessAmountMask = variance;
+
+                                lbl_blurinessMask.Invoke((MethodInvoker)(() =>
+                                {
+                                    lbl_blurinessMask.Text = variance.ToString();
+                                }));
+
+                                lbl_blurinessViewMask.Invoke((MethodInvoker)(() =>
+                                {
+                                    lbl_blurinessViewMask.Text = variance.ToString("F3");
+                                }));
+                            }
+                            else
+                            {
+                                //AppendTextToConsoleNL("Échec du calcul de l'écart-type.");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("Erreur dans CalculDuFlouFromImage : " + ex.Message);
+            }
+        }
+
+
 
         public void calculerFlou()
         {
