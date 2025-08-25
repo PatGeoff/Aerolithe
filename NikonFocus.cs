@@ -19,7 +19,7 @@ namespace Aerolithe
         private TaskCompletionSource<bool> focusReadyTcs;
 
         public Stopwatch sw;
-
+        public int focusStackStepVar = 0;
 
 
         public async Task nikonDoFocus()
@@ -96,6 +96,22 @@ namespace Aerolithe
                 await Task.Delay(100);
                 liveViewTimer.Start();
             }
+
+            focusStackStepVar = 0;
+            focusStackStepVar = 0;
+
+            if (lbl_focusStepsVar.InvokeRequired)
+            {
+                lbl_focusStepsVar.Invoke(new Action(() =>
+                {
+                    lbl_focusStepsVar.Text = focusStackStepVar.ToString();
+                }));
+            }
+            else
+            {
+                lbl_focusStepsVar.Text = focusStackStepVar.ToString();
+            }
+
             //Debug.WriteLine($"[NikonAutoFocus()] fin à : {sw.ElapsedMilliseconds} ms");
 
         }
@@ -135,10 +151,12 @@ namespace Aerolithe
                 //AppendTextToConsoleNL($"Avance {i}: {blurrynessAmountMask:F4}");
             }
 
-            // Analyse du meilleur delta de flou
             double maxDelta = 0;
+            double secondMaxDelta = 0;
             int bestIndex = 0;
-            var sortedKeys = blurDataDict.Keys.OrderBy(k => k).ToList();
+            int secondBestIndex = 0;
+
+            var sortedKeys = blurDataDict.Keys.OrderByDescending(k => k).ToList();
 
             for (int i = 1; i < sortedKeys.Count; i++)
             {
@@ -148,10 +166,31 @@ namespace Aerolithe
 
                 if (delta > maxDelta)
                 {
+                    // Décale le meilleur vers le second
+                    secondMaxDelta = maxDelta;
+                    secondBestIndex = bestIndex;
+
                     maxDelta = delta;
                     bestIndex = curr;
                 }
+                else if (delta > secondMaxDelta)
+                {
+                    secondMaxDelta = delta;
+                    secondBestIndex = curr;
+                }
             }
+
+            // Ajustement : si bestIndex > secondBestIndex, bestIndex = i - 1
+            if (bestIndex > secondBestIndex)
+            {
+                bestIndex = sortedKeys[sortedKeys.IndexOf(bestIndex) - 1];
+            }
+            else
+            {
+                secondBestIndex = sortedKeys[sortedKeys.IndexOf(secondBestIndex) - 1];
+            }
+
+
 
             AppendTextToConsoleNL($"Focus optimal détecté à la position : {bestIndex} avec un delta de flou de {maxDelta:F4}");
 
@@ -218,12 +257,14 @@ namespace Aerolithe
             // Marqueur vertical pointillé pour le focus optimal
             var line = formsPlot.Plot.Add.VerticalLine(bestIndex);
             line.Color = ScottPlot.Colors.Red;
+            var line2 = formsPlot.Plot.Add.VerticalLine(secondBestIndex);
+            line2.Color = ScottPlot.Colors.Red;
             //line.LineStyle = ScottPlot.LineStyle.Dash;
 
 
             // Texte au-dessus du point optimal
             formsPlot.Plot.Add.Text($"Optimal: {bestIndex}", bestIndex, blurDataDict[bestIndex].blur + 0.05);
-
+            formsPlot.Plot.Add.Text($"Optimal: {secondBestIndex}", secondBestIndex, blurDataDict[secondBestIndex].blur + 0.05);
             formsPlot.Refresh();
 
 

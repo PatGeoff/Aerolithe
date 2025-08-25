@@ -13,5 +13,6 @@ namespace Aerolithe
         public int turntablePosition = 1000;
         public double actuatorAngle = 0.0;
         public int previousPos = 0;
+        public int turntableIncrement = 15;
     }
 }

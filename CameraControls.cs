@@ -79,7 +79,7 @@ namespace Aerolithe
                                 //AppendTextToConsoleNL("Dimensions du LiveView (Masque): " + maskGray.Width.ToString() + " x " + maskGray.Height.ToString());
                                 //AppendTextToConsoleNL("Dimensions de l'image capturée: " + sourceImage.Width.ToString() + " x " + sourceImage.Height.ToString());
                                 var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
-                                CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(hScrollBar_blurAmountMask.Value, hScrollBar_blurAmountMask.Value), 0); // applique un flou, il faut un nombre impair
+                               
                                 var invertedMask = resizedMask.Not();
                                 var maskBgr = invertedMask.Convert<Bgr, byte>();
 
@@ -526,9 +526,6 @@ namespace Aerolithe
                 liveViewTimer.Start();
             }
             AppendTextToConsoleNL("Début du programme de focus");
-
-
-
         }
 
 

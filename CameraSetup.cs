@@ -186,8 +186,12 @@ namespace Aerolithe
 
                             var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
                             //CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(hScrollBar_blurAmountMask.Value, hScrollBar_blurAmountMask.Value), 0);
-                            CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(3,3), 0);
-                            CvInvoke.Threshold(resizedMask, resizedMask, 128, 255, ThresholdType.Binary);
+                            if(checkBox_ApplyBlur.Checked)
+                            {
+                                CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(3,3), 0);
+                                CvInvoke.Threshold(resizedMask, resizedMask, 128, 255, ThresholdType.Binary);
+                            }
+
 
                             //CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(0,0), 0);
 
@@ -346,7 +350,14 @@ namespace Aerolithe
                     break;
             }
             comboBox_TailleLiveView.SelectedIndex = liveviewSize.Index;
-
+            if (liveviewSize != null)
+            {
+                liveviewSize.Index = 2;
+                device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, liveviewSize);
+                Task.Delay(100);
+                liveviewSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
+                comboBox_TailleLiveView.SelectedIndex = liveviewSize.Index;
+            }
         }
 
         private void GetExposureModes()

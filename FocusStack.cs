@@ -8,7 +8,8 @@ using System.Threading.Tasks;
 namespace Aerolithe
 {
     public partial class Aerolithe : Form
-    { 
+    {
+        public string focusStackOutputPath = "";
         public async Task MakeFocusStack()
         {
             listBox_focusStackImg.Items.Clear();
@@ -22,15 +23,37 @@ namespace Aerolithe
             {
                 string[] imagePaths = openFileDialog.FileNames;
 
-                foreach (var img in imagePaths) {
+                foreach (var img in imagePaths)
+                {
                     listBox_focusStackImg.Items.Add(img);
                 }
 
-                // Ensuite, tu peux lancer le traitement
+                // Suggestion de nom basé sur le premier fichier
+                string baseName = Path.GetFileNameWithoutExtension(imagePaths[0]);
+                baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", ""); // Supprime le suffixe _01, _02, etc.
 
-                await RunFocusStack(imagePaths);
+                // Choix du dossier de destination
+                FolderBrowserDialog folderDialog = new FolderBrowserDialog();
+                folderDialog.Description = "Choisis le dossier de destination pour l'image fusionnée";
 
+                if (folderDialog.ShowDialog() == DialogResult.OK)
+                {
+                    string selectedFolder = folderDialog.SelectedPath;
+
+                    // Nom suggéré avec possibilité de modification
+                    string suggestedFileName = Microsoft.VisualBasic.Interaction.InputBox(
+                        "Nom du fichier de sortie :",
+                        "Nom du fichier",
+                        baseName + "_stacked.jpg");
+
+                    focusStackOutputPath = Path.Combine(selectedFolder, suggestedFileName);
+
+                    lbl_focusStackOutputDest.Text = focusStackOutputPath;
+
+                    await RunFocusStack(imagePaths);
+                }
             }
+
 
         }
 
@@ -45,7 +68,8 @@ namespace Aerolithe
                 return;
             }
 
-            string outputImage = Path.Combine(Application.StartupPath, "stacked_output.jpg");
+            string outputImage = focusStackOutputPath;
+
             string args = $"--output=\"{outputImage}\" " + string.Join(" ", imagePaths.Select(p => $"\"{p}\""));
 
             ProcessStartInfo psi = new ProcessStartInfo

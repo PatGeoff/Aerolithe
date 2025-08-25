@@ -38,7 +38,7 @@ namespace Aerolithe
         public readonly int actuatorPort = 44499;
 
 
-
+        public bool stackedImageInBuffer = false;
         private bool isDragging = false;
         private Point startPoint;
         private int scrollStart;
@@ -100,6 +100,7 @@ namespace Aerolithe
             SetupPen();
             SetTooltips();
             getActuatorAngleFromEsp32();
+            getTurntablePosFromWaveshare();
             // _session = new InferenceSession(modelPath);
 
 
@@ -370,7 +371,8 @@ namespace Aerolithe
         }
         private void trkBar_turntable_ValueChanged(object sender, EventArgs e)
         {
-            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString();
+            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + " / 4096";
+            lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
 
         }
         private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
@@ -385,13 +387,15 @@ namespace Aerolithe
                     trkBar_turntable.Invoke(new Action(() =>
                     {
                         trkBar_turntable.Value = turntablePosition;
-                        lbl_turntablePosition.Text = turntablePosition.ToString();
+                        lbl_turntablePosition.Text = turntablePosition.ToString() + "/ 4096";
+                        lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
                     }));
                 }
                 else
                 {
                     trkBar_turntable.Value = turntablePosition;
-                    lbl_turntablePosition.Text = turntablePosition.ToString();
+                    lbl_turntablePosition.Text = turntablePosition.ToString() + "/ 4096";
+                    lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
                 }
             }
             catch (Exception e)
@@ -589,7 +593,7 @@ namespace Aerolithe
 
             if (txtBox_Console.InvokeRequired)
             {
-                Debug.WriteLine("Invoke required");
+                //Debug.WriteLine("Invoke required");
                 txtBox_Console.Invoke(new Action(() =>
                 {
                     AppendFormattedText(timestamp, Color.Gray);
@@ -608,7 +612,7 @@ namespace Aerolithe
 
             if (txtBox_Console.InvokeRequired)
             {
-                Debug.WriteLine("Invoke required");
+                //Debug.WriteLine("Invoke required");
                 txtBox_Console.Invoke(new Action(() =>
                 {
                     AppendFormattedText(message, txtBox_Console.ForeColor);
@@ -1053,6 +1057,8 @@ namespace Aerolithe
             try
             {
                 ManualFocus(1, (double)hScrollBar_driveStep.Value);
+                focusStackStepVar -= 1;
+                lbl_focusStepsVar.Text = focusStackStepVar.ToString();
             }
             catch (Exception)
             {
@@ -1067,6 +1073,8 @@ namespace Aerolithe
             try
             {
                 ManualFocus(0, (double)hScrollBar_driveStep.Value);
+                focusStackStepVar += 1;
+                lbl_focusStepsVar.Text = focusStackStepVar.ToString();
             }
             catch (Exception)
             {
@@ -1075,7 +1083,11 @@ namespace Aerolithe
             }
         }
 
-
+        private void btn_clearFocusStepVar_Click(object sender, EventArgs e)
+        {
+            focusStackStepVar = 0;
+            lbl_focusStepsVar.Text = focusStackStepVar.ToString();
+        }
 
         private void comboBox_AfcPriority_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -1458,26 +1470,26 @@ namespace Aerolithe
         }
 
         private void picBox_pictureTaken_DoubleClick(object sender, EventArgs e)
-        {
-            if (picBox_pictureTaken.Image != null && imagesFolderPath != null && imageNameBase != null)
-            {
-                string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
-                string imagePath = Path.Combine(imagesFolderPath, nomImage);
-
-                if (File.Exists(imagePath))
+        {           
+                if (picBox_pictureTaken.Image != null && imagesFolderPath != null && imageNameBase != null)
                 {
-                    ImageViewerForm viewer = new ImageViewerForm(imagePath);
-                    viewer.Show();
+                    string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
+                    string imagePath = Path.Combine(imagesFolderPath, nomImage);
+
+                    if (File.Exists(imagePath))
+                    {
+                        ImageViewerForm viewer = new ImageViewerForm(imagePath);
+                        viewer.Show();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Image introuvable : " + imagePath + Environment.NewLine + "Il faut choisir un projet");
+                    }
                 }
                 else
                 {
-                    MessageBox.Show("Image introuvable : " + imagePath + Environment.NewLine + "Il faut choisir un projet");
+                     MessageBox.Show($"le dossier de l'image ({imagesFolderPath}) et le nom de l'image ({imageNameBase}) ne sont pas bons");
                 }
-            }
-            else
-            {
-                MessageBox.Show($"le dossier de l'image ({imagesFolderPath}) et le nom de l'image ({imageNameBase}) ne sont pas bons");
-            }
         }
 
 
@@ -1501,22 +1513,7 @@ namespace Aerolithe
             }
         }
 
-        private void hScrollBar_blurAmountMask_Scroll(object sender, ScrollEventArgs e)
-        {
-
-
-            // Ajuster la valeur pour qu'elle soit impaire
-            if (hScrollBar_blurAmountMask.Value % 2 == 0)
-            {
-                hScrollBar_blurAmountMask.Value += 1;
-            }
-            if (hScrollBar_liveMaskThresh.Value < 1) hScrollBar_liveMaskThresh.Value = 1;
-            if (hScrollBar_liveMaskThresh.Value > 51) hScrollBar_liveMaskThresh.Value = 51;
-
-            // Afficher la valeur ou l'utiliser ailleurs
-            lbl_blurMaskAmount.Text = hScrollBar_blurAmountMask.Value.ToString();
-
-        }
+      
 
         private void hScrollBar_liveMaskThresh_Scroll(object sender, ScrollEventArgs e)
         {
@@ -1579,5 +1576,165 @@ namespace Aerolithe
         {
             MakeFocusStack();
         }
+
+        private void btn_goToFSFolder_Click(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrEmpty(focusStackOutputPath))
+            {
+                string folderPath = Path.GetDirectoryName(focusStackOutputPath);
+                if (Directory.Exists(folderPath))
+                {
+                    Process.Start("explorer.exe", folderPath);
+                }
+                else
+                {
+                    MessageBox.Show("Le dossier de destination n'existe pas.");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Aucun chemin de sortie défini.");
+            }
+        }
+
+        private void picBox_FocusStackedImage_Click(object sender, EventArgs e)
+        {
+            AppendTextToConsoleNL("stackedImageInBuffer = " + stackedImageInBuffer);
+            if (stackedImageInBuffer == false)
+            {
+                if (File.Exists(focusStackOutputPath))
+                {
+                   
+                    ImageViewerForm viewer = new ImageViewerForm(focusStackOutputPath);
+
+                    viewer.Show();
+                    stackedImageInBuffer = false;
+                }
+                else
+                {
+                    MessageBox.Show("Image introuvable : " + focusStackOutputPath + Environment.NewLine + "Il faut choisir un projet");
+                }
+            }
+            else
+            {
+                
+                if (File.Exists(focusStackOutputPath))
+                {
+                    string directory = Path.GetDirectoryName(focusStackOutputPath);
+                    string filenameWithoutExt = Path.GetFileNameWithoutExtension(focusStackOutputPath);
+                    string extension = Path.GetExtension(focusStackOutputPath);
+                    string newFilePath = Path.Combine(directory, $"{filenameWithoutExt}_Mask{extension}");
+                    ImageViewerForm viewer = new ImageViewerForm(newFilePath);
+                    viewer.Show();
+                    stackedImageInBuffer = false;
+                }
+                else
+                {
+                    MessageBox.Show("Image introuvable : " + focusStackOutputPath + Environment.NewLine + "Il faut choisir un projet");
+                }
+            }
+        }
+
+        private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            //AppendTextToConsoleNL("Selected index = " + tabControl1.SelectedIndex.ToString());
+            if (tabControl1.SelectedIndex == 3) Task.Run(async () => await getTurntablePosFromWaveshare());
+        }
+
+        private void btn_reculeTTdeg_Click(object sender, EventArgs e)
+        {
+            int incr = (int)(4096 / turntableIncrement);
+            if (trkBar_turntable.Value - incr < trkBar_turntable.Minimum)
+                TurnTableRotation(trkBar_turntable.Minimum);
+            else
+                TurnTableRotation(trkBar_turntable.Value -= incr);
+
+            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + " / 4096";
+            lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
+            turntablePosition = trkBar_turntable.Value;
+        }
+        private void btn_avanveTTdeg_Click(object sender, EventArgs e)
+        {
+            int incr = (int)(4096 / turntableIncrement);
+            if (trkBar_turntable.Value + incr > trkBar_turntable.Maximum)
+                TurnTableRotation(trkBar_turntable.Maximum);
+            else
+                TurnTableRotation(trkBar_turntable.Value += incr);
+
+            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + " / 4096";
+            lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
+            turntablePosition = trkBar_turntable.Value;
+        }
+
+        private void trackBar_ttIncrements_ValueChanged(object sender, EventArgs e)
+        {
+            turntableIncrement = trackBar_ttIncrements.Value;
+            lbl_ttIterations.Text = turntableIncrement.ToString() + " itérations";
+            lbl_turntableIterationDeg.Text = ((int)360 / turntableIncrement).ToString() + " degrés";
+        }
+
+        private void btn_PostFocusStackMask_Click(object sender, EventArgs e)
+        {
+            if (File.Exists(focusStackOutputPath))
+            {
+                using (var originalBitmap = new Bitmap(focusStackOutputPath))
+                {
+                    Bitmap finalBitmap;
+
+                    var sourceImage = originalBitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
+                    var maskGray = maskBitmapLive.ToImage<Emgu.CV.Structure.Gray, byte>();
+
+                    var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
+                    var invertedMask = resizedMask.Not();
+                    var maskBgr = invertedMask.Convert<Emgu.CV.Structure.Bgr, byte>();
+
+                    sourceImage._And(maskBgr);
+                    finalBitmap = sourceImage.ToBitmap();
+
+                    // Libération
+                    maskGray.Dispose();
+                    resizedMask.Dispose();
+                    invertedMask.Dispose();
+                    maskBgr.Dispose();
+                    sourceImage.Dispose();
+
+                    // Sauvegarde de l'image finale
+                    string directory = Path.GetDirectoryName(focusStackOutputPath);
+                    string filenameWithoutExt = Path.GetFileNameWithoutExtension(focusStackOutputPath);
+                    string extension = Path.GetExtension(focusStackOutputPath);
+                    string newFilePath = Path.Combine(directory, $"{filenameWithoutExt}_Mask{extension}");
+
+                    finalBitmap.Save(newFilePath);
+
+                    // Affichage dans le PictureBox
+                    picBox_FocusStackedImage.Image?.Dispose();
+                    picBox_FocusStackedImage.Image = finalBitmap;
+                    stackedImageInBuffer = true;
+                    //AppendTextToConsoleNL("stackedImageInBuffer = " + stackedImageInBuffer);
+                }
+            }
+
+
+        }
+
+
+        public void btn_openStackedImage_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "Images (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp";
+                openFileDialog.Title = "Sélectionner une image empilée";
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    focusStackOutputPath = openFileDialog.FileName;
+
+                    // Afficher l'image dans le PictureBox
+                    picBox_FocusStackedImage.Image = Image.FromFile(focusStackOutputPath);
+                    picBox_FocusStackedImage.SizeMode = PictureBoxSizeMode.Zoom; // Optionnel pour bien ajuster l'image
+                }
+            }
+        }
+
     }
 }
