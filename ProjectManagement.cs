@@ -195,7 +195,7 @@ namespace Aerolithe
 
         private void LoadAndResizeImage(string imagePath, PictureBox pictureBox)
         {
-            using (Image originalImage = Image.FromFile(imagePath))
+            using (Image originalImage = System.Drawing.Image.FromFile(imagePath))
             {
                 int newWidth = pictureBox.Width;
                 int newHeight = pictureBox.Height;

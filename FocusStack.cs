@@ -112,12 +112,12 @@ namespace Aerolithe
                     {
                         picBox_FocusStackedImage.Invoke(() =>
                         {
-                            picBox_FocusStackedImage.Image = Image.FromFile(outputImage);
+                            picBox_FocusStackedImage.Image = System.Drawing.Image.FromFile(outputImage);
                         });
                     }
                     else
                     {
-                        picBox_FocusStackedImage.Image = Image.FromFile(outputImage);
+                        picBox_FocusStackedImage.Image = System.Drawing.Image.FromFile(outputImage);
                     }
                 }
                 else

@@ -1470,26 +1470,26 @@ namespace Aerolithe
         }
 
         private void picBox_pictureTaken_DoubleClick(object sender, EventArgs e)
-        {           
-                if (picBox_pictureTaken.Image != null && imagesFolderPath != null && imageNameBase != null)
-                {
-                    string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
-                    string imagePath = Path.Combine(imagesFolderPath, nomImage);
+        {
+            if (picBox_pictureTaken.Image != null && imagesFolderPath != null && imageNameBase != null)
+            {
+                string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
+                string imagePath = Path.Combine(imagesFolderPath, nomImage);
 
-                    if (File.Exists(imagePath))
-                    {
-                        ImageViewerForm viewer = new ImageViewerForm(imagePath);
-                        viewer.Show();
-                    }
-                    else
-                    {
-                        MessageBox.Show("Image introuvable : " + imagePath + Environment.NewLine + "Il faut choisir un projet");
-                    }
+                if (File.Exists(imagePath))
+                {
+                    ImageViewerForm viewer = new ImageViewerForm(imagePath);
+                    viewer.Show();
                 }
                 else
                 {
-                     MessageBox.Show($"le dossier de l'image ({imagesFolderPath}) et le nom de l'image ({imageNameBase}) ne sont pas bons");
+                    MessageBox.Show("Image introuvable : " + imagePath + Environment.NewLine + "Il faut choisir un projet");
                 }
+            }
+            else
+            {
+                MessageBox.Show($"le dossier de l'image ({imagesFolderPath}) et le nom de l'image ({imageNameBase}) ne sont pas bons");
+            }
         }
 
 
@@ -1504,7 +1504,7 @@ namespace Aerolithe
 
                 PictureBox pictureBox = new PictureBox
                 {
-                    Image = Image.FromFile(imagePath),
+                    Image = System.Drawing.Image.FromFile(imagePath),
                     SizeMode = PictureBoxSizeMode.Zoom,
                     Dock = DockStyle.Fill
                 };
@@ -1513,7 +1513,7 @@ namespace Aerolithe
             }
         }
 
-      
+
 
         private void hScrollBar_liveMaskThresh_Scroll(object sender, ScrollEventArgs e)
         {
@@ -1604,7 +1604,7 @@ namespace Aerolithe
             {
                 if (File.Exists(focusStackOutputPath))
                 {
-                   
+
                     ImageViewerForm viewer = new ImageViewerForm(focusStackOutputPath);
 
                     viewer.Show();
@@ -1617,7 +1617,7 @@ namespace Aerolithe
             }
             else
             {
-                
+
                 if (File.Exists(focusStackOutputPath))
                 {
                     string directory = Path.GetDirectoryName(focusStackOutputPath);
@@ -1730,11 +1730,15 @@ namespace Aerolithe
                     focusStackOutputPath = openFileDialog.FileName;
 
                     // Afficher l'image dans le PictureBox
-                    picBox_FocusStackedImage.Image = Image.FromFile(focusStackOutputPath);
+                    picBox_FocusStackedImage.Image = System.Drawing.Image.FromFile(focusStackOutputPath);
                     picBox_FocusStackedImage.SizeMode = PictureBoxSizeMode.Zoom; // Optionnel pour bien ajuster l'image
                 }
             }
         }
 
+        private void btn_priseAutoPourFS_Click(object sender, EventArgs e)
+        {
+            AutomaticFocusThenCapture();
+        }
     }
 }

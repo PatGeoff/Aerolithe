@@ -270,7 +270,17 @@ namespace Aerolithe
 
         }
 
+        public async Task AutomaticFocusThenCapture()
+        {
+            if (int.TryParse(textBox_nbrFocusSteps.Text, out int step))
+            {
+                for (int i = 0; i < step; i++)
+                {
 
+                }
+            }
+
+        }
 
     }
 

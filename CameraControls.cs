@@ -162,7 +162,7 @@ namespace Aerolithe
                                 // Affichage miniature
                                 try
                                 {
-                                    using (Image originalImage = Image.FromFile(outputPath))
+                                    using (Image originalImage = System.Drawing.Image.FromFile(outputPath))
                                     {
                                         Image resizedImage = ResizeImage(originalImage, 150, 100);
 
@@ -263,7 +263,6 @@ namespace Aerolithe
                                             }
                                         };
 
-
                                         tableLayoutPanel.Controls.Add(label, 0, 0);
                                         tableLayoutPanel.Controls.Add(deleteButton, 1, 0);
                                         tableLayoutPanel.SetColumnSpan(pictureBox, 2); // image sur toute la largeur
@@ -331,7 +330,7 @@ namespace Aerolithe
             //AppendTextToConsoleNL($"Saving image to {outputPath}");
 
             // Create an Image object from the stream
-            Image image = Image.FromStream(imageStream);
+            Image image = System.Drawing.Image.FromStream(imageStream);
 
 
             if (customPen.IsVisible && addBrush)
