@@ -14,5 +14,32 @@ namespace Aerolithe
         public double actuatorAngle = 0.0;
         public int previousPos = 0;
         public int turntableIncrement = 15;
+
+        public void AvanceTableTournateDeg()
+        {
+            int incr = (int)(4096 / turntableIncrement);
+            if (trkBar_turntable.Value + incr > trkBar_turntable.Maximum)
+                TurnTableRotation(trkBar_turntable.Maximum);
+            else
+                TurnTableRotation(trkBar_turntable.Value += incr);
+
+            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + " / 4096";
+            lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
+            turntablePosition = trkBar_turntable.Value;
+        }
+        public void ReculeTableTournanteDeg()
+        {
+            int incr = (int)(4096 / turntableIncrement);
+            if (trkBar_turntable.Value - incr < trkBar_turntable.Minimum)
+                TurnTableRotation(trkBar_turntable.Minimum);
+            else
+                TurnTableRotation(trkBar_turntable.Value -= incr);
+
+            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + " / 4096";
+            lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
+            turntablePosition = trkBar_turntable.Value;
+        }
     }
+
+   
 }

@@ -272,6 +272,48 @@ namespace Aerolithe
     //        picBox_SharpImageMask.Image = mask;
        }
 
+        public void PostFocusStackMask()
+        {
+            if (File.Exists(focusStackOutputPath))
+            {
+                using (var originalBitmap = new Bitmap(focusStackOutputPath))
+                {
+                    Bitmap finalBitmap;
+
+                    var sourceImage = originalBitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
+                    var maskGray = maskBitmapLive.ToImage<Emgu.CV.Structure.Gray, byte>();
+
+                    var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
+                    var invertedMask = resizedMask.Not();
+                    var maskBgr = invertedMask.Convert<Emgu.CV.Structure.Bgr, byte>();
+
+                    sourceImage._And(maskBgr);
+                    finalBitmap = sourceImage.ToBitmap();
+
+                    // Libération
+                    maskGray.Dispose();
+                    resizedMask.Dispose();
+                    invertedMask.Dispose();
+                    maskBgr.Dispose();
+                    sourceImage.Dispose();
+
+                    // Sauvegarde de l'image finale
+                    string directory = Path.GetDirectoryName(focusStackOutputPath);
+                    string filenameWithoutExt = Path.GetFileNameWithoutExtension(focusStackOutputPath);
+                    string extension = Path.GetExtension(focusStackOutputPath);
+                    string newFilePath = Path.Combine(directory, $"{filenameWithoutExt}_Mask{extension}");
+
+                    finalBitmap.Save(newFilePath);
+
+                    // Affichage dans le PictureBox
+                    picBox_FocusStackedImage.Image?.Dispose();
+                    picBox_FocusStackedImage.Image = finalBitmap;
+                    stackedImageInBuffer = true;
+                    //AppendTextToConsoleNL("stackedImageInBuffer = " + stackedImageInBuffer);
+                }
+            }
+
+        }
     }
 
 }

@@ -81,8 +81,14 @@ namespace Aerolithe
                         imagesFolderPath = prefs.ImageFolderPath;
 
                     if (!string.IsNullOrWhiteSpace(prefs.ImageName))
-                        imageNameBase = prefs.ImageName;
+                        imageNameBase = prefs.ImageName + "-" + prefs.ImageIncrement.ToString();
 
+                    if (!string.IsNullOrWhiteSpace(prefs.FocusStackedPath))
+                    {
+                        focusStackedPath = prefs.FocusStackedPath;
+                        lbl_StackedPath.Text = focusStackedPath;
+                    }
+                    textBox_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
                 }
                 catch (Exception e)
                 {
@@ -1003,10 +1009,15 @@ namespace Aerolithe
         {
             if (txtBox_nomImages.Text != null)
             {
-                imageNameBase = txtBox_nomImages.Text;
-                //WritePrefs("imageName", imageNameBase);
-                prefs.ImageName = imageNameBase;
-                SavePrefsSettings();
+                int inc;
+                if (int.TryParse(textBox_imgIncr.Text, out inc))
+                {
+                    prefs.ImageIncrement = inc;
+                    textBox_imgIncr.Text = prefs.ImageIncrement.ToString();
+                    imageNameBase = txtBox_nomImages.Text + "-" + textBox_imgIncr.Text;
+                    prefs.ImageName = imageNameBase;
+                    SavePrefsSettings();
+                }
             }
         }
 
@@ -1014,10 +1025,15 @@ namespace Aerolithe
         {
             if (txtBox_nomImages.Text != null && e.KeyCode == Keys.Enter)
             {
-                imageNameBase = txtBox_nomImages.Text;
-                //WritePrefs("imageName", imageNameBase);
-                prefs.ImageName = imageNameBase;
-                SavePrefsSettings();
+                int inc;
+                if (int.TryParse(textBox_imgIncr.Text, out inc))
+                {
+                    prefs.ImageIncrement = inc;
+                    textBox_imgIncr.Text = prefs.ImageIncrement.ToString();
+                    imageNameBase = txtBox_nomImages.Text + "-" + textBox_imgIncr.Text;
+                    prefs.ImageName = imageNameBase;
+                    SavePrefsSettings();
+                }
             }
         }
 
@@ -1194,32 +1210,7 @@ namespace Aerolithe
 
         private void btn_clearPicLayout_Click(object sender, EventArgs e)
         {
-            flowLayoutPanel1.Controls.Clear();
-            var result = MessageBox.Show(
-                                               "Voulez-vous aussi supprimer toutes les images sur le disque?",
-                                               "Suppression de l'image",
-                                               MessageBoxButtons.YesNo,
-                                               MessageBoxIcon.Question
-                                           );
-
-            if (result == DialogResult.Yes)
-            {
-                try
-                {
-                    string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.jpg"); // ou *.png, *.jpeg, etc.
-                    foreach (string file in imageFiles)
-                    {
-                        File.Delete(file);
-                    }
-
-                    MessageBox.Show("Toutes les images ont été supprimées avec succès.", "Suppression terminée", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Erreur lors de la suppression des fichiers : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-
+            DeleteAllPicturesInFolderWithPrompt();
         }
 
         private void btn_clearPicReport_Click(object sender, EventArgs e)
@@ -1643,27 +1634,11 @@ namespace Aerolithe
 
         private void btn_reculeTTdeg_Click(object sender, EventArgs e)
         {
-            int incr = (int)(4096 / turntableIncrement);
-            if (trkBar_turntable.Value - incr < trkBar_turntable.Minimum)
-                TurnTableRotation(trkBar_turntable.Minimum);
-            else
-                TurnTableRotation(trkBar_turntable.Value -= incr);
-
-            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + " / 4096";
-            lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
-            turntablePosition = trkBar_turntable.Value;
+            ReculeTableTournanteDeg();
         }
         private void btn_avanveTTdeg_Click(object sender, EventArgs e)
         {
-            int incr = (int)(4096 / turntableIncrement);
-            if (trkBar_turntable.Value + incr > trkBar_turntable.Maximum)
-                TurnTableRotation(trkBar_turntable.Maximum);
-            else
-                TurnTableRotation(trkBar_turntable.Value += incr);
-
-            lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + " / 4096";
-            lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
-            turntablePosition = trkBar_turntable.Value;
+            AvanceTableTournateDeg();
         }
 
         private void trackBar_ttIncrements_ValueChanged(object sender, EventArgs e)
@@ -1675,46 +1650,7 @@ namespace Aerolithe
 
         private void btn_PostFocusStackMask_Click(object sender, EventArgs e)
         {
-            if (File.Exists(focusStackOutputPath))
-            {
-                using (var originalBitmap = new Bitmap(focusStackOutputPath))
-                {
-                    Bitmap finalBitmap;
-
-                    var sourceImage = originalBitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
-                    var maskGray = maskBitmapLive.ToImage<Emgu.CV.Structure.Gray, byte>();
-
-                    var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
-                    var invertedMask = resizedMask.Not();
-                    var maskBgr = invertedMask.Convert<Emgu.CV.Structure.Bgr, byte>();
-
-                    sourceImage._And(maskBgr);
-                    finalBitmap = sourceImage.ToBitmap();
-
-                    // Libération
-                    maskGray.Dispose();
-                    resizedMask.Dispose();
-                    invertedMask.Dispose();
-                    maskBgr.Dispose();
-                    sourceImage.Dispose();
-
-                    // Sauvegarde de l'image finale
-                    string directory = Path.GetDirectoryName(focusStackOutputPath);
-                    string filenameWithoutExt = Path.GetFileNameWithoutExtension(focusStackOutputPath);
-                    string extension = Path.GetExtension(focusStackOutputPath);
-                    string newFilePath = Path.Combine(directory, $"{filenameWithoutExt}_Mask{extension}");
-
-                    finalBitmap.Save(newFilePath);
-
-                    // Affichage dans le PictureBox
-                    picBox_FocusStackedImage.Image?.Dispose();
-                    picBox_FocusStackedImage.Image = finalBitmap;
-                    stackedImageInBuffer = true;
-                    //AppendTextToConsoleNL("stackedImageInBuffer = " + stackedImageInBuffer);
-                }
-            }
-
-
+            PostFocusStackMask();
         }
 
 
@@ -1738,7 +1674,85 @@ namespace Aerolithe
 
         private void btn_priseAutoPourFS_Click(object sender, EventArgs e)
         {
+            focusStackStepVar = 0;
+            lbl_focusStepsVar.Text = focusStackStepVar.ToString();
             AutomaticFocusThenCapture();
         }
+
+        private void btn_incrImgSeq_Click(object sender, EventArgs e)
+        {
+            IncrementImgSeq();
+        }
+
+        private void btn_decrImgSeq_Click(object sender, EventArgs e)
+        {
+            DecrementImgSeq();
+        }
+
+        private void btn_ResetIncr_Click(object sender, EventArgs e)
+        {
+            imageIncr = 0;
+        }
+
+        private void btn_setStackedFolderPath_Click(object sender, EventArgs e)
+        {
+            SetStackedImageFolderPath();
+        }
+
+        private void textBox_imgIncr_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            // Si c'est un nombre entre 0 et 9, le formater en "00" à "09"
+            if (int.TryParse(textBox_imgIncr.Text, out int num) && num >= 0 && num <= 9)
+            {
+                textBox_imgIncr.Text = num.ToString();
+                prefs.ImageIncrement = num;
+                SavePrefsSettings();
+
+            }
+            else
+            {
+                MessageBox.Show("entrer un nombre valide");
+            }
+        }
+
+        private void textBox_imgIncr_Validating(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Si c'est un nombre entre 0 et 9, le formater en "00" à "09"
+            if (int.TryParse(textBox_imgIncr.Text, out int num) && num >= 0 && num <= 9)
+            {
+                textBox_imgIncr.Text = num.ToString();
+                prefs.ImageIncrement = num;
+                SavePrefsSettings();
+            }
+            else
+            {
+                MessageBox.Show("entrer un nombre valide");
+            }
+        }
+        private void textBox_imgIncr_Validated(object sender, EventArgs e)
+        {
+            textBox_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
+        }
+
+        private void btn_stopAutomaticFocusCapture_Click(object sender, EventArgs e)
+        {
+            _stopRequested = true;
+        }
+
+        private void btn_nextAutoFocustackCapture_Click(object sender, EventArgs e)
+        {
+            tabControl4.SelectedTab = tabPage16;
+            IncrementImgSeq();
+            AvanceTableTournateDeg();
+        }
+
+        private void btn_GotoStackedFolder_Click(object sender, EventArgs e)
+        {
+            if (Directory.Exists(focusStackedPath))
+            {
+                System.Diagnostics.Process.Start("explorer.exe", focusStackedPath);
+            }
+        }
+
     }
 }

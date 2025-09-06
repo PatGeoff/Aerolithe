@@ -21,7 +21,7 @@ namespace Aerolithe
         private int currentSequence = 0;
         private TaskCompletionSource<bool> imageReadyTcs;
         private int lastPercent = -1;
-        private Size panelSize = new Size(250, 200);
+        private Size panelSize = new Size(125, 100);
         private int oldImgIncr = -1;
 
 
@@ -30,25 +30,25 @@ namespace Aerolithe
             //Initialize the TaskCompletionSource for each image capture
             imageReadyTcs = new TaskCompletionSource<bool>();
 
-            if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
-            {
-                picBox_holdOn.Invoke(new Action(() =>
-                {
-                    picBox_holdOn.Visible = true;
-                    progressBar_ImageSave.Value = 0;
-                }));
-            }
-            else
-            {
-                picBox_holdOn.Visible = true;
-            }
+            //if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
+            //{
+            //    picBox_holdOn.Invoke(new Action(() =>
+            //    {
+            //        picBox_holdOn.Visible = true;
+            //        progressBar_ImageSave.Value = 0;
+            //    }));
+            //}
+            //else
+            //{
+            //    picBox_holdOn.Visible = true;
+            //}
 
             
             try
             {
                 device.Capture();
                 await imageReadyTcs.Task;
-                AppendTextToConsoleNL("Photo prise ... en téléchargement vers le pc");
+                AppendTextToConsoleNL("IMAGE READY");
             }
             catch (Exception e)
             {
@@ -59,6 +59,10 @@ namespace Aerolithe
 
         void device_ImageReady(NikonDevice sender, NikonImage image)
         {
+            if (imageReadyTcs != null && !imageReadyTcs.Task.IsCompleted)
+            {
+                imageReadyTcs.SetResult(true);
+            }
             try
             {
                 if (image.Type == NikonImageType.Jpeg)
@@ -101,20 +105,14 @@ namespace Aerolithe
                             picBox_pictureTaken.Image?.Dispose();
                             picBox_pictureTaken.Image = finalBitmap;
 
+                          
 
-
-                            if (imageReadyTcs != null && !imageReadyTcs.Task.IsCompleted)
-                            {
-                                imageReadyTcs.SetResult(true);
-                            }
 
 
 
                             // Sauvegarde si activée
-                            //if (chkBox_savePicture.Checked && imagesFolderPath != null && imageNameBase != null && imageIncr != null)
                             if (chkBox_savePicture.Checked && imagesFolderPath != null && imageNameBase != null)
                             {
-
                                 if (imageIncr == oldImgIncr)
                                 {
                                     imageIncr++;
@@ -143,20 +141,20 @@ namespace Aerolithe
                                         }
                                     });
                                     SaveStreamAsJpegWithProgress(saveStream, outputPath, savingProgress, true).GetAwaiter().GetResult(); ;
-                                   
+                                    progressBar_ImageSave.Value = 0;
 
-                                    if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
-                                    {
-                                        picBox_holdOn.Invoke(new Action(() =>
-                                        {
-                                            picBox_holdOn.Visible = false;
-                                            progressBar_ImageSave.Value = 0;
-                                        }));
-                                    }
-                                    else
-                                    {
-                                        picBox_holdOn.Visible = false;
-                                    }
+                                    //if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
+                                    //{
+                                    //    picBox_holdOn.Invoke(new Action(() =>
+                                    //    {
+                                    //        picBox_holdOn.Visible = false;
+                                    //        progressBar_ImageSave.Value = 0;
+                                    //    }));
+                                    //}
+                                    //else
+                                    //{
+                                    //    picBox_holdOn.Visible = false;
+                                    //}
                                 }
 
                                 // Affichage miniature

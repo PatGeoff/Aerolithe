@@ -171,6 +171,25 @@ namespace Aerolithe
                             byte[] imageBytes = stream.ToArray();
                             CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
 
+                            float gammaValue = trackBar_Gamma.Value / 10.0f;
+
+
+                            // Créer la LUT dans un tableau
+                            byte[] lutData = new byte[256];
+                            for (int i = 0; i < 256; i++)
+                            {
+                                double normalized = i / 255.0;
+                                double corrected = Math.Pow(normalized, gammaValue);
+                                lutData[i] = (byte)(Math.Min(255, corrected * 255.0));
+                            }
+
+                            // Convertir le tableau en Mat
+                            Mat lut = new Mat(1, 256, DepthType.Cv8U, 1);
+                            System.Runtime.InteropServices.Marshal.Copy(lutData, 0, lut.DataPointer, lutData.Length);
+
+                            // Appliquer la LUT
+                            CvInvoke.LUT(background, lut, background);
+
                             // Affichage brut du LiveView
                             picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
 
@@ -212,9 +231,7 @@ namespace Aerolithe
                             maskBgr.Dispose();
                             sourceImage.Dispose();
 
-                            lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";
-
-                           
+                            lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";                           
                         }
                     }
                 }
@@ -227,38 +244,11 @@ namespace Aerolithe
                 }
 
 
-                
-
-                //picBox_LiveView_Main.Invoke((MethodInvoker)delegate
-                //{
-                //    lock (imageLock)
-                //    {
-                        //liveViewCompositedImage = picBox_LiveView_Main.Image;
-                //    }
-                //});
-
-                //using (MemoryStream ms = new MemoryStream())
-                //{
-                //    liveViewCompositedImage.Save(ms, ImageFormat.Jpeg);
-                    
-                //    byte[] imageBytes = ms.ToArray();
-
-                //    // Create a new MemoryStream from the byte array
-                //    MemoryStream stream = new MemoryStream(imageBytes);
-
-                //    // Call your CalculDuFlou method asynchronously
-                //    CalculDuFlou(stream);
-                //}
-
-
             }
             catch (NikonException ex)
             {
                 // Handle Nikon-specific exceptions
                 Console.WriteLine("NikonException: " + ex.Message);
-                //AppendTextToConsoleNL("NikonException: " + ex.Message);
-                //AppendTextToConsoleNL("NikonException: " + ex.Message);
-                // Display placeholder image
                 picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
             }
         }

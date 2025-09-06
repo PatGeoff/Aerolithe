@@ -20,7 +20,7 @@ namespace Aerolithe
 
         public Stopwatch sw;
         public int focusStackStepVar = 0;
-
+        private bool _stopRequested = false;
 
         public async Task nikonDoFocus()
         {
@@ -272,18 +272,131 @@ namespace Aerolithe
 
         public async Task AutomaticFocusThenCapture()
         {
-            if (int.TryParse(textBox_nbrFocusSteps.Text, out int step))
+            Invoke(new Action(() =>
             {
-                for (int i = 0; i < step; i++)
+                btn_stopAutomaticFocusCapture.Visible = true;
+                btn_stopAutomaticFocusCapture.Enabled = true;
+            }));
+
+            _stopRequested = false;
+
+            if (int.TryParse(textBox_nbrFocusSteps.Text, out int steps))
+            {
+                int stepSize = (int)hScrollBar_driveStep.Value;
+                int delayTime = 200;
+
+                if (checkBox_StackAuto.Checked)
                 {
+                    try
+                    {
+                        string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.*")
+                               .Where(file => file.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                                              file.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                                              file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                               .ToArray();
 
+                        foreach (string imageFile in imageFiles)
+                        {
+                            try
+                            {
+                                File.Delete(imageFile);
+                            }
+                            catch (Exception ex)
+                            {
+
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        AppendTextToConsoleNL(e.Message);
+                    }
+                   
+                    //string folder = txtBox_nomImages.Text + textBox_imgIncr.Text;
+                    //imagesFolderPath = Path.Combine(imagesFolderPath, folder);
+                    //// Vérifie si le dossier existe, sinon le crée
+                    //if (!Directory.Exists(imagesFolderPath))
+                    //{
+                    //    Directory.CreateDirectory(imagesFolderPath);
+                    //    AppendTextToConsoleNL("Dossier " + imagesFolderPath + " créé");
+                    //}
+                    //else
+                    //{
+
+                    //    string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.*")
+                    //            .Where(file => file.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                    //                           file.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                    //                           file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                    //            .ToArray();
+
+                    //    foreach (string imageFile in imageFiles)
+                    //    {
+                    //        try
+                    //        {
+                    //            File.Delete(imageFile);
+                    //        }
+                    //        catch (Exception ex)
+                    //        {
+
+                    //        }
+                    //    }
+                    //}
                 }
-            }
 
+                for (int i = 0; i < steps; i++)
+                {
+                    if (_stopRequested)
+                    {
+                        Invoke(new Action(() =>
+                        {
+                            MessageBox.Show("Capture automatique interrompue.");
+                            btn_stopAutomaticFocusCapture.Visible = false;
+                            btn_stopAutomaticFocusCapture.Enabled = false;
+                        }));
+                        return;
+                    }
+
+                    await takePictureAsync();
+                    await Task.Delay(delayTime);
+                    ManualFocus(0, stepSize);
+                    await Task.Delay(delayTime);
+                }
+
+                if (!_stopRequested)
+                {
+                    Invoke(new Action(() =>
+                    {
+                        tabControl4.SelectedTab = tabPage17;
+                    }));
+                    await MakeFocusStackSerie();
+                }
+
+                Invoke(new Action(async () =>
+                {
+                    btn_stopAutomaticFocusCapture.Visible = false;
+                    btn_stopAutomaticFocusCapture.Enabled = false;
+                    if (int.TryParse(textBox_nbrFocusSteps.Text, out int stepBack))
+                    {
+                        stepBack = stepBack / 2;
+                        for (int i = 0; i <= stepBack; i++)
+                        {
+                            ManualFocus(1, stepSize);
+                            await Task.Delay(100);
+                        }
+                    }
+                    if (checkBox_ApplyMaskStackedImage.Checked)
+                    {
+                        PostFocusStackMask();
+                    }
+                   
+                }));
+
+               
+
+            }
         }
 
+
     }
-
-
 
 }
