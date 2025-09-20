@@ -29,26 +29,13 @@ namespace Aerolithe
         {
             //Initialize the TaskCompletionSource for each image capture
             imageReadyTcs = new TaskCompletionSource<bool>();
-
-            //if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
-            //{
-            //    picBox_holdOn.Invoke(new Action(() =>
-            //    {
-            //        picBox_holdOn.Visible = true;
-            //        progressBar_ImageSave.Value = 0;
-            //    }));
-            //}
-            //else
-            //{
-            //    picBox_holdOn.Visible = true;
-            //}
-
             
             try
             {
                 device.Capture();
+                AppendTextToConsoleNL("Device Capture demandée");
                 await imageReadyTcs.Task;
-                AppendTextToConsoleNL("IMAGE READY");
+                
             }
             catch (Exception e)
             {
@@ -62,6 +49,7 @@ namespace Aerolithe
             if (imageReadyTcs != null && !imageReadyTcs.Task.IsCompleted)
             {
                 imageReadyTcs.SetResult(true);
+                AppendTextToConsoleNL("IMAGE READY");
             }
             try
             {

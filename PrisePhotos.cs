@@ -41,6 +41,7 @@ namespace Aerolithe
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
             await Task.Delay(200);
 
+
             int[] serieId = { int.Parse(txtBox_nbrImg5deg.Text), int.Parse(txtBox_nbrImg25deg.Text), int.Parse(txtBox_nbrImg45deg.Text) };
             int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad2.Text), int.Parse(txtBox_seqPad3.Text) };
 
@@ -55,43 +56,35 @@ namespace Aerolithe
                 for (int i = 1; i <= serieId[serie]; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-
                     int degres = (i - 1) * divider;
+                    ttTargetPosition = degres;
+                    await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
+                    await WaitForTurntablePositionAsync(degres, cancellationToken);
+                    AppendTextToConsoleNL("nouvelle position de la table est atteinte");                    
                     AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres} degrés d'écart");
-
                     imageIncr = i - 1 + paddingNbr[serie];
-
-                    bool success = await EssayerPrendrePhotoAsync(imageIncr, degres);
-
-                    if (i < serieId[serie])
-                    {
-                        await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-                        await WaitForTurntablePositionAsync(degres, cancellationToken);
-                        AppendTextToConsoleNL("nouvelle position de la table est atteinte");
-                    }
+                    await EssayerPrendrePhotoAsync(imageIncr, degres);                   
                 }
             }
             catch (OperationCanceledException)
             {
                 AppendTextToConsoleNL("Photo sequence cancelled.");
+                return;
             }
         }
 
-        private async Task<bool> EssayerPrendrePhotoAsync(int imageIncr, int degres)
+        private async Task EssayerPrendrePhotoAsync(int imageIncr, int degres)
         {
             int essai = 0;
-            while (essai < 3)
+            bool focusReussi = false;
+
+            while (essai < 3 && !focusReussi)
             {
                 try
                 {
                     await NikonAutofocus();
                     AppendTextToConsoleNL("Focus effectué avec succès");
-
-                    await takePictureAsync(); // attend que imageReadyTcs soit résolu
-
-                    AppendTextToConsoleNL("Image sauvegardée");
-                    await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true);
-                    return true;
+                    focusReussi = true;
                 }
                 catch (Exception e)
                 {
@@ -100,16 +93,14 @@ namespace Aerolithe
                     if (essai >= 3)
                     {
                         await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, false);
-                        return false;
                     }
-                }
+                }               
             }
-            return false;
+
+            await takePictureAsync(); // attend que imageReadyTcs soit résolu
+            AppendTextToConsoleNL("Image sauvegardée");
+            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true);
         }
-
-
-
-
 
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
         {
@@ -161,25 +152,25 @@ namespace Aerolithe
                 {
                     lbl_ttCurrentPos.Invoke(new Action(() =>
                     {
-                        lbl_ttCurrentPos.Text = turntablePosition.ToString();
+                        lbl_ttCurrentPos.Text = "Table Tournante: " + turntablePosition.ToString() + " / " + ttTargetPosition.ToString();
                     }));
                 }
                 else
                 {
-                    lbl_ttCurrentPos.Text = turntablePosition.ToString();
+                    lbl_ttCurrentPos.Text = "Table Tournante: " + turntablePosition.ToString() + " / " + ttTargetPosition.ToString();
                 }
 
-                if (lbl_ttTargetPos.InvokeRequired)
-                {
-                    lbl_ttTargetPos.Invoke(new Action(() =>
-                    {
-                        lbl_ttTargetPos.Text = targetPosition.ToString();
-                    }));
-                }
-                else
-                {
-                    lbl_ttTargetPos.Text = targetPosition.ToString();
-                }
+                //if (lbl_ttTargetPos.InvokeRequired)
+                //{
+                //    lbl_ttTargetPos.Invoke(new Action(() =>
+                //    {
+                //        lbl_ttTargetPos.Text = targetPosition.ToString();
+                //    }));
+                //}
+                //else
+                //{
+                //    lbl_ttTargetPos.Text = targetPosition.ToString();
+                //}
 
                 if (turntablePosition >= targetPosition - tolerance && turntablePosition <= targetPosition + tolerance)
                 {
@@ -227,6 +218,23 @@ namespace Aerolithe
             {
                 AppendTextToConsoleNL("L'actuateur n'a pas atteint sa position après 100 essais.");
             }
+        }
+
+        private void UpdateSequencePadding()
+        {
+            int pad1, pad2, pad3, qte1, qte2, qte3;
+            qte1 = int.Parse(txtBox_nbrImg5deg.Text); 
+            qte2 = int.Parse(txtBox_nbrImg25deg.Text);
+            qte3 = int.Parse(txtBox_nbrImg45deg.Text);
+            pad1 = int.Parse(txtBox_seqPad1.Text);
+            pad2 = qte1 + pad1;
+            pad3 = qte2 + pad2;
+            txtBox_seqPad2.Text = pad2.ToString();
+            txtBox_seqPad3.Text = pad3.ToString();
+            txtBox_seqPad1.ForeColor = Color.White;
+            txtBox_seqPad2.ForeColor = Color.White;
+            txtBox_seqPad3.ForeColor = Color.White;
+
         }
     }
 }

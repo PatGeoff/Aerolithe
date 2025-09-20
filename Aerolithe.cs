@@ -18,6 +18,7 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static Emgu.Util.Platform;
 using System.Drawing.Printing;
 using System.Runtime.CompilerServices;
+using System.Windows.Forms.VisualStyles;
 
 namespace Aerolithe
 {
@@ -78,17 +79,22 @@ namespace Aerolithe
                     prefs = prefs.Load(settings.ProjectPath);
                     OpenProject(settings.ProjectPath);
                     if (!string.IsNullOrWhiteSpace(prefs.ImageFolderPath))
+                    {
                         imagesFolderPath = prefs.ImageFolderPath;
+                        lbl_ImgFolderPath.Text = imagesFolderPath + "\\";
+                    }
+
 
                     if (!string.IsNullOrWhiteSpace(prefs.ImageName))
-                        imageNameBase = prefs.ImageName + "-" + prefs.ImageIncrement.ToString();
+                        imageNameBase = prefs.ImageName + "-" + prefs.ImageIncrement.ToString("D2");
 
                     if (!string.IsNullOrWhiteSpace(prefs.FocusStackedPath))
                     {
                         focusStackedPath = prefs.FocusStackedPath;
                         lbl_StackedPath.Text = focusStackedPath;
                     }
-                    textBox_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
+                    lbl_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
+                    lbl_FullImageName.Text = imageNameBase + "_**.jpg";
                 }
                 catch (Exception e)
                 {
@@ -374,12 +380,13 @@ namespace Aerolithe
         {
             TurnTableRotation(trkBar_turntable.Value);
             turntablePosition = trkBar_turntable.Value;
+            ttTargetPosition = turntablePosition;
         }
         private void trkBar_turntable_ValueChanged(object sender, EventArgs e)
         {
             lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + " / 4096";
             lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
-
+            lbl_ttCurrentPos.Text = "Table Tournante: " + turntablePosition.ToString() + " / " + ttTargetPosition.ToString();
         }
         private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
         {
@@ -395,6 +402,7 @@ namespace Aerolithe
                         trkBar_turntable.Value = turntablePosition;
                         lbl_turntablePosition.Text = turntablePosition.ToString() + "/ 4096";
                         lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
+                        lbl_ttCurrentPos.Text = "Table Tournante: " + turntablePosition.ToString() + " / " + ttTargetPosition.ToString();
                     }));
                 }
                 else
@@ -402,6 +410,7 @@ namespace Aerolithe
                     trkBar_turntable.Value = turntablePosition;
                     lbl_turntablePosition.Text = turntablePosition.ToString() + "/ 4096";
                     lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
+                    lbl_ttCurrentPos.Text = "Table Tournante: " + turntablePosition.ToString() + " / " + ttTargetPosition.ToString();
                 }
             }
             catch (Exception e)
@@ -1005,37 +1014,7 @@ namespace Aerolithe
             SelectExistingProject();
         }
 
-        private void txtBox_nomImages_Leave(object sender, EventArgs e)
-        {
-            if (txtBox_nomImages.Text != null)
-            {
-                int inc;
-                if (int.TryParse(textBox_imgIncr.Text, out inc))
-                {
-                    prefs.ImageIncrement = inc;
-                    textBox_imgIncr.Text = prefs.ImageIncrement.ToString();
-                    imageNameBase = txtBox_nomImages.Text + "-" + textBox_imgIncr.Text;
-                    prefs.ImageName = imageNameBase;
-                    SavePrefsSettings();
-                }
-            }
-        }
 
-        private void txtBox_nomImages_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (txtBox_nomImages.Text != null && e.KeyCode == Keys.Enter)
-            {
-                int inc;
-                if (int.TryParse(textBox_imgIncr.Text, out inc))
-                {
-                    prefs.ImageIncrement = inc;
-                    textBox_imgIncr.Text = prefs.ImageIncrement.ToString();
-                    imageNameBase = txtBox_nomImages.Text + "-" + textBox_imgIncr.Text;
-                    prefs.ImageName = imageNameBase;
-                    SavePrefsSettings();
-                }
-            }
-        }
 
         private void chkBox_liveView_CheckedChanged(object sender, EventArgs e)
         {
@@ -1699,40 +1678,7 @@ namespace Aerolithe
             SetStackedImageFolderPath();
         }
 
-        private void textBox_imgIncr_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            // Si c'est un nombre entre 0 et 9, le formater en "00" à "09"
-            if (int.TryParse(textBox_imgIncr.Text, out int num) && num >= 0 && num <= 9)
-            {
-                textBox_imgIncr.Text = num.ToString();
-                prefs.ImageIncrement = num;
-                SavePrefsSettings();
 
-            }
-            else
-            {
-                MessageBox.Show("entrer un nombre valide");
-            }
-        }
-
-        private void textBox_imgIncr_Validating(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            // Si c'est un nombre entre 0 et 9, le formater en "00" à "09"
-            if (int.TryParse(textBox_imgIncr.Text, out int num) && num >= 0 && num <= 9)
-            {
-                textBox_imgIncr.Text = num.ToString();
-                prefs.ImageIncrement = num;
-                SavePrefsSettings();
-            }
-            else
-            {
-                MessageBox.Show("entrer un nombre valide");
-            }
-        }
-        private void textBox_imgIncr_Validated(object sender, EventArgs e)
-        {
-            textBox_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
-        }
 
         private void btn_stopAutomaticFocusCapture_Click(object sender, EventArgs e)
         {
@@ -1754,5 +1700,169 @@ namespace Aerolithe
             }
         }
 
+        private void btn_acceptImgName_Click(object sender, EventArgs e)
+        {
+            AssembleImageName();
+            txtBox_nomImages.ForeColor = Color.White;
+        }
+
+
+        private void txtBox_nbrImg5deg_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_nbrImg5deg.ForeColor = Color.Gray;
+        }
+        private void txtBox_nbrImg5deg_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(txtBox_nbrImg5deg.Text, out int valeur))
+                {
+                    txtBox_nbrImg5deg.ForeColor = Color.White;
+                    lbl_Serie5Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
+                }
+                else
+                {
+                    MessageBox.Show("SVP enter un nombre valide");
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+                UpdateSequencePadding();
+            }
+        }
+
+        private void txtBox_nbrImg25deg_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_nbrImg25deg.ForeColor = Color.Gray;
+        }
+
+
+        private void txtBox_nbrImg25deg_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(txtBox_nbrImg25deg.Text, out int valeur))
+                {
+                    txtBox_nbrImg25deg.ForeColor = Color.White;
+                    lbl_Serie25Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
+                }
+                else
+                {
+                    MessageBox.Show("SVP enter un nombre valide");
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+                UpdateSequencePadding();
+            }
+        }
+        private void txtBox_nbrImg45deg_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_nbrImg45deg.ForeColor = Color.Gray;
+        }
+        private void txtBox_nbrImg45deg_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(txtBox_nbrImg45deg.Text, out int valeur))
+                {
+                    txtBox_nbrImg45deg.ForeColor = Color.White;
+                    lbl_Serie45Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
+                }
+                else
+                {
+                    MessageBox.Show("SVP enter un nombre valide");
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+                UpdateSequencePadding();
+            }
+        }
+
+        private void txtBox_nomImages_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Empêche le son 'ding'
+            e.SuppressKeyPress = true;
+        }
+
+        private void txtBox_seqPad1_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_seqPad1.ForeColor = Color.Gray;
+        }
+
+        private void txtBox_seqPad1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(txtBox_seqPad1.Text, out int valeur))
+                {
+                    txtBox_seqPad1.ForeColor = Color.White;
+                }
+                else
+                {
+                    MessageBox.Show("SVP enter un nombre valide");
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void txtBox_seqPad2_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_seqPad2.ForeColor = Color.Gray;
+        }
+
+        private void txtBox_seqPad2_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(txtBox_seqPad2.Text, out int valeur))
+                {
+                    txtBox_seqPad2.ForeColor = Color.White;
+                }
+                else
+                {
+                    MessageBox.Show("SVP enter un nombre valide");
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void txtBox_seqPad3_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_seqPad3.ForeColor = Color.Gray;
+        }
+
+        private void txtBox_seqPad3_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(txtBox_seqPad3.Text, out int valeur))
+                {
+                    txtBox_seqPad3.ForeColor = Color.White;
+                }
+                else
+                {
+                    MessageBox.Show("SVP enter un nombre valide");
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void txtBox_nomImages_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_nomImages.ForeColor = Color.Gray;
+        }
+
+        private void txtBox_nomImages_KeyDown_1(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                AssembleImageName();
+                txtBox_nomImages.ForeColor = Color.White;
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
     }
 }

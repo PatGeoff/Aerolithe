@@ -59,7 +59,7 @@ namespace Aerolithe
 
                     projectDirectory = Path.GetDirectoryName(projectPath);
                     btn_goToProjectFolder.Enabled = true;
-                    btn_goToProjectFolder.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(projectPath)}";
+                    lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(projectPath)}";
 
 
                     SetImageFolder();
@@ -94,13 +94,12 @@ namespace Aerolithe
             projectPath = path;
             projectDirectory = Path.GetDirectoryName(projectPath);
             btn_goToProjectFolder.Enabled = true;
-            btn_goToProjectFolder.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(projectPath)}";
+            lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(projectPath)}" ;
 
 
             imagesFolderPath = prefs.ImageFolderPath;
             txtBox_nomImages.Text = prefs.ImageName;
-
-            btn_goToImageFolder.Text = imagesFolderPath;
+            
             btn_goToImageFolder.Enabled = true;
 
         }
@@ -142,10 +141,10 @@ namespace Aerolithe
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
                     imagesFolderPath = folderDialog.SelectedPath;
-                    btn_goToImageFolder.Text = imagesFolderPath;
                     btn_goToImageFolder.Enabled = true;
 
                     prefs.ImageFolderPath = imagesFolderPath;
+                    lbl_ImgFolderPath.Text = imagesFolderPath + "\\";
                     SavePrefsSettings();
                 }
             }
@@ -211,31 +210,34 @@ namespace Aerolithe
             }
         }
 
+        private void AssembleImageName()
+        {            
+            imageNameBase = txtBox_nomImages.Text + "-" + lbl_imgIncr.Text;
+            lbl_FullImageName.Text = imageNameBase + "_**.jpg";
+            SavePrefsSettings();
+        }
+
         public void IncrementImgSeq()
         {
             int inc;
-            if (int.TryParse(textBox_imgIncr.Text, out inc))
+            if (int.TryParse(lbl_imgIncr.Text, out inc))
             {
                 prefs.ImageIncrement = inc + 1;
-                textBox_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
-                imageNameBase = txtBox_nomImages.Text + "-" + textBox_imgIncr.Text;
-                prefs.ImageName = imageNameBase;
-                SavePrefsSettings();
+                lbl_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
+                AssembleImageName();
             }
         }
 
         public void DecrementImgSeq()
         {
             int inc;
-            if (int.TryParse(textBox_imgIncr.Text, out inc))
+            if (int.TryParse(lbl_imgIncr.Text, out inc))
             {
                 if (inc > 0)
                 {
                     prefs.ImageIncrement = inc - 1;
-                    textBox_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
-                    imageNameBase = txtBox_nomImages.Text + "-" + textBox_imgIncr.Text;
-                    prefs.ImageName = imageNameBase;
-                    SavePrefsSettings();
+                    lbl_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
+                    AssembleImageName();
                 }
             }
         }
@@ -379,6 +381,7 @@ namespace Aerolithe
             File.WriteAllText(SettingsFilePath, json);
         }
     }
+
 
 
 

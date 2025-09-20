@@ -377,9 +377,9 @@ namespace Aerolithe
                 lbl_actuatorAngle.Invoke((MethodInvoker)(() =>
                 {
                     lbl_actuatorAngle.Text = actuatorAngle.ToString();
-                    //AppendTextToConsoleNL("Label updated");
+                    lbl_actatorAngle_2.Text = "Actuateur:  " + actuatorAngle.ToString() + " degrés";
                 }));
-                await AppendTextToConsoleNL($"Angle de l'actuateur: {actuatorAngle.ToString()}");
+                //await AppendTextToConsoleNL($"Angle de l'actuateur: {actuatorAngle.ToString()}");
                 _actuatorAngleTcs?.SetResult(actuatorAngle);             
             
             }
