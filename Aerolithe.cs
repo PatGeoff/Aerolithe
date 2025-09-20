@@ -68,6 +68,7 @@ namespace Aerolithe
         public Aerolithe()
         {
             InitializeComponent();
+
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true; // Ensure the form receives key events
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
@@ -113,6 +114,7 @@ namespace Aerolithe
             SetTooltips();
             getActuatorAngleFromEsp32();
             getTurntablePosFromWaveshare();
+
             // _session = new InferenceSession(modelPath);
 
 
@@ -122,67 +124,11 @@ namespace Aerolithe
         private void SetTooltips()
         {
             System.Windows.Forms.ToolTip toolTipMask = new System.Windows.Forms.ToolTip();
-            toolTipMask.SetToolTip(btn_applyMask, "Appliquer le masque");
             System.Windows.Forms.ToolTip toolTipCutoff = new System.Windows.Forms.ToolTip();
             toolTipCutoff.SetToolTip(btn_displayLineBlack, "Afficher le cutoff");
 
         }
 
-        //private void CreateCustomFlowLayouPanels()
-        //{
-
-        //    customFlowLayoutPanel1 = new CustomFlowLayoutPanel
-        //    {
-        //        AutoScroll = false, // Disable AutoScroll
-        //        Dock = DockStyle.Fill // Adjust as needed
-        //    };
-        //    tableLayoutPanel7.Controls.Add(customFlowLayoutPanel1);
-        //    tableLayoutPanel7.SetRow(customFlowLayoutPanel1, 0);
-        //    tableLayoutPanel7.SetColumn(customFlowLayoutPanel1, 0);
-
-        //    customFlowLayoutPanel2 = new CustomFlowLayoutPanel
-        //    {
-        //        AutoScroll = false, // Disable AutoScroll
-        //        Dock = DockStyle.Fill // Adjust as needed
-        //    };
-        //    tableLayoutPanel7.Controls.Add(customFlowLayoutPanel2);
-        //    tableLayoutPanel7.SetRow(customFlowLayoutPanel2, 1);
-        //    tableLayoutPanel7.SetColumn(customFlowLayoutPanel2, 0);
-
-        //    customFlowLayoutPanel3 = new CustomFlowLayoutPanel
-        //    {
-        //        AutoScroll = false, // Disable AutoScroll
-        //        Dock = DockStyle.Fill // Adjust as needed
-        //    };
-        //    tableLayoutPanel7.Controls.Add(customFlowLayoutPanel3);
-        //    tableLayoutPanel7.SetRow(customFlowLayoutPanel3, 2);
-        //    tableLayoutPanel7.SetColumn(customFlowLayoutPanel3, 0);
-
-        //}
-
-
-        private async Task InitializeAsync()
-        {
-            //await CheckCommunication(); // Wait for CheckCommunication to complete
-
-            //if (waveshareAlive)
-            //{
-            //    await getTurntablePosFromWaveshare(); // Wait for getTurntablePosFromWaveshare to complete
-            //}
-            //else
-            //{
-            //    MessageBox.Show("Il y a un problème avec la table tournante.\n" +
-            //                    "Assurez-vous que le controlleur Waveshare est bien branché\n" +
-            //                    "Ensuite, redémarrez l'application.");
-            //}
-        }
-
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            udpClient?.Close();
-            udpClientOSC?.Close();
-            base.OnFormClosing(e);
-        }
 
 
         #region PROCÉDURE TAB
@@ -272,9 +218,11 @@ namespace Aerolithe
 
         private async void btn_takePicture_Click(object sender, EventArgs e)
         {
-            await takePictureAsync();
-            AppendTextToConsoleNL("takePictureAsync a mis ImageReadyTcs à true");
-            //takePictureAsync();
+            Stopwatch sw = Stopwatch.StartNew();
+            await takePictureAsync();  // attend que imageReadyTcs soit résolu   
+            sw.Stop();
+            string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", turntablePosition, true, tempsMs);
         }
 
 
@@ -574,7 +522,7 @@ namespace Aerolithe
             txtBox_Console.Clear();
         }
 
-        public async Task PhotoSuccess(string imageName, int degrees, bool success)
+        public async Task PhotoSuccess(string imageName, int degrees, bool success, string temps)
         {
 
             Action updateRichTextBox = () =>
@@ -585,7 +533,11 @@ namespace Aerolithe
 
                 // Append the imageName and degrees in white
                 richTextBox_PicReport.SelectionColor = Color.White;
-                richTextBox_PicReport.AppendText($"{imageName}\t{degrees} degrés\n");
+                string degreesStr = $"{degrees}".PadLeft(4);
+
+                richTextBox_PicReport.AppendText($"{imageName}\t{degreesStr} / 4096\t");
+
+                richTextBox_PicReport.AppendText($"{temps}s\n");
 
                 richTextBox_PicReport.ScrollToCaret();
 
@@ -1054,11 +1006,16 @@ namespace Aerolithe
                 ManualFocus(1, (double)hScrollBar_driveStep.Value);
                 focusStackStepVar -= 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
+                if (formsPlot != null)
+                {
+                    currentCrosshairX -= 1; 
+                    crosshair.X = currentCrosshairX; 
+                    UpdateCrosshairTitle(); 
+                    formsPlot.Refresh();
+                }
             }
             catch (Exception)
             {
-
-
             }
 
         }
@@ -1070,11 +1027,16 @@ namespace Aerolithe
                 ManualFocus(0, (double)hScrollBar_driveStep.Value);
                 focusStackStepVar += 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
+                if (formsPlot != null)
+                {
+                    currentCrosshairX += 1;
+                    crosshair.X = currentCrosshairX;
+                    UpdateCrosshairTitle();
+                    formsPlot.Refresh();
+                }
             }
             catch (Exception)
             {
-
-
             }
         }
 
@@ -1138,17 +1100,6 @@ namespace Aerolithe
 
         }
 
-        private void txtBox_DriveStep_TextChanged(object sender, EventArgs e)
-        {
-            try
-            {
-                hScrollBar_driveStep.Value = int.Parse(txtBox_DriveStep.Text);
-            }
-            catch (Exception)
-            {
-                MessageBox.Show("Valeur Invalide");
-            }
-        }
 
 
 
@@ -1283,16 +1234,29 @@ namespace Aerolithe
         {
             foreach (Panel panel in flowLayoutPanel1.Controls.OfType<Panel>())
             {
-
                 await Task.Run(() =>
                 {
                     this.Invoke((System.Windows.Forms.MethodInvoker)delegate
                     {
                         panel.Size = newSize;
+
+                        foreach (Control inner in panel.Controls.OfType<TableLayoutPanel>())
+                        {
+                            foreach (Control item in inner.Controls)
+                            {
+                                if (item is Label label)
+                                {
+                                    float newFontSize = Math.Max(6, newSize.Height / 20f); // ajustable
+                                    label.Font = new Font(label.Font.FontFamily, newFontSize);
+                                }
+
+                            }
+                        }
                     });
                 });
-
             }
+
+            await Task.CompletedTask;
         }
 
 
@@ -1860,6 +1824,25 @@ namespace Aerolithe
             {
                 AssembleImageName();
                 txtBox_nomImages.ForeColor = Color.White;
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void txtBox_DriveStep_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_DriveStep.ForeColor = Color.Gray;         
+        }
+
+        private void txtBox_DriveStep_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(txtBox_DriveStep.Text,  out int value))
+                {
+                    hScrollBar_driveStep.Value = value;
+                    txtBox_DriveStep.ForeColor = Color.White;
+                }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
             }

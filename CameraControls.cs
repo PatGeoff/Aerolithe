@@ -131,18 +131,7 @@ namespace Aerolithe
                                     SaveStreamAsJpegWithProgress(saveStream, outputPath, savingProgress, true).GetAwaiter().GetResult(); ;
                                     progressBar_ImageSave.Value = 0;
 
-                                    //if (picBox_holdOn.InvokeRequired || progressBar_ImageSave.InvokeRequired)
-                                    //{
-                                    //    picBox_holdOn.Invoke(new Action(() =>
-                                    //    {
-                                    //        picBox_holdOn.Visible = false;
-                                    //        progressBar_ImageSave.Value = 0;
-                                    //    }));
-                                    //}
-                                    //else
-                                    //{
-                                    //    picBox_holdOn.Visible = false;
-                                    //}
+                                   
                                 }
 
                                 // Affichage miniature
@@ -214,15 +203,15 @@ namespace Aerolithe
                                         };
 
 
-
                                         Label label = new Label
                                         {
                                             Text = nomImage,
-                                            TextAlign = ContentAlignment.MiddleCenter,
+                                            TextAlign = ContentAlignment.MiddleRight, // aligné à droite
                                             ForeColor = Color.White,
                                             Dock = DockStyle.Fill,
-                                            Font = new Font(FontFamily.GenericSansSerif, 8)
+                                            Font = new Font(FontFamily.GenericSansSerif, 6)
                                         };
+
 
                                         PictureBox pictureBox = new PictureBox
                                         {

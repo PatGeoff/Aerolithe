@@ -154,11 +154,7 @@ namespace Aerolithe
                             lbl_bluriness.Text = variance.ToString("F2");
                             //AppendTextToConsoleNL("Label updated");
                         }));
-                        lbl_blurinessView.Invoke((MethodInvoker)(() =>
-                        {
-                            lbl_blurinessView.Text = variance.ToString("F2");
-                            //AppendTextToConsoleNL("Label updated");
-                        }));
+                       
                     }
                     else
                     {
@@ -207,10 +203,7 @@ namespace Aerolithe
                                     lbl_blurinessMask.Text = variance.ToString("F2");
                                 }));
 
-                                lbl_blurinessViewMask.Invoke((MethodInvoker)(() =>
-                                {
-                                    lbl_blurinessViewMask.Text = variance.ToString("F2");
-                                }));
+                               
                             }
                             else
                             {

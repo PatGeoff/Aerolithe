@@ -10,6 +10,7 @@ using System.Windows.Forms.VisualStyles;
 using Emgu.CV.XImgproc;
 using System.Threading;
 using System.CodeDom;
+using System.Diagnostics;
 
 namespace Aerolithe
 {
@@ -75,6 +76,7 @@ namespace Aerolithe
 
         private async Task EssayerPrendrePhotoAsync(int imageIncr, int degres)
         {
+            Stopwatch sw = Stopwatch.StartNew();
             int essai = 0;
             bool focusReussi = false;
 
@@ -82,7 +84,9 @@ namespace Aerolithe
             {
                 try
                 {
+
                     await NikonAutofocus();
+                    await Task.Delay(1000); // laisse le temps au device.Capture de ne plus être "busy"
                     AppendTextToConsoleNL("Focus effectué avec succès");
                     focusReussi = true;
                 }
@@ -92,14 +96,20 @@ namespace Aerolithe
                     AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
                     if (essai >= 3)
                     {
-                        await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, false);
+                        await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, false, "-");
                     }
-                }               
+                }
             }
 
-            await takePictureAsync(); // attend que imageReadyTcs soit résolu
+            sw.Stop();
+            string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+            AppendTextToConsoleNL("Elapsed: " + tempsMs);
+            sw.Start(); 
+            await takePictureAsync(); 
+            sw.Stop();
+            tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
             AppendTextToConsoleNL("Image sauvegardée");
-            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true);
+            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true, tempsMs);
         }
 
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)

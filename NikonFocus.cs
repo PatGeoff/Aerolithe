@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using ScottPlot.WinForms;
 using ScottPlot;
 using System.Security.Permissions;
+using ScottPlot.Plottables;
 
 namespace Aerolithe
 {
@@ -21,6 +22,10 @@ namespace Aerolithe
         public Stopwatch sw;
         public int focusStackStepVar = 0;
         private bool _stopRequested = false;
+        public double currentCrosshairX = 0;
+        public ScottPlot.Plottables.Crosshair crosshair;
+        public ScottPlot.WinForms.FormsPlot formsPlot;
+
 
         public async Task nikonDoFocus()
         {
@@ -116,40 +121,110 @@ namespace Aerolithe
 
         }
 
+        private void UpdateFocusStepVarLbl(int position)
+        {
+            if (lbl_focusStepsVar.InvokeRequired)
+            {
+                lbl_focusStepsVar.Invoke(new Action(() =>
+                {
+                    lbl_focusStepsVar.Text = position.ToString();
+                }));
+            }
+            else
+            {
+                lbl_focusStepsVar.Text = position.ToString();
+            }
+        }
 
-        public async Task AutomaticFocusRoutine()
+        private void UpdateCrosshairTitle()
+        {
+            formsPlot.Plot.Title($"<<   X: {currentCrosshairX:F0}   >> ");
+        }
+
+
+        public async Task AutomaticFocusMapping()
         {
             int iterationCount = 25;
             int stepSize = (int)hScrollBar_driveStep.Value;
             int position = 0;
-            int delayTime = 50;
+            int delayTime = 75;
+            List<FocusMap> focusMaps = new List<FocusMap>();
+
+            await NikonAutofocus();
+
+            // Première passe : reculer (non stockée)    btn_focusMinus_Click:  ManualFocus(1,stepSize)
+            for (int i = 0; i < iterationCount; i++)
+            {
+                position -= 1;
+                ManualFocus(1, stepSize);
+                await Task.Delay(delayTime);
+                UpdateFocusStepVarLbl(position);
+            }
+
+
+            // Deuxième passe : avancer (stockée)        btn_focusPlus_Click: ManualFocus(0,stepSize) 
+            for (int i = -iterationCount; i <= iterationCount; i++)
+            {
+                position += 1;
+                ManualFocus(0, stepSize);
+                await Task.Delay(delayTime);
+                
+                UpdateFocusStepVarLbl(position);
+            }
+
+            // Troisième passe : reculer (non stockée)    btn_focusMinus_Click:  ManualFocus(1,stepSize)
+            for (int i = 0; i < iterationCount; i++)
+            {
+                position -= 1;
+                ManualFocus(1, stepSize);
+                await Task.Delay(delayTime);
+                UpdateFocusStepVarLbl(position);
+            }
+        }
+
+        public async Task AutomaticFocusRoutine()
+        {
+
+            await NikonAutofocus();
+
+
+            int iterationCount = 25;
+            int stepSize = (int)hScrollBar_driveStep.Value;
+            int position = 0;
+            int delayTime = 75;
 
             var blurDataDict = new Dictionary<int, (double blur, string direction)>();
 
-            // Première passe : avancer (non stockée)
-            for (int i = 0; i < iterationCount; i++)
+            // Première passe : reculer (non stockée)    btn_focusMinus_Click:  ManualFocus(1,stepSize)
+            for (int i = 0; i < iterationCount; i++)  
             {
+                position -= 1;
                 ManualFocus(1, stepSize);
                 await Task.Delay(delayTime);
-                //AppendTextToConsoleNL($"Avance {i}: {blurrynessAmountMask:F4}");
+                UpdateFocusStepVarLbl(position);
             }
 
-            // Deuxième passe : reculer (stockée)
-            for (int i = -iterationCount; i <= iterationCount; i++)
+
+            // Deuxième passe : avancer (stockée)        btn_focusPlus_Click: ManualFocus(0,stepSize) 
+            for (int i = -iterationCount; i <= iterationCount; i++) 
             {
+                position += 1;
                 ManualFocus(0, stepSize);
                 await Task.Delay(delayTime);
                 blurDataDict[i] = (blurrynessAmountMask, $"{stepSize}");
-                //AppendTextToConsoleNL($"Recule {i}: {blurrynessAmountMask:F4}");
+                UpdateFocusStepVarLbl(position);
             }
 
-            // Troisième passe : avancer (non stockée)
+            // Troisième passe : reculer (non stockée)    btn_focusMinus_Click:  ManualFocus(1,stepSize)
             for (int i = 0; i < iterationCount; i++)
             {
+                position -= 1;
                 ManualFocus(1, stepSize);
                 await Task.Delay(delayTime);
-                //AppendTextToConsoleNL($"Avance {i}: {blurrynessAmountMask:F4}");
+                UpdateFocusStepVarLbl(position);
             }
+
+            position = 0;
 
             double maxDelta = 0;
             double secondMaxDelta = 0;
@@ -191,39 +266,65 @@ namespace Aerolithe
             }
 
 
-
             AppendTextToConsoleNL($"Focus optimal détecté à la position : {bestIndex} avec un delta de flou de {maxDelta:F4}");
 
-            //// Retour à la position optimale
-            //int stepsToReturn = Math.Abs(bestIndex);
-            //bool goForward = bestIndex < 0;
+            // Retour à la position optimale
+            int stepsToReturn = Math.Abs(bestIndex);
+            bool goForward = bestIndex > 0;
 
-            //for (int i = 0; i < stepsToReturn; i++)
-            //{
-            //    if (goForward)
-            //        ManualFocus(1, stepSize);
-            //    else
-            //        ManualFocus(0, stepSize);
+            for (int i = 0; i < stepsToReturn; i++)
+            {
 
-            //    await Task.Delay(100);
-            //}
+                if (goForward)
+                {
+                    position += 1;
+                    ManualFocus(1, stepSize);
+                    UpdateFocusStepVarLbl(position);
+                }
 
-            //AppendTextToConsoleNL($"Retour effectué en direction {(goForward ? "avant" : "arrière")} sur {stepsToReturn} pas.");
+                else
+                {
+                    position -= 1;
+                    UpdateFocusStepVarLbl(position);
+                    ManualFocus(0, stepSize);
+                }
 
+                int focusStepCount = Math.Abs(bestIndex - secondBestIndex);
+
+                textBox_nbrFocusSteps.Text = focusStepCount.ToString();
+
+                //position = 0;
+
+                //if (lbl_focusStepsVar.InvokeRequired)
+                //{
+                //    lbl_focusStepsVar.Invoke(new Action(() =>
+                //    {
+                //        lbl_focusStepsVar.Text = position.ToString();
+                //    }));
+                //}
+                //else
+                //{
+                //    lbl_focusStepsVar.Text = position.ToString();
+                //}
+                await Task.Delay(100);
+            }
+
+           
             // 📊 Affichage du graphique
-            var formsPlot = new ScottPlot.WinForms.FormsPlot
+            formsPlot = new ScottPlot.WinForms.FormsPlot
             {
                 Dock = DockStyle.Fill
             };
 
             tabControl3.TabPages["tabPage15"].Controls.Clear();
             tabControl3.TabPages["tabPage15"].Controls.Add(formsPlot);
+            tabControl3.SelectedTab = tabControl3.TabPages["tabPage15"];
+
 
             // Préparation des données
             var blurDataList = blurDataDict.ToList();
             double[] xs = blurDataList.Select(pair => (double)pair.Key).ToArray();
             double[] ys = blurDataList.Select(pair => pair.Value.blur).ToArray();
-
 
             // Tracé principal
             formsPlot.Plot.Add.Scatter(xs, ys);
@@ -231,44 +332,42 @@ namespace Aerolithe
             // Styles
             formsPlot.Plot.DataBackground.Color = Colors.DarkGray;
 
-            var crosshair = formsPlot.Plot.Add.Crosshair(2, 5);
+            // Initialisation du crosshair
+            currentCrosshairX = bestIndex; // ou une autre valeur initiale
+            crosshair = formsPlot.Plot.Add.Crosshair(currentCrosshairX, blurDataDict[bestIndex].blur);
+            UpdateCrosshairTitle();
 
+            // Interaction souris
             formsPlot.MouseMove += (s, e) =>
             {
                 Pixel mousePixel = new(e.X, e.Y);
                 Coordinates mouseCoordinates = formsPlot.Plot.GetCoordinates(mousePixel);
 
-                double snappedX = Math.Round(mouseCoordinates.X);
-                crosshair.X = snappedX;
-
-                
-
-                formsPlot.Plot.Title($"<<   X: {snappedX:F0}   >> ");
+                currentCrosshairX = Math.Round(mouseCoordinates.X);
+                crosshair.X = currentCrosshairX;
+                UpdateCrosshairTitle();
                 formsPlot.Refresh();
             };
-
-
 
             // Titre et axes
             formsPlot.Plot.Title("Évolution du flou (seconde passe)");
             formsPlot.Plot.Axes.Bottom.Label.Text = "Position relative";
             formsPlot.Plot.Axes.Left.Label.Text = "Niveau de flou";
 
-            // Marqueur vertical pointillé pour le focus optimal
+            // Marqueurs verticaux
             var line = formsPlot.Plot.Add.VerticalLine(bestIndex);
             line.Color = ScottPlot.Colors.Red;
             var line2 = formsPlot.Plot.Add.VerticalLine(secondBestIndex);
             line2.Color = ScottPlot.Colors.Red;
-            //line.LineStyle = ScottPlot.LineStyle.Dash;
 
-
-            // Texte au-dessus du point optimal
+            // Texte au-dessus des points optimaux
             formsPlot.Plot.Add.Text($"Optimal: {bestIndex}", bestIndex, blurDataDict[bestIndex].blur + 0.05);
             formsPlot.Plot.Add.Text($"Optimal: {secondBestIndex}", secondBestIndex, blurDataDict[secondBestIndex].blur + 0.05);
             formsPlot.Refresh();
 
 
         }
+
 
         public async Task AutomaticFocusThenCapture()
         {
@@ -311,36 +410,7 @@ namespace Aerolithe
                     {
                         AppendTextToConsoleNL(e.Message);
                     }
-                   
-                    //string folder = txtBox_nomImages.Text + textBox_imgIncr.Text;
-                    //imagesFolderPath = Path.Combine(imagesFolderPath, folder);
-                    //// Vérifie si le dossier existe, sinon le crée
-                    //if (!Directory.Exists(imagesFolderPath))
-                    //{
-                    //    Directory.CreateDirectory(imagesFolderPath);
-                    //    AppendTextToConsoleNL("Dossier " + imagesFolderPath + " créé");
-                    //}
-                    //else
-                    //{
-
-                    //    string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.*")
-                    //            .Where(file => file.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                    //                           file.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                    //                           file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-                    //            .ToArray();
-
-                    //    foreach (string imageFile in imageFiles)
-                    //    {
-                    //        try
-                    //        {
-                    //            File.Delete(imageFile);
-                    //        }
-                    //        catch (Exception ex)
-                    //        {
-
-                    //        }
-                    //    }
-                    //}
+                                      
                 }
 
                 for (int i = 0; i < steps; i++)
@@ -380,7 +450,18 @@ namespace Aerolithe
                         stepBack = stepBack / 2;
                         for (int i = 0; i <= stepBack; i++)
                         {
-                            ManualFocus(1, stepSize);
+                            ManualFocus(1, stepSize);                            
+                            if (lbl_focusStepsVar.InvokeRequired)
+                            {
+                                lbl_focusStepsVar.Invoke(new Action(() =>
+                                {
+                                    lbl_focusStepsVar.Text = i.ToString();
+                                }));
+                            }
+                            else
+                            {
+                                lbl_focusStepsVar.Text = i.ToString();
+                            }
                             await Task.Delay(100);
                         }
                     }

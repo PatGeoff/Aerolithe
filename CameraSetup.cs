@@ -38,6 +38,8 @@ namespace Aerolithe
         private Image liveViewCompositedImage;
         private readonly object imageLock = new object();
         public Bitmap maskBitmapLive;
+        double blurThreshold = 100.0; // à ajuster selon ton setup
+
 
         public void CamSetup()
         {
@@ -154,11 +156,10 @@ namespace Aerolithe
 
         async void LiveViewTimer_Tick(object? sender, EventArgs e)
         {
-
             try
             {
                 if (!chkBox_liveView.Checked) chkBox_liveView.Checked = true;
-                // Attempt to get the live view image
+
                 imageView = device.GetLiveViewImage();
                 if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)
                 {
@@ -170,11 +171,9 @@ namespace Aerolithe
                         {
                             byte[] imageBytes = stream.ToArray();
                             CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
-
                             float gammaValue = trackBar_Gamma.Value / 10.0f;
 
-
-                            // Créer la LUT dans un tableau
+                            // LUT gamma correction
                             byte[] lutData = new byte[256];
                             for (int i = 0; i < 256; i++)
                             {
@@ -183,75 +182,210 @@ namespace Aerolithe
                                 lutData[i] = (byte)(Math.Min(255, corrected * 255.0));
                             }
 
-                            // Convertir le tableau en Mat
-                            Mat lut = new Mat(1, 256, DepthType.Cv8U, 1);
-                            System.Runtime.InteropServices.Marshal.Copy(lutData, 0, lut.DataPointer, lutData.Length);
+                            using (Mat lut = new Mat(1, 256, DepthType.Cv8U, 1))
+                            {
+                                System.Runtime.InteropServices.Marshal.Copy(lutData, 0, lut.DataPointer, lutData.Length);
+                                CvInvoke.LUT(background, lut, background);
+                            }
 
-                            // Appliquer la LUT
-                            CvInvoke.LUT(background, lut, background);
-
-                            // Affichage brut du LiveView
+                            // Affichage brut
                             picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
 
-                            
-
-                            // Génération du masque de luminosité
+                            // Masque de luminosité
                             maskBitmapLive = BrightnessMaskFromStream(stream, hScrollBar_liveMaskThresh.Value);
                             picBox_liveMaskLum.Image = maskBitmapLive;
 
-                            // Application du masque à l'image LiveView
-                            var sourceImage = background.ToImage<Bgr, byte>();
-                            var maskGray = maskBitmapLive.ToImage<Gray, byte>();
-
-                            var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
-                            //CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(hScrollBar_blurAmountMask.Value, hScrollBar_blurAmountMask.Value), 0);
-                            if(checkBox_ApplyBlur.Checked)
+                            using (var sourceImage = background.ToImage<Bgr, byte>())
+                            using (var maskGray = maskBitmapLive.ToImage<Gray, byte>())
+                            using (var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear))
                             {
-                                CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(3,3), 0);
-                                CvInvoke.Threshold(resizedMask, resizedMask, 128, 255, ThresholdType.Binary);
+                                if (checkBox_ApplyBlur.Checked)
+                                {
+                                    CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(3, 3), 0);
+                                    CvInvoke.Threshold(resizedMask, resizedMask, 128, 255, ThresholdType.Binary);
+                                }
+
+                                using (var invertedMask = resizedMask.Not())
+                                using (var maskBgr = invertedMask.Convert<Bgr, byte>())
+                                {
+                                    sourceImage._And(maskBgr);
+                                    picBox_MLMask.Image = sourceImage.ToBitmap();
+                                }
+
+                                // ❌ Calcul du flou global (désactivé)
+                                await Task.Run(async () => await CalculDuFlou(stream));
+                                await Task.Run(async () => await CalculDuFlouFromImage(sourceImage));
+
+                                // ✅ Calcul de la carte de netteté locale
+                                Mat grayImage = background.ToImage<Gray, byte>().Mat;
+                                int blockSize = trackBar_blobCount.Value * 16;
+
+                                double[,] sharpnessGrid = ComputeSharpnessGrid(grayImage, blockSize);
+
+                                // Tu peux stocker cette carte dans une variable globale ou l'utiliser dans AutomaticFocusMapping()
+                                currentLiveViewFocusMap = new FocusMap
+                                {
+                                    FocusPosition = focusStackStepVar, // à définir selon ton système <-----  @(*#%&(@&$(&$  ICI
+                                    SharpnessGrid = sharpnessGrid
+                                };
+
+                                // Création de l'image avec les blocs flous
+                                Image<Bgr, byte> overlayImage = background.ToImage<Bgr, byte>();
+                                
+
+                                for (int y = 0; y < sharpnessGrid.GetLength(0); y++)
+                                {
+                                    for (int x = 0; x < sharpnessGrid.GetLength(1); x++)
+                                    {
+                                        double sharpness = sharpnessGrid[y, x];
+                                        blurThreshold = (double)trackBar_blurThreshold.Value;
+                                        if (sharpness >= blurThreshold)
+                                        {
+                                            Rectangle rect = new Rectangle(x * blockSize, y * blockSize, blockSize, blockSize);
+                                            overlayImage.Draw(rect, new Bgr(Color.LimeGreen), 1); // contour verte pour les zones nettes
+                                        }
+
+                                    }
+                                }
+
+                                int blurredBlocks = sharpnessGrid.Cast<double>().Count(v => v >= blurThreshold);
+                                lbl_blobCount.Text = blurredBlocks.ToString();
+
+
+                                // Affichage selon l'état de la checkbox
+                                if (checkBox_ShowSharpnessOverlay.Checked)
+                                {
+                                    picBox_LiveView_Main.Image = overlayImage.ToBitmap();
+                                }
+                                else
+                                {
+                                    picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
+                                }
+
+
                             }
 
+                            lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";
 
-                            //CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(0,0), 0);
+                           
 
-                            var invertedMask = resizedMask.Not();
-                            var maskBgr = invertedMask.Convert<Bgr, byte>();
 
-                            sourceImage._And(maskBgr);
-                            picBox_MLMask.Image = sourceImage.ToBitmap();
-
-                            // Calcul du flou en tâche de fond
-                            Task.Run(async () => await CalculDuFlou(stream));
-                            await Task.Run(async () => await CalculDuFlouFromImage(sourceImage));
-
-                            // Libération mémoire
-                            maskGray.Dispose();
-                            resizedMask.Dispose();
-                            invertedMask.Dispose();
-                            maskBgr.Dispose();
-                            sourceImage.Dispose();
-
-                            lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";                           
                         }
                     }
                 }
-
                 else
                 {
                     liveViewStatus = false;
-                    // Display placeholder image if live view is not enabled or image is invalid
                     picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
                 }
-
-
             }
             catch (NikonException ex)
             {
-                // Handle Nikon-specific exceptions
                 Console.WriteLine("NikonException: " + ex.Message);
                 picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
             }
         }
+
+        //async void LiveViewTimer_Tick(object? sender, EventArgs e)
+        //{
+
+        //    try
+        //    {
+        //        if (!chkBox_liveView.Checked) chkBox_liveView.Checked = true;
+        //        // Attempt to get the live view image
+        //        imageView = device.GetLiveViewImage();
+        //        if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)
+        //        {
+        //            liveViewStatus = true;
+
+        //            using (Mat background = new Mat())
+        //            {
+        //                using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
+        //                {
+        //                    byte[] imageBytes = stream.ToArray();
+        //                    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
+
+        //                    float gammaValue = trackBar_Gamma.Value / 10.0f;
+
+
+        //                    // Créer la LUT dans un tableau
+        //                    byte[] lutData = new byte[256];
+        //                    for (int i = 0; i < 256; i++)
+        //                    {
+        //                        double normalized = i / 255.0;
+        //                        double corrected = Math.Pow(normalized, gammaValue);
+        //                        lutData[i] = (byte)(Math.Min(255, corrected * 255.0));
+        //                    }
+
+        //                    // Convertir le tableau en Mat
+        //                    Mat lut = new Mat(1, 256, DepthType.Cv8U, 1);
+        //                    System.Runtime.InteropServices.Marshal.Copy(lutData, 0, lut.DataPointer, lutData.Length);
+
+        //                    // Appliquer la LUT
+        //                    CvInvoke.LUT(background, lut, background);
+
+        //                    // Affichage brut du LiveView
+        //                    picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
+
+
+
+        //                    // Génération du masque de luminosité
+        //                    maskBitmapLive = BrightnessMaskFromStream(stream, hScrollBar_liveMaskThresh.Value);
+        //                    picBox_liveMaskLum.Image = maskBitmapLive;
+
+        //                    // Application du masque à l'image LiveView
+        //                    var sourceImage = background.ToImage<Bgr, byte>();
+        //                    var maskGray = maskBitmapLive.ToImage<Gray, byte>();
+
+        //                    var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
+        //                    //CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(hScrollBar_blurAmountMask.Value, hScrollBar_blurAmountMask.Value), 0);
+        //                    if(checkBox_ApplyBlur.Checked)
+        //                    {
+        //                        CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(3,3), 0);
+        //                        CvInvoke.Threshold(resizedMask, resizedMask, 128, 255, ThresholdType.Binary);
+        //                    }
+
+
+        //                    //CvInvoke.GaussianBlur(resizedMask, resizedMask, new Size(0,0), 0);
+
+        //                    var invertedMask = resizedMask.Not();
+        //                    var maskBgr = invertedMask.Convert<Bgr, byte>();
+
+        //                    sourceImage._And(maskBgr);
+        //                    picBox_MLMask.Image = sourceImage.ToBitmap();
+
+        //                    // Calcul du flou en tâche de fond
+        //                    Task.Run(async () => await CalculDuFlou(stream));
+        //                    await Task.Run(async () => await CalculDuFlouFromImage(sourceImage));
+
+        // Libération mémoire
+        //                      maskGray.Dispose();
+        //                    resizedMask.Dispose();
+        //                    invertedMask.Dispose();
+        //                    maskBgr.Dispose();
+        //                    sourceImage.Dispose();
+
+        //                    lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";                           
+        //                }
+        //            }
+        //        }
+
+        //        else
+        //        {
+        //            liveViewStatus = false;
+        //            // Display placeholder image if live view is not enabled or image is invalid
+        //            picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+        //        }
+
+
+        //    }
+        //    catch (NikonException ex)
+        //    {
+        //        // Handle Nikon-specific exceptions
+        //        Console.WriteLine("NikonException: " + ex.Message);
+        //        picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+        //    }
+        //}
 
 
 
