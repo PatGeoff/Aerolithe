@@ -49,14 +49,12 @@ namespace Aerolithe
             if (imageReadyTcs != null && !imageReadyTcs.Task.IsCompleted)
             {
                 imageReadyTcs.SetResult(true);
-                AppendTextToConsoleNL("IMAGE READY");
             }
             try
             {
                 if (image.Type == NikonImageType.Jpeg)
                 {
                    
-                    AppendTextToConsoleNL("Image importée, traitement en cours...");
                     try
                     {
                         using (var memoryStream = new MemoryStream(image.Buffer))
@@ -64,6 +62,7 @@ namespace Aerolithe
                         {
                             Bitmap finalBitmap;
 
+                            // Application du masque
                             if (chkBox_applyMask.Checked)
                             {
                                 var sourceImage = originalBitmap.ToImage<Bgr, byte>();
@@ -93,166 +92,24 @@ namespace Aerolithe
                             picBox_pictureTaken.Image?.Dispose();
                             picBox_pictureTaken.Image = finalBitmap;
 
-                          
-
-
-
-
+                           
                             // Sauvegarde si activée
-                            if (chkBox_savePicture.Checked && imagesFolderPath != null && imageNameBase != null)
+                            if (chkBox_savePicture.Checked && projet.ImageFolderPath != null && projet.ImageNameBase != null)
                             {
-                                if (imageIncr == oldImgIncr)
-                                {
-                                    imageIncr++;
-                                }
-                                oldImgIncr = imageIncr;
-
-                                string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
-                                string outputPath = Path.Combine(imagesFolderPath, nomImage);
-
+                                PreparationDossierDestTemp();
+                                PreparationNomImage();
+                               
                                 AppendTextToConsoleNL("Sauvegarde de la photo. Ceci peut prendre quelques secondes...");
 
                                 using (var saveStream = new MemoryStream())
                                 {
                                     finalBitmap.Save(saveStream, ImageFormat.Jpeg);
                                     saveStream.Position = 0;
-
-                                    var savingProgress = new Progress<int>(percent =>
-                                    {
-                                        if (percent != lastPercent)
-                                        {
-                                            Invoke((MethodInvoker)(() =>
-                                            {
-                                                progressBar_ImageSave.Value = percent;
-                                            }));
-                                            lastPercent = percent;
-                                        }
-                                    });
-                                    SaveStreamAsJpegWithProgress(saveStream, outputPath, savingProgress, true).GetAwaiter().GetResult(); ;
-                                    progressBar_ImageSave.Value = 0;
-
-                                   
+                                    SaveStreamAsJpegWithProgress(saveStream, projet.ImageFullPath);
+                                    AfficherMiniatures(projet.ImageNameBase, projet.ImageFullPath, panelSize);
                                 }
 
-                                // Affichage miniature
-                                try
-                                {
-                                    using (Image originalImage = System.Drawing.Image.FromFile(outputPath))
-                                    {
-                                        Image resizedImage = ResizeImage(originalImage, 150, 100);
-
-                                        Panel borderPanel = new Panel
-                                        {
-                                            Size = panelSize,
-                                            BorderStyle = BorderStyle.FixedSingle
-                                        };
-
-                                        TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
-                                        {
-                                            ColumnCount = 2,
-                                            RowCount = 2,
-                                            Dock = DockStyle.Fill
-                                        };
-
-                                        // Ajout des colonnes
-                                        tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 85F)); // Pour le label
-                                        tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F)); // Pour le bouton
-
-                                        // Ajout des lignes
-                                        tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F)); // Ligne du label + bouton
-                                        tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Ligne de l'image
-
-                                        Button deleteButton = new Button
-                                        {
-                                            Text = "X",
-                                            Dock = DockStyle.Fill,
-                                            Font = new Font(FontFamily.GenericSansSerif, 6),
-                                            BackColor = Color.Black,
-                                            ForeColor = Color.White,
-                                            Margin = new Padding(0),
-                                            FlatStyle = FlatStyle.Flat
-                                        };
-
-                                        deleteButton.Click += (s, e) =>
-                                        {
-                                            var result = MessageBox.Show(
-                                                "Voulez-vous aussi supprimer le fichier sur le disque ?",
-                                                "Suppression de l'image",
-                                                MessageBoxButtons.YesNo,
-                                                MessageBoxIcon.Question
-                                            );
-
-                                            if (result == DialogResult.Yes)
-                                            {
-                                                try
-                                                {
-                                                    string imagePath = Path.Combine(imagesFolderPath, nomImage);
-                                                    if (File.Exists(imagePath))
-                                                    {
-                                                        File.Delete(imagePath);
-                                                    }
-                                                }
-                                                catch (Exception ex)
-                                                {
-                                                    MessageBox.Show($"Erreur lors de la suppression du fichier : {ex.Message}");
-                                                }
-                                            }
-
-                                            flowLayoutPanel1.Controls.Remove(borderPanel);
-                                            borderPanel.Dispose();
-                                        };
-
-
-                                        Label label = new Label
-                                        {
-                                            Text = nomImage,
-                                            TextAlign = ContentAlignment.MiddleRight, // aligné à droite
-                                            ForeColor = Color.White,
-                                            Dock = DockStyle.Fill,
-                                            Font = new Font(FontFamily.GenericSansSerif, 6)
-                                        };
-
-
-                                        PictureBox pictureBox = new PictureBox
-                                        {
-                                            Image = resizedImage,
-                                            SizeMode = PictureBoxSizeMode.Zoom,
-                                            Dock = DockStyle.Fill
-                                        };
-
-                                        new ToolTip().SetToolTip(pictureBox, nomImage);
-
-                                        string imagePath = Path.Combine(imagesFolderPath, nomImage); // nomImage = label.Text
-
-
-                                        pictureBox.Click += (sender, e) =>
-                                        {
-                                            try
-                                            {
-                                                ImageViewerForm viewer = new ImageViewerForm(imagePath);
-                                                viewer.Show();
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                MessageBox.Show($"Erreur à l'ouverture de l'image : {ex.Message}");
-                                            }
-                                        };
-
-                                        tableLayoutPanel.Controls.Add(label, 0, 0);
-                                        tableLayoutPanel.Controls.Add(deleteButton, 1, 0);
-                                        tableLayoutPanel.SetColumnSpan(pictureBox, 2); // image sur toute la largeur
-                                        tableLayoutPanel.Controls.Add(pictureBox, 0, 1);
-
-                                        borderPanel.Controls.Add(tableLayoutPanel);
-
-                                        flowLayoutPanel1.Controls.Add(borderPanel);
-                                        flowLayoutPanel1.ScrollControlIntoView(borderPanel);
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    AppendTextToConsoleNL($"Erreur lors de l'affichage miniature : {ex.Message}");
-                                }
+                                
                             }
                         }
                     }
@@ -271,6 +128,133 @@ namespace Aerolithe
             {
                 MessageBox.Show("device_ImageReady exception: " + ex.Message);
                 imageReadyTcs?.TrySetException(ex);
+            }
+        }
+
+        private void AfficherMiniatures(string nomImage, string imagePath, Size panelSize)
+        {
+            string nomImageModifie = Path.GetFileName(imagePath).Split(".")[0];
+
+
+
+            try
+            {
+                
+
+                using (Image originalImage = System.Drawing.Image.FromFile(imagePath))
+                {
+                    Image resizedImage = ResizeImage(originalImage, 150, 100);
+
+                    Panel borderPanel = new Panel
+                    {
+                        Size = panelSize,
+                        BorderStyle = BorderStyle.FixedSingle
+                    };
+
+                    TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
+                    {
+                        ColumnCount = 2,
+                        RowCount = 2,
+                        Dock = DockStyle.Fill
+                    };
+
+                    // Ajout des colonnes
+                    tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 85F)); // Pour le label
+                    tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F)); // Pour le bouton
+
+                    // Ajout des lignes
+                    tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F)); // Ligne du label + bouton
+                    tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Ligne de l'image
+
+                    Button deleteButton = new Button
+                    {
+                        Text = "X",
+                        Dock = DockStyle.Fill,
+                        Font = new Font(FontFamily.GenericSansSerif, 6),
+                        BackColor = Color.Black,
+                        ForeColor = Color.White,
+                        Margin = new Padding(0),
+                        FlatStyle = FlatStyle.Flat
+                    };
+
+                    deleteButton.Click += (s, e) =>
+                    {
+                        var result = MessageBox.Show(
+                            "Voulez-vous aussi supprimer le fichier sur le disque ?",
+                            "Suppression de l'image",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question
+                        );
+
+                        if (result == DialogResult.Yes)
+                        {
+                            try
+                            {
+                                if (File.Exists(imagePath))
+                                {
+                                    File.Delete(imagePath);
+                                }
+
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show($"Erreur lors de la suppression du fichier : {ex.Message}");
+                            }
+                        }
+
+                        flowLayoutPanel1.Controls.Remove(borderPanel);
+                        borderPanel.Dispose();
+                    };
+
+
+                    Label label = new Label
+                    {
+                        Text = nomImageModifie,
+                        TextAlign = ContentAlignment.MiddleRight, // aligné à droite
+                        ForeColor = Color.White,
+                        Dock = DockStyle.Fill,
+                        Font = new Font(FontFamily.GenericSansSerif, 6)
+                    };
+
+
+                    PictureBox pictureBox = new PictureBox
+                    {
+                        Image = resizedImage,
+                        SizeMode = PictureBoxSizeMode.Zoom,
+                        Dock = DockStyle.Fill
+                    };
+
+                    
+                    new ToolTip().SetToolTip(pictureBox, imagePath);
+
+
+                    pictureBox.Click += (sender, e) =>
+                    {
+                        try
+                        {
+                            ImageViewerForm viewer = new ImageViewerForm(imagePath);
+                            viewer.Show();
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Erreur à l'ouverture de l'image : {ex.Message}");
+                        }
+                    };
+
+                    tableLayoutPanel.Controls.Add(label, 0, 0);
+                    tableLayoutPanel.Controls.Add(deleteButton, 1, 0);
+                    tableLayoutPanel.SetColumnSpan(pictureBox, 2); // image sur toute la largeur
+                    tableLayoutPanel.Controls.Add(pictureBox, 0, 1);
+
+                    borderPanel.Controls.Add(tableLayoutPanel);
+
+                    flowLayoutPanel1.Controls.Add(borderPanel);
+                    flowLayoutPanel1.ScrollControlIntoView(borderPanel);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur lors de l'affichage miniature : {ex.Message}");
             }
         }
 
@@ -300,36 +284,10 @@ namespace Aerolithe
         }
 
 
-        public async Task SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath, IProgress<int>? progress, bool addBrush)
+        public async Task SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath)
         {
-            //AppendTextToConsoleNL($"Saving image to {outputPath}");
-
             // Create an Image object from the stream
             Image image = System.Drawing.Image.FromStream(imageStream);
-
-
-            if (customPen.IsVisible && addBrush)
-            {
-
-                // Create a Graphics object from the image
-                using (Graphics g = Graphics.FromImage(image))
-                {
-                    // Calculate the scaling ratio
-                    float scaleX = (float)image.Width / pnl_DrawingLiveView.Width;
-                    float scaleY = (float)image.Height / pnl_DrawingLiveView.Height;
-
-                    // Scale the brush drawing to the image ratio
-                    int scaledY = (int)(startY * scaleY);
-                    int scaledHeight = (int)((pnl_DrawingLiveView.Height - startY) * scaleY);
-
-                    // Draw the brush on the image
-                    using (Brush brush = new SolidBrush(Color.White)) // Zero transparency white brush
-                    {
-                        g.FillRectangle(brush, 0, scaledY, image.Width, scaledHeight);
-                    }
-                }
-
-            }
 
             // Save the image to a temporary stream
             using (MemoryStream tempStream = new MemoryStream())
@@ -349,20 +307,11 @@ namespace Aerolithe
                     while ((bytesRead = tempStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         fileStream.Write(buffer, 0, bytesRead);
-                        totalBytesRead += bytesRead;
-
-                        if (progress != null)
-                        {
-                            // Report progress
-                            int percentComplete = (int)((totalBytesRead * 100) / totalLength);
-                            progress.Report(percentComplete);
-                        }
-
+                        totalBytesRead += bytesRead;                        
                     }
                 }
             }
         }
-
 
 
         private void ManualFocus(int up, double newFocusValue)

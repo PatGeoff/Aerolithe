@@ -38,7 +38,6 @@ namespace Aerolithe
         private Image liveViewCompositedImage;
         private readonly object imageLock = new object();
         public Bitmap maskBitmapLive;
-        double blurThreshold = 100.0; // à ajuster selon ton setup
 
 
         public void CamSetup()
@@ -73,12 +72,12 @@ namespace Aerolithe
 
                 // Hook up device capture events
                 device.ImageReady += new ImageReadyDelegate(device_ImageReady);
-                AppendTextToConsoleNL("device_ImageReady delegate added");
+                //AppendTextToConsoleNL("device_ImageReady delegate added");
                 //device.ThumbnailReady += new ThumbnailReadyDelegate(OnThumbnailReady);
                 device.CaptureComplete += new CaptureCompleteDelegate(device_CaptureComplete);
                 //device.PreviewReady += new PreviewReadyDelegate(device_PreviewReady);
                 device.Progress += new ProgressDelegate(OnNikonProgress);
-                AppendTextToConsoleNL("device_OnProgress delegate added");
+                //AppendTextToConsoleNL("device_OnProgress delegate added");
                 deviceLoaded();
             }
             catch (NikonException ex)
@@ -248,7 +247,7 @@ namespace Aerolithe
                                     }
                                 }
 
-                                int blurredBlocks = sharpnessGrid.Cast<double>().Count(v => v >= blurThreshold);
+                                blurredBlocks = sharpnessGrid.Cast<double>().Count(v => v >= blurThreshold);
                                 lbl_blobCount.Text = blurredBlocks.ToString();
 
 
@@ -261,15 +260,8 @@ namespace Aerolithe
                                 {
                                     picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
                                 }
-
-
                             }
-
                             lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";
-
-                           
-
-
                         }
                     }
                 }
@@ -392,7 +384,7 @@ namespace Aerolithe
 
         private void device_CaptureComplete(NikonDevice device, int data)
         {
-            //AppendTextToConsoleNL("Capture Complete");
+            AppendTextToConsoleNL("Capture Complétée");
         }
         private void OnNikonProgress(NikonDevice sender, eNkMAIDDataObjType type, int done, int total)
         {

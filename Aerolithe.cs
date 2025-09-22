@@ -68,34 +68,38 @@ namespace Aerolithe
         public Aerolithe()
         {
             InitializeComponent();
-
+            InitClasses();
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true; // Ensure the form receives key events
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
-            settings = settings.Load();
-            if (!string.IsNullOrEmpty(settings.ProjectPath))
+            appSettings = appSettings.Load();
+            if (!string.IsNullOrEmpty(appSettings.ProjectPath))
             {
                 try
                 {
-                    prefs = prefs.Load(settings.ProjectPath);
-                    OpenProject(settings.ProjectPath);
-                    if (!string.IsNullOrWhiteSpace(prefs.ImageFolderPath))
+                    projet = projet.Load(appSettings.ProjectPath);
+                    OpenProject(appSettings.ProjectPath);
+                    if (!string.IsNullOrWhiteSpace(projet.ImageFolderPath))
                     {
-                        imagesFolderPath = prefs.ImageFolderPath;
-                        lbl_ImgFolderPath.Text = imagesFolderPath + "\\";
+                        lbl_ImgFolderPath.Text = projet.ImageFolderPath + "\\";
+                    }
+                    
+
+                    if (!string.IsNullOrWhiteSpace(projet.ImageNameBase)) {
+                        lbl_imgIncr.Text = projet.ImageIncrement.ToString("D2");                        
+                        projet.ImageNameFull = projet.ImageNameBase + "_" + lbl_imgIncr.Text + ".jpg";
+                        projet.ImageFullPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameFull);
+                        lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
+                        txtBox_nomImages.Text = projet.ImageNameBase.Split("-")[0];
                     }
 
 
-                    if (!string.IsNullOrWhiteSpace(prefs.ImageName))
-                        imageNameBase = prefs.ImageName + "-" + prefs.ImageIncrement.ToString("D2");
-
-                    if (!string.IsNullOrWhiteSpace(prefs.FocusStackedPath))
+                    if (!string.IsNullOrWhiteSpace(projet.FocusStackPath))
                     {
-                        focusStackedPath = prefs.FocusStackedPath;
-                        lbl_StackedPath.Text = focusStackedPath;
+                        lbl_StackedPath.Text = projet.FocusStackPath;
                     }
-                    lbl_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
-                    lbl_FullImageName.Text = imageNameBase + "_**.jpg";
+                    
+                    
                 }
                 catch (Exception e)
                 {
@@ -104,6 +108,7 @@ namespace Aerolithe
 
             }
             CamSetup();
+            ToolTipsSetup();
             ButtonSetup();
             InitializeUdpClient();
             Task.Run(() => listenUDP());
@@ -116,7 +121,6 @@ namespace Aerolithe
             getTurntablePosFromWaveshare();
 
             // _session = new InferenceSession(modelPath);
-
 
         }
 
@@ -222,7 +226,7 @@ namespace Aerolithe
             await takePictureAsync();  // attend que imageReadyTcs soit résolu   
             sw.Stop();
             string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", turntablePosition, true, tempsMs);
+            await PhotoSuccess(projet.ImageNameFull, turntablePosition, true, tempsMs);
         }
 
 
@@ -522,9 +526,9 @@ namespace Aerolithe
             txtBox_Console.Clear();
         }
 
+        
         public async Task PhotoSuccess(string imageName, int degrees, bool success, string temps)
         {
-
             Action updateRichTextBox = () =>
             {
                 // Append the success status in green or red
@@ -729,7 +733,7 @@ namespace Aerolithe
         {
             if (btn_goToProjectFolder.Enabled)
             {
-                OpenExplorerAtProjectPath(projectPath);
+                OpenExplorerAtProjectPath(appSettings.ProjectPath);
             }
         }
 
@@ -743,7 +747,7 @@ namespace Aerolithe
         {
             if (btn_goToImageFolder.Enabled)
             {
-                OpenExplorerAtProjectPath(imagesFolderPath);
+                OpenExplorerAtProjectPath(projet.ImageFolderPath);
             }
         }
 
@@ -755,7 +759,7 @@ namespace Aerolithe
             {
                 if (folder.Contains("."))
                 {
-                    folder = Path.GetDirectoryName(projectPath);
+                    folder = Path.GetDirectoryName(appSettings.ProjectPath);
 
                 }
                 string argument = "/select, \"" + folder + "\"";
@@ -946,11 +950,11 @@ namespace Aerolithe
 
         private void QueryProject()
         {
-            if (projectPath == null)
+            if (appSettings.ProjectPath == null)
             {
                 SavePrefsSettings();  // Demande à setter le projet
             }
-            if (projectPath == null)
+            if (appSettings.ProjectPath == null)
             {
                 return;  // Cancel la prise de photo si le projet n'est pas setté parce que Cancel a été choisi
             }
@@ -1006,13 +1010,13 @@ namespace Aerolithe
                 ManualFocus(1, (double)hScrollBar_driveStep.Value);
                 focusStackStepVar -= 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
-                if (formsPlot != null)
-                {
-                    currentCrosshairX -= 1; 
-                    crosshair.X = currentCrosshairX; 
-                    UpdateCrosshairTitle(); 
-                    formsPlot.Refresh();
-                }
+                //if (formsPlot != null)
+                //{
+                //    currentCrosshairX -= 1;
+                //    crosshair.X = currentCrosshairX;
+                //    UpdateCrosshairTitle();
+                //    formsPlot.Refresh();
+                //}
             }
             catch (Exception)
             {
@@ -1027,13 +1031,13 @@ namespace Aerolithe
                 ManualFocus(0, (double)hScrollBar_driveStep.Value);
                 focusStackStepVar += 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
-                if (formsPlot != null)
-                {
-                    currentCrosshairX += 1;
-                    crosshair.X = currentCrosshairX;
-                    UpdateCrosshairTitle();
-                    formsPlot.Refresh();
-                }
+                //if (formsPlot != null)
+                //{
+                //    currentCrosshairX += 1;
+                //    crosshair.X = currentCrosshairX;
+                //    UpdateCrosshairTitle();
+                //    formsPlot.Refresh();
+                //}
             }
             catch (Exception)
             {
@@ -1108,16 +1112,9 @@ namespace Aerolithe
             AutomaticFocusRoutine();
         }
 
-        private void comboBox_EmguConversion_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            selectedConversion = (ColorConversion)comboBox_EmguConversion.SelectedItem;
-        }
+       
 
-        private void comboBox_EmguColor_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (comboBox_EmguColor.SelectedIndex == 3) { comboBox_EmguConversion.SelectedIndex = 12; }
-            else { comboBox_EmguConversion.SelectedIndex = 48; }
-        }
+      
 
         private void btn_liveViewStatus_Click(object sender, EventArgs e)
         {
@@ -1261,51 +1258,7 @@ namespace Aerolithe
 
 
 
-        private void btn_applyMask_Click(object sender, EventArgs e)
-        {
-            applyMaskToLiveView = applyMaskToLiveView ? false : true;
-
-
-            if (chkBox_background1.Checked)
-            {
-                try
-                {
-                    background = CvInvoke.Imread(backgroundImage_1, ImreadModes.Color);
-                }
-                catch (Exception ex)
-                {
-                    AppendTextToConsoleNL(ex.Message);
-                    return;
-                }
-
-            }
-            else if (chkBox_background2.Checked)
-            {
-                try
-                {
-                    background = CvInvoke.Imread(backgroundImage_2, ImreadModes.Color);
-                }
-                catch (Exception ex)
-                {
-                    AppendTextToConsoleNL(ex.Message);
-                    return;
-                }
-
-            }
-            else if (chkBox_background3.Checked)
-            {
-                try
-                {
-                    background = CvInvoke.Imread(backgroundImage_3, ImreadModes.Color);
-                }
-                catch (Exception ex)
-                {
-                    AppendTextToConsoleNL(ex.Message);
-                    return;
-                }
-
-            }
-        }
+       
 
         private void btn_toggleBW_Click(object sender, EventArgs e)
         {
@@ -1405,10 +1358,10 @@ namespace Aerolithe
 
         private void picBox_pictureTaken_DoubleClick(object sender, EventArgs e)
         {
-            if (picBox_pictureTaken.Image != null && imagesFolderPath != null && imageNameBase != null)
+            if (picBox_pictureTaken.Image != null && projet.ImageFolderPath != null && projet.ImageNameBase != null)
             {
-                string nomImage = imageNameBase + "_" + imageIncr + ".jpg";
-                string imagePath = Path.Combine(imagesFolderPath, nomImage);
+                
+                string imagePath = Path.Combine(projet.TempImageFolderPath, projet.ImageNameFull);
 
                 if (File.Exists(imagePath))
                 {
@@ -1422,7 +1375,7 @@ namespace Aerolithe
             }
             else
             {
-                MessageBox.Show($"le dossier de l'image ({imagesFolderPath}) et le nom de l'image ({imageNameBase}) ne sont pas bons");
+                MessageBox.Show($"le dossier de l'image ({projet.ImageFolderPath}) et le nom de l'image ({projet.ImageNameFull}) ne sont pas bons");
             }
         }
 
@@ -1458,7 +1411,7 @@ namespace Aerolithe
         {
             if (btn_goToImageFolder.Enabled)
             {
-                OpenExplorerAtProjectPath(imagesFolderPath);
+                OpenExplorerAtProjectPath(projet.ImageFolderPath);
             }
         }
 
@@ -1619,7 +1572,11 @@ namespace Aerolithe
         {
             focusStackStepVar = 0;
             lbl_focusStepsVar.Text = focusStackStepVar.ToString();
-            AutomaticFocusThenCapture();
+            if (int.TryParse(textBox_nbrFocusSteps.Text, out int LocalIterations))
+            {
+
+                AutomaticFocusThenCapture(LocalIterations);
+            }
         }
 
         private void btn_incrImgSeq_Click(object sender, EventArgs e)
@@ -1658,9 +1615,9 @@ namespace Aerolithe
 
         private void btn_GotoStackedFolder_Click(object sender, EventArgs e)
         {
-            if (Directory.Exists(focusStackedPath))
+            if (Directory.Exists(projet.FocusStackPath))
             {
-                System.Diagnostics.Process.Start("explorer.exe", focusStackedPath);
+                System.Diagnostics.Process.Start("explorer.exe", projet.FocusStackPath);
             }
         }
 
@@ -1831,14 +1788,14 @@ namespace Aerolithe
 
         private void txtBox_DriveStep_TextChanged(object sender, EventArgs e)
         {
-            txtBox_DriveStep.ForeColor = Color.Gray;         
+            txtBox_DriveStep.ForeColor = Color.Gray;
         }
 
         private void txtBox_DriveStep_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_DriveStep.Text,  out int value))
+                if (int.TryParse(txtBox_DriveStep.Text, out int value))
                 {
                     hScrollBar_driveStep.Value = value;
                     txtBox_DriveStep.ForeColor = Color.White;
@@ -1846,6 +1803,95 @@ namespace Aerolithe
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
             }
+        }
+
+        private void trackBar_blobCount_Scroll(object sender, EventArgs e)
+        {
+            lbl_BlockAmountBlurDetet.Text = (trackBar_blobCount.Value * 16).ToString();
+        }
+
+        private void trackBar_blurThreshold_Scroll(object sender, EventArgs e)
+        {
+            lbl_ResBlurDetect.Text = trackBar_blurThreshold.Value.ToString();
+        }
+
+        private void textBox_minDetect_TextChanged(object sender, EventArgs e)
+        {
+            textBox_minDetect.ForeColor = Color.Gray;
+        }
+
+        private void textBox_minDetect_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(textBox_minDetect.Text, out int value))
+                {
+                    textBox_minDetect.ForeColor = Color.White;
+                    minDetect = value;
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void textBox_FocusFreqSpeed_TextChanged(object sender, EventArgs e)
+        {
+            textBox_FocusFreqSpeed.ForeColor = Color.Gray;
+        }
+
+        private void textBox_FocusFreqSpeed_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(textBox_FocusFreqSpeed.Text, out int value))
+                {
+                    textBox_FocusFreqSpeed.ForeColor = Color.White;
+                    delayTime = value;
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void textBox_FocusIterations_TextChanged(object sender, EventArgs e)
+        {
+            textBox_FocusIterations.ForeColor = Color.Gray;
+        }
+
+        private void textBox_FocusIterations_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(textBox_FocusIterations.Text, out int value))
+                {
+                    textBox_FocusIterations.ForeColor = Color.White;
+                    iterations = value;
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void btn_tempButtonTest_Click(object sender, EventArgs e)
+        {
+            PreparationDossierDestTemp();
+        }
+
+        private void checkBox_StackAuto_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBox_StackAuto.Checked) {
+                checkBox_SeqFocusStack.Checked = true;
+            }
+            else checkBox_SeqFocusStack.Checked = false;
+        }
+
+        private void checkBox_SeqFocusStack_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBox_SeqFocusStack.Checked)
+            {
+                checkBox_StackAuto.Checked = true;
+            }
+            else checkBox_StackAuto.Checked = false;
         }
     }
 }

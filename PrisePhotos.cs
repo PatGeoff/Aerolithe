@@ -21,7 +21,7 @@ namespace Aerolithe
         private int nombreImages45Degres = 14;
         private int actuatorDelay1 = 5000; // secondes
         private int actuatorDelay2 = 9000; // secondes
-        public int delayTimePhotoShoot = 1000; 
+        public int delayTimePhotoShoot = 1000;
         private bool working = false;
         private int imageIncr = 0;
         public CancellationTokenSource cancellationTokenSource;
@@ -29,10 +29,10 @@ namespace Aerolithe
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)
         {
-            if (projectPath == null)
+            if (appSettings.ProjectPath == null)
             {
                 SavePrefsSettings();  // Demande à setter le projet
-                if (projectPath == null)
+                if (appSettings.ProjectPath == null)
                 {
                     MessageBox.Show("Pour faire la prise de photo en séquence, il faut définir un projet");
                     return;
@@ -52,26 +52,39 @@ namespace Aerolithe
             await Task.Delay(200);
             int divider = 4096 / serieId[serie];
 
-            try
+            for (int i = 1; i <= serieId[serie]; i++)
             {
-                for (int i = 1; i <= serieId[serie]; i++)
+                cancellationToken.ThrowIfCancellationRequested();
+                int degres = (i - 1) * divider;
+                ttTargetPosition = degres;
+                await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
+                await WaitForTurntablePositionAsync(degres, cancellationToken);
+                AppendTextToConsoleNL("nouvelle position de la table est atteinte");
+                AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres} degrés d'écart");
+                imageIncr = i - 1 + paddingNbr[serie];
+
+                if (checkBox_SeqFocusStack.Checked)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    int degres = (i - 1) * divider;
-                    ttTargetPosition = degres;
-                    await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-                    await WaitForTurntablePositionAsync(degres, cancellationToken);
-                    AppendTextToConsoleNL("nouvelle position de la table est atteinte");                    
-                    AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres} degrés d'écart");
-                    imageIncr = i - 1 + paddingNbr[serie];
-                    await EssayerPrendrePhotoAsync(imageIncr, degres);                   
+                    try
+                    {
+
+                        await AutomaticFocusRoutine();
+                        AppendTextToConsoleNL("Delta = " + delta.ToString());
+                        await AutomaticFocusThenCapture(delta);
+                    }
+                    catch (Exception e)
+                    {
+                        AppendTextToConsoleNL(e.Message);
+                        throw;
+                    }
                 }
+                else
+                {
+                    await EssayerPrendrePhotoAsync(imageIncr, degres);
+                }
+
             }
-            catch (OperationCanceledException)
-            {
-                AppendTextToConsoleNL("Photo sequence cancelled.");
-                return;
-            }
+
         }
 
         private async Task EssayerPrendrePhotoAsync(int imageIncr, int degres)
@@ -96,7 +109,8 @@ namespace Aerolithe
                     AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
                     if (essai >= 3)
                     {
-                        await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, false, "-");
+                        await PhotoSuccess(projet.ImageNameFull, degres, false, "-");
+                        
                     }
                 }
             }
@@ -104,12 +118,12 @@ namespace Aerolithe
             sw.Stop();
             string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
             AppendTextToConsoleNL("Elapsed: " + tempsMs);
-            sw.Start(); 
-            await takePictureAsync(); 
+            sw.Start();
+            await takePictureAsync();
             sw.Stop();
             tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
             AppendTextToConsoleNL("Image sauvegardée");
-            await PhotoSuccess(imageNameBase + "_" + imageIncr + ".jpg", degres, true, tempsMs);
+            await PhotoSuccess(projet.ImageNameFull, degres, true, tempsMs);
         }
 
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
@@ -117,7 +131,7 @@ namespace Aerolithe
             await UdpSendActuatorMessageAsync("actuator 5");
             cancellationToken.ThrowIfCancellationRequested();
             await WaitForActuatorPosition(5, cancellationToken);
-            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());           
+            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
             currentSequence = 0;
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
@@ -230,21 +244,6 @@ namespace Aerolithe
             }
         }
 
-        private void UpdateSequencePadding()
-        {
-            int pad1, pad2, pad3, qte1, qte2, qte3;
-            qte1 = int.Parse(txtBox_nbrImg5deg.Text); 
-            qte2 = int.Parse(txtBox_nbrImg25deg.Text);
-            qte3 = int.Parse(txtBox_nbrImg45deg.Text);
-            pad1 = int.Parse(txtBox_seqPad1.Text);
-            pad2 = qte1 + pad1;
-            pad3 = qte2 + pad2;
-            txtBox_seqPad2.Text = pad2.ToString();
-            txtBox_seqPad3.Text = pad3.ToString();
-            txtBox_seqPad1.ForeColor = Color.White;
-            txtBox_seqPad2.ForeColor = Color.White;
-            txtBox_seqPad3.ForeColor = Color.White;
-
-        }
+       
     }
 }

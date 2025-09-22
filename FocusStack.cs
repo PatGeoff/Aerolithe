@@ -59,107 +59,44 @@ namespace Aerolithe
 
         public async Task MakeFocusStackSerie()
         {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(async () => await MakeFocusStackSerie()));
+                return;
+            }
+
             listBox_focusStackImg.Items.Clear();
 
-            string folderPath = imagesFolderPath;
+            string folderPath = projet.TempImageFolderPath;
             string[] extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
 
-            // Convertir en tableau pour permettre l'accès par index
             var imageFiles = Directory.GetFiles(folderPath)
                                       .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
                                       .ToArray();
-            // Suggestion de nom basé sur le premier fichier
+
             if (imageFiles.Length > 0)
             {
-
-                // Vérifie si le dossier existe, sinon le crée
-                if (!Directory.Exists(focusStackedPath))
+                if (!Directory.Exists(projet.FocusStackPath))
                 {
-                    Directory.CreateDirectory(focusStackedPath);
-                    MessageBox.Show("Dossier " + focusStackedPath + " créé");
+                    Directory.CreateDirectory(projet.FocusStackPath);
+                    MessageBox.Show("Dossier " + projet.FocusStackPath + " créé");
                 }
+
                 string baseName = Path.GetFileNameWithoutExtension(imageFiles[0]);
-                baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", ""); // Supprime le suffixe _01, _02, etc.
+                baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
                 string suggestedFileName = baseName + "_stacked.jpg";
-                focusStackOutputPath = Path.Combine(focusStackedPath, suggestedFileName);
+                focusStackOutputPath = Path.Combine(projet.FocusStackPath, suggestedFileName);
             }
             else
             {
-                AppendTextToConsoleNL("erreur ici");
+                AppendTextToConsoleNL("Aucune image trouvée dans le dossier.");
                 return;
             }
+
             await RunFocusStack(imageFiles);
         }
 
-        //public async Task RunFocusStack(string[] imagePaths)
-        //{
-        //    string exePath = Path.Combine(Application.StartupPath, "MyResources", "Focus-stack", "focus-stack.exe");
-
-        //    if (!File.Exists(exePath))
-        //    {
-        //        MessageBox.Show("focus-stack.exe introuvable !");
-        //        return;
-        //    }
-
-        //    string outputImage = focusStackOutputPath;
-
-        //    string args = $"--output=\"{outputImage}\" " + string.Join(" ", imagePaths.Select(p => $"\"{p}\""));
-
-        //    ProcessStartInfo psi = new ProcessStartInfo
-        //    {
-        //        FileName = exePath,
-        //        Arguments = args,
-        //        UseShellExecute = false,
-        //        RedirectStandardOutput = true,
-        //        RedirectStandardError = true,
-        //        CreateNoWindow = true
-        //    };
-
-        //    using (Process process = new Process())
-        //    {
-        //        process.StartInfo = psi;
-
-        //        // Événements pour lire la sortie en temps réel
-        //        process.OutputDataReceived += async (sender, e) =>
-        //        {
-        //            if (!string.IsNullOrEmpty(e.Data))
-        //                await AppendTextToConsoleNL(e.Data);
-        //        };
-
-        //        process.ErrorDataReceived += async (sender, e) =>
-        //        {
-        //            if (!string.IsNullOrEmpty(e.Data))
-        //                await AppendTextToConsoleNL(e.Data);
-        //        };
-
-        //        process.Start();
-
-        //        process.BeginOutputReadLine();
-        //        process.BeginErrorReadLine();
-
-        //        await Task.Run(() => process.WaitForExit());
-
-        //        if (process.ExitCode == 0 && File.Exists(outputImage))
-        //        {
-        //            if (picBox_FocusStackedImage.InvokeRequired)
-        //            {
-        //                picBox_FocusStackedImage.Invoke(() =>
-        //                {
-        //                    picBox_FocusStackedImage.Image = System.Drawing.Image.FromFile(outputImage);
-        //                });
-        //            }
-        //            else
-        //            {
-        //                picBox_FocusStackedImage.Image = System.Drawing.Image.FromFile(outputImage);
-        //            }
-        //        }
-        //        else
-        //        {
-        //            MessageBox.Show("Erreur lors du traitement.");
-        //        }
-        //    }
-        //}
-
+     
         public async Task RunFocusStack(string[] imagePaths)
         {
             string exePath = Path.Combine(Application.StartupPath, "MyResources", "Focus-stack", "focus-stack.exe");

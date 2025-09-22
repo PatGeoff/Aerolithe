@@ -17,16 +17,15 @@ namespace Aerolithe
 
     public partial class Aerolithe : Form
     {
-        private static string projectPath = null;
-        private static string projectDirectory = null;
-        public static string imagesFolderPath = null;
-        public static string focusStackedPath = null;
-        public static string imageNameBase = null;
-        private static string backgroundImage_1, backgroundImage_2, backgroundImage_3;
-        private ColorConversion selectedConversion = ColorConversion.BayerBg2Bgr;
+        public AppSettings appSettings;
+        public ProjectPreferences projet;
 
-        public Settings settings = new Settings();
-        public Preferences prefs = new Preferences();
+        private void InitClasses()
+        {
+            appSettings = new AppSettings();
+            projet = new ProjectPreferences();
+        }
+
 
         private void CreateNewProject()
         {
@@ -35,15 +34,15 @@ namespace Aerolithe
             {
                 saveFileDialog.Filter = "Project Files (*.aero)|*.aero|All Files (*.*)|*.*";
                 saveFileDialog.Title = "Create New Project";
-                if (projectPath != null)
+                if (appSettings.ProjectPath != null)
                 {
-                    saveFileDialog.InitialDirectory = projectPath;
+                    saveFileDialog.InitialDirectory = appSettings.ProjectPath;
                 }
 
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    projectPath = saveFileDialog.FileName;
-                    string projectName = Path.GetFileNameWithoutExtension(projectPath).Replace(" ", "_");
+                    appSettings.ProjectPath = saveFileDialog.FileName;
+                    string projectName = Path.GetFileNameWithoutExtension(appSettings.ProjectPath).Replace(" ", "_");
 
 
                     if (projectName.Contains("."))
@@ -52,14 +51,14 @@ namespace Aerolithe
                         return;
                     }
 
-                    if (!File.Exists(projectPath))
+                    if (!File.Exists(appSettings.ProjectPath))
                     {
-                        File.Create(projectPath).Dispose();
+                        File.Create(appSettings.ProjectPath).Dispose();
                     }
 
-                    projectDirectory = Path.GetDirectoryName(projectPath);
+                    string projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
                     btn_goToProjectFolder.Enabled = true;
-                    lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(projectPath)}";
+                    lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}";
 
 
                     SetImageFolder();
@@ -74,16 +73,16 @@ namespace Aerolithe
             {
                 openFileDialog.Filter = "Project Files (*.aero)|*.aero|All Files (*.*)|*.*";
                 openFileDialog.Title = "Select Project File";
-                if (projectPath != null)
+                if (appSettings.ProjectPath != null)
                 {
-                    openFileDialog.InitialDirectory = projectPath;
+                    openFileDialog.InitialDirectory = appSettings.ProjectPath;
                 }
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    projectPath = openFileDialog.FileName;
-                    Debug.WriteLine(projectPath);
-                    OpenProject(projectPath);
+                    appSettings.ProjectPath = openFileDialog.FileName;
+                    Debug.WriteLine(appSettings.ProjectPath);
+                    OpenProject(appSettings.ProjectPath);
                     SavePrefsSettings();
                 }
             }
@@ -91,14 +90,10 @@ namespace Aerolithe
 
         public void OpenProject(string path)
         {
-            projectPath = path;
-            projectDirectory = Path.GetDirectoryName(projectPath);
+            string projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
             btn_goToProjectFolder.Enabled = true;
-            lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(projectPath)}" ;
-
-
-            imagesFolderPath = prefs.ImageFolderPath;
-            txtBox_nomImages.Text = prefs.ImageName;
+            lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}" ;
+            txtBox_nomImages.Text = projet.ImageNameBase.Split("-")[0];
             
             btn_goToImageFolder.Enabled = true;
 
@@ -106,45 +101,40 @@ namespace Aerolithe
 
         public void SavePrefsSettings()
         {
-            if (projectPath == null)
+            if (appSettings.ProjectPath == null)
             {
                 MessageBox.Show("Svp sauvegarder ou ouvrir un projet");
                 return;
             }
-            settings.ProjectPath = projectPath;
-            prefs.ImageFolderPath = imagesFolderPath;
-            prefs.ImageName = txtBox_nomImages.Text;
-            settings.Save();
-            prefs.Save(projectPath);
+            projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_imgIncr.Text;
+            appSettings.Save();
+            projet.Save(appSettings.ProjectPath);
         }
 
         private void SetImageFolder()
         {
-            if (projectPath == null)
+            if (appSettings.ProjectPath == null)
             {
                 CreateNewProject();
             }
 
-            projectDirectory = Path.GetDirectoryName(projectPath);
-            imagesFolderPath = Path.Combine(projectDirectory, "Images");
+            
 
-            if (!Directory.Exists(imagesFolderPath))
+            if (!Directory.Exists(projet.ImageFolderPath))
             {
-                Directory.CreateDirectory(imagesFolderPath);
+                Directory.CreateDirectory(projet.ImageFolderPath);
             }
 
             using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
             {
                 folderDialog.Description = "Select or create the folder to save images in";
-                folderDialog.SelectedPath = imagesFolderPath;
+                folderDialog.SelectedPath = projet.ImageFolderPath;
 
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    imagesFolderPath = folderDialog.SelectedPath;
+                    projet.ImageFolderPath = folderDialog.SelectedPath;
                     btn_goToImageFolder.Enabled = true;
-
-                    prefs.ImageFolderPath = imagesFolderPath;
-                    lbl_ImgFolderPath.Text = imagesFolderPath + "\\";
+                    lbl_ImgFolderPath.Text = projet.ImageFolderPath + "\\";
                     SavePrefsSettings();
                 }
             }
@@ -153,20 +143,19 @@ namespace Aerolithe
 
         public void SetStackedImageFolderPath()
         {
-            if (projectPath == null)
+            if (appSettings.ProjectPath == null)
             {
                 CreateNewProject();
             }
             using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
             {
                 folderDialog.Description = "Select or create the folder to save images in";
-                folderDialog.SelectedPath = imagesFolderPath;
+                folderDialog.SelectedPath = projet.ImageFolderPath;
 
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    focusStackedPath = folderDialog.SelectedPath;
-                    prefs.FocusStackedPath = focusStackedPath;
-                    lbl_StackedPath.Text = focusStackedPath;
+                    projet.FocusStackPath = folderDialog.SelectedPath;
+                    lbl_StackedPath.Text = projet.FocusStackPath;
                     SavePrefsSettings();
                 }
 
@@ -184,6 +173,22 @@ namespace Aerolithe
             comboBox_EmguConversion.SelectedIndex = 12;
         }
 
+        private void UpdateSequencePadding()
+        {
+            int pad1, pad2, pad3, qte1, qte2, qte3;
+            qte1 = int.Parse(txtBox_nbrImg5deg.Text);
+            qte2 = int.Parse(txtBox_nbrImg25deg.Text);
+            qte3 = int.Parse(txtBox_nbrImg45deg.Text);
+            pad1 = int.Parse(txtBox_seqPad1.Text);
+            pad2 = qte1 + pad1;
+            pad3 = qte2 + pad2;
+            txtBox_seqPad2.Text = pad2.ToString();
+            txtBox_seqPad3.Text = pad3.ToString();
+            txtBox_seqPad1.ForeColor = Color.White;
+            txtBox_seqPad2.ForeColor = Color.White;
+            txtBox_seqPad3.ForeColor = Color.White;
+
+        }
         private void PopulateColorColorDropdown()
         {
 
@@ -210,10 +215,34 @@ namespace Aerolithe
             }
         }
 
+        private void PreparationDossierDestTemp()
+        {
+            projet.TempImageFolderPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameBase.Split("-")[0], lbl_imgIncr.Text);
+            if (!Directory.Exists(projet.TempImageFolderPath))
+            {
+                Directory.CreateDirectory(projet.TempImageFolderPath);
+            }
+        }
+
+        private void PreparationNomImage()
+        {
+            if (imageIncr == oldImgIncr)
+            {
+                imageIncr++;
+            }
+            oldImgIncr = imageIncr;
+
+            projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_imgIncr.Text;
+            projet.ImageNameFull = projet.ImageNameBase + "_" + imageIncr.ToString("D2") + ".jpg";
+            projet.ImageFullPath = Path.Combine(projet.TempImageFolderPath, projet.ImageNameFull);
+        }
+
+
         private void AssembleImageName()
-        {            
-            imageNameBase = txtBox_nomImages.Text + "-" + lbl_imgIncr.Text;
-            lbl_FullImageName.Text = imageNameBase + "_**.jpg";
+        {
+            projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_imgIncr.Text;
+            
+            lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
             SavePrefsSettings();
         }
 
@@ -222,8 +251,8 @@ namespace Aerolithe
             int inc;
             if (int.TryParse(lbl_imgIncr.Text, out inc))
             {
-                prefs.ImageIncrement = inc + 1;
-                lbl_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
+                projet.ImageIncrement = inc + 1;
+                lbl_imgIncr.Text = projet.ImageIncrement.ToString("D2");
                 AssembleImageName();
             }
         }
@@ -235,13 +264,13 @@ namespace Aerolithe
             {
                 if (inc > 0)
                 {
-                    prefs.ImageIncrement = inc - 1;
-                    lbl_imgIncr.Text = prefs.ImageIncrement.ToString("D2");
+                    projet.ImageIncrement = inc - 1;
+                    lbl_imgIncr.Text = projet.ImageIncrement.ToString("D2");
                     AssembleImageName();
                 }
             }
         }
-
+        
         public void DeleteAllPicturesInFolderWithPrompt()
         {
             flowLayoutPanel1.Controls.Clear();
@@ -256,7 +285,7 @@ namespace Aerolithe
             {
                 try
                 {
-                    string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.jpg"); // ou *.png, *.jpeg, etc.
+                    string[] imageFiles = Directory.GetFiles(projet.ImageFolderPath, "*.jpg"); // ou *.png, *.jpeg, etc.
                     foreach (string file in imageFiles)
                     {
                         File.Delete(file);
@@ -276,7 +305,7 @@ namespace Aerolithe
 
             try
             {
-                string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.jpg"); // ou *.png, *.jpeg, etc.
+                string[] imageFiles = Directory.GetFiles(projet.ImageFolderPath, "*.jpg"); // ou *.png, *.jpeg, etc.
                 foreach (string file in imageFiles)
                 {
                     File.Delete(file);
@@ -290,32 +319,118 @@ namespace Aerolithe
             }
 
         }
+
+        private void ToolTipsSetup()
+        {
+            ToolTip toolTip = new ToolTip();
+
+            // Configuration générale (facultatif)
+            toolTip.AutoPopDelay = 5000;
+            toolTip.InitialDelay = 200;
+            toolTip.ReshowDelay = 200;
+            toolTip.ShowAlways = true;
+
+            // ToolTips spécifiques
+            toolTip.SetToolTip(textBox_FocusIterations, "Nombre de steps effectués d'un côté ou l'autre à partir de la position après l'autofocus");
+            toolTip.SetToolTip(textBox_FocusFreqSpeed, "Délai en millisecondes entre chaque focus.");
+            toolTip.SetToolTip(lbl_ResBlurDetect, "Résolution de la netteté, généralement autour de 100.");
+            toolTip.SetToolTip(lbl_BlockAmountBlurDetet, "Grosseur des carrés de détection, les valeurs étant 16,32,64 ou 128");
+            toolTip.SetToolTip(textBox_minDetect, "Seuil minimum de détections pour considérer une image d'avoir une partie nette.");
+
+        }
+
     }
 
-    public class Preferences
+    // Les appSettings du projet 
+    public class ProjectPreferences
     {
-        public string ImageFolderPath { get; set; }
-        public string FocusStackedPath { get; set; }
+     
 
-        public string ImageBaseName { get; set; }
-        public string ImageName { get; set; }
-        public int ImageIncrement { get; set; }
-        public string BackgroundImage1 { get; set; }
-        public string BackgroundImage2 { get; set; }
-        public string BackgroundImage3 { get; set; }
+        private string _imageNameBase;
+        private string _imageNameFull;
+        private string _imageFolderPath;
+        private string _tempImageFolderPath;
+        private string _imageFullPath;
+        private string _focusStackPath;
+        private int _imageIncrement;
+        
 
-        public Preferences Load(string filePath)
+        public string ImageNameBase
+        {
+            get => _imageNameBase;
+            set
+            {
+                _imageNameBase = value;
+                Debug.WriteLine(_imageNameBase);
+                
+            }
+        }
+        public string ImageNameFull
+        {
+            get => _imageNameFull;
+            set
+            {
+                _imageNameFull = value;
+                Debug.WriteLine(_imageNameFull);
+            }
+        }
+        public string ImageFolderPath
+        {
+            get => _imageFolderPath;
+            set
+            {
+                _imageFolderPath = value;
+                Debug.WriteLine(_imageFolderPath);
+            }
+        }
+        public string TempImageFolderPath
+        {
+            get => _tempImageFolderPath;
+            set
+            {
+                _tempImageFolderPath = value;
+                Debug.WriteLine(_tempImageFolderPath);
+            }
+        }
+        public string ImageFullPath
+        {
+            get => _imageFullPath;
+            set
+            {
+                _imageFullPath = value;
+                Debug.WriteLine(_imageFullPath);
+            }
+        }
+        public string FocusStackPath
+        {
+            get =>_focusStackPath;
+            set
+            {
+                _focusStackPath = value;
+            }
+        }
+        public int ImageIncrement
+        {
+            get => _imageIncrement;
+            set 
+            {
+                _imageIncrement = value;
+            }
+        }
+        
+
+        public ProjectPreferences Load(string filePath)
         {
 
             if (!File.Exists(filePath))
             {
-                var defaultPrefs = new Preferences();
+                var defaultPrefs = new ProjectPreferences();
                 defaultPrefs.Save(filePath);
                 return defaultPrefs;
             }
 
             string json = File.ReadAllText(filePath);
-            return JsonConvert.DeserializeObject<Preferences>(json) ?? new Preferences();
+            return JsonConvert.DeserializeObject<ProjectPreferences>(json) ?? new ProjectPreferences();
 
         }
 
@@ -326,21 +441,22 @@ namespace Aerolithe
         }
     }
 
-    public class Settings
+    // Les appSettings de l'application Aerolithe
+    public class AppSettings 
     {
         private static readonly string FolderPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "Aerolithe"
         );
 
-        private static readonly string SettingsFilePath = Path.Combine(FolderPath, "settings.json");
+        private static readonly string SettingsFilePath = Path.Combine(FolderPath, "appSettings.json");
 
         public string ProjectPath { get; set; }
 
         public int MaskIntensity { get; set; }
 
 
-        public Settings Load()
+        public AppSettings Load()
         {
             // Crée le dossier Aerolithe s'il n'existe pas
             if (!Directory.Exists(FolderPath))
@@ -351,7 +467,7 @@ namespace Aerolithe
             // Si le fichier n'existe pas, créer des paramètres par défaut
             if (!File.Exists(SettingsFilePath))
             {
-                var defaultSettings = new Settings();
+                var defaultSettings = new AppSettings();
                 defaultSettings.Save();
                 return defaultSettings;
             }
@@ -359,13 +475,13 @@ namespace Aerolithe
             try
             {
                 string json = File.ReadAllText(SettingsFilePath);
-                var settings = JsonConvert.DeserializeObject<Settings>(json) ?? new Settings();
+                var settings = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
                 return settings;
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Erreur lors du chargement des paramètres : " + ex.Message);
-                return new Settings(); // Retourne des paramètres par défaut en cas d'erreur
+                return new AppSettings(); // Retourne des paramètres par défaut en cas d'erreur
             }
         }
 
@@ -382,8 +498,7 @@ namespace Aerolithe
         }
     }
 
-
-
+   
 
 
 }
