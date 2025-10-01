@@ -38,6 +38,7 @@ namespace Aerolithe
                     return;
                 }
             }
+                        
 
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
             await Task.Delay(200);
@@ -52,42 +53,124 @@ namespace Aerolithe
             await Task.Delay(200);
             int divider = 4096 / serieId[serie];
 
-            for (int i = 1; i <= serieId[serie]; i++)
+            await ResetIncrementation();
+
+            AppendTextToConsoleNL("Série " + (serie+1).ToString() + ": " + serieId[serie].ToString() + " photos");
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                int degres = (i - 1) * divider;
-                ttTargetPosition = degres;
-                await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-                await WaitForTurntablePositionAsync(degres, cancellationToken);
-                AppendTextToConsoleNL("nouvelle position de la table est atteinte");
-                AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres} degrés d'écart");
-                imageIncr = i - 1 + paddingNbr[serie];
-
-                if (checkBox_SeqFocusStack.Checked)
+                for (int i = 1; i <= serieId[serie]; i++)
                 {
-                    try
+                    PreparationDossierDestTemp();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    int degres = (i - 1) * divider;
+                    ttTargetPosition = degres;
+                    await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
+                    await WaitForTurntablePositionAsync(degres, cancellationToken);
+                    AppendTextToConsoleNL("nouvelle position de la table est atteinte");
+                    AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres} degrés d'écart");
+                    projet.ImageIncrement = i - 1 + paddingNbr[serie];
+                    PreparationNomImage();
+                    if (checkBox_SeqFocusStack.Checked)
                     {
+                        try
+                        {
+                            await AutomaticFocusRoutine();
+                            AppendTextToConsoleNL("Delta = " + delta.ToString());
+                            await AutomaticFocusThenCapture(delta);
+                        }
+                        catch (Exception e)
+                        {
+                            AppendTextToConsoleNL(e.Message);
+                            //throw;
+                            return;
+                        }
 
-                        await AutomaticFocusRoutine();
-                        AppendTextToConsoleNL("Delta = " + delta.ToString());
-                        await AutomaticFocusThenCapture(delta);
+
+
+                        if (checkBox_SeqFocusStack.Checked || checkBox_StackAuto.Checked)
+                        {
+                            AppendTextToConsoleNL("Focus Stack lancé");
+                            MakeFocusStackSerie();
+                            // appliquer le masque si nécessaire. 
+                            if (checkBox_ApplyMaskStackedImage.Checked)
+                            {
+                                //Invoke(new Action(async () =>
+                                //{
+                                //    btn_stopAutomaticFocusCapture.Visible = false;
+                                //    btn_stopAutomaticFocusCapture.Enabled = false;
+
+                                //    if (int.TryParse(textBox_nbrFocusSteps.Text, out int stepBack))
+                                //    {
+                                //        stepBack = stepBack / 2;
+                                //        for (int i = 0; i <= stepBack; i++)
+                                //        {
+                                //            ManualFocus(1, stepSize);
+                                //            if (lbl_focusStepsVar.InvokeRequired)
+                                //            {
+                                //                lbl_focusStepsVar.Invoke(new Action(() =>
+                                //                {
+                                //                    lbl_focusStepsVar.Text = i.ToString();
+                                //                }));
+                                //            }
+                                //            else
+                                //            {
+                                //                lbl_focusStepsVar.Text = i.ToString();
+                                //            }
+                                //            await Task.Delay(100);
+                                //        }
+                                //    }
+                                //    if (checkBox_ApplyMaskStackedImage.Checked)
+                                //    {
+                                //        PostFocusStackMask();
+                                //    }
+
+                                //}));
+                                await AppliquerMasqueEtFocusStepAsync();
+                            }
+                        }
+
                     }
-                    catch (Exception e)
+                    else
                     {
-                        AppendTextToConsoleNL(e.Message);
-                        throw;
+                        await EssayerPrendrePhotoAsync(degres);
                     }
+                    AppendTextToConsoleNL("Séquence #" + i.ToString() + " terminée");
+                    await IncrementImgSeq();
                 }
-                else
-                {
-                    await EssayerPrendrePhotoAsync(imageIncr, degres);
-                }
-
             }
-
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($" Erreur dans la séquence : {ex.Message}");
+            }
+ 
         }
 
-        private async Task EssayerPrendrePhotoAsync(int imageIncr, int degres)
+        private async Task AppliquerMasqueEtFocusStepAsync()
+        {
+            btn_stopAutomaticFocusCapture.Visible = false;
+            btn_stopAutomaticFocusCapture.Enabled = false;
+
+            if (int.TryParse(textBox_nbrFocusSteps.Text, out int stepBack))
+            {
+                stepBack = stepBack / 2;
+                for (int i = 0; i <= stepBack; i++)
+                {
+                    ManualFocus(1, stepSize);
+                    lbl_focusStepsVar.Invoke(new Action(() =>
+                    {
+                        lbl_focusStepsVar.Text = i.ToString();
+                    }));
+                    await Task.Delay(100);
+                }
+            }
+
+            if (checkBox_ApplyMaskStackedImage.Checked)
+            {
+                PostFocusStackMask();
+            }
+        }
+
+        private async Task EssayerPrendrePhotoAsync(int degres)
         {
             Stopwatch sw = Stopwatch.StartNew();
             int essai = 0;
@@ -107,11 +190,11 @@ namespace Aerolithe
                 {
                     essai++;
                     AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
-                    if (essai >= 3)
-                    {
-                        await PhotoSuccess(projet.ImageNameFull, degres, false, "-");
+                    //if (essai >= 3)
+                    //{
+                    //    await PhotoSuccess(projet.ImageNameFull, degres, false, "-");
                         
-                    }
+                    //}
                 }
             }
 
@@ -123,7 +206,7 @@ namespace Aerolithe
             sw.Stop();
             tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
             AppendTextToConsoleNL("Image sauvegardée");
-            await PhotoSuccess(projet.ImageNameFull, degres, true, tempsMs);
+            //await PhotoSuccess(projet.ImageNameFull, degres, true, tempsMs);
         }
 
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)

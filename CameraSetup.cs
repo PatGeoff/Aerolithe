@@ -384,7 +384,7 @@ namespace Aerolithe
 
         private void device_CaptureComplete(NikonDevice device, int data)
         {
-            AppendTextToConsoleNL("Capture Complétée");
+            //AppendTextToConsoleNL("Capture Complétée");
         }
         private void OnNikonProgress(NikonDevice sender, eNkMAIDDataObjType type, int done, int total)
         {

@@ -33,7 +33,7 @@ namespace Aerolithe
             try
             {
                 device.Capture();
-                AppendTextToConsoleNL("Device Capture demandée");
+                //AppendTextToConsoleNL("Device Capture demandée");
                 await imageReadyTcs.Task;
                 
             }
@@ -67,8 +67,6 @@ namespace Aerolithe
                             {
                                 var sourceImage = originalBitmap.ToImage<Bgr, byte>();
                                 var maskGray = maskBitmapLive.ToImage<Gray, byte>();
-                                //AppendTextToConsoleNL("Dimensions du LiveView (Masque): " + maskGray.Width.ToString() + " x " + maskGray.Height.ToString());
-                                //AppendTextToConsoleNL("Dimensions de l'image capturée: " + sourceImage.Width.ToString() + " x " + sourceImage.Height.ToString());
                                 var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
                                
                                 var invertedMask = resizedMask.Not();
@@ -99,7 +97,7 @@ namespace Aerolithe
                                 PreparationDossierDestTemp();
                                 PreparationNomImage();
                                
-                                AppendTextToConsoleNL("Sauvegarde de la photo. Ceci peut prendre quelques secondes...");
+                                AppendTextToConsoleNL("Sauvegarde de la photo " + projet.ImageNameFull + " ...");
 
                                 using (var saveStream = new MemoryStream())
                                 {
@@ -134,13 +132,8 @@ namespace Aerolithe
         private void AfficherMiniatures(string nomImage, string imagePath, Size panelSize)
         {
             string nomImageModifie = Path.GetFileName(imagePath).Split(".")[0];
-
-
-
             try
             {
-                
-
                 using (Image originalImage = System.Drawing.Image.FromFile(imagePath))
                 {
                     Image resizedImage = ResizeImage(originalImage, 150, 100);
@@ -337,124 +330,6 @@ namespace Aerolithe
             {
                 // if (ex.Message Z= eNkMAIDResult.kNkMAIDResult_DeviceBusy) 
             }
-
-
         }
-
-
-
-        //private async Task AutomaticMFocus()
-        //{
-        //    int maxStep = int.Parse(lbl_driveStepMax.Text); // Define maxStep based on your device's maximum allowable steps
-        //    int initialDriveStepVal = 200; // Larger initial drive step value
-        //    int minDriveStepVal = 1; // Minimum drive step value for precise adjustments
-        //    int driveStepVal = initialDriveStepVal; // Start with larger steps
-        //    int direction = 1; // Initial direction (1 for forward, -1 for backward)
-        //    double highestBlurryness = 0.0; // Track the highest blurryness amount
-        //    int bestStep = 0; // Track the best step position
-        //    int moveBadCount = 0;
-        //    int currentStep = 0;
-        //    int bufferSize = 5; // Size of the buffer to track recent blurryness values
-        //    Queue<double> blurrynessBuffer = new Queue<double>();
-        //    int iterationCount = 0; // Track the number of iterations
-        //    int maxIterations = 100; // Set a maximum number of iterations to avoid infinite loop
-
-        //    if (!device.LiveViewEnabled)
-        //    {
-        //        device.LiveViewEnabled = true;
-        //        liveViewTimer.Start();
-        //    }
-        //    AppendTextToConsoleNL("Début du programme de focus");
-
-        //    while (iterationCount < maxIterations)
-        //    {
-        //        ManualFocus(direction, driveStepVal);
-        //        await Task.Delay(50); // Adjust delay to 50ms for quicker response
-        //        double currentBlurryness = blurrynessAmount; // Assume blurrynessAmount is updated by liveViewTimer
-
-        //        // Add current blurryness to buffer
-        //        blurrynessBuffer.Enqueue(currentBlurryness);
-        //        if (blurrynessBuffer.Count > bufferSize)
-        //        {
-        //            blurrynessBuffer.Dequeue(); // Maintain buffer size
-        //        }
-
-        //        // Calculate average blurryness from buffer
-        //        double averageBlurryness = blurrynessBuffer.Average();
-
-        //        if (averageBlurryness > highestBlurryness)
-        //        {
-        //            highestBlurryness = averageBlurryness;
-        //            bestStep = currentStep;
-        //        }
-        //        else if (averageBlurryness < highestBlurryness)
-        //        {
-        //            direction *= -1; // Change direction when average blurryness decreases
-        //        }
-
-        //        if (averageBlurryness < highestBlurryness)
-        //        {
-        //            if (moveBadCount > 10) // Adjust moveBadCount to 10
-        //            {
-        //                direction *= -1; // Change direction if too many bad moves
-        //                moveBadCount = 0; // Reset bad move counter
-        //            }
-        //            else
-        //            {
-        //                moveBadCount++;
-        //            }
-        //        }
-        //        else
-        //        {
-        //            moveBadCount = 0; // Reset the counter if a good move is found
-        //        }
-
-        //        currentStep += direction * driveStepVal;
-
-        //        // Gradually decrease the drive step value
-        //        driveStepVal = Math.Max(minDriveStepVal, driveStepVal - 10);
-
-        //        iterationCount++; // Increment iteration count
-
-        //        // Break condition to avoid infinite loop
-        //        if (Math.Abs(currentStep) > maxStep)
-        //        {
-        //            break;
-        //        }
-        //    }
-        //    AppendTextToConsoleNL("Fin du programme de focus");
-        //    AppendTextToConsoleNL($"Flou Max: {highestBlurryness} et bestStep: {bestStep}");
-
-        //    // Move to the position with the highest blurryness amount
-        //    ManualFocus(direction, bestStep);
-        //    await Task.Delay(1000); // Allow time for the move to complete
-
-        //    // Verify the final position
-        //    double finalBlurryness = blurrynessAmount;
-        //    AppendTextToConsoleNL($"Final Blurryness: {finalBlurryness}");
-        //    if (finalBlurryness < highestBlurryness)
-        //    {
-        //        AppendTextToConsoleNL("Adjusting to the best step position");
-        //        ManualFocus(direction, bestStep - currentStep); // Adjust to the best step position
-        //    }
-        //}
-
-
-        private async Task AutomaticMFocus()
-        {
-            int initialDriveStepVal = 200;
-            if (!device.LiveViewEnabled)
-            {
-                device.LiveViewEnabled = true;
-                liveViewTimer.Start();
-            }
-            AppendTextToConsoleNL("Début du programme de focus");
-        }
-
-
-
-
-
-
     }
 }

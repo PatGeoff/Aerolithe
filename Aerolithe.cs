@@ -83,11 +83,12 @@ namespace Aerolithe
                     {
                         lbl_ImgFolderPath.Text = projet.ImageFolderPath + "\\";
                     }
-                    
 
-                    if (!string.IsNullOrWhiteSpace(projet.ImageNameBase)) {
-                        lbl_imgIncr.Text = projet.ImageIncrement.ToString("D2");                        
-                        projet.ImageNameFull = projet.ImageNameBase + "_" + lbl_imgIncr.Text + ".jpg";
+
+                    if (!string.IsNullOrWhiteSpace(projet.ImageNameBase))
+                    {
+                        lbl_SerieIncrement.Text = projet.SerieIncrement.ToString("D2");
+                        projet.ImageNameFull = projet.ImageNameBase + "_" + projet.ImageIncrement.ToString("D2") + ".jpg";
                         projet.ImageFullPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameFull);
                         lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
                         txtBox_nomImages.Text = projet.ImageNameBase.Split("-")[0];
@@ -98,8 +99,8 @@ namespace Aerolithe
                     {
                         lbl_StackedPath.Text = projet.FocusStackPath;
                     }
-                    
-                    
+
+
                 }
                 catch (Exception e)
                 {
@@ -226,7 +227,7 @@ namespace Aerolithe
             await takePictureAsync();  // attend que imageReadyTcs soit résolu   
             sw.Stop();
             string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-            await PhotoSuccess(projet.ImageNameFull, turntablePosition, true, tempsMs);
+            //await PhotoSuccess(projet.ImageNameFull, turntablePosition, true, tempsMs);
         }
 
 
@@ -526,7 +527,7 @@ namespace Aerolithe
             txtBox_Console.Clear();
         }
 
-        
+
         public async Task PhotoSuccess(string imageName, int degrees, bool success, string temps)
         {
             Action updateRichTextBox = () =>
@@ -558,144 +559,107 @@ namespace Aerolithe
             }
 
         }
-        public async Task AppendTextToConsoleNL(string message) // New Line
+
+        public async Task AppendTextToFFMPEGConsoleNL(string message) // New Line
         {
+
+            System.Windows.Forms.RichTextBox textbox = txtBox_FFMPEGConsole;
+
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
 
-            if (txtBox_Console.InvokeRequired)
+            if (textbox.InvokeRequired)
             {
                 //Debug.WriteLine("Invoke required");
-                txtBox_Console.Invoke(new Action(() =>
+                textbox.Invoke(new Action(() =>
                 {
-                    AppendFormattedText(timestamp, Color.Gray);
-                    AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
+                    AppendFormattedText(timestamp, Color.Gray, textbox);
+                    AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor, textbox);
                 }));
             }
             else
             {
-                AppendFormattedText(timestamp, Color.Gray);
-                AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor);
+                AppendFormattedText(timestamp, Color.Gray, textbox);
+                AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor, textbox);
             }
         }
 
-        private async Task AppendTextToConsoleSL(string message) // Single Line
+        public async Task AppendTextToConsoleNL(string message) // New Line
         {
 
-            if (txtBox_Console.InvokeRequired)
+            System.Windows.Forms.RichTextBox textbox = txtBox_Console;
+
+            string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
+
+            if (textbox.InvokeRequired)
             {
                 //Debug.WriteLine("Invoke required");
-                txtBox_Console.Invoke(new Action(() =>
+                textbox.Invoke(new Action(() =>
                 {
-                    AppendFormattedText(message, txtBox_Console.ForeColor);
+                    AppendFormattedText(timestamp, Color.Gray, textbox);
+                    AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor, textbox);
                 }));
             }
             else
             {
-                AppendFormattedText(message, txtBox_Console.ForeColor);
+                AppendFormattedText(timestamp, Color.Gray, textbox);
+                AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor, textbox);
             }
         }
 
 
-        private async Task UpdateConsoleMessageAsync(string message, CancellationToken token) // Permet de printer à chaque 2 secondes jusqu'à ce que le token soit envoyé
-        {
-            while (!token.IsCancellationRequested)
-            {
-                AppendTextToConsoleSL(message);
-                try
-                {
-                    await Task.Delay(2000, token);
-                }
-                catch (TaskCanceledException)
-                {
-                    // Task was canceled, exit the loop
-                    AppendTextToConsoleSL("Task was canceled.");
-                    break;
-                }
-                message += ".";
-            }
-            AppendTextToConsoleSL("Exiting UpdateConsoleMessageAsync.");
-
-        }
-
-
-        private async Task AppendFormattedText(string text, Color color)
+        private async Task AppendFormattedText(string text, Color color, System.Windows.Forms.RichTextBox textbox)
         {
 
 
-            if (txtBox_Console.InvokeRequired)
+            if (textbox.InvokeRequired)
             {
-                txtBox_Console.Invoke((System.Windows.Forms.MethodInvoker)delegate
+                textbox.Invoke((System.Windows.Forms.MethodInvoker)delegate
                 {
-                    AppendFormattedTextInternal(text, color);
+                    AppendFormattedTextInternal(text, color, textbox);
                 });
             }
             else
             {
-                AppendFormattedTextInternal(text, color);
+                AppendFormattedTextInternal(text, color, textbox);
             }
 
-            ManageRichTextBoxContent();
+            await ManageRichTextBoxContent(textbox);
 
         }
 
 
-        private void AppendFormattedTextInternal(string text, Color color)
+
+        private void AppendFormattedTextInternal(string text, Color color, System.Windows.Forms.RichTextBox textbox)
         {
-            txtBox_Console.SelectionStart = txtBox_Console.TextLength;
-            txtBox_Console.SelectionLength = 0;
+            textbox.SelectionStart = textbox.Text.Length;
+            textbox.ScrollToCaret();
+            textbox.Select(); // Active le caret sans voler le focus
+            textbox.SelectionLength = 0;
 
-            txtBox_Console.SelectionColor = color;
-            txtBox_Console.AppendText(text);
-            txtBox_Console.SelectionColor = txtBox_Console.ForeColor;
-            ManageRichTextBoxContent();
+            textbox.SelectionColor = color;
+            textbox.AppendText(text);
+            textbox.SelectionColor = txtBox_Console.ForeColor;
+            ManageRichTextBoxContent(textbox);
+            textbox.Refresh();
         }
 
-
-
-
-        private void AppendFormattedTextOL(string text, Color color)
+        private async Task ManageRichTextBoxContent(System.Windows.Forms.RichTextBox textbox)
         {
-            txtBox_Console.SelectionStart = txtBox_Console.TextLength;
-            txtBox_Console.SelectionLength = 0;
-            txtBox_Console.SelectionColor = color;
+            int maxLength = 2147483647; // Maximum length for RichTextBox
+            int threshold = (int)(maxLength * 0.5); // 50% of the maximum length
 
-            string[] lines = txtBox_Console.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-
-            int lastLineIndex = txtBox_Console.Lines.Length - 1;
-
-            if (lines.Length > 0)
+            if (textbox.Text.Length > threshold)
             {
-                // Remove the last line
-                txtBox_Console.Text = string.Join(Environment.NewLine, lines, 0, lines.Length - 1);
-                // Append the new text
-                txtBox_Console.AppendText(Environment.NewLine + text);
-                Task.Run(() => ManageRichTextBoxContent());
-            }
-            else
-            {
-                txtBox_Console.Text = text;
-            }
+                // Find the position to start removing text
+                int removeLength = textbox.Text.Length - threshold;
 
-
-            txtBox_Console.SelectionColor = txtBox_Console.ForeColor;
+                // Remove the oldest lines
+                textbox.Text = textbox.Text.Substring(removeLength);
+            }
         }
 
 
-        //private void ScrollToBottom()
-        //{
 
-        //    if (txtBox_Console != null && !string.IsNullOrEmpty(txtBox_Console.Text))
-        //    {
-        //        //txtBox_Console.Focus(); // Ensure the TextBox has focus
-        //        //int textLength = txtBox_Console.Text.Length;
-        //        //if (textLength >= 0)
-        //        //{
-        //        //    txtBox_Console.SelectionStart = textLength;
-        //        //    txtBox_Console.ScrollToCaret();
-        //        //}
-        //    }
-
-        //}
         private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
         {
             Application.Exit();
@@ -742,7 +706,6 @@ namespace Aerolithe
             SetImageFolder();
         }
 
-
         private void btn_goToImageFolder_Click(object sender, EventArgs e)
         {
             if (btn_goToImageFolder.Enabled)
@@ -750,8 +713,6 @@ namespace Aerolithe
                 OpenExplorerAtProjectPath(projet.ImageFolderPath);
             }
         }
-
-
 
         private void OpenExplorerAtProjectPath(string folder)
         {
@@ -917,7 +878,7 @@ namespace Aerolithe
             Task.Run(async () =>
             {
                 tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token, 0);
+                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             });
 
         }
@@ -930,7 +891,7 @@ namespace Aerolithe
             Task.Run(async () =>
             {
                 tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token, 1);
+                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             });
 
         }
@@ -942,7 +903,7 @@ namespace Aerolithe
             {
                 tokenSource = new CancellationTokenSource();
 
-                await PrisePhotoSequenceAsync(tokenSource.Token, 2);
+                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             });
         }
 
@@ -1112,9 +1073,9 @@ namespace Aerolithe
             AutomaticFocusRoutine();
         }
 
-       
 
-      
+
+
 
         private void btn_liveViewStatus_Click(object sender, EventArgs e)
         {
@@ -1144,7 +1105,6 @@ namespace Aerolithe
         {
             richTextBox_PicReport.Clear();
         }
-
 
 
         private void pnl_LiveView_Main_MouseDown(object sender, MouseEventArgs e)
@@ -1258,7 +1218,7 @@ namespace Aerolithe
 
 
 
-       
+
 
         private void btn_toggleBW_Click(object sender, EventArgs e)
         {
@@ -1360,8 +1320,8 @@ namespace Aerolithe
         {
             if (picBox_pictureTaken.Image != null && projet.ImageFolderPath != null && projet.ImageNameBase != null)
             {
-                
-                string imagePath = Path.Combine(projet.TempImageFolderPath, projet.ImageNameFull);
+
+                string imagePath = Path.Combine(projet.ImageFolderPath, projet.ImageNameFull);
 
                 if (File.Exists(imagePath))
                 {
@@ -1486,7 +1446,7 @@ namespace Aerolithe
 
         private void picBox_FocusStackedImage_Click(object sender, EventArgs e)
         {
-            AppendTextToConsoleNL("stackedImageInBuffer = " + stackedImageInBuffer);
+            //AppendTextToConsoleNL("stackedImageInBuffer = " + stackedImageInBuffer);
             if (stackedImageInBuffer == false)
             {
                 if (File.Exists(focusStackOutputPath))
@@ -1581,17 +1541,19 @@ namespace Aerolithe
 
         private void btn_incrImgSeq_Click(object sender, EventArgs e)
         {
-            IncrementImgSeq();
+            Task.Run(() => IncrementImgSeq());
         }
 
         private void btn_decrImgSeq_Click(object sender, EventArgs e)
         {
-            DecrementImgSeq();
+            Task.Run(() => DecrementImgSeq());
         }
 
         private void btn_ResetIncr_Click(object sender, EventArgs e)
         {
             imageIncr = 0;
+            ResetSerieIncrement();
+
         }
 
         private void btn_setStackedFolderPath_Click(object sender, EventArgs e)
@@ -1879,7 +1841,8 @@ namespace Aerolithe
 
         private void checkBox_StackAuto_CheckedChanged(object sender, EventArgs e)
         {
-            if (checkBox_StackAuto.Checked) {
+            if (checkBox_StackAuto.Checked)
+            {
                 checkBox_SeqFocusStack.Checked = true;
             }
             else checkBox_SeqFocusStack.Checked = false;
@@ -1892,6 +1855,11 @@ namespace Aerolithe
                 checkBox_StackAuto.Checked = true;
             }
             else checkBox_StackAuto.Checked = false;
+        }
+
+        private void btn_clearFFMPEGConsole_Click(object sender, EventArgs e)
+        {
+            txtBox_FFMPEGConsole.Clear();
         }
     }
 }

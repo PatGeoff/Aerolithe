@@ -51,7 +51,7 @@
             btn_decrImgSeq = new Button();
             btn_incrImgSeq = new Button();
             btn_ResetIncr = new Button();
-            lbl_imgIncr = new Label();
+            lbl_SerieIncrement = new Label();
             btn_acceptImgName = new Button();
             txtBox_nomImages = new TextBox();
             lbl_FullImageName = new Label();
@@ -134,7 +134,6 @@
             btn_openStackedImage = new Button();
             btn_SelectFocusStackImg = new Button();
             picBox_FocusStackedImage = new PictureBox();
-            listBox_focusStackImg = new ListBox();
             tableLayoutPanel67 = new TableLayoutPanel();
             lbl_focusStackOutputDest = new Label();
             btn_goToFSFolder = new Button();
@@ -387,6 +386,9 @@
             flowLayoutPanel1 = new FlowLayoutPanel();
             tableLayoutPanel6 = new TableLayoutPanel();
             tableLayoutPanel46 = new TableLayoutPanel();
+            btn_clearFFMPEGConsole = new Button();
+            tableLayoutPanel85 = new TableLayoutPanel();
+            txtBox_FFMPEGConsole = new RichTextBox();
             tableLayoutPanel5 = new TableLayoutPanel();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
@@ -521,6 +523,7 @@
             tableLayoutPanel7.SuspendLayout();
             tableLayoutPanel6.SuspendLayout();
             tableLayoutPanel46.SuspendLayout();
+            tableLayoutPanel85.SuspendLayout();
             tableLayoutPanel5.SuspendLayout();
             SuspendLayout();
             // 
@@ -539,10 +542,10 @@
             txtBox_Console.Dock = DockStyle.Fill;
             txtBox_Console.ForeColor = Color.White;
             txtBox_Console.HideSelection = false;
-            txtBox_Console.Location = new Point(1, 27);
+            txtBox_Console.Location = new Point(1, 1);
             txtBox_Console.Margin = new Padding(1);
             txtBox_Console.Name = "txtBox_Console";
-            txtBox_Console.Size = new Size(1776, 188);
+            txtBox_Console.Size = new Size(884, 182);
             txtBox_Console.TabIndex = 20;
             txtBox_Console.Text = "";
             // 
@@ -551,7 +554,6 @@
             btn_clearConsole.BackColor = Color.Black;
             btn_clearConsole.BackgroundImage = (Image)resources.GetObject("btn_clearConsole.BackgroundImage");
             btn_clearConsole.BackgroundImageLayout = ImageLayout.Stretch;
-            btn_clearConsole.Dock = DockStyle.Fill;
             btn_clearConsole.FlatAppearance.BorderSize = 0;
             btn_clearConsole.FlatStyle = FlatStyle.Flat;
             btn_clearConsole.ForeColor = Color.White;
@@ -657,7 +659,7 @@
             lbl_StackedPath.Location = new Point(0, 149);
             lbl_StackedPath.Margin = new Padding(0);
             lbl_StackedPath.Name = "lbl_StackedPath";
-            lbl_StackedPath.RightToLeft = RightToLeft.Yes;
+            lbl_StackedPath.RightToLeft = RightToLeft.No;
             lbl_StackedPath.Size = new Size(455, 20);
             lbl_StackedPath.TabIndex = 3;
             lbl_StackedPath.TextAlign = ContentAlignment.MiddleLeft;
@@ -804,7 +806,7 @@
             tableLayoutPanel75.Controls.Add(btn_decrImgSeq, 5, 0);
             tableLayoutPanel75.Controls.Add(btn_incrImgSeq, 4, 0);
             tableLayoutPanel75.Controls.Add(btn_ResetIncr, 7, 0);
-            tableLayoutPanel75.Controls.Add(lbl_imgIncr, 2, 0);
+            tableLayoutPanel75.Controls.Add(lbl_SerieIncrement, 2, 0);
             tableLayoutPanel75.Controls.Add(btn_acceptImgName, 1, 0);
             tableLayoutPanel75.Controls.Add(txtBox_nomImages, 0, 0);
             tableLayoutPanel75.Dock = DockStyle.Fill;
@@ -875,16 +877,16 @@
             btn_ResetIncr.UseVisualStyleBackColor = true;
             btn_ResetIncr.Click += btn_ResetIncr_Click;
             // 
-            // lbl_imgIncr
+            // lbl_SerieIncrement
             // 
-            lbl_imgIncr.AutoSize = true;
-            lbl_imgIncr.Dock = DockStyle.Fill;
-            lbl_imgIncr.Location = new Point(149, 0);
-            lbl_imgIncr.Name = "lbl_imgIncr";
-            lbl_imgIncr.Size = new Size(22, 25);
-            lbl_imgIncr.TabIndex = 30;
-            lbl_imgIncr.Text = "00";
-            lbl_imgIncr.TextAlign = ContentAlignment.MiddleCenter;
+            lbl_SerieIncrement.AutoSize = true;
+            lbl_SerieIncrement.Dock = DockStyle.Fill;
+            lbl_SerieIncrement.Location = new Point(149, 0);
+            lbl_SerieIncrement.Name = "lbl_SerieIncrement";
+            lbl_SerieIncrement.Size = new Size(22, 25);
+            lbl_SerieIncrement.TabIndex = 30;
+            lbl_SerieIncrement.Text = "00";
+            lbl_SerieIncrement.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // btn_acceptImgName
             // 
@@ -1919,15 +1921,13 @@
             // checkBox_ApplyMaskStackedImage
             // 
             checkBox_ApplyMaskStackedImage.AutoSize = true;
-            checkBox_ApplyMaskStackedImage.Checked = true;
-            checkBox_ApplyMaskStackedImage.CheckState = CheckState.Checked;
             checkBox_ApplyMaskStackedImage.Dock = DockStyle.Fill;
             checkBox_ApplyMaskStackedImage.ForeColor = Color.White;
             checkBox_ApplyMaskStackedImage.Location = new Point(263, 3);
             checkBox_ApplyMaskStackedImage.Name = "checkBox_ApplyMaskStackedImage";
             checkBox_ApplyMaskStackedImage.Size = new Size(122, 22);
             checkBox_ApplyMaskStackedImage.TabIndex = 5;
-            checkBox_ApplyMaskStackedImage.Text = "applique  masque";
+            checkBox_ApplyMaskStackedImage.Text = "Applique  masque";
             checkBox_ApplyMaskStackedImage.UseVisualStyleBackColor = true;
             // 
             // tabControl3
@@ -1994,7 +1994,6 @@
             tableLayoutPanel43.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel43.Controls.Add(tableLayoutPanel44, 0, 1);
             tableLayoutPanel43.Controls.Add(picBox_FocusStackedImage, 0, 3);
-            tableLayoutPanel43.Controls.Add(listBox_focusStackImg, 0, 2);
             tableLayoutPanel43.Controls.Add(tableLayoutPanel67, 0, 0);
             tableLayoutPanel43.Controls.Add(tableLayoutPanel74, 0, 4);
             tableLayoutPanel43.Controls.Add(tableLayoutPanel77, 0, 5);
@@ -2004,8 +2003,8 @@
             tableLayoutPanel43.RowCount = 6;
             tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Percent, 6.77847F));
             tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Percent, 9.03796F));
-            tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Percent, 9.728762F));
-            tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Percent, 74.45481F));
+            tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Percent, 3.93374753F));
+            tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Percent, 80.5383F));
             tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             tableLayoutPanel43.Size = new Size(445, 565);
@@ -2013,10 +2012,10 @@
             // 
             // tableLayoutPanel44
             // 
-            tableLayoutPanel44.ColumnCount = 3;
-            tableLayoutPanel44.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
-            tableLayoutPanel44.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170F));
-            tableLayoutPanel44.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel44.ColumnCount = 2;
+            tableLayoutPanel44.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel44.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel44.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
             tableLayoutPanel44.Controls.Add(btn_openStackedImage, 1, 0);
             tableLayoutPanel44.Controls.Add(btn_SelectFocusStackImg, 0, 0);
             tableLayoutPanel44.Dock = DockStyle.Fill;
@@ -2032,9 +2031,9 @@
             btn_openStackedImage.Dock = DockStyle.Fill;
             btn_openStackedImage.FlatStyle = FlatStyle.Flat;
             btn_openStackedImage.ForeColor = Color.White;
-            btn_openStackedImage.Location = new Point(143, 3);
+            btn_openStackedImage.Location = new Point(222, 3);
             btn_openStackedImage.Name = "btn_openStackedImage";
-            btn_openStackedImage.Size = new Size(164, 31);
+            btn_openStackedImage.Size = new Size(214, 31);
             btn_openStackedImage.TabIndex = 1;
             btn_openStackedImage.Text = "Ouvrir une image stackée";
             btn_openStackedImage.UseVisualStyleBackColor = true;
@@ -2045,7 +2044,7 @@
             btn_SelectFocusStackImg.Dock = DockStyle.Fill;
             btn_SelectFocusStackImg.Location = new Point(3, 3);
             btn_SelectFocusStackImg.Name = "btn_SelectFocusStackImg";
-            btn_SelectFocusStackImg.Size = new Size(134, 31);
+            btn_SelectFocusStackImg.Size = new Size(213, 31);
             btn_SelectFocusStackImg.TabIndex = 0;
             btn_SelectFocusStackImg.Text = "Lancer";
             btn_SelectFocusStackImg.UseVisualStyleBackColor = true;
@@ -2054,27 +2053,13 @@
             // picBox_FocusStackedImage
             // 
             picBox_FocusStackedImage.Dock = DockStyle.Fill;
-            picBox_FocusStackedImage.Location = new Point(3, 125);
+            picBox_FocusStackedImage.Location = new Point(3, 97);
             picBox_FocusStackedImage.Name = "picBox_FocusStackedImage";
-            picBox_FocusStackedImage.Size = new Size(439, 355);
+            picBox_FocusStackedImage.Size = new Size(439, 383);
             picBox_FocusStackedImage.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_FocusStackedImage.TabIndex = 0;
             picBox_FocusStackedImage.TabStop = false;
             picBox_FocusStackedImage.Click += picBox_FocusStackedImage_Click;
-            // 
-            // listBox_focusStackImg
-            // 
-            listBox_focusStackImg.BackColor = Color.FromArgb(30, 30, 30);
-            listBox_focusStackImg.BorderStyle = BorderStyle.None;
-            listBox_focusStackImg.Dock = DockStyle.Fill;
-            listBox_focusStackImg.ForeColor = Color.White;
-            listBox_focusStackImg.FormattingEnabled = true;
-            listBox_focusStackImg.HorizontalScrollbar = true;
-            listBox_focusStackImg.ItemHeight = 15;
-            listBox_focusStackImg.Location = new Point(3, 78);
-            listBox_focusStackImg.Name = "listBox_focusStackImg";
-            listBox_focusStackImg.Size = new Size(439, 41);
-            listBox_focusStackImg.TabIndex = 2;
             // 
             // tableLayoutPanel67
             // 
@@ -5606,7 +5591,7 @@
             tableLayoutPanel6.ColumnCount = 1;
             tableLayoutPanel6.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel6.Controls.Add(tableLayoutPanel46, 0, 0);
-            tableLayoutPanel6.Controls.Add(txtBox_Console, 0, 1);
+            tableLayoutPanel6.Controls.Add(tableLayoutPanel85, 0, 1);
             tableLayoutPanel6.Dock = DockStyle.Fill;
             tableLayoutPanel6.Location = new Point(2, 917);
             tableLayoutPanel6.Margin = new Padding(1);
@@ -5620,15 +5605,63 @@
             // tableLayoutPanel46
             // 
             tableLayoutPanel46.ColumnCount = 2;
-            tableLayoutPanel46.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10.416667F));
-            tableLayoutPanel46.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 89.5833359F));
+            tableLayoutPanel46.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel46.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel46.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel46.Controls.Add(btn_clearFFMPEGConsole, 1, 0);
             tableLayoutPanel46.Controls.Add(btn_clearConsole, 0, 0);
+            tableLayoutPanel46.Dock = DockStyle.Fill;
             tableLayoutPanel46.Location = new Point(3, 3);
             tableLayoutPanel46.Name = "tableLayoutPanel46";
             tableLayoutPanel46.RowCount = 1;
-            tableLayoutPanel46.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel46.Size = new Size(192, 20);
+            tableLayoutPanel46.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel46.Size = new Size(1772, 20);
             tableLayoutPanel46.TabIndex = 33;
+            // 
+            // btn_clearFFMPEGConsole
+            // 
+            btn_clearFFMPEGConsole.BackColor = Color.Black;
+            btn_clearFFMPEGConsole.BackgroundImage = (Image)resources.GetObject("btn_clearFFMPEGConsole.BackgroundImage");
+            btn_clearFFMPEGConsole.BackgroundImageLayout = ImageLayout.Stretch;
+            btn_clearFFMPEGConsole.FlatAppearance.BorderSize = 0;
+            btn_clearFFMPEGConsole.FlatStyle = FlatStyle.Flat;
+            btn_clearFFMPEGConsole.ForeColor = Color.White;
+            btn_clearFFMPEGConsole.Location = new Point(887, 1);
+            btn_clearFFMPEGConsole.Margin = new Padding(1);
+            btn_clearFFMPEGConsole.Name = "btn_clearFFMPEGConsole";
+            btn_clearFFMPEGConsole.Size = new Size(18, 18);
+            btn_clearFFMPEGConsole.TabIndex = 20;
+            btn_clearFFMPEGConsole.UseVisualStyleBackColor = false;
+            btn_clearFFMPEGConsole.Click += btn_clearFFMPEGConsole_Click;
+            // 
+            // tableLayoutPanel85
+            // 
+            tableLayoutPanel85.ColumnCount = 2;
+            tableLayoutPanel85.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel85.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel85.Controls.Add(txtBox_FFMPEGConsole, 1, 0);
+            tableLayoutPanel85.Controls.Add(txtBox_Console, 0, 0);
+            tableLayoutPanel85.Dock = DockStyle.Fill;
+            tableLayoutPanel85.Location = new Point(3, 29);
+            tableLayoutPanel85.Name = "tableLayoutPanel85";
+            tableLayoutPanel85.RowCount = 1;
+            tableLayoutPanel85.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel85.Size = new Size(1772, 184);
+            tableLayoutPanel85.TabIndex = 34;
+            // 
+            // txtBox_FFMPEGConsole
+            // 
+            txtBox_FFMPEGConsole.BackColor = Color.FromArgb(10, 10, 10);
+            txtBox_FFMPEGConsole.BorderStyle = BorderStyle.None;
+            txtBox_FFMPEGConsole.Dock = DockStyle.Fill;
+            txtBox_FFMPEGConsole.ForeColor = Color.White;
+            txtBox_FFMPEGConsole.Location = new Point(887, 1);
+            txtBox_FFMPEGConsole.Margin = new Padding(1);
+            txtBox_FFMPEGConsole.Name = "txtBox_FFMPEGConsole";
+            txtBox_FFMPEGConsole.Size = new Size(884, 182);
+            txtBox_FFMPEGConsole.TabIndex = 21;
+            txtBox_FFMPEGConsole.Text = "";
+            txtBox_FFMPEGConsole.WordWrap = false;
             // 
             // tableLayoutPanel5
             // 
@@ -5841,6 +5874,7 @@
             tableLayoutPanel7.ResumeLayout(false);
             tableLayoutPanel6.ResumeLayout(false);
             tableLayoutPanel46.ResumeLayout(false);
+            tableLayoutPanel85.ResumeLayout(false);
             tableLayoutPanel5.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
@@ -5991,7 +6025,6 @@
         private ComboBox comboBox_LiveViewAFMode;
         private Label label40;
         private TableLayoutPanel tableLayoutPanel4;
-        private RichTextBox richTextBox_PicReport;
         private TableLayoutPanel tableLayoutPanel5;
         private TableLayoutPanel tableLayoutPanel6;
         private Button btn_clearPicReport;
@@ -6131,7 +6164,6 @@
         private TabPage tabPage14;
         private TabPage tabPage15;
         private Button btn_SelectFocusStackImg;
-        private ListBox listBox_focusStackImg;
         private Label lbl_focusStackOutputDest;
         private Label label54;
         private TableLayoutPanel tableLayoutPanel67;
@@ -6179,7 +6211,7 @@
         private CheckBox checkBox_ApplyMaskStackedImage;
         private Button btn_GotoStackedFolder;
         private TableLayoutPanel tableLayoutPanel78;
-        private Label lbl_imgIncr;
+        private Label lbl_SerieIncrement;
         private Label lbl_FullImageName;
         private Label lbl_projectPath;
         private Button btn_acceptImgName;
@@ -6210,5 +6242,9 @@
         private Label label59;
         private CheckBox checkBox_SeqFocusStack;
         private Button btn_tempButtonTest;
+        private TableLayoutPanel tableLayoutPanel85;
+        private RichTextBox txtBox_FFMPEGConsole;
+        private Button btn_clearFFMPEGConsole;
+        public RichTextBox richTextBox_PicReport;
     }
 }

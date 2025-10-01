@@ -43,45 +43,7 @@ namespace Aerolithe
             return binary.ToBitmap();
         }
              
-        private Bitmap applyMaskToPicture(Mat picture)
-        {
-            if (mask == null)
-            {
-                return null;
-            }
-
-            Mat resultat = new Mat();
-            try
-            {
-                // Resize the mask to match the dimensions of the picture
-                Mat resizedMask = new Mat();
-                CvInvoke.Resize(mask, resizedMask, new Size(picture.Width, picture.Height));
-
-                // Ensure mask is of the same type as the picture
-                if (resizedMask.Depth != picture.Depth)
-                {
-                    resizedMask.ConvertTo(resizedMask, picture.Depth);
-                }
-
-                // Apply the mask to the picture to make black areas transparent
-                Mat blackMaskedPicture = new Mat();
-                CvInvoke.BitwiseAnd(picture, picture, blackMaskedPicture, mask: resizedMask);
-
-                // Create an inverted mask where white areas become black and black areas become white
-                Mat invertedMask = new Mat();
-                CvInvoke.BitwiseNot(resizedMask, invertedMask);
-
-                // Apply the inverted mask to keep white areas as colored
-                CvInvoke.BitwiseOr(blackMaskedPicture, picture, resultat, mask: invertedMask);
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleSL($"picture channels: {picture.NumberOfChannels}" + Environment.NewLine + $"mask channels: {mask.NumberOfChannels}" + Environment.NewLine + ex.ToString());
-            }
-
-            return resultat.ToImage<Bgr, Byte>().ToBitmap();
-        }
-      
+     
         private async Task CalculDuFlou(MemoryStream memoryStream)
         {
             // Convert MemoryStream to byte array

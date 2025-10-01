@@ -26,7 +26,6 @@ namespace Aerolithe
             projet = new ProjectPreferences();
         }
 
-
         private void CreateNewProject()
         {
 
@@ -106,7 +105,8 @@ namespace Aerolithe
                 MessageBox.Show("Svp sauvegarder ou ouvrir un projet");
                 return;
             }
-            projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_imgIncr.Text;
+            // Pas besoin ici???
+            // projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_SerieIncrement.Text;
             appSettings.Save();
             projet.Save(appSettings.ProjectPath);
         }
@@ -118,7 +118,6 @@ namespace Aerolithe
                 CreateNewProject();
             }
 
-            
 
             if (!Directory.Exists(projet.ImageFolderPath))
             {
@@ -189,6 +188,7 @@ namespace Aerolithe
             txtBox_seqPad3.ForeColor = Color.White;
 
         }
+
         private void PopulateColorColorDropdown()
         {
 
@@ -200,73 +200,112 @@ namespace Aerolithe
             comboBox_EmguColor.SelectedIndex = 3;
         }
 
-        private async Task ManageRichTextBoxContent()
-        {
-            int maxLength = 2147483647; // Maximum length for RichTextBox
-            int threshold = (int)(maxLength * 0.5); // 50% of the maximum length
-
-            if (txtBox_Console.Text.Length > threshold)
-            {
-                // Find the position to start removing text
-                int removeLength = txtBox_Console.Text.Length - threshold;
-
-                // Remove the oldest lines
-                txtBox_Console.Text = txtBox_Console.Text.Substring(removeLength);
-            }
-        }
+       
 
         private void PreparationDossierDestTemp()
         {
-            projet.TempImageFolderPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameBase.Split("-")[0], lbl_imgIncr.Text);
+            projet.TempImageFolderPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameBase.Split("-")[0], projet.SerieIncrement.ToString("D2"));
             if (!Directory.Exists(projet.TempImageFolderPath))
             {
                 Directory.CreateDirectory(projet.TempImageFolderPath);
-            }
+            }            
+            
         }
 
         private void PreparationNomImage()
         {
-            if (imageIncr == oldImgIncr)
-            {
-                imageIncr++;
-            }
-            oldImgIncr = imageIncr;
 
-            projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_imgIncr.Text;
-            projet.ImageNameFull = projet.ImageNameBase + "_" + imageIncr.ToString("D2") + ".jpg";
+            if (projet.ImageIncrement == oldImgIncr)
+            {
+                projet.ImageIncrement++;                
+            }
+
+            projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.SerieIncrement.ToString("D2");
+            projet.ImageNameFull = projet.ImageNameBase + "_" + projet.ImageIncrement.ToString("D2") + ".jpg";
             projet.ImageFullPath = Path.Combine(projet.TempImageFolderPath, projet.ImageNameFull);
+
+            if (lbl_FullImageName.InvokeRequired)
+            {
+                lbl_FullImageName.Invoke(new Action(() =>
+                {
+                    lbl_FullImageName.Text = projet.ImageNameFull;
+                }));
+            }
+            else
+            {
+                lbl_FullImageName.Text = projet.ImageNameFull;
+            }
+
+            projet.Save(appSettings.ProjectPath);
+            oldImgIncr = projet.ImageIncrement;
         }
 
-
-        private void AssembleImageName()
+        private async Task AssembleImageName()
         {
-            projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_imgIncr.Text;
-            
-            lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
-            SavePrefsSettings();
+            if (lbl_FullImageName.InvokeRequired)
+            {
+                lbl_FullImageName.Invoke(new Action(() =>
+                {
+                    projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_SerieIncrement.Text;
+                    lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
+                }));
+            }
+            else
+            {
+                projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_SerieIncrement.Text;
+                lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
+            }
+            projet.Save(appSettings.ProjectPath);
         }
 
-        public void IncrementImgSeq()
+        private async Task ResetIncrementation()
+        {
+            oldImgIncr = 0;
+            projet.ImageIncrement = 0;
+            projet.Save(appSettings.ProjectPath);
+                     
+        }
+
+        private void ResetSerieIncrement()
+        {
+            lbl_SerieIncrement.Text = "00";
+            projet.SerieIncrement = 0;
+            projet.Save(appSettings.ProjectPath);
+        }
+
+        public async Task IncrementImgSeq()
         {
             int inc;
-            if (int.TryParse(lbl_imgIncr.Text, out inc))
-            {
-                projet.ImageIncrement = inc + 1;
-                lbl_imgIncr.Text = projet.ImageIncrement.ToString("D2");
+            if (int.TryParse(lbl_SerieIncrement.Text, out inc))
+            {                
+                projet.SerieIncrement = inc + 1;
+                if (lbl_SerieIncrement.InvokeRequired)
+                {
+                    lbl_SerieIncrement.Invoke(new Action(() =>{
+                        lbl_SerieIncrement.Text = projet.SerieIncrement.ToString("D2");
+                    }));
+                }
                 AssembleImageName();
+                projet.Save(appSettings.ProjectPath);
             }
         }
 
-        public void DecrementImgSeq()
+        public async Task DecrementImgSeq()
         {
             int inc;
-            if (int.TryParse(lbl_imgIncr.Text, out inc))
+            if (int.TryParse(lbl_SerieIncrement.Text, out inc))
             {
                 if (inc > 0)
-                {
-                    projet.ImageIncrement = inc - 1;
-                    lbl_imgIncr.Text = projet.ImageIncrement.ToString("D2");
+                {                   
+                    projet.SerieIncrement = inc - 1;
+                    if (lbl_SerieIncrement.InvokeRequired){
+                        lbl_SerieIncrement.Invoke(new Action(() =>
+                        {
+                            lbl_SerieIncrement.Text = projet.SerieIncrement.ToString("D2");
+                        }));
+                    }
                     AssembleImageName();
+                    projet.Save(appSettings.ProjectPath);
                 }
             }
         }
@@ -299,6 +338,7 @@ namespace Aerolithe
                 }
             }
         }
+
         public void DeleteAllPicturesInFolderWith()
         {
             flowLayoutPanel1.Controls.Clear();
@@ -352,7 +392,11 @@ namespace Aerolithe
         private string _tempImageFolderPath;
         private string _imageFullPath;
         private string _focusStackPath;
+
+        // image increment => nomImage-00_**.jpg  (**)
         private int _imageIncrement;
+        // serie increment => nomImage-**_00.jpg  (**)
+        private int _serieIncrement;
         
 
         public string ImageNameBase
@@ -416,8 +460,16 @@ namespace Aerolithe
             {
                 _imageIncrement = value;
             }
+        }        
+        public int SerieIncrement
+        {
+            get => _serieIncrement;
+            set
+            {
+                _serieIncrement = value;
+            }
+
         }
-        
 
         public ProjectPreferences Load(string filePath)
         {

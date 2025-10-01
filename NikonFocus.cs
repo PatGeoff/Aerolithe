@@ -129,7 +129,7 @@ namespace Aerolithe
 
         }
 
-        private void UpdateFocusStepVarLbl(int position)
+        private async Task UpdateFocusStepVarLbl(int position)
         {
             if (lbl_focusStepsVar.InvokeRequired)
             {
@@ -393,12 +393,12 @@ namespace Aerolithe
             {
                 newStepSize = stepSize * focusIterations / 20;
                 focusIterations = 20;
-                AppendTextToConsoleNL("stepSize = " + stepSize.ToString() + "  newStepSize = " + newStepSize.ToString());
+                //AppendTextToConsoleNL("stepSize = " + stepSize.ToString() + "  newStepSize = " + newStepSize.ToString());
             }
 
             for (int i = 0; i < focusIterations; i++)
             {
-                AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
+                //AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
                 if (blurredBlocks >= minDetect)
                 {
                     if (_stopRequested)
@@ -425,14 +425,14 @@ namespace Aerolithe
                         AppendTextToConsoleNL(e.Message);
                     } 
                 }
-                else // continuer l'autofocus sans prendre de photo
-                {
-                    AppendTextToConsoleNL("il y a un problène avec la détection. ");
-                    ManualFocus(0, newStepSize);
-                    await Task.Delay(delayTime);
-                    focusStackStepVar += 1;
-                    UpdateFocusStepVarLbl(focusStackStepVar);
-                }
+                //else // continuer l'autofocus sans prendre de photo
+                //{
+                //    //AppendTextToConsoleNL("il y a un problène avec la détection. ");
+                //    ManualFocus(0, newStepSize);
+                //    await Task.Delay(delayTime);
+                //    focusStackStepVar += 1;
+                //    UpdateFocusStepVarLbl(focusStackStepVar);
+                //}
                
             }
 
@@ -443,52 +443,6 @@ namespace Aerolithe
                     tabControl4.SelectedTab = tabPage17;
                 }));
             }
-
-            if (checkBox_SeqFocusStack.Checked || checkBox_StackAuto.Checked)
-            {
-                AppendTextToConsoleNL("Focus Stack lancé");
-                await MakeFocusStackSerie();
-            }
-
-
-            // appliquer le masque si nécessaire. 
-            if (checkBox_ApplyMaskStackedImage.Checked)
-            {
-                Invoke(new Action(async () =>
-                {
-                    btn_stopAutomaticFocusCapture.Visible = false;
-                    btn_stopAutomaticFocusCapture.Enabled = false;
-
-                    if (int.TryParse(textBox_nbrFocusSteps.Text, out int stepBack))
-                    {
-                        stepBack = stepBack / 2;
-                        for (int i = 0; i <= stepBack; i++)
-                        {
-                            ManualFocus(1, stepSize);
-                            if (lbl_focusStepsVar.InvokeRequired)
-                            {
-                                lbl_focusStepsVar.Invoke(new Action(() =>
-                                {
-                                    lbl_focusStepsVar.Text = i.ToString();
-                                }));
-                            }
-                            else
-                            {
-                                lbl_focusStepsVar.Text = i.ToString();
-                            }
-                            await Task.Delay(100);
-                        }
-                    }
-                    if (checkBox_ApplyMaskStackedImage.Checked)
-                    {
-                        PostFocusStackMask();
-                    }
-
-                }));
-            }
-
-
-
 
         }
         //public async Task AutomaticFocusThenCapture()
