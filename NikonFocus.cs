@@ -20,19 +20,19 @@ namespace Aerolithe
         private TaskCompletionSource<bool> focusReadyTcs;
 
         public Stopwatch sw;
-        public int focusStackStepVar = 0;
+        public int focusStackStepVar = 0; // Garde compte des steps de driveSteps effectué. 
+        public int iterations = 24;  // Nombre de steps à effectuer 
         private bool _stopRequested = false;
         public double currentCrosshairX = 0;
         public ScottPlot.Plottables.Crosshair crosshair;
         public ScottPlot.WinForms.FormsPlot formsPlot;
-        public int delayTime = 50;
+        public int delayTime = 100;
         public int minDetect = 5;
-        public int iterations = 24;
         double blurThreshold = 100.0;
         public int blurredBlocks = 0;
         public int stepSize = 0;
         public int delta = 0;
-
+        int maxNbrPicturesAllowed = 15;
 
         public async Task nikonDoFocus()
         {
@@ -150,125 +150,6 @@ namespace Aerolithe
             formsPlot.Plot.Title($"<<   X: {currentCrosshairX:F0}   |   Y: {currentY:F2}   >>");
         }
 
-        public async Task AutomaticFocusRoutine()
-        {
-
-            if (btn_stopAutomaticFocusCapture.InvokeRequired)
-            {
-                btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
-                {
-                    btn_stopAutomaticFocusCapture.Visible = true;
-                    btn_stopAutomaticFocusCapture.Enabled = true;
-                }));
-            }
-            else
-            {
-                btn_stopAutomaticFocusCapture.Visible = true;
-                btn_stopAutomaticFocusCapture.Enabled = true;
-            }
-
-            await NikonAutofocus();
-            stepSize = (int)hScrollBar_driveStep.Value;
-            var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
-
-            int maxTargetDown = 0;
-            int maxTargetUp = 0;
-            int firstDetectionIndex = -1;
-
-            // 🟠 Première passe : reculer (non stockée)
-            int initialBackSteps = iterations;
-            ManualFocus(1, stepSize * initialBackSteps);
-            focusStackStepVar -= initialBackSteps;
-            UpdateFocusStepVarLbl(focusStackStepVar);
-            await Task.Delay(500);
-
-            // 🔁 Reculer davantage si flou encore détecté
-            while (blurredBlocks >= minDetect && !_stopRequested)
-            {
-                ManualFocus(1, stepSize);
-                focusStackStepVar -= 1;
-                UpdateFocusStepVarLbl(focusStackStepVar);
-                await Task.Delay(delayTime);
-            }
-
-            maxTargetDown = focusStackStepVar;
-            //AppendTextToConsoleNL($"maxTargetDown = {maxTargetDown}");
-
-            await Task.Delay(500);
-
-            // 🟢 Deuxième passe : avancer (stockée)
-            int returnSteps = Math.Abs(maxTargetDown) + iterations;
-            //AppendTextToConsoleNL($"returnSteps = {returnSteps}");
-
-            for (int i = 0; i < returnSteps; i++)
-            {
-                if (_stopRequested)
-                {
-                    AppendTextToConsoleNL("_stopRequested");
-                    break;
-                }
-                ManualFocus(0, stepSize);
-                await Task.Delay(delayTime);
-
-                blurDataDict[i] = (focusStackStepVar, blurredBlocks);
-                UpdateFocusStepVarLbl(focusStackStepVar);
-
-                if (blurredBlocks >= minDetect && firstDetectionIndex == -1)
-                    firstDetectionIndex = focusStackStepVar;
-
-                focusStackStepVar += 1;
-            }
-
-            // 🔁 Avancer davantage si flou encore détecté
-
-            while (blurredBlocks >= minDetect && !_stopRequested)
-            {
-                ManualFocus(0, stepSize);
-                await Task.Delay(delayTime);
-
-                blurDataDict[blurDataDict.Count] = (focusStackStepVar, blurredBlocks);
-                UpdateFocusStepVarLbl(focusStackStepVar);
-
-                if (firstDetectionIndex == -1)
-                    firstDetectionIndex = focusStackStepVar;
-
-                focusStackStepVar += 1;
-            }
-
-            maxTargetUp = focusStackStepVar;
-            delta = maxTargetUp + Math.Abs(maxTargetDown);
-            //AppendTextToConsoleNL($"maxTargetUp = {maxTargetUp}");
-            //AppendTextToConsoleNL($"delta = {delta}");
-            //AppendTextToConsoleNL($"Première détection à = {firstDetectionIndex}");
-
-            await Task.Delay(500);
-
-            // 🔵 Troisième passe : retour à la première détection          
-
-            int returnToStartSteps = (maxTargetUp - firstDetectionIndex) / 2;
-            ManualFocus(1, returnToStartSteps * stepSize);
-            UpdateFocusStepVarLbl(focusStackStepVar);
-            await Task.Delay(500);
-
-            // Ajustement fin
-            while (blurredBlocks > minDetect*2 && !_stopRequested)
-            {
-                ManualFocus(1, stepSize);
-                await Task.Delay(delayTime * 10);
-            }
-
-            // Reculer de 1 pour revenir au point net
-            ManualFocus(0, stepSize);
-            focusStackStepVar = 0;
-            UpdateFocusStepVarLbl(focusStackStepVar);
-            await Task.Delay(delayTime);
-
-
-            // 📊 Affichage du graphique
-            await DisplayBlurGraph(blurDataDict);
-            
-        }
-
         private async Task DisplayBlurGraph(Dictionary<int, (int steps, int blurBlocks)> blurDataDict)
         {
             if (InvokeRequired)
@@ -348,17 +229,176 @@ namespace Aerolithe
         }
 
 
+        public async Task AutomaticFocusRoutine()
+        {
+            if (_stopRequested) return;
+            if (btn_stopAutomaticFocusCapture.InvokeRequired)
+            {
+                btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
+                {
+                    btn_stopAutomaticFocusCapture.Visible = true;
+                    btn_stopAutomaticFocusCapture.Enabled = true;
+                }));
+            }
+            else
+            {
+                btn_stopAutomaticFocusCapture.Visible = true;
+                btn_stopAutomaticFocusCapture.Enabled = true;
+            }
+
+            await NikonAutofocus();
+            if (_stopRequested) return;
+            
+            var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
+
+            int maxTargetDown = 0;
+            int maxUpperPosition = 0;
+            int maxTargetUp = -1;
+
+            // maxTargetDown = le focusStackStepVar le plus bas (négatif) où il y a eu une détection. Plus bas que ça c'est flou
+            // maxTargetUp = le focusStackStepVar le plus haut où il ya détection. En haut de ça c'est flou
+            // maxUpperPosition = le focusStackStepVar le plus haut où la caméra s'est rendue, très probablement 4 steps de plus que maxTargetUp
+            // Delta = le range entre les deux maxTargetDown et maxTargetUp
+
+            ////////////////////////////////////////////////
+            //  Première passe : reculer (non stockée dans blurDataDict) ////////////////////////////////////////////////
+
+            ManualFocus(1, stepSize * iterations);
+            focusStackStepVar = iterations * -1;
+            UpdateFocusStepVarLbl(focusStackStepVar);
+
+            AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
+            await Task.Delay(500);
+
+            if (_stopRequested) return;
+
+            //  Reculer davantage si flou encore détecté
+            while (blurredBlocks >= minDetect && !_stopRequested)
+            {
+                if (_stopRequested) return;
+                ManualFocus(1, stepSize);
+                focusStackStepVar -= 1;
+                UpdateFocusStepVarLbl(focusStackStepVar);                
+                await Task.Delay(delayTime);
+            }
+
+            maxTargetDown = focusStackStepVar;
+
+            //AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
+            //AppendTextToConsoleNL($"maxTargetDown = {maxTargetDown}");
+
+            await Task.Delay(200);
+
+
+            int blurConsecutiveCount = 0;
+            int i = 0;
+
+            ////////////////////////////////////////////////
+            //  Deuxième passe : On monte jusqu'à ce qu'on ait 4 flous consécutifs (stockée dans blurDataDict) ////////////////////////////////////////////////
+            
+            while (!_stopRequested)
+            {
+                ManualFocus(0, stepSize);
+                await Task.Delay(delayTime);
+
+                if (blurredBlocks >= minDetect)
+                {
+                    blurDataDict[i] = (focusStackStepVar, blurredBlocks);
+                    maxTargetUp = focusStackStepVar;
+                    blurConsecutiveCount = 0;
+                }
+                else
+                {
+                    blurConsecutiveCount++;
+                    
+                }
+
+                focusStackStepVar += 1;
+                UpdateFocusStepVarLbl(focusStackStepVar);
+
+                if (blurConsecutiveCount >= 4 && focusStackStepVar > 0)
+                {
+                    //AppendTextToConsoleNL("Arrêt anticipé : 4 flous consécutifs détectés.");
+                    break;
+                }
+                i++;
+            }
+
+
+            //AppendTextToConsoleNL("-- maxTargetUp = " + maxTargetUp.ToString());
+
+
+            maxUpperPosition = focusStackStepVar;
+            // delta = nombre de steps maximum
+            delta = maxTargetUp + Math.Abs(maxTargetDown);
+            //AppendTextToConsoleNL("-- maxUpperPosition = " + maxUpperPosition.ToString());
+            //AppendTextToConsoleNL($"delta ({delta.ToString()}) =  steps entre max up et max down à {stepSize} stepSize");
+
+            await Task.Delay(500);
+
+            ////////////////////////////////////////////////
+            // Troisième passe : retour à la première détection    ////////////////////////////////////////////////
+            
+
+            if (_stopRequested) return;
+            //int returnToStartSteps = (maxUpperPosition - maxTargetUp) / 2;
+            //ManualFocus(1, returnToStartSteps * stepSize);
+
+
+            AppendTextToConsoleNL("stepSize = " + stepSize.ToString());
+            AppendTextToConsoleNL("delta = " + delta.ToString());
+            int steps = (int)(delta * stepSize * 0.75);
+            AppendTextToConsoleNL(steps.ToString());
+
+            ManualFocus(1,steps);
+            await Task.Delay(500);
+            focusStackStepVar = maxTargetUp;
+            UpdateFocusStepVarLbl(maxTargetUp);
+
+            if (blurredBlocks < minDetect)
+            {
+                while (blurredBlocks < minDetect && !_stopRequested)
+                {
+                    if (_stopRequested) break;
+                    ManualFocus(0, stepSize);
+                    await Task.Delay(delayTime * 5);
+                }
+            }
+
+            // Ajustement fin
+            while (blurredBlocks > minDetect*2 && !_stopRequested)
+            {
+                if (_stopRequested) break;
+                ManualFocus(1, stepSize);
+                await Task.Delay(delayTime * 5);
+            }
+
+            //_DebugContinue = false;
+            //await WaitForDebugContinue();
+
+            // Reculer de 1 pour revenir au point net
+            ManualFocus(0, stepSize);
+            focusStackStepVar = 0;
+            UpdateFocusStepVarLbl(focusStackStepVar);
+            await Task.Delay(delayTime);
+
+
+            // 📊 Affichage du graphique
+            await DisplayBlurGraph(blurDataDict);
+            
+        }
+
+     
+
         public async Task AutomaticFocusThenCapture(int focusIterations)
         {
+            
             int newStepSize = stepSize;
-            AppendTextToConsoleNL("AutomaticFocusThenCapture(" + focusIterations.ToString() + ")");
             Invoke(new Action(() =>
             {
                 btn_stopAutomaticFocusCapture.Visible = true;
                 btn_stopAutomaticFocusCapture.Enabled = true;
             }));
-
-            _stopRequested = false;
 
             if (checkBox_SeqFocusStack.Checked || checkBox_StackAuto.Checked)
             {
@@ -378,7 +418,7 @@ namespace Aerolithe
                         }
                         catch (Exception ex)
                         {
-
+                            AppendTextToConsoleNL(ex.Message);  
                         }
                     }
                 }
@@ -388,16 +428,19 @@ namespace Aerolithe
                 }
 
             }
-
-            if (focusIterations > 20)
+            
+            if (focusIterations > maxNbrPicturesAllowed)
             {
-                newStepSize = stepSize * focusIterations / 20;
-                focusIterations = 20;
-                //AppendTextToConsoleNL("stepSize = " + stepSize.ToString() + "  newStepSize = " + newStepSize.ToString());
+                newStepSize = stepSize * focusIterations / maxNbrPicturesAllowed;
+                focusIterations = maxNbrPicturesAllowed;                
             }
 
+
+            AppendTextToConsoleNL(focusIterations.ToString() + " photos seront prises à " + newStepSize.ToString() + " steps  (Settings / Détection flou / Nbr de photo max)");
+
+            int iterationsCompletees = 0;
             for (int i = 0; i < focusIterations; i++)
-            {
+            {                
                 //AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
                 if (blurredBlocks >= minDetect)
                 {
@@ -409,11 +452,12 @@ namespace Aerolithe
                             btn_stopAutomaticFocusCapture.Visible = false;
                             btn_stopAutomaticFocusCapture.Enabled = false;
                         }));
+
                         return;
                     }
                     try
                     {
-                        await takePictureAsync();
+                        await takePictureAsync(); 
                         await Task.Delay(400);
                         ManualFocus(0, newStepSize);
                         await Task.Delay(delayTime);
@@ -423,19 +467,15 @@ namespace Aerolithe
                     catch (Exception e)
                     {
                         AppendTextToConsoleNL(e.Message);
-                    } 
+                    }
+                    Debug.WriteLine("itération " + i.ToString() + " blurredBLocks: " + blurredBlocks.ToString());
                 }
-                //else // continuer l'autofocus sans prendre de photo
-                //{
-                //    //AppendTextToConsoleNL("il y a un problène avec la détection. ");
-                //    ManualFocus(0, newStepSize);
-                //    await Task.Delay(delayTime);
-                //    focusStackStepVar += 1;
-                //    UpdateFocusStepVarLbl(focusStackStepVar);
-                //}
-               
-            }
 
+                iterationsCompletees += 1;
+
+   
+            }
+            
             if (!_stopRequested)
             {
                 Invoke(new Action(() =>
@@ -445,221 +485,7 @@ namespace Aerolithe
             }
 
         }
-        //public async Task AutomaticFocusThenCapture()
-        //{
-        //    Invoke(new Action(() =>
-        //    {
-        //        btn_stopAutomaticFocusCapture.Visible = true;
-        //        btn_stopAutomaticFocusCapture.Enabled = true;
-        //    }));
-
-        //    _stopRequested = false;
-
-        //    if (int.TryParse(textBox_nbrFocusSteps.Text, out int steps))
-        //    {
-        //        int stepSize = (int)hScrollBar_driveStep.Value;
-
-
-        //        if (checkBox_StackAuto.Checked)
-        //        {
-        //            try
-        //            {
-        //                string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.*")
-        //                       .Where(file => file.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-        //                                      file.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-        //                                      file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-        //                       .ToArray();
-
-        //                foreach (string imageFile in imageFiles)
-        //                {
-        //                    try
-        //                    {
-        //                        File.Delete(imageFile);
-        //                    }
-        //                    catch (Exception ex)
-        //                    {
-
-        //                    }
-        //                }
-        //            }
-        //            catch (Exception e)
-        //            {
-        //                AppendTextToConsoleNL(e.Message);
-        //            }
-
-        //        }
-
-        //        for (int i = 0; i < steps; i++)
-        //        {
-        //            if (_stopRequested)
-        //            {
-        //                Invoke(new Action(() =>
-        //                {
-        //                    MessageBox.Show("Capture automatique interrompue.");
-        //                    btn_stopAutomaticFocusCapture.Visible = false;
-        //                    btn_stopAutomaticFocusCapture.Enabled = false;
-        //                }));
-        //                return;
-        //            }
-
-        //            await takePictureAsync();
-        //            await Task.Delay(delayTime);
-        //            ManualFocus(0, stepSize);
-        //            await Task.Delay(delayTime);
-        //        }
-
-        //        if (!_stopRequested)
-        //        {
-        //            Invoke(new Action(() =>
-        //            {
-        //                tabControl4.SelectedTab = tabPage17;
-        //            }));
-        //            await MakeFocusStackSerie();
-        //        }
-
-        //        Invoke(new Action(async () =>
-        //        {
-        //            btn_stopAutomaticFocusCapture.Visible = false;
-        //            btn_stopAutomaticFocusCapture.Enabled = false;
-        //            if (int.TryParse(textBox_nbrFocusSteps.Text, out int stepBack))
-        //            {
-        //                stepBack = stepBack / 2;
-        //                for (int i = 0; i <= stepBack; i++)
-        //                {
-        //                    ManualFocus(1, stepSize);
-        //                    if (lbl_focusStepsVar.InvokeRequired)
-        //                    {
-        //                        lbl_focusStepsVar.Invoke(new Action(() =>
-        //                        {
-        //                            lbl_focusStepsVar.Text = i.ToString();
-        //                        }));
-        //                    }
-        //                    else
-        //                    {
-        //                        lbl_focusStepsVar.Text = i.ToString();
-        //                    }
-        //                    await Task.Delay(100);
-        //                }
-        //            }
-        //            if (checkBox_ApplyMaskStackedImage.Checked)
-        //            {
-        //                PostFocusStackMask();
-        //            }
-
-        //        }));
-
-
-
-        //    }
-        //}
-
-        //public async Task AutomaticFocusThenCapture()
-        //{
-        //    Invoke(new Action(() =>
-        //    {
-        //        btn_stopAutomaticFocusCapture.Visible = true;
-        //        btn_stopAutomaticFocusCapture.Enabled = true;
-        //    }));
-
-        //    _stopRequested = false;
-
-        //    if (int.TryParse(textBox_nbrFocusSteps.Text, out int steps))
-        //    {
-        //        int stepSize = (int)hScrollBar_driveStep.Value;
-        //        int delayTime = 200;
-
-        //        if (checkBox_StackAuto.Checked)
-        //        {
-        //            try
-        //            {
-        //                string[] imageFiles = Directory.GetFiles(imagesFolderPath, "*.*")
-        //                       .Where(file => file.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-        //                                      file.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-        //                                      file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-        //                       .ToArray();
-
-        //                foreach (string imageFile in imageFiles)
-        //                {
-        //                    try
-        //                    {
-        //                        File.Delete(imageFile);
-        //                    }
-        //                    catch (Exception ex)
-        //                    {
-
-        //                    }
-        //                }
-        //            }
-        //            catch (Exception e)
-        //            {
-        //                AppendTextToConsoleNL(e.Message);
-        //            }
-
-        //        }
-
-        //        for (int i = 0; i < steps; i++)
-        //        {
-        //            if (_stopRequested)
-        //            {
-        //                Invoke(new Action(() =>
-        //                {
-        //                    MessageBox.Show("Capture automatique interrompue.");
-        //                    btn_stopAutomaticFocusCapture.Visible = false;
-        //                    btn_stopAutomaticFocusCapture.Enabled = false;
-        //                }));
-        //                return;
-        //            }
-
-        //            await takePictureAsync();
-        //            await Task.Delay(delayTime);
-        //            ManualFocus(0, stepSize);
-        //            await Task.Delay(delayTime);
-        //        }
-
-        //        if (!_stopRequested)
-        //        {
-        //            Invoke(new Action(() =>
-        //            {
-        //                tabControl4.SelectedTab = tabPage17;
-        //            }));
-        //            await MakeFocusStackSerie();
-        //        }
-
-        //        Invoke(new Action(async () =>
-        //        {
-        //            btn_stopAutomaticFocusCapture.Visible = false;
-        //            btn_stopAutomaticFocusCapture.Enabled = false;
-        //            if (int.TryParse(textBox_nbrFocusSteps.Text, out int stepBack))
-        //            {
-        //                stepBack = stepBack / 2;
-        //                for (int i = 0; i <= stepBack; i++)
-        //                {
-        //                    ManualFocus(1, stepSize);
-        //                    if (lbl_focusStepsVar.InvokeRequired)
-        //                    {
-        //                        lbl_focusStepsVar.Invoke(new Action(() =>
-        //                        {
-        //                            lbl_focusStepsVar.Text = i.ToString();
-        //                        }));
-        //                    }
-        //                    else
-        //                    {
-        //                        lbl_focusStepsVar.Text = i.ToString();
-        //                    }
-        //                    await Task.Delay(100);
-        //                }
-        //            }
-        //            if (checkBox_ApplyMaskStackedImage.Checked)
-        //            {
-        //                PostFocusStackMask();
-        //            }
-
-        //        }));
-
-
-
-        //    }
-        //}
+       
     }
 
 }

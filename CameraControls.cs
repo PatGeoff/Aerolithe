@@ -27,106 +27,125 @@ namespace Aerolithe
 
         public async Task takePictureAsync()
         {
-            //Initialize the TaskCompletionSource for each image capture
             imageReadyTcs = new TaskCompletionSource<bool>();
-            
+
             try
             {
-                device.Capture();
-                //AppendTextToConsoleNL("Device Capture demandée");
-                await imageReadyTcs.Task;
-                
+                await Task.Run(() =>
+                {
+                    device.Capture(); // Appel dans un thread séparé
+                });
+
+                await imageReadyTcs.Task; // Attend que device_ImageReady signale que l'image est prête
             }
             catch (Exception e)
             {
-                AppendTextToConsoleNL("takePictureAsync Error message: " +e.Message);
-                return;
+                AppendTextToConsoleNL("takePictureAsync Error message: " + e.Message);
             }
         }
-
-        void device_ImageReady(NikonDevice sender, NikonImage image)
+        private async void device_ImageReady(NikonDevice sender, NikonImage image)
         {
-            if (imageReadyTcs != null && !imageReadyTcs.Task.IsCompleted)
-            {
-                imageReadyTcs.SetResult(true);
-            }
+          
+
             try
             {
-                if (image.Type == NikonImageType.Jpeg)
+                if (image.Type != NikonImageType.Jpeg)
                 {
-                   
-                    try
+                    Invoke(() => MessageBox.Show("L'image doit être du type JPEG. Vérifiez les paramètres de la caméra."));
+                    return;
+                }
+
+                Bitmap finalBitmap = null;
+
+                try
+                {
+                    // Lecture de l'état du checkbox dans le thread UI
+                    bool applyMask = false;
+                    if (chkBox_applyMask.InvokeRequired)
+                        chkBox_applyMask.Invoke(() => applyMask = chkBox_applyMask.Checked);
+                    else
+                        applyMask = chkBox_applyMask.Checked;
+
+                    // Traitement complet dans un thread séparé
+                    finalBitmap = await Task.Run(() =>
                     {
                         using (var memoryStream = new MemoryStream(image.Buffer))
                         using (var originalBitmap = new Bitmap(memoryStream))
                         {
-                            Bitmap finalBitmap;
+                            var processedBitmap = applyMask ? ApplyMask(originalBitmap) : new Bitmap(originalBitmap);
 
-                            // Application du masque
-                            if (chkBox_applyMask.Checked)
-                            {
-                                var sourceImage = originalBitmap.ToImage<Bgr, byte>();
-                                var maskGray = maskBitmapLive.ToImage<Gray, byte>();
-                                var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
-                               
-                                var invertedMask = resizedMask.Not();
-                                var maskBgr = invertedMask.Convert<Bgr, byte>();
-
-                                sourceImage._And(maskBgr);
-                                finalBitmap = sourceImage.ToBitmap();
-
-                                // Libération manuelle
-                                maskGray.Dispose();
-                                resizedMask.Dispose();
-                                invertedMask.Dispose();
-                                maskBgr.Dispose();
-                                sourceImage.Dispose();
-                            }
-                            else
-                            {
-                                finalBitmap = new Bitmap(originalBitmap);
-                            }
-
-                            picBox_pictureTaken.Image?.Dispose();
-                            picBox_pictureTaken.Image = finalBitmap;
-
-                           
                             // Sauvegarde si activée
-                            if (chkBox_savePicture.Checked && projet.ImageFolderPath != null && projet.ImageNameBase != null)
+                            bool savePicture = false;
+                            if (chkBox_savePicture.InvokeRequired)
+                                chkBox_savePicture.Invoke(() => savePicture = chkBox_savePicture.Checked);
+                            else
+                                savePicture = chkBox_savePicture.Checked;
+
+                            if (savePicture && projet.ImageFolderPath != null && projet.ImageNameBase != null)
                             {
                                 PreparationDossierDestTemp();
                                 PreparationNomImage();
-                               
-                                AppendTextToConsoleNL("Sauvegarde de la photo " + projet.ImageNameFull + " ...");
+
+                                Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.ImageNameFull + " ..."));
 
                                 using (var saveStream = new MemoryStream())
                                 {
-                                    finalBitmap.Save(saveStream, ImageFormat.Jpeg);
+                                    processedBitmap.Save(saveStream, ImageFormat.Jpeg);
                                     saveStream.Position = 0;
                                     SaveStreamAsJpegWithProgress(saveStream, projet.ImageFullPath);
-                                    AfficherMiniatures(projet.ImageNameBase, projet.ImageFullPath, panelSize);
+
+                                    Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.ImageFullPath, panelSize));
                                 }
-
-                                
                             }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Erreur lors du traitement de l'image : " + ex.Message);
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Il y a une erreur, l'image doit être du type jpeg. Aller dans l'onglet Settings/Caméra/Type D'images et choisir Jpeg dans le menu déroulant");
-                }
 
+                            return processedBitmap;
+                        }
+                    });
+
+                    if (imageReadyTcs != null && !imageReadyTcs.Task.IsCompleted)
+                    {
+                        imageReadyTcs.SetResult(true);
+                    }
+                    // Mise à jour de l'UI
+                    Invoke(() =>
+                    {
+                        picBox_pictureTaken.Image?.Dispose();
+                        picBox_pictureTaken.Image = finalBitmap;
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Invoke(() => MessageBox.Show("Erreur lors du traitement de l'image : " + ex.Message));
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("device_ImageReady exception: " + ex.Message);
+                Invoke(() => MessageBox.Show("device_ImageReady exception: " + ex.Message));
                 imageReadyTcs?.TrySetException(ex);
             }
+        }
+
+
+        private Bitmap ApplyMask(Bitmap originalBitmap)
+        {
+            var sourceImage = originalBitmap.ToImage<Bgr, byte>();
+            var maskGray = maskBitmapLive.ToImage<Gray, byte>();
+            var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
+
+            var invertedMask = resizedMask.Not();
+            var maskBgr = invertedMask.Convert<Bgr, byte>();
+
+            sourceImage._And(maskBgr);
+            var finalBitmap = sourceImage.ToBitmap();
+
+            // Libération
+            maskGray.Dispose();
+            resizedMask.Dispose();
+            invertedMask.Dispose();
+            maskBgr.Dispose();
+            sourceImage.Dispose();
+
+            return finalBitmap;
         }
 
         private void AfficherMiniatures(string nomImage, string imagePath, Size panelSize)

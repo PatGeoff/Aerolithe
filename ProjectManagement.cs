@@ -80,7 +80,7 @@ namespace Aerolithe
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     appSettings.ProjectPath = openFileDialog.FileName;
-                    Debug.WriteLine(appSettings.ProjectPath);
+                    //Debug.WriteLine(appSettings.ProjectPath);
                     OpenProject(appSettings.ProjectPath);
                     SavePrefsSettings();
                 }
@@ -93,8 +93,18 @@ namespace Aerolithe
             btn_goToProjectFolder.Enabled = true;
             lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}" ;
             txtBox_nomImages.Text = projet.ImageNameBase.Split("-")[0];
+            btn_goToImageFolder.Enabled = true;            
             
-            btn_goToImageFolder.Enabled = true;
+            try
+            {
+                stepSize = projet.StepSize;
+                hScrollBar_driveStep.Value = stepSize;
+                txtBox_DriveStep.Text = stepSize.ToString();
+                maxNbrPicturesAllowed = projet.MaxPicturesAllowed;
+                if (maxNbrPicturesAllowed == 0) maxNbrPicturesAllowed = 15;
+                textBox_nbrPhotosFS.Text = maxNbrPicturesAllowed.ToString();
+            }
+            catch { }
 
         }
 
@@ -212,6 +222,10 @@ namespace Aerolithe
             
         }
 
+        // projet.SerieIncrement "-**"  -> pour chaque rotation de la table tournante
+        // projet.ImageIncrement "_**"  -> pour chaque photo du focusStack
+
+
         private void PreparationNomImage()
         {
 
@@ -270,6 +284,7 @@ namespace Aerolithe
         {
             lbl_SerieIncrement.Text = "00";
             projet.SerieIncrement = 0;
+            AssembleImageName();
             projet.Save(appSettings.ProjectPath);
         }
 
@@ -384,7 +399,7 @@ namespace Aerolithe
     // Les appSettings du projet 
     public class ProjectPreferences
     {
-     
+
 
         private string _imageNameBase;
         private string _imageNameFull;
@@ -392,12 +407,29 @@ namespace Aerolithe
         private string _tempImageFolderPath;
         private string _imageFullPath;
         private string _focusStackPath;
+        private int _maxPicturesAllowed;
 
         // image increment => nomImage-00_**.jpg  (**)
         private int _imageIncrement;
         // serie increment => nomImage-**_00.jpg  (**)
         private int _serieIncrement;
-        
+
+        private int _stepSize;
+
+        public int  MaxPicturesAllowed
+        {
+            get {  return _maxPicturesAllowed; }
+            set { _maxPicturesAllowed = value; }
+        }
+
+        public int StepSize
+        {
+            get { return _stepSize; }
+            set
+            {
+                _stepSize = value;
+            }
+        }
 
         public string ImageNameBase
         {
@@ -405,7 +437,7 @@ namespace Aerolithe
             set
             {
                 _imageNameBase = value;
-                Debug.WriteLine(_imageNameBase);
+                //Debug.WriteLine(_imageNameBase);
                 
             }
         }
@@ -415,7 +447,7 @@ namespace Aerolithe
             set
             {
                 _imageNameFull = value;
-                Debug.WriteLine(_imageNameFull);
+                //Debug.WriteLine(_imageNameFull);
             }
         }
         public string ImageFolderPath
@@ -424,7 +456,7 @@ namespace Aerolithe
             set
             {
                 _imageFolderPath = value;
-                Debug.WriteLine(_imageFolderPath);
+                //Debug.WriteLine(_imageFolderPath);
             }
         }
         public string TempImageFolderPath
@@ -433,7 +465,7 @@ namespace Aerolithe
             set
             {
                 _tempImageFolderPath = value;
-                Debug.WriteLine(_tempImageFolderPath);
+                //Debug.WriteLine(_tempImageFolderPath);
             }
         }
         public string ImageFullPath
@@ -442,7 +474,7 @@ namespace Aerolithe
             set
             {
                 _imageFullPath = value;
-                Debug.WriteLine(_imageFullPath);
+                //Debug.WriteLine(_imageFullPath);
             }
         }
         public string FocusStackPath

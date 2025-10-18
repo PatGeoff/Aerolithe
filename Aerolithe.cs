@@ -44,6 +44,8 @@ namespace Aerolithe
         private Point startPoint;
         private int scrollStart;
 
+        public bool _DebugContinue = true;
+
         private bool isChangingCheckState = false;
         //private string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MyResources\\Models", "u2net.onnx");
 
@@ -99,7 +101,7 @@ namespace Aerolithe
                     {
                         lbl_StackedPath.Text = projet.FocusStackPath;
                     }
-
+                    
 
                 }
                 catch (Exception e)
@@ -121,7 +123,7 @@ namespace Aerolithe
             getActuatorAngleFromEsp32();
             getTurntablePosFromWaveshare();
 
-            // _session = new InferenceSession(modelPath);
+            tabControl1.SelectedTab = tabPage3; tabControl4.SelectedTab = tabControl4.TabPages[2];
 
         }
 
@@ -861,6 +863,7 @@ namespace Aerolithe
 
         private void btn_PrisePhotoSeqTotale_Click(object sender, EventArgs e)
         {
+            ResetSequenceCancellation();
             Task.Run(async () =>
             {
                 tokenSource = new CancellationTokenSource();
@@ -873,6 +876,7 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
         {
+            ResetSequenceCancellation();
             //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
             currentSequence = 0;
             Task.Run(async () =>
@@ -885,6 +889,7 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
         {
+            ResetSequenceCancellation();
             //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
             currentSequence = 1;
 
@@ -898,6 +903,7 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
         {
+            ResetSequenceCancellation();
             currentSequence = 2;
             Task.Run(async () =>
             {
@@ -952,32 +958,65 @@ namespace Aerolithe
 
         }
 
+        private void btn_stopAutomaticFocusCapture_Click(object sender, EventArgs e)
+        {
+            StopSequences();
+
+        }
         private void btn_cancelPhotoShoot_Click(object sender, EventArgs e)
         {
-            Task.Run(() =>
-            {
-                if (tokenSource != null)
-                {
-                    tokenSource.Cancel();
-                }
-            });
+            StopSequences();
         }
 
+        private void StopSequences()
+        {
+            _stopRequested = true;
+            if (btn_cancelPhotoShoot.InvokeRequired)
+            {
+                btn_cancelPhotoShoot.Invoke(new Action(() =>
+                {
+                    btn_stopAutomaticFocusCapture.BackColor = Color.Red;
+                    btn_cancelPhotoShoot.BackColor = Color.Red;
+                    lbl_CancelStatus.Text = "Cancel? OUI";
+                }));
+            }
+            else
+            {
+                btn_stopAutomaticFocusCapture.BackColor = Color.Red;
+                btn_cancelPhotoShoot.BackColor = Color.Red;
+                lbl_CancelStatus.Text = "Cancel? OUI";
+            }
+
+
+        }
+
+        private void ResetSequenceCancellation()
+        {
+            _stopRequested = false;
+            if (btn_stopAutomaticFocusCapture.InvokeRequired)
+            {
+                btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
+                {
+                    btn_cancelPhotoShoot.BackColor = System.Drawing.Color.FromArgb(100, 30, 30, 30);
+                    btn_stopAutomaticFocusCapture.BackColor = System.Drawing.Color.FromArgb(100, 30, 30, 30);
+                    lbl_CancelStatus.Text = "Cancel? Non";
+                }));
+            }
+            else
+            {
+                btn_cancelPhotoShoot.BackColor = System.Drawing.Color.FromArgb(100, 30, 30, 30);
+                btn_stopAutomaticFocusCapture.BackColor = System.Drawing.Color.FromArgb(100, 30, 30, 30);
+                lbl_CancelStatus.Text = "Cancel? Non";
+            }
+        }
 
         private void btn_focusMinus_Click(object sender, EventArgs e)
         {
             try
             {
-                ManualFocus(1, (double)hScrollBar_driveStep.Value);
+                ManualFocus(1, stepSize);
                 focusStackStepVar -= 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
-                //if (formsPlot != null)
-                //{
-                //    currentCrosshairX -= 1;
-                //    crosshair.X = currentCrosshairX;
-                //    UpdateCrosshairTitle();
-                //    formsPlot.Refresh();
-                //}
             }
             catch (Exception)
             {
@@ -989,16 +1028,9 @@ namespace Aerolithe
         {
             try
             {
-                ManualFocus(0, (double)hScrollBar_driveStep.Value);
+                ManualFocus(0, stepSize);
                 focusStackStepVar += 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
-                //if (formsPlot != null)
-                //{
-                //    currentCrosshairX += 1;
-                //    crosshair.X = currentCrosshairX;
-                //    UpdateCrosshairTitle();
-                //    formsPlot.Refresh();
-                //}
             }
             catch (Exception)
             {
@@ -1562,12 +1594,6 @@ namespace Aerolithe
         }
 
 
-
-        private void btn_stopAutomaticFocusCapture_Click(object sender, EventArgs e)
-        {
-            _stopRequested = true;
-        }
-
         private void btn_nextAutoFocustackCapture_Click(object sender, EventArgs e)
         {
             tabControl4.SelectedTab = tabPage16;
@@ -1761,6 +1787,9 @@ namespace Aerolithe
                 {
                     hScrollBar_driveStep.Value = value;
                     txtBox_DriveStep.ForeColor = Color.White;
+                    stepSize = value;
+                    projet.StepSize = stepSize;
+                    projet.Save(appSettings.ProjectPath);
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
@@ -1860,6 +1889,42 @@ namespace Aerolithe
         private void btn_clearFFMPEGConsole_Click(object sender, EventArgs e)
         {
             txtBox_FFMPEGConsole.Clear();
+        }
+
+        private void btn_DebugContinue_Click(object sender, EventArgs e)
+        {
+            _DebugContinue = true;
+        }
+
+        private async Task WaitForDebugContinue()
+        {
+            AppendTextToConsoleNL("APPLICATION MISE EN PAUSE. APPUYER SUR \"Debug - Continue\" pour continuer");
+            while (!_DebugContinue)
+            {
+                await Task.Delay(100); // Attend 100 ms avant de revérifier
+                Application.DoEvents(); // Permet au GUI de rester réactif
+            }
+        }
+
+        private void textBox_nbrPhotosFS_TextChanged(object sender, EventArgs e)
+        {
+            textBox_nbrPhotosFS.ForeColor = Color.Gray;
+        }
+
+        private void textBox_nbrPhotosFS_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(textBox_nbrPhotosFS.Text, out int value))
+                {
+                    textBox_nbrPhotosFS.ForeColor = Color.White;
+                    maxNbrPicturesAllowed = value;
+                    projet.MaxPicturesAllowed = maxNbrPicturesAllowed;
+                    projet.Save(appSettings.ProjectPath);
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
         }
     }
 }
