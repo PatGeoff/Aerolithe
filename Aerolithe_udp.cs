@@ -94,7 +94,23 @@ namespace Aerolithe
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
-                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperIpAddress, stepperPort));
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperCameraIpAddress, stepperCameraPort));
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        public async Task UdpSendLiftStepperNema23MessageAsync(string message)
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(message);
+                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                {
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperLiftNema27IpAddress, stepperLiftNema23Port));
                 }
             }
             catch (Exception ex)
@@ -122,7 +138,7 @@ namespace Aerolithe
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
                     await client.SendAsync(bytes, bytes.Length, new IPEndPoint(scissorLiftIpAddress, scissorLiftPort));
-                    AppendTextToConsoleNL("Aero --> ScissorLift: " + message);
+                    //AppendTextToConsoleNL("Aero --> ScissorLift: " + message);
                 }
             }
             catch (Exception ex)
@@ -148,22 +164,32 @@ namespace Aerolithe
             }
         }
 
-        public void udpSendStepperMotorData(int vitesse, int position) // valeurs 
+        public async Task udpSendStepperMotorData(int vitesse, int position) // valeurs 
         {
             string message = $"stepmotor moveto {vitesse},{position}";
-            UdpSendStepperMessageAsync(message);
+            await UdpSendStepperMessageAsync(message);
         }
 
-        public void udpSendStepperMotorData(int vitesse) // valeurs 
+        public async Task udpSendStepperMotorData(int vitesse) // valeurs 
         {
             string message = $"stepmotor movespeed {vitesse}";
-            UdpSendStepperMessageAsync(message);
-            AppendTextToConsoleNL(message);
+           await  UdpSendStepperMessageAsync(message);
+            //AppendTextToConsoleNL(message);
 
         }
 
-        public void udpSendM5Data(int position)
+        public async Task udpSendStepperLiftNema23MotorData(int vitesse, int position) // valeurs 
         {
+            string message = $"stepmotor moveto {vitesse},{position}";
+            await UdpSendLiftStepperNema23MessageAsync(message);
+            AppendTextToConsoleNL(message);
+        }
+
+        public async Task udpSendStepperLiftNema23MotorData(int vitesse) // valeurs 
+        {
+            string message = $"stepmotor movespeed {vitesse}";
+            await UdpSendLiftStepperNema23MessageAsync(message);
+            AppendTextToConsoleNL(message);
 
         }
 
@@ -223,8 +249,10 @@ namespace Aerolithe
                         var oscPacket = OscPacket.GetPacket(result.Buffer);
                         if (oscPacket is OscMessage oscMessage)
                         {
-                            string message = oscMessage.Address + "#" + oscMessage.Arguments[0].ToString();
-                            Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
+                            var args = oscMessage.Arguments.ToArray() ;
+                            var arguments = string.Join(", ", args.Select(a => a.ToString()));
+
+                            string message = oscMessage.Address + "#" + arguments;
                             CheckOSCMessage(message);
                         }
                     }
@@ -251,11 +279,6 @@ namespace Aerolithe
                 udpSendStepperMotorData(4000, stepperCurrentPosition);
             }
         }
-
-
-
-
-
 
         private void OnOscTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
@@ -389,43 +412,58 @@ namespace Aerolithe
         private async Task CheckOSCMessage(string message)
         {
 
-            //AppendTextToConsoleNL("Message Reçu: " + message);
-
             #region OSC
 
             if (message.Contains("OSC"))
             {
+                //AppendTextToConsoleNL(message);
                 string[] parts = message.Split('#');
                 string address = parts[0].Split("/")[1];
-                string arg = parts[1];
-                //AppendTextToConsoleNL($"addresse: {address}, argument: {arg}");
+
+                string[] args = parts[1].Split(",");
+                string firstArg = args[0];
+                string secondArg = "";
+                if (args.Length > 1)
+                {
+                    secondArg = args[1];
+                }
+                 
+
                 switch (address)
                 {
+                    
                     case "camera_osc_autofocus_btn":
                         await NikonAutofocus();
                         break;
                     case "camera_osc_motor_fader":
-                        udpSendStepperMotorData(int.Parse(arg) * 400);
+                        udpSendStepperMotorData(int.Parse(firstArg) * 2000);
                         break;
                     case "btn_drivestep":
-                        driveStep.Value = double.Parse(arg);
+                        driveStep.Value = double.Parse(firstArg);
                         device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
                         break;
                     case "btn_camera_osc_drivestep":
-                        if (int.Parse(arg) > 0)
+                        if (int.Parse(firstArg) > 0)
                         {
                             device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
                         }
-                        else if (int.Parse(arg) < 0)
+                        else if (int.Parse(firstArg) < 0)
                         {
                             device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
                         }
                         break;
-                    case "lift_osc_fader":
-                        await udpSendScissorData(int.Parse(arg) * 1000);
+                    case "lift_osc_horizontal_fader":
+                        await udpSendScissorData(int.Parse(firstArg) * 10);
+                        break;
+                    case "lift_Nema23_osc_fader":
+                        await udpSendStepperLiftNema23MotorData(int.Parse(firstArg) * 2000);
+                        break;
+                    case "lift_JogWheel_osc_fader":                        
+                        await udpSendStepperLiftNema23MotorData(int.Parse(secondArg) * 2000);
+                        await udpSendScissorData(int.Parse(firstArg) * 10);
                         break;
                     case "tableTournante_osc_fader":
-                        await UdpSendTurnTableMessageAsync($"turntable,{arg},{turntableSpeed}");
+                        await UdpSendTurnTableMessageAsync($"turntable,{firstArg},{turntableSpeed}");
                         break;
                     case "actuator_osc_5_btn":
                         await UdpSendActuatorMessageAsync("actuator 5");

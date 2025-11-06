@@ -25,15 +25,17 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         // THIS IP ADDRESS 192.168.2.4 //
-        public readonly IPAddress stepperIpAddress = IPAddress.Parse("192.168.2.11");
+        public readonly IPAddress stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
         public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
         public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
         public readonly IPAddress M5ipAddress = IPAddress.Parse("192.168.2.6");
         public readonly IPAddress actuatorIpAddress = IPAddress.Parse("192.168.2.15");
-        public readonly int stepperPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
+        public readonly IPAddress stepperLiftNema27IpAddress = IPAddress.Parse("192.168.2.16");
+        public readonly int stepperCameraPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
         public readonly int turntablePort = 44466;  // Port sur lequel on reçoit les messages UDP au ESP32 de la table tournante
         public readonly int scissorLiftPort = 44477;  // Port sur lequel on reçoit les messages UDP au ESP32 du lift
         public readonly int M5Port = 44488;
+        public readonly int stepperLiftNema23Port = 44433; // NEMA23
         public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
         private readonly int localPortOSC = 55545;
         public readonly int actuatorPort = 44499;
@@ -42,14 +44,17 @@ namespace Aerolithe
         public bool stackedImageInBuffer = false;
         private bool isDragging = false;
         private Point startPoint;
-        private int scrollStart;
+        private bool mainConsoleScrollToCaret = true;
+        private bool focusStackConsoleScrollToCaret = true;
+        private bool stackConsoleScrollToCaret = true;
 
         public bool _DebugContinue = true;
 
         private bool isChangingCheckState = false;
         //private string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MyResources\\Models", "u2net.onnx");
 
-
+        private int[] serieId = null;
+        private int serieProgress = 0;
 
 
         private UdpClient udpClient;
@@ -57,7 +62,6 @@ namespace Aerolithe
         private TaskCompletionSource<int> _turntablePositionTcs;
         private TaskCompletionSource<double> _actuatorAngleTcs;
         private CancellationTokenSource tokenSource;
-
 
 
         private bool calibrationDone = true;
@@ -80,6 +84,13 @@ namespace Aerolithe
                 try
                 {
                     projet = projet.Load(appSettings.ProjectPath);
+                    txtBox_nbrImg5deg.Text = appSettings.NbrImg5Deg.ToString();
+                    txtBox_nbrImg25deg.Text = appSettings.NbrImg25Deg.ToString();
+                    txtBox_nbrImg45deg.Text = appSettings.NbrImg45Deg.ToString();
+
+
+
+
                     OpenProject(appSettings.ProjectPath);
                     if (!string.IsNullOrWhiteSpace(projet.ImageFolderPath))
                     {
@@ -101,7 +112,7 @@ namespace Aerolithe
                     {
                         lbl_StackedPath.Text = projet.FocusStackPath;
                     }
-                    
+
 
                 }
                 catch (Exception e)
@@ -122,6 +133,7 @@ namespace Aerolithe
             SetTooltips();
             getActuatorAngleFromEsp32();
             getTurntablePosFromWaveshare();
+            SetVariables();
 
             tabControl1.SelectedTab = tabPage3; tabControl4.SelectedTab = tabControl4.TabPages[2];
 
@@ -521,6 +533,70 @@ namespace Aerolithe
             performActuatorCalibration();
         }
 
+        private async Task WaitForActuator(int target)
+        {
+            int tolerance = 3;               // Plage acceptable avant relance
+            int stabilityTolerance = 3;      // Plage de stabilité pour sortir
+            int stabilityDurationMs = 1000;  // Durée de stabilité requise
+            int checkIntervalMs = 200;       // Fréquence de vérification
+            int stableCountRequired = stabilityDurationMs / checkIntervalMs;
+            int stableCount = 0;
+            int resendCooldown = 500;       // Délai entre renvois
+            DateTime lastResendTime = DateTime.MinValue;
+            DateTime startTime = DateTime.Now;
+            TimeSpan timeout = TimeSpan.FromSeconds(3); // Sécurité
+
+            while (!_stopRequested)
+            {
+                if ((DateTime.Now - startTime) > timeout)
+                {
+                    AppendTextToConsoleNL("⏱️ Timeout atteint, sortie forcée de la boucle.");
+                    break;
+                }
+
+                AppendTextToConsoleNL($"🔍 Angle actuel: {actuatorAngle}, cible: {target}, stableCount: {stableCount}");
+
+                // Vérifie la stabilité
+                if (Math.Abs(actuatorAngle - target) <= stabilityTolerance)
+                {
+                    stableCount++;
+                }
+                else
+                {
+                    stableCount = 0;
+                }
+
+                // Sortie si stable pendant 2 secondes
+                if (stableCount >= stableCountRequired)
+                {
+                    AppendTextToConsoleNL("✅ Angle stabilisé.");
+                    break;
+                }
+
+                // Renvoi de la commande si angle trop haut ou trop bas
+                if ((actuatorAngle < target - tolerance || actuatorAngle > target + tolerance) &&
+                    (DateTime.Now - lastResendTime).TotalMilliseconds > resendCooldown)
+                {
+                    AppendTextToConsoleNL($"🔁 Angle hors tolérance ({actuatorAngle}), renvoi de la commande actuator {target}");
+                    await UdpSendActuatorMessageAsync($"actuator {target}");
+                    lastResendTime = DateTime.Now;
+                }
+
+                await Task.Delay(checkIntervalMs);
+            }
+        }
+
+        //private async Task WaitForActuator(int target)
+        //{
+        //    int tolerance = 5;
+
+        //    while ((actuatorAngle < target - tolerance || actuatorAngle > target + tolerance) && !_stopRequested)
+        //    {
+        //        await Task.Delay(200); // Attente réelle
+        //    }
+        //}
+
+
         #endregion
 
         #region MAIN FORM
@@ -530,37 +606,7 @@ namespace Aerolithe
         }
 
 
-        public async Task PhotoSuccess(string imageName, int degrees, bool success, string temps)
-        {
-            Action updateRichTextBox = () =>
-            {
-                // Append the success status in green or red
-                richTextBox_PicReport.SelectionColor = success ? Color.Green : Color.Red;
-                richTextBox_PicReport.AppendText(success ? "Réussi\t" : "Échec\t");
-
-                // Append the imageName and degrees in white
-                richTextBox_PicReport.SelectionColor = Color.White;
-                string degreesStr = $"{degrees}".PadLeft(4);
-
-                richTextBox_PicReport.AppendText($"{imageName}\t{degreesStr} / 4096\t");
-
-                richTextBox_PicReport.AppendText($"{temps}s\n");
-
-                richTextBox_PicReport.ScrollToCaret();
-
-
-            };
-
-            if (richTextBox_PicReport.InvokeRequired)
-            {
-                richTextBox_PicReport.Invoke(updateRichTextBox);
-            }
-            else
-            {
-                updateRichTextBox();
-            }
-
-        }
+      
 
         public async Task AppendTextToFFMPEGConsoleNL(string message) // New Line
         {
@@ -634,7 +680,7 @@ namespace Aerolithe
         private void AppendFormattedTextInternal(string text, Color color, System.Windows.Forms.RichTextBox textbox)
         {
             textbox.SelectionStart = textbox.Text.Length;
-            textbox.ScrollToCaret();
+            if (mainConsoleScrollToCaret) textbox.ScrollToCaret();
             textbox.Select(); // Active le caret sans voler le focus
             textbox.SelectionLength = 0;
 
@@ -871,13 +917,16 @@ namespace Aerolithe
             });
         }
 
+         
 
 
 
         private void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
         {
+            projet.SerieIncrement = int.Parse(txtBox_seqPad1.Text);
+            AssembleImageName();
+
             ResetSequenceCancellation();
-            //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
             currentSequence = 0;
             Task.Run(async () =>
             {
@@ -889,8 +938,10 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
         {
+            projet.SerieIncrement = int.Parse(txtBox_seqPad2.Text);
+            AssembleImageName();
+
             ResetSequenceCancellation();
-            //MessageBox.Show("Les images seront enregistrées en tant que : " + imageNameBase + Environment.NewLine + "dans " + imagesFolderPath);
             currentSequence = 1;
 
             Task.Run(async () =>
@@ -903,6 +954,10 @@ namespace Aerolithe
 
         private void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
         {
+            projet.SerieIncrement = int.Parse(txtBox_seqPad3.Text);
+            AssembleImageName();
+            
+
             ResetSequenceCancellation();
             currentSequence = 2;
             Task.Run(async () =>
@@ -975,15 +1030,15 @@ namespace Aerolithe
             {
                 btn_cancelPhotoShoot.Invoke(new Action(() =>
                 {
-                    btn_stopAutomaticFocusCapture.BackColor = Color.Red;
-                    btn_cancelPhotoShoot.BackColor = Color.Red;
+                    btn_stopAutomaticFocusCapture.BackColor = Color.FromArgb(30,30,30) ;
+                    btn_cancelPhotoShoot.BackColor = Color.FromArgb(30, 30, 30);
                     lbl_CancelStatus.Text = "Cancel? OUI";
                 }));
             }
             else
             {
-                btn_stopAutomaticFocusCapture.BackColor = Color.Red;
-                btn_cancelPhotoShoot.BackColor = Color.Red;
+                btn_stopAutomaticFocusCapture.BackColor = Color.FromArgb(30, 30, 30);
+                btn_cancelPhotoShoot.BackColor = Color.FromArgb(30, 30, 30);
                 lbl_CancelStatus.Text = "Cancel? OUI";
             }
 
@@ -997,15 +1052,15 @@ namespace Aerolithe
             {
                 btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
                 {
-                    btn_cancelPhotoShoot.BackColor = System.Drawing.Color.FromArgb(100, 30, 30, 30);
-                    btn_stopAutomaticFocusCapture.BackColor = System.Drawing.Color.FromArgb(100, 30, 30, 30);
+                    btn_cancelPhotoShoot.BackColor = System.Drawing.Color.FromArgb(100, 80, 30, 30);
+                    btn_stopAutomaticFocusCapture.BackColor = System.Drawing.Color.FromArgb(100, 80, 30, 30);
                     lbl_CancelStatus.Text = "Cancel? Non";
                 }));
             }
             else
             {
-                btn_cancelPhotoShoot.BackColor = System.Drawing.Color.FromArgb(100, 30, 30, 30);
-                btn_stopAutomaticFocusCapture.BackColor = System.Drawing.Color.FromArgb(100, 30, 30, 30);
+                btn_cancelPhotoShoot.BackColor = System.Drawing.Color.FromArgb(100, 80, 30, 30);
+                btn_stopAutomaticFocusCapture.BackColor = System.Drawing.Color.FromArgb(100, 30, 80, 30);
                 lbl_CancelStatus.Text = "Cancel? Non";
             }
         }
@@ -1135,7 +1190,8 @@ namespace Aerolithe
 
         private void btn_clearPicReport_Click(object sender, EventArgs e)
         {
-            richTextBox_PicReport.Clear();
+            //richTextBox_PicReport.Clear();
+            flowPanelReports.Controls.Clear();
         }
 
 
@@ -1583,7 +1639,6 @@ namespace Aerolithe
 
         private void btn_ResetIncr_Click(object sender, EventArgs e)
         {
-            imageIncr = 0;
             ResetSerieIncrement();
 
         }
@@ -1611,8 +1666,22 @@ namespace Aerolithe
 
         private void btn_acceptImgName_Click(object sender, EventArgs e)
         {
-            AssembleImageName();
-            txtBox_nomImages.ForeColor = Color.White;
+            int inc;
+            if (int.TryParse(lbl_SerieIncrement.Text, out inc))
+            {
+                projet.SerieIncrement = inc + 1;
+                if (lbl_SerieIncrement.InvokeRequired)
+                {
+                    lbl_SerieIncrement.Invoke(new Action(() => {
+                        lbl_SerieIncrement.Text = projet.SerieIncrement.ToString("D2");
+                    }));
+                }
+                AssembleImageName();
+                projet.Save(appSettings.ProjectPath);
+                txtBox_nomImages.ForeColor = Color.White;
+            }
+           
+            
         }
 
 
@@ -1628,6 +1697,8 @@ namespace Aerolithe
                 {
                     txtBox_nbrImg5deg.ForeColor = Color.White;
                     lbl_Serie5Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
+                    appSettings.NbrImg5Deg = valeur;
+                    appSettings.Save();
                 }
                 else
                 {
@@ -1653,6 +1724,8 @@ namespace Aerolithe
                 {
                     txtBox_nbrImg25deg.ForeColor = Color.White;
                     lbl_Serie25Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
+                    appSettings.NbrImg25Deg = valeur;
+                    appSettings.Save();
                 }
                 else
                 {
@@ -1675,6 +1748,8 @@ namespace Aerolithe
                 {
                     txtBox_nbrImg45deg.ForeColor = Color.White;
                     lbl_Serie45Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
+                    appSettings.NbrImg45Deg = valeur;
+                    appSettings.Save();
                 }
                 else
                 {
@@ -1924,6 +1999,21 @@ namespace Aerolithe
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
+            }
+        }
+
+        private void btn_consoleScrollToCaret_Click(object sender, EventArgs e)
+        {
+            if (mainConsoleScrollToCaret)
+            {
+                mainConsoleScrollToCaret = false;
+                btn_consoleScrollToCaret.FlatAppearance.BorderSize = 1;
+            }
+
+            else
+            {
+                mainConsoleScrollToCaret = true;
+                btn_consoleScrollToCaret.FlatAppearance.BorderSize = 0;
             }
         }
     }

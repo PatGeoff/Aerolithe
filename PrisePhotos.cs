@@ -23,12 +23,12 @@ namespace Aerolithe
         private int actuatorDelay2 = 9000; // secondes
         public int delayTimePhotoShoot = 1000;
         private bool working = false;
-        private int imageIncr = 0;
         public CancellationTokenSource cancellationTokenSource;
         private int _Elevation = 5;
         private int _Rotation = 0;
         private int _Serie = 0;
-
+        private int totalPhotos = 0;
+        
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)
         {
@@ -41,19 +41,21 @@ namespace Aerolithe
                     return;
                 }
             }
-                        
+             
+            
 
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
-            await Task.Delay(200);
+            await Task.Delay(800);
 
 
-            int[] serieId = { int.Parse(txtBox_nbrImg5deg.Text), int.Parse(txtBox_nbrImg25deg.Text), int.Parse(txtBox_nbrImg45deg.Text) };
+            
             int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad2.Text), int.Parse(txtBox_seqPad3.Text) };
+            serieId = [appSettings.NbrImg5Deg, appSettings.NbrImg5Deg, appSettings.NbrImg45Deg ];
 
             await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
             cancellationToken.ThrowIfCancellationRequested();
             await WaitForTurntablePositionAsync(0, cancellationToken);
-            await Task.Delay(200);
+            await Task.Delay(800);
             int divider = 4096 / serieId[serie];
 
             await ResetIncrementation();
@@ -68,7 +70,7 @@ namespace Aerolithe
                     _Serie = i;
                     if (_stopRequested) return;
                     PreparationDossierDestTemp();
-                    cancellationToken.ThrowIfCancellationRequested();
+                    //cancellationToken.ThrowIfCancellationRequested();
                     int degres = (i - 1) * divider;
                     ttTargetPosition = degres;
                     _Rotation = degres;
@@ -76,7 +78,16 @@ namespace Aerolithe
                     await WaitForTurntablePositionAsync(degres, cancellationToken);
                     //AppendTextToConsoleNL("nouvelle position de la table est atteinte");
                     AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres}°");
-                    projet.ImageIncrement = i - 1 + paddingNbr[serie];
+
+                    if (lbl_ProgressDisplay.InvokeRequired)
+                    {
+                        lbl_ProgressDisplay.Invoke(new Action(() => {
+                            lbl_ProgressDisplay.Text = $" {i}/{serieId[serie]}";
+                        }));
+                    }
+
+                    //projet.ImageIncrement = i - 1 + paddingNbr[serie];
+                    projet.ImageIncrement = 0;
                     PreparationNomImage();
                     if (checkBox_SeqFocusStack.Checked)
                     {
@@ -184,73 +195,85 @@ namespace Aerolithe
 
         private async Task EssayerPrendrePhotoAsync(int degres)
         {
-            Stopwatch sw = Stopwatch.StartNew();
-            int essai = 0;
-            bool focusReussi = false;
-
-            while (essai < 3 && !focusReussi)
+            if (!_stopRequested)
             {
-                try
+                Stopwatch sw = Stopwatch.StartNew();
+                int essai = 0;
+                bool focusReussi = false;
+
+                while (essai < 3 && !focusReussi)
                 {
-                    if (_stopRequested) return;
-                    await NikonAutofocus();
-                    await Task.Delay(1000); // laisse le temps au device.Capture de ne plus être "busy"
-                    AppendTextToConsoleNL("Focus effectué avec succès");
-                    focusReussi = true;
+                    try
+                    {
+                        if (_stopRequested) return;
+                        await NikonAutofocus();
+                        await Task.Delay(1000); // laisse le temps au device.Capture de ne plus être "busy"
+                        AppendTextToConsoleNL("Focus effectué avec succès");
+                        focusReussi = true;
+                    }
+                    catch (Exception e)
+                    {
+                        essai++;
+                        AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
+                        //if (essai >= 3)
+                        //{
+                        //    await PhotoSuccess(projet.ImageNameFull, degres, false, "-");
+
+                        //}
+                    }
                 }
-                catch (Exception e)
-                {
-                    essai++;
-                    AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
-                    //if (essai >= 3)
-                    //{
-                    //    await PhotoSuccess(projet.ImageNameFull, degres, false, "-");
-                        
-                    //}
-                }
+
+                sw.Stop();
+                string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+                AppendTextToConsoleNL("Elapsed: " + tempsMs);
+                sw.Start();
+                await takePictureAsync();
+                sw.Stop();
+                tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+                AppendTextToConsoleNL("Image sauvegardée");
+                //await PhotoSuccess(projet.ImageNameFull, degres, true, tempsMs);
             }
 
-            sw.Stop();
-            string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-            AppendTextToConsoleNL("Elapsed: " + tempsMs);
-            sw.Start();
-            await takePictureAsync();
-            sw.Stop();
-            tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-            AppendTextToConsoleNL("Image sauvegardée");
-            //await PhotoSuccess(projet.ImageNameFull, degres, true, tempsMs);
         }
 
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
         {
+            //timerController.ControlTimerAsync("lancer");
+
+
             await UdpSendActuatorMessageAsync("actuator 5");
+            await WaitForActuator(5);
+            await Task.Delay(1000);
             cancellationToken.ThrowIfCancellationRequested();
             //await WaitForActuatorPosition(5, cancellationToken);
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
             currentSequence = 0;
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-            //PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             AppendTextToConsoleNL("Séquence 1 terminée");
 
+
+
             await UdpSendActuatorMessageAsync("actuator 25");
+            await WaitForActuator(25);
+            await Task.Delay(1000);
             cancellationToken.ThrowIfCancellationRequested();
             //await WaitForActuatorPosition(25, cancellationToken);
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
             currentSequence = 1;
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-            //PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             AppendTextToConsoleNL("Séquence 2 terminée");
 
             await UdpSendActuatorMessageAsync("actuator 45");
+            await WaitForActuator(45);
+            await Task.Delay(1000);
             cancellationToken.ThrowIfCancellationRequested();
             //await WaitForActuatorPosition(45, cancellationToken);
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
             currentSequence = 2;
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-            //PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             AppendTextToConsoleNL("Séquence 3 terminée");
         }
 
@@ -310,36 +333,7 @@ namespace Aerolithe
         }
 
 
-        //private async Task WaitForActuatorPosition(int targetPosition, CancellationToken cancellationToken)
-        //{
-        //    int tolerance = 1;
-        //    int maxRetries = 100; // Maximum number of retries to avoid infinite loop
-        //    int retryCount = 0;
-        //    bool positionReached = false;
-
-        //    while (retryCount < maxRetries)
-        //    {
-        //        await getActuatorAngleFromEsp32();
-        //        if (actuatorAngle >= targetPosition - tolerance && actuatorAngle <= targetPosition + tolerance)
-        //        {
-        //            positionReached = true;
-        //            break;
-        //        }
-        //        await Task.Delay(50, cancellationToken); // Adjust delay as needed
-        //        AppendTextToConsoleNL("Angle de l'actuateur: " + actuatorAngle.ToString() + " ----> " + targetPosition.ToString() + " (cible)");
-        //        retryCount++;
-        //    }
-
-        //    if (positionReached)
-        //    {
-        //        AppendTextToConsoleNL("L'actuateur a atteint sa position.");
-        //    }
-        //    else
-        //    {
-        //        AppendTextToConsoleNL("L'actuateur n'a pas atteint sa position après 100 essais.");
-        //    }
-        //}
-
+       
        
     }
 }

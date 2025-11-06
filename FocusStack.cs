@@ -16,6 +16,10 @@ namespace Aerolithe
 
         // File d'attente pour les focus stacks
         private List<FocusStackTask> focusStackQueue = new List<FocusStackTask>();
+
+
+        private Dictionary<FocusStackTask, FocusStackReportControl> taskControls = new();
+
         private bool isProcessingQueue = false;
 
         public class FocusStackTask
@@ -28,18 +32,35 @@ namespace Aerolithe
             public string Status { get; set; } // "En attente", "En cours", "Terminé", "Erreur"
         }
 
-        private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, int elevation, int rotation, int serie)
+        private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, int elevation, int rotation, int serie, string status = "En attente")
         {
-            focusStackQueue.Add(new FocusStackTask
+            var task = new FocusStackTask
             {
                 Serie = serie,
                 Elevation = elevation,
                 Rotation = rotation,
                 ImagePaths = imagePaths,
                 OutputPath = outputPath,
-                Status = "En attente"
-            });
+                Status = status
+            };
 
+            focusStackQueue.Add(task);
+
+            var info = new FocusStackTaskInfo
+            {
+                Serie = serie.ToString(),
+                Elevation = elevation,
+                Rotation = rotation,
+                Filename = Path.GetFileName(outputPath),
+                Status = status
+            };
+
+            var control = new FocusStackReportControl();
+            control.SetTaskInfo(info); 
+
+            flowPanelReports.Controls.Add(control);
+            taskControls[task] = control;
+            flowPanelReports.ScrollControlIntoView(control);
             UpdateQueueDisplay();
 
             if (!isProcessingQueue)
@@ -47,6 +68,25 @@ namespace Aerolithe
                 _ = ProcessFocusStackQueue();
             }
         }
+        //private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, int elevation, int rotation, int serie, string status = "En attente")
+        //{
+        //    focusStackQueue.Add(new FocusStackTask
+        //    {
+        //        Serie = serie,
+        //        Elevation = elevation,
+        //        Rotation = rotation,
+        //        ImagePaths = imagePaths,
+        //        OutputPath = outputPath,
+        //        Status = status
+        //    });
+
+        //    UpdateQueueDisplay();
+
+        //    if (!isProcessingQueue)
+        //    {
+        //        _ = ProcessFocusStackQueue();
+        //    }
+        //}
 
         public async Task MakeFocusStack()
         {
@@ -91,39 +131,53 @@ namespace Aerolithe
 
         public async Task MakeFocusStackSerie()
         {
-            if (InvokeRequired)
+           if (!_stopRequested)
             {
-                Invoke(new Action(async () => await MakeFocusStackSerie()));
-                return;
-            }
-
-            string folderPath = projet.TempImageFolderPath;
-            string[] extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
-
-            var imageFiles = Directory.GetFiles(folderPath)
-                                      .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
-                                      .ToArray();
-
-            if (imageFiles.Length > 0)
-            {
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(async () => await MakeFocusStackSerie()));
+                    return;
+                }
                 if (!Directory.Exists(projet.FocusStackPath))
                 {
                     Directory.CreateDirectory(projet.FocusStackPath);
                     MessageBox.Show("Dossier " + projet.FocusStackPath + " créé");
+                    await Task.Delay(500);
                 }
+                string folderPath = projet.TempImageFolderPath;
 
-                string baseName = Path.GetFileNameWithoutExtension(imageFiles[0]);
+                string[] extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
+
+                var imageFiles = Directory.GetFiles(folderPath)
+                                          .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
+                                          .ToArray();
+
+                string baseName = imageFiles.Length > 0
+                    ? Path.GetFileNameWithoutExtension(imageFiles[0])
+                    : "Erreur";
+                             
+
                 baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
                 string suggestedFileName = baseName + "_stacked.jpg";
                 string outputPath = Path.Combine(projet.FocusStackPath, suggestedFileName);
 
-                EnqueueFocusStackTask(imageFiles, outputPath, (int)actuatorAngle, turntablePosition, _Serie);
-            }
-            else
-            {
-                AppendTextToConsoleNL("Aucune image trouvée dans le dossier.");
+               
+                await Task.Delay(300);
 
+                if (imageFiles.Length > 0)
+                {
+                    AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0]);
+                    AppendTextToConsoleNL("Nom du fichier de destination : " + baseName);
+                    EnqueueFocusStackTask(imageFiles, outputPath, (int)actuatorAngle, turntablePosition, _Serie);
+                }
+                else
+                {
+                    // Crée une tâche avec un statut "Erreur" et sans images
+                    EnqueueFocusStackTask(new string[0], outputPath, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
+                    AppendTextToConsoleNL("Aucune image trouvée dans le dossier.");
+                }
             }
+           
         }
 
         private async Task ProcessFocusStackQueue()
@@ -155,62 +209,80 @@ namespace Aerolithe
             isProcessingQueue = false;
         }
 
+        //private void UpdateQueueDisplay()
+        //{
+        //    if (richTextBox_PicReport.InvokeRequired)
+        //    {
+        //        richTextBox_PicReport.Invoke(new Action(UpdateQueueDisplay));
+        //        return;
+        //    }
+
+        //    richTextBox_PicReport.Clear();
+
+        //    if (focusStackQueue.Count == 0)
+        //    {
+        //        richTextBox_PicReport.SelectionColor = Color.LightGray;
+        //        richTextBox_PicReport.AppendText(" La file d'attente est vide.");
+        //        return;
+        //    }
+
+
+        //    foreach (var task in focusStackQueue)
+        //    {
+
+
+        //        string fileName = Path.GetFileName(task.OutputPath);
+        //        string prefix = $"  {task.Serie}\t{task.Elevation}°\t{task.Rotation}°\t📷 {fileName}\t—    Statut :  ";
+
+        //        richTextBox_PicReport.SelectionColor = Color.White;
+        //        richTextBox_PicReport.AppendText(prefix);
+
+        //        switch (task.Status)
+        //        {
+        //            case "Terminé":
+        //                richTextBox_PicReport.SelectionColor = Color.LimeGreen;
+        //                break;
+        //            case "En cours":
+        //                richTextBox_PicReport.SelectionColor = Color.Orange;
+        //                break;
+        //            case "Erreur":
+        //                richTextBox_PicReport.SelectionColor = Color.Red;
+        //                break;
+        //            case "En attente":
+        //                richTextBox_PicReport.SelectionColor = Color.DeepSkyBlue;
+        //                break;
+        //            default:
+        //                richTextBox_PicReport.SelectionColor = Color.White;
+        //                break;
+        //        }
+
+        //        richTextBox_PicReport.AppendText(task.Status + "\n");
+        //    }
+
+        //    richTextBox_PicReport.SelectionColor = Color.White;
+        //    richTextBox_PicReport.Refresh();
+        //    richTextBox_PicReport.ScrollToCaret();
+        //}
         private void UpdateQueueDisplay()
         {
-            if (richTextBox_PicReport.InvokeRequired)
-            {
-                richTextBox_PicReport.Invoke(new Action(UpdateQueueDisplay));
-                return;
-            }
-
-            richTextBox_PicReport.Clear();
-
-            if (focusStackQueue.Count == 0)
-            {
-                richTextBox_PicReport.SelectionColor = Color.LightGray;
-                richTextBox_PicReport.AppendText(" La file d'attente est vide.");
-                return;
-            }
-            
-
             foreach (var task in focusStackQueue)
             {
-
-
-                string fileName = Path.GetFileName(task.OutputPath);
-                string prefix = $"  {task.Serie}\t{task.Elevation}°\t{task.Rotation}°\t📷 {fileName}\t—    Statut : ";
-
-                richTextBox_PicReport.SelectionColor = Color.White;
-                richTextBox_PicReport.AppendText(prefix);
-
-                switch (task.Status)
+                if (taskControls.TryGetValue(task, out var control))
                 {
-                    case "Terminé":
-                        richTextBox_PicReport.SelectionColor = Color.LimeGreen;
-                        break;
-                    case "En cours":
-                        richTextBox_PicReport.SelectionColor = Color.Orange;
-                        break;
-                    case "Erreur":
-                        richTextBox_PicReport.SelectionColor = Color.Red;
-                        break;
-                    case "En attente":
-                        richTextBox_PicReport.SelectionColor = Color.DeepSkyBlue;
-                        break;
-                    default:
-                        richTextBox_PicReport.SelectionColor = Color.White;
-                        break;
+                    var info = new FocusStackTaskInfo
+                    {
+                        Serie = task.Serie.ToString(),
+                        Elevation = task.Elevation,
+                        Rotation = task.Rotation,
+                        Filename = Path.GetFileName(task.OutputPath),
+                        Status = task.Status
+                    };
+
+                    control.SetTaskInfo(info); // ✅ nouvelle méthode
                 }
-
-                richTextBox_PicReport.AppendText(task.Status + "\n");
             }
-
-            richTextBox_PicReport.SelectionColor = Color.White;
-            richTextBox_PicReport.Refresh();
-            richTextBox_PicReport.ScrollToCaret();
         }
 
-       
         public async Task<bool> RunFocusStack(string[] imagePaths, string outputImage)
         {
             string exePath = Path.Combine(Application.StartupPath, "MyResources", "Focus-stack", "focus-stack.exe");

@@ -204,9 +204,10 @@
             tabPage2 = new TabPage();
             tableLayoutPanel40 = new TableLayoutPanel();
             tableLayoutPanel39 = new TableLayoutPanel();
+            panel3 = new Panel();
+            label68 = new Label();
+            trackBar1 = new TrackBar();
             panel7 = new Panel();
-            label9 = new Label();
-            label10 = new Label();
             label11 = new Label();
             trkBar_Lift = new TrackBar();
             btn_liftMaxDown = new Button();
@@ -368,17 +369,17 @@
             pnl_DrawingLiveView = new Panel();
             panel12 = new Panel();
             tableLayoutPanel41 = new TableLayoutPanel();
-            checkBox_ApplyBlur = new CheckBox();
-            tableLayoutPanel72 = new TableLayoutPanel();
             hScrollBar_liveMaskThresh = new HScrollBar();
             tableLayoutPanel71 = new TableLayoutPanel();
             lbl_maskAmount = new Label();
             label47 = new Label();
             picBox_liveMaskLum = new PictureBox();
             picBox_MLMask = new PictureBox();
+            panel2 = new Panel();
+            tableLayoutPanel72 = new TableLayoutPanel();
+            lbl_ProgressDisplay = new Label();
             tableLayoutPanelMAIN = new TableLayoutPanel();
             tableLayoutPanel4 = new TableLayoutPanel();
-            richTextBox_PicReport = new RichTextBox();
             tableLayoutPanel45 = new TableLayoutPanel();
             progressBar_ImageSave = new ProgressBar();
             btn_clearPicLayout = new Button();
@@ -389,14 +390,22 @@
             btn_clearPicReport = new Button();
             tableLayoutPanel7 = new TableLayoutPanel();
             flowLayoutPanel1 = new FlowLayoutPanel();
+            flowPanelReports = new FlowLayoutPanel();
+            tableLayoutPanel89 = new TableLayoutPanel();
+            label65 = new Label();
+            label64 = new Label();
+            label63 = new Label();
+            label62 = new Label();
             label61 = new Label();
             tableLayoutPanel6 = new TableLayoutPanel();
             tableLayoutPanel46 = new TableLayoutPanel();
+            tableLayoutPanel87 = new TableLayoutPanel();
+            btn_consoleScrollToCaret = new Button();
+            tableLayoutPanel88 = new TableLayoutPanel();
             btn_clearFFMPEGConsole = new Button();
             tableLayoutPanel85 = new TableLayoutPanel();
             txtBox_FFMPEGConsole = new RichTextBox();
             tableLayoutPanel5 = new TableLayoutPanel();
-            btn_consoleScrollToCaret = new Button();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
@@ -460,6 +469,8 @@
             tabPage2.SuspendLayout();
             tableLayoutPanel40.SuspendLayout();
             tableLayoutPanel39.SuspendLayout();
+            panel3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)trackBar1).BeginInit();
             panel7.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).BeginInit();
             tabPage6.SuspendLayout();
@@ -524,13 +535,18 @@
             tableLayoutPanel71.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_liveMaskLum).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBox_MLMask).BeginInit();
+            panel2.SuspendLayout();
+            tableLayoutPanel72.SuspendLayout();
             tableLayoutPanelMAIN.SuspendLayout();
             tableLayoutPanel4.SuspendLayout();
             tableLayoutPanel45.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_holdOn).BeginInit();
             tableLayoutPanel7.SuspendLayout();
+            tableLayoutPanel89.SuspendLayout();
             tableLayoutPanel6.SuspendLayout();
             tableLayoutPanel46.SuspendLayout();
+            tableLayoutPanel87.SuspendLayout();
+            tableLayoutPanel88.SuspendLayout();
             tableLayoutPanel85.SuspendLayout();
             tableLayoutPanel5.SuspendLayout();
             SuspendLayout();
@@ -553,7 +569,7 @@
             txtBox_Console.Location = new Point(1, 1);
             txtBox_Console.Margin = new Padding(1);
             txtBox_Console.Name = "txtBox_Console";
-            txtBox_Console.Size = new Size(1149, 182);
+            txtBox_Console.Size = new Size(1149, 179);
             txtBox_Console.TabIndex = 20;
             txtBox_Console.Text = "";
             // 
@@ -565,10 +581,10 @@
             btn_clearConsole.FlatAppearance.BorderSize = 0;
             btn_clearConsole.FlatStyle = FlatStyle.Flat;
             btn_clearConsole.ForeColor = Color.White;
-            btn_clearConsole.Location = new Point(1, 1);
+            btn_clearConsole.Location = new Point(1, -1);
             btn_clearConsole.Margin = new Padding(1);
             btn_clearConsole.Name = "btn_clearConsole";
-            btn_clearConsole.Size = new Size(18, 18);
+            btn_clearConsole.Size = new Size(16, 16);
             btn_clearConsole.TabIndex = 19;
             btn_clearConsole.UseVisualStyleBackColor = false;
             btn_clearConsole.Click += btn_clearConsole_Click;
@@ -3042,14 +3058,14 @@
             // tableLayoutPanel40
             // 
             tableLayoutPanel40.ColumnCount = 1;
-            tableLayoutPanel40.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel40.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel40.Controls.Add(tableLayoutPanel39, 0, 0);
             tableLayoutPanel40.Dock = DockStyle.Fill;
             tableLayoutPanel40.Location = new Point(1, 1);
             tableLayoutPanel40.Name = "tableLayoutPanel40";
             tableLayoutPanel40.RowCount = 2;
-            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 60.63123F));
+            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 39.36877F));
             tableLayoutPanel40.Size = new Size(459, 602);
             tableLayoutPanel40.TabIndex = 29;
             // 
@@ -3057,6 +3073,7 @@
             // 
             tableLayoutPanel39.ColumnCount = 1;
             tableLayoutPanel39.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel39.Controls.Add(panel3, 0, 4);
             tableLayoutPanel39.Controls.Add(panel7, 0, 3);
             tableLayoutPanel39.Controls.Add(btn_liftMaxDown, 0, 0);
             tableLayoutPanel39.Controls.Add(btn_liftMaxUp, 0, 1);
@@ -3064,44 +3081,61 @@
             tableLayoutPanel39.Dock = DockStyle.Fill;
             tableLayoutPanel39.Location = new Point(3, 3);
             tableLayoutPanel39.Name = "tableLayoutPanel39";
-            tableLayoutPanel39.RowCount = 4;
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel39.Size = new Size(453, 295);
+            tableLayoutPanel39.RowCount = 5;
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel39.Size = new Size(453, 359);
             tableLayoutPanel39.TabIndex = 28;
+            // 
+            // panel3
+            // 
+            panel3.Controls.Add(label68);
+            panel3.Controls.Add(trackBar1);
+            panel3.Dock = DockStyle.Fill;
+            panel3.Location = new Point(1, 285);
+            panel3.Margin = new Padding(1);
+            panel3.Name = "panel3";
+            panel3.Size = new Size(451, 73);
+            panel3.TabIndex = 28;
+            // 
+            // label68
+            // 
+            label68.AutoSize = true;
+            label68.ForeColor = Color.White;
+            label68.Location = new Point(10, 2);
+            label68.Margin = new Padding(1, 0, 1, 0);
+            label68.Name = "label68";
+            label68.Size = new Size(133, 15);
+            label68.TabIndex = 6;
+            label68.Text = "Élévateur Gauche Droite";
+            // 
+            // trackBar1
+            // 
+            trackBar1.Dock = DockStyle.Bottom;
+            trackBar1.Location = new Point(0, 28);
+            trackBar1.Margin = new Padding(1);
+            trackBar1.Maximum = 2500;
+            trackBar1.Minimum = 500;
+            trackBar1.Name = "trackBar1";
+            trackBar1.RightToLeft = RightToLeft.No;
+            trackBar1.Size = new Size(451, 45);
+            trackBar1.TabIndex = 3;
+            trackBar1.TickFrequency = 0;
+            trackBar1.Value = 500;
             // 
             // panel7
             // 
-            panel7.Controls.Add(label9);
-            panel7.Controls.Add(label10);
             panel7.Controls.Add(label11);
             panel7.Controls.Add(trkBar_Lift);
             panel7.Dock = DockStyle.Fill;
-            panel7.Location = new Point(1, 220);
+            panel7.Location = new Point(1, 214);
             panel7.Margin = new Padding(1);
             panel7.Name = "panel7";
-            panel7.Size = new Size(451, 74);
+            panel7.Size = new Size(451, 69);
             panel7.TabIndex = 24;
-            // 
-            // label9
-            // 
-            label9.ForeColor = Color.White;
-            label9.Location = new Point(76, 9);
-            label9.Margin = new Padding(1, 0, 1, 0);
-            label9.Name = "label9";
-            label9.Size = new Size(41, 8);
-            label9.TabIndex = 9;
-            // 
-            // label10
-            // 
-            label10.ForeColor = Color.White;
-            label10.Location = new Point(85, 2);
-            label10.Margin = new Padding(1, 0, 1, 0);
-            label10.Name = "label10";
-            label10.Size = new Size(41, 8);
-            label10.TabIndex = 7;
             // 
             // label11
             // 
@@ -3110,14 +3144,14 @@
             label11.Location = new Point(10, 2);
             label11.Margin = new Padding(1, 0, 1, 0);
             label11.Name = "label11";
-            label11.Size = new Size(55, 15);
+            label11.Size = new Size(105, 15);
             label11.TabIndex = 6;
-            label11.Text = "Élévateur";
+            label11.Text = "Élévateur Haut Bas";
             // 
             // trkBar_Lift
             // 
             trkBar_Lift.Dock = DockStyle.Bottom;
-            trkBar_Lift.Location = new Point(0, 29);
+            trkBar_Lift.Location = new Point(0, 24);
             trkBar_Lift.Margin = new Padding(1);
             trkBar_Lift.Maximum = 2500;
             trkBar_Lift.Minimum = 500;
@@ -3137,7 +3171,7 @@
             btn_liftMaxDown.Location = new Point(1, 1);
             btn_liftMaxDown.Margin = new Padding(1);
             btn_liftMaxDown.Name = "btn_liftMaxDown";
-            btn_liftMaxDown.Size = new Size(451, 71);
+            btn_liftMaxDown.Size = new Size(451, 69);
             btn_liftMaxDown.TabIndex = 25;
             btn_liftMaxDown.Text = "Reset à zéro (max bas)";
             btn_liftMaxDown.UseVisualStyleBackColor = false;
@@ -3149,10 +3183,10 @@
             btn_liftMaxUp.Dock = DockStyle.Fill;
             btn_liftMaxUp.FlatAppearance.BorderSize = 0;
             btn_liftMaxUp.ForeColor = Color.White;
-            btn_liftMaxUp.Location = new Point(1, 74);
+            btn_liftMaxUp.Location = new Point(1, 72);
             btn_liftMaxUp.Margin = new Padding(1);
             btn_liftMaxUp.Name = "btn_liftMaxUp";
-            btn_liftMaxUp.Size = new Size(451, 71);
+            btn_liftMaxUp.Size = new Size(451, 69);
             btn_liftMaxUp.TabIndex = 26;
             btn_liftMaxUp.Text = "Maximum hauteur";
             btn_liftMaxUp.UseVisualStyleBackColor = false;
@@ -3164,10 +3198,10 @@
             btn_printLiftPositionConsole.Dock = DockStyle.Fill;
             btn_printLiftPositionConsole.FlatAppearance.BorderSize = 0;
             btn_printLiftPositionConsole.ForeColor = Color.White;
-            btn_printLiftPositionConsole.Location = new Point(1, 147);
+            btn_printLiftPositionConsole.Location = new Point(1, 143);
             btn_printLiftPositionConsole.Margin = new Padding(1);
             btn_printLiftPositionConsole.Name = "btn_printLiftPositionConsole";
-            btn_printLiftPositionConsole.Size = new Size(451, 71);
+            btn_printLiftPositionConsole.Size = new Size(451, 69);
             btn_printLiftPositionConsole.TabIndex = 27;
             btn_printLiftPositionConsole.Text = "Afficher la position dans la console";
             btn_printLiftPositionConsole.UseVisualStyleBackColor = false;
@@ -5342,56 +5376,27 @@
             // 
             tableLayoutPanel41.ColumnCount = 1;
             tableLayoutPanel41.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel41.Controls.Add(checkBox_ApplyBlur, 0, 4);
-            tableLayoutPanel41.Controls.Add(tableLayoutPanel72, 0, 6);
             tableLayoutPanel41.Controls.Add(hScrollBar_liveMaskThresh, 0, 2);
             tableLayoutPanel41.Controls.Add(tableLayoutPanel71, 0, 1);
             tableLayoutPanel41.Controls.Add(picBox_liveMaskLum, 0, 0);
             tableLayoutPanel41.Controls.Add(picBox_MLMask, 0, 3);
+            tableLayoutPanel41.Controls.Add(panel2, 0, 4);
             tableLayoutPanel41.Dock = DockStyle.Fill;
             tableLayoutPanel41.Location = new Point(0, 0);
             tableLayoutPanel41.Name = "tableLayoutPanel41";
-            tableLayoutPanel41.RowCount = 8;
-            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel41.RowCount = 5;
+            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Absolute, 250F));
             tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
             tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Absolute, 18F));
-            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
-            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Absolute, 16F));
-            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
-            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Absolute, 18F));
+            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Absolute, 250F));
+            tableLayoutPanel41.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel41.Size = new Size(363, 632);
             tableLayoutPanel41.TabIndex = 0;
             tableLayoutPanel41.Paint += tableLayoutPanel41_Paint;
             // 
-            // checkBox_ApplyBlur
-            // 
-            checkBox_ApplyBlur.AutoSize = true;
-            checkBox_ApplyBlur.ForeColor = Color.White;
-            checkBox_ApplyBlur.Location = new Point(3, 553);
-            checkBox_ApplyBlur.Name = "checkBox_ApplyBlur";
-            checkBox_ApplyBlur.Size = new Size(154, 18);
-            checkBox_ApplyBlur.TabIndex = 0;
-            checkBox_ApplyBlur.Text = "Appliquer un flou (3 x 3)";
-            checkBox_ApplyBlur.UseVisualStyleBackColor = true;
-            checkBox_ApplyBlur.Visible = false;
-            // 
-            // tableLayoutPanel72
-            // 
-            tableLayoutPanel72.ColumnCount = 2;
-            tableLayoutPanel72.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tableLayoutPanel72.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tableLayoutPanel72.Dock = DockStyle.Fill;
-            tableLayoutPanel72.Location = new Point(3, 593);
-            tableLayoutPanel72.Name = "tableLayoutPanel72";
-            tableLayoutPanel72.RowCount = 1;
-            tableLayoutPanel72.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel72.Size = new Size(357, 18);
-            tableLayoutPanel72.TabIndex = 12;
-            // 
             // hScrollBar_liveMaskThresh
             // 
-            hScrollBar_liveMaskThresh.Location = new Point(0, 278);
+            hScrollBar_liveMaskThresh.Location = new Point(0, 274);
             hScrollBar_liveMaskThresh.Maximum = 255;
             hScrollBar_liveMaskThresh.Name = "hScrollBar_liveMaskThresh";
             hScrollBar_liveMaskThresh.Size = new Size(363, 16);
@@ -5407,7 +5412,7 @@
             tableLayoutPanel71.Controls.Add(lbl_maskAmount, 1, 0);
             tableLayoutPanel71.Controls.Add(label47, 0, 0);
             tableLayoutPanel71.Dock = DockStyle.Fill;
-            tableLayoutPanel71.Location = new Point(3, 257);
+            tableLayoutPanel71.Location = new Point(3, 253);
             tableLayoutPanel71.Name = "tableLayoutPanel71";
             tableLayoutPanel71.RowCount = 1;
             tableLayoutPanel71.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
@@ -5443,7 +5448,7 @@
             picBox_liveMaskLum.Dock = DockStyle.Fill;
             picBox_liveMaskLum.Location = new Point(3, 3);
             picBox_liveMaskLum.Name = "picBox_liveMaskLum";
-            picBox_liveMaskLum.Size = new Size(357, 248);
+            picBox_liveMaskLum.Size = new Size(357, 244);
             picBox_liveMaskLum.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_liveMaskLum.TabIndex = 6;
             picBox_liveMaskLum.TabStop = false;
@@ -5451,12 +5456,47 @@
             // picBox_MLMask
             // 
             picBox_MLMask.Dock = DockStyle.Fill;
-            picBox_MLMask.Location = new Point(3, 299);
+            picBox_MLMask.Location = new Point(3, 295);
             picBox_MLMask.Name = "picBox_MLMask";
-            picBox_MLMask.Size = new Size(357, 248);
+            picBox_MLMask.Size = new Size(357, 244);
             picBox_MLMask.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_MLMask.TabIndex = 0;
             picBox_MLMask.TabStop = false;
+            // 
+            // panel2
+            // 
+            panel2.BorderStyle = BorderStyle.FixedSingle;
+            panel2.Controls.Add(tableLayoutPanel72);
+            panel2.Dock = DockStyle.Fill;
+            panel2.Location = new Point(3, 545);
+            panel2.Name = "panel2";
+            panel2.Size = new Size(357, 84);
+            panel2.TabIndex = 12;
+            // 
+            // tableLayoutPanel72
+            // 
+            tableLayoutPanel72.ColumnCount = 1;
+            tableLayoutPanel72.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel72.Controls.Add(lbl_ProgressDisplay, 0, 0);
+            tableLayoutPanel72.Dock = DockStyle.Fill;
+            tableLayoutPanel72.Location = new Point(0, 0);
+            tableLayoutPanel72.Name = "tableLayoutPanel72";
+            tableLayoutPanel72.RowCount = 1;
+            tableLayoutPanel72.RowStyles.Add(new RowStyle(SizeType.Percent, 68.29269F));
+            tableLayoutPanel72.Size = new Size(355, 82);
+            tableLayoutPanel72.TabIndex = 0;
+            // 
+            // lbl_ProgressDisplay
+            // 
+            lbl_ProgressDisplay.AutoSize = true;
+            lbl_ProgressDisplay.Dock = DockStyle.Fill;
+            lbl_ProgressDisplay.Font = new Font("Roboto", 39.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            lbl_ProgressDisplay.ForeColor = Color.White;
+            lbl_ProgressDisplay.Location = new Point(3, 0);
+            lbl_ProgressDisplay.Name = "lbl_ProgressDisplay";
+            lbl_ProgressDisplay.Size = new Size(349, 82);
+            lbl_ProgressDisplay.TabIndex = 0;
+            lbl_ProgressDisplay.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // tableLayoutPanelMAIN
             // 
@@ -5484,11 +5524,11 @@
             tableLayoutPanel4.ColumnCount = 2;
             tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
             tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
-            tableLayoutPanel4.Controls.Add(richTextBox_PicReport, 1, 2);
             tableLayoutPanel4.Controls.Add(tableLayoutPanel45, 0, 0);
             tableLayoutPanel4.Controls.Add(btn_clearPicReport, 1, 0);
             tableLayoutPanel4.Controls.Add(tableLayoutPanel7, 0, 2);
-            tableLayoutPanel4.Controls.Add(label61, 1, 1);
+            tableLayoutPanel4.Controls.Add(flowPanelReports, 1, 2);
+            tableLayoutPanel4.Controls.Add(tableLayoutPanel89, 1, 1);
             tableLayoutPanel4.Dock = DockStyle.Fill;
             tableLayoutPanel4.Location = new Point(2, 641);
             tableLayoutPanel4.Margin = new Padding(1);
@@ -5499,19 +5539,6 @@
             tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel4.Size = new Size(1778, 273);
             tableLayoutPanel4.TabIndex = 30;
-            // 
-            // richTextBox_PicReport
-            // 
-            richTextBox_PicReport.BackColor = Color.FromArgb(22, 22, 22);
-            richTextBox_PicReport.BorderStyle = BorderStyle.None;
-            richTextBox_PicReport.Dock = DockStyle.Fill;
-            richTextBox_PicReport.Location = new Point(1156, 49);
-            richTextBox_PicReport.Margin = new Padding(1);
-            richTextBox_PicReport.Name = "richTextBox_PicReport";
-            richTextBox_PicReport.ReadOnly = true;
-            richTextBox_PicReport.Size = new Size(621, 223);
-            richTextBox_PicReport.TabIndex = 28;
-            richTextBox_PicReport.Text = "";
             // 
             // tableLayoutPanel45
             // 
@@ -5534,7 +5561,6 @@
             tableLayoutPanel45.Controls.Add(btn_minusSizePic, 1, 0);
             tableLayoutPanel45.Controls.Add(btn_goToImgFolder, 10, 0);
             tableLayoutPanel45.Controls.Add(picBox_holdOn, 8, 0);
-            tableLayoutPanel45.Controls.Add(btn_consoleScrollToCaret, 5, 0);
             tableLayoutPanel45.Dock = DockStyle.Fill;
             tableLayoutPanel45.Location = new Point(3, 3);
             tableLayoutPanel45.Name = "tableLayoutPanel45";
@@ -5671,17 +5697,95 @@
             flowLayoutPanel1.Size = new Size(1151, 221);
             flowLayoutPanel1.TabIndex = 0;
             // 
+            // flowPanelReports
+            // 
+            flowPanelReports.AutoScroll = true;
+            flowPanelReports.Dock = DockStyle.Fill;
+            flowPanelReports.Location = new Point(1158, 51);
+            flowPanelReports.Name = "flowPanelReports";
+            flowPanelReports.Size = new Size(617, 219);
+            flowPanelReports.TabIndex = 34;
+            // 
+            // tableLayoutPanel89
+            // 
+            tableLayoutPanel89.ColumnCount = 5;
+            tableLayoutPanel89.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
+            tableLayoutPanel89.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
+            tableLayoutPanel89.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
+            tableLayoutPanel89.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel89.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 54F));
+            tableLayoutPanel89.Controls.Add(label65, 4, 0);
+            tableLayoutPanel89.Controls.Add(label64, 3, 0);
+            tableLayoutPanel89.Controls.Add(label63, 2, 0);
+            tableLayoutPanel89.Controls.Add(label62, 1, 0);
+            tableLayoutPanel89.Controls.Add(label61, 0, 0);
+            tableLayoutPanel89.Dock = DockStyle.Fill;
+            tableLayoutPanel89.Location = new Point(1158, 29);
+            tableLayoutPanel89.Name = "tableLayoutPanel89";
+            tableLayoutPanel89.RowCount = 1;
+            tableLayoutPanel89.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel89.Size = new Size(617, 16);
+            tableLayoutPanel89.TabIndex = 35;
+            // 
+            // label65
+            // 
+            label65.AutoSize = true;
+            label65.Dock = DockStyle.Fill;
+            label65.ForeColor = Color.White;
+            label65.Location = new Point(566, 0);
+            label65.Name = "label65";
+            label65.Size = new Size(48, 16);
+            label65.TabIndex = 4;
+            label65.Text = "Reprise";
+            label65.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // label64
+            // 
+            label64.AutoSize = true;
+            label64.Dock = DockStyle.Fill;
+            label64.ForeColor = Color.White;
+            label64.Location = new Point(183, 0);
+            label64.Name = "label64";
+            label64.Padding = new Padding(70, 0, 0, 0);
+            label64.Size = new Size(377, 16);
+            label64.TabIndex = 3;
+            label64.Text = "Statut";
+            label64.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // label63
+            // 
+            label63.AutoSize = true;
+            label63.Dock = DockStyle.Fill;
+            label63.ForeColor = Color.White;
+            label63.Location = new Point(123, 0);
+            label63.Name = "label63";
+            label63.Size = new Size(54, 16);
+            label63.TabIndex = 2;
+            label63.Text = "Rotation";
+            label63.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // label62
+            // 
+            label62.AutoSize = true;
+            label62.Dock = DockStyle.Fill;
+            label62.ForeColor = Color.White;
+            label62.Location = new Point(63, 0);
+            label62.Name = "label62";
+            label62.Size = new Size(54, 16);
+            label62.TabIndex = 1;
+            label62.Text = "Élév.";
+            label62.TextAlign = ContentAlignment.MiddleLeft;
+            // 
             // label61
             // 
             label61.AutoSize = true;
-            label61.BackColor = Color.FromArgb(25, 25, 25);
             label61.Dock = DockStyle.Fill;
             label61.ForeColor = Color.White;
-            label61.Location = new Point(1158, 26);
+            label61.Location = new Point(3, 0);
             label61.Name = "label61";
-            label61.Size = new Size(617, 22);
-            label61.TabIndex = 33;
-            label61.Text = "Série       Élev.       Rot.          Statut";
+            label61.Size = new Size(54, 16);
+            label61.TabIndex = 0;
+            label61.Text = "Série";
             label61.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // tableLayoutPanel6
@@ -5696,7 +5800,7 @@
             tableLayoutPanel6.Margin = new Padding(1);
             tableLayoutPanel6.Name = "tableLayoutPanel6";
             tableLayoutPanel6.RowCount = 2;
-            tableLayoutPanel6.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
+            tableLayoutPanel6.RowStyles.Add(new RowStyle(SizeType.Absolute, 29F));
             tableLayoutPanel6.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel6.Size = new Size(1778, 216);
             tableLayoutPanel6.TabIndex = 31;
@@ -5707,15 +5811,62 @@
             tableLayoutPanel46.ColumnCount = 2;
             tableLayoutPanel46.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
             tableLayoutPanel46.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
-            tableLayoutPanel46.Controls.Add(btn_clearFFMPEGConsole, 1, 0);
-            tableLayoutPanel46.Controls.Add(btn_clearConsole, 0, 0);
+            tableLayoutPanel46.Controls.Add(tableLayoutPanel87, 0, 0);
+            tableLayoutPanel46.Controls.Add(tableLayoutPanel88, 1, 0);
             tableLayoutPanel46.Dock = DockStyle.Fill;
             tableLayoutPanel46.Location = new Point(3, 3);
             tableLayoutPanel46.Name = "tableLayoutPanel46";
             tableLayoutPanel46.RowCount = 1;
             tableLayoutPanel46.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel46.Size = new Size(1772, 20);
+            tableLayoutPanel46.Size = new Size(1772, 23);
             tableLayoutPanel46.TabIndex = 33;
+            // 
+            // tableLayoutPanel87
+            // 
+            tableLayoutPanel87.ColumnCount = 3;
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 23F));
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 31F));
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel87.Controls.Add(btn_clearConsole, 0, 2);
+            tableLayoutPanel87.Controls.Add(btn_consoleScrollToCaret, 1, 2);
+            tableLayoutPanel87.Dock = DockStyle.Fill;
+            tableLayoutPanel87.Location = new Point(3, 3);
+            tableLayoutPanel87.Name = "tableLayoutPanel87";
+            tableLayoutPanel87.RowCount = 3;
+            tableLayoutPanel87.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel87.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel87.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel87.Size = new Size(1145, 17);
+            tableLayoutPanel87.TabIndex = 21;
+            // 
+            // btn_consoleScrollToCaret
+            // 
+            btn_consoleScrollToCaret.BackgroundImage = (Image)resources.GetObject("btn_consoleScrollToCaret.BackgroundImage");
+            btn_consoleScrollToCaret.BackgroundImageLayout = ImageLayout.Zoom;
+            btn_consoleScrollToCaret.FlatAppearance.BorderColor = Color.White;
+            btn_consoleScrollToCaret.FlatAppearance.BorderSize = 0;
+            btn_consoleScrollToCaret.FlatStyle = FlatStyle.Flat;
+            btn_consoleScrollToCaret.Location = new Point(26, 1);
+            btn_consoleScrollToCaret.Name = "btn_consoleScrollToCaret";
+            btn_consoleScrollToCaret.Size = new Size(25, 14);
+            btn_consoleScrollToCaret.TabIndex = 40;
+            btn_consoleScrollToCaret.UseVisualStyleBackColor = true;
+            btn_consoleScrollToCaret.Click += btn_consoleScrollToCaret_Click;
+            // 
+            // tableLayoutPanel88
+            // 
+            tableLayoutPanel88.ColumnCount = 3;
+            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 26F));
+            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel88.Controls.Add(btn_clearFFMPEGConsole, 0, 0);
+            tableLayoutPanel88.Dock = DockStyle.Fill;
+            tableLayoutPanel88.Location = new Point(1154, 3);
+            tableLayoutPanel88.Name = "tableLayoutPanel88";
+            tableLayoutPanel88.RowCount = 1;
+            tableLayoutPanel88.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel88.Size = new Size(615, 17);
+            tableLayoutPanel88.TabIndex = 22;
             // 
             // btn_clearFFMPEGConsole
             // 
@@ -5725,10 +5876,10 @@
             btn_clearFFMPEGConsole.FlatAppearance.BorderSize = 0;
             btn_clearFFMPEGConsole.FlatStyle = FlatStyle.Flat;
             btn_clearFFMPEGConsole.ForeColor = Color.White;
-            btn_clearFFMPEGConsole.Location = new Point(1152, 1);
+            btn_clearFFMPEGConsole.Location = new Point(1, 1);
             btn_clearFFMPEGConsole.Margin = new Padding(1);
             btn_clearFFMPEGConsole.Name = "btn_clearFFMPEGConsole";
-            btn_clearFFMPEGConsole.Size = new Size(18, 18);
+            btn_clearFFMPEGConsole.Size = new Size(16, 15);
             btn_clearFFMPEGConsole.TabIndex = 20;
             btn_clearFFMPEGConsole.UseVisualStyleBackColor = false;
             btn_clearFFMPEGConsole.Click += btn_clearFFMPEGConsole_Click;
@@ -5742,11 +5893,11 @@
             tableLayoutPanel85.Controls.Add(txtBox_FFMPEGConsole, 1, 0);
             tableLayoutPanel85.Controls.Add(txtBox_Console, 0, 0);
             tableLayoutPanel85.Dock = DockStyle.Fill;
-            tableLayoutPanel85.Location = new Point(3, 29);
+            tableLayoutPanel85.Location = new Point(3, 32);
             tableLayoutPanel85.Name = "tableLayoutPanel85";
             tableLayoutPanel85.RowCount = 1;
             tableLayoutPanel85.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel85.Size = new Size(1772, 184);
+            tableLayoutPanel85.Size = new Size(1772, 181);
             tableLayoutPanel85.TabIndex = 34;
             // 
             // txtBox_FFMPEGConsole
@@ -5758,7 +5909,7 @@
             txtBox_FFMPEGConsole.Location = new Point(1152, 1);
             txtBox_FFMPEGConsole.Margin = new Padding(1);
             txtBox_FFMPEGConsole.Name = "txtBox_FFMPEGConsole";
-            txtBox_FFMPEGConsole.Size = new Size(619, 182);
+            txtBox_FFMPEGConsole.Size = new Size(619, 179);
             txtBox_FFMPEGConsole.TabIndex = 21;
             txtBox_FFMPEGConsole.Text = "";
             txtBox_FFMPEGConsole.WordWrap = false;
@@ -5777,18 +5928,6 @@
             tableLayoutPanel5.RowStyles.Add(new RowStyle(SizeType.Absolute, 4F));
             tableLayoutPanel5.Size = new Size(1784, 1137);
             tableLayoutPanel5.TabIndex = 30;
-            // 
-            // btn_consoleScrollToCaret
-            // 
-            btn_consoleScrollToCaret.BackgroundImage = (Image)resources.GetObject("btn_consoleScrollToCaret.BackgroundImage");
-            btn_consoleScrollToCaret.BackgroundImageLayout = ImageLayout.Zoom;
-            btn_consoleScrollToCaret.FlatAppearance.BorderSize = 0;
-            btn_consoleScrollToCaret.FlatStyle = FlatStyle.Flat;
-            btn_consoleScrollToCaret.Location = new Point(268, 3);
-            btn_consoleScrollToCaret.Name = "btn_consoleScrollToCaret";
-            btn_consoleScrollToCaret.Size = new Size(26, 14);
-            btn_consoleScrollToCaret.TabIndex = 40;
-            btn_consoleScrollToCaret.UseVisualStyleBackColor = true;
             // 
             // Aerolithe
             // 
@@ -5890,6 +6029,9 @@
             tabPage2.ResumeLayout(false);
             tableLayoutPanel40.ResumeLayout(false);
             tableLayoutPanel39.ResumeLayout(false);
+            panel3.ResumeLayout(false);
+            panel3.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trackBar1).EndInit();
             panel7.ResumeLayout(false);
             panel7.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)trkBar_Lift).EndInit();
@@ -5975,20 +6117,25 @@
             pnl_DrawingLiveView.ResumeLayout(false);
             panel12.ResumeLayout(false);
             tableLayoutPanel41.ResumeLayout(false);
-            tableLayoutPanel41.PerformLayout();
             tableLayoutPanel71.ResumeLayout(false);
             tableLayoutPanel71.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_liveMaskLum).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBox_MLMask).EndInit();
+            panel2.ResumeLayout(false);
+            tableLayoutPanel72.ResumeLayout(false);
+            tableLayoutPanel72.PerformLayout();
             tableLayoutPanelMAIN.ResumeLayout(false);
             tableLayoutPanel4.ResumeLayout(false);
-            tableLayoutPanel4.PerformLayout();
             tableLayoutPanel45.ResumeLayout(false);
             tableLayoutPanel45.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picBox_holdOn).EndInit();
             tableLayoutPanel7.ResumeLayout(false);
+            tableLayoutPanel89.ResumeLayout(false);
+            tableLayoutPanel89.PerformLayout();
             tableLayoutPanel6.ResumeLayout(false);
             tableLayoutPanel46.ResumeLayout(false);
+            tableLayoutPanel87.ResumeLayout(false);
+            tableLayoutPanel88.ResumeLayout(false);
             tableLayoutPanel85.ResumeLayout(false);
             tableLayoutPanel5.ResumeLayout(false);
             ResumeLayout(false);
@@ -6037,8 +6184,6 @@
         private Button btn_liftMaxUp;
         private Button btn_liftMaxDown;
         private Panel panel7;
-        private Label label9;
-        private Label label10;
         private Label label11;
         private TrackBar trkBar_Lift;
         private TabPage tabPage6;
@@ -6258,7 +6403,6 @@
         private ComboBox comboBox_ImageType;
         private Label label47;
         private TableLayoutPanel tableLayoutPanel71;
-        private TableLayoutPanel tableLayoutPanel72;
         private PictureBox picBox_MLMask;
         private Label lbl_maskAmount;
         private Button btn_focusPlus;
@@ -6295,7 +6439,6 @@
         private TableLayoutPanel tableLayoutPanel74;
         private Button btn_PostFocusStackMask;
         private Button btn_openStackedImage;
-        private CheckBox checkBox_ApplyBlur;
         private TabControl tabControl4;
         private TabPage tabPage16;
         private TabPage tabPage17;
@@ -6360,13 +6503,27 @@
         private TableLayoutPanel tableLayoutPanel85;
         private RichTextBox txtBox_FFMPEGConsole;
         private Button btn_clearFFMPEGConsole;
-        public RichTextBox richTextBox_PicReport;
         private Label lbl_CancelStatus;
         private Button btn_DebugContinue;
         private TableLayoutPanel tableLayoutPanel86;
         private TextBox textBox_nbrPhotosFS;
         private Label label60;
-        private Label label61;
         private Button btn_consoleScrollToCaret;
+        private TableLayoutPanel tableLayoutPanel87;
+        private TableLayoutPanel tableLayoutPanel88;
+        private Panel panel2;
+        private TableLayoutPanel tableLayoutPanel72;
+        private Label lbl_TimeDisplay;
+        private FlowLayoutPanel flowPanelReports;
+        private TableLayoutPanel tableLayoutPanel89;
+        private Label label65;
+        private Label label64;
+        private Label label63;
+        private Label label62;
+        private Label label61;
+        private Label lbl_ProgressDisplay;
+        private Panel panel3;
+        private Label label68;
+        private TrackBar trackBar1;
     }
 }

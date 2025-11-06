@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Drawing;
+using System.Timers;
 
 namespace Aerolithe
 {
@@ -24,6 +25,7 @@ namespace Aerolithe
         {
             appSettings = new AppSettings();
             projet = new ProjectPreferences();
+           
         }
 
         private void CreateNewProject()
@@ -64,6 +66,11 @@ namespace Aerolithe
                     SavePrefsSettings();
                 }
             }
+        }
+
+        private void SetVariables()
+        {
+            serieId = new int[] { int.Parse(txtBox_nbrImg5deg.Text), int.Parse(txtBox_nbrImg25deg.Text), int.Parse(txtBox_nbrImg45deg.Text) };
         }
 
         private void SelectExistingProject()
@@ -228,11 +235,9 @@ namespace Aerolithe
 
         private void PreparationNomImage()
         {
-
-            if (projet.ImageIncrement == oldImgIncr)
-            {
-                projet.ImageIncrement++;                
-            }
+            //MessageBox.Show(projet.SerieIncrement.ToString());
+            oldImgIncr = projet.ImageIncrement;
+           
 
             projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.SerieIncrement.ToString("D2");
             projet.ImageNameFull = projet.ImageNameBase + "_" + projet.ImageIncrement.ToString("D2") + ".jpg";
@@ -248,10 +253,10 @@ namespace Aerolithe
             else
             {
                 lbl_FullImageName.Text = projet.ImageNameFull;
-            }
-
+            }          
+            
             projet.Save(appSettings.ProjectPath);
-            oldImgIncr = projet.ImageIncrement;
+            projet.ImageIncrement++;
         }
 
         private async Task AssembleImageName()
@@ -260,22 +265,25 @@ namespace Aerolithe
             {
                 lbl_FullImageName.Invoke(new Action(() =>
                 {
-                    projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_SerieIncrement.Text;
+                    projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.SerieIncrement.ToString();
                     lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
                 }));
             }
             else
             {
-                projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_SerieIncrement.Text;
+                projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.SerieIncrement.ToString();
                 lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
             }
             projet.Save(appSettings.ProjectPath);
         }
 
+
+
         private async Task ResetIncrementation()
         {
             oldImgIncr = 0;
             projet.ImageIncrement = 0;
+            AssembleImageName();
             projet.Save(appSettings.ProjectPath);
                      
         }
@@ -301,7 +309,9 @@ namespace Aerolithe
                     }));
                 }
                 AssembleImageName();
+                await Task.Delay(50);
                 projet.Save(appSettings.ProjectPath);
+                await Task.Delay(100);
             }
         }
 
@@ -391,6 +401,7 @@ namespace Aerolithe
             toolTip.SetToolTip(lbl_ResBlurDetect, "Résolution de la netteté, généralement autour de 100.");
             toolTip.SetToolTip(lbl_BlockAmountBlurDetet, "Grosseur des carrés de détection, les valeurs étant 16,32,64 ou 128");
             toolTip.SetToolTip(textBox_minDetect, "Seuil minimum de détections pour considérer une image d'avoir une partie nette.");
+            toolTip.SetToolTip(textBox_nbrPhotosFS, "Seuil maximal de photos prises lors d'un focus stack");
 
         }
 
@@ -539,6 +550,11 @@ namespace Aerolithe
 
         public int MaskIntensity { get; set; }
 
+        public int NbrImg5Deg { get; set; }
+
+        public int NbrImg25Deg { get; set; }
+
+        public int NbrImg45Deg { get; set; }
 
         public AppSettings Load()
         {
@@ -582,7 +598,114 @@ namespace Aerolithe
         }
     }
 
-   
+
+public class TimerController
+    {
+        private System.Timers.Timer _timer;
+        private TimeSpan _elapsedTime;
+        private Label _lblTimeDisplay;
+        private readonly int _interval = 1000; // 1 seconde
+
+        public TimerController(Label lblTimeDisplay)
+        {
+            _lblTimeDisplay = lblTimeDisplay;
+            _timer = new System.Timers.Timer(_interval);
+            _timer.Elapsed += OnTimedEvent;
+            _timer.AutoReset = true;
+        }
+
+        private void OnTimedEvent(object sender, ElapsedEventArgs e)
+        {
+            _elapsedTime = _elapsedTime.Add(TimeSpan.FromSeconds(1));
+            string timeStr = $"{_elapsedTime.Hours:D2}:{_elapsedTime.Minutes:D2}:{_elapsedTime.Seconds:D2}";
+
+            // Mise à jour du label via Invoke
+            if (_lblTimeDisplay.InvokeRequired)
+            {
+                _lblTimeDisplay.Invoke(new Action(() => _lblTimeDisplay.Text = timeStr));
+            }
+            else
+            {
+                _lblTimeDisplay.Text = timeStr;
+            }
+        }
+
+        //public async Task ControlTimerAsync(string action)
+        //{
+        //    await Task.Run(() =>
+        //    {
+        //        switch (action.ToLower())
+        //        {
+        //            case "lancer":
+        //                if (!_timer.Enabled)
+        //                {
+        //                    _timer.Start();
+        //                }
+        //                break;
+
+        //            case "stopper":
+        //                if (_timer.Enabled)
+        //                {
+        //                    _timer.Stop();
+        //                }
+        //                break;
+
+        //            case "resetter":
+        //                _timer.Stop();
+        //                _elapsedTime = TimeSpan.Zero;
+        //                if (_lblTimeDisplay.InvokeRequired)
+        //                {
+        //                    _lblTimeDisplay.Invoke(new Action(() => _lblTimeDisplay.Text = ""));
+        //                }
+        //                else
+        //                {
+        //                    _lblTimeDisplay.Text = "";
+        //                }
+        //                break;
+
+        //            default:
+        //                throw new ArgumentException("Action non reconnue. Utilisez 'lancer', 'stopper' ou 'resetter'.");
+        //        }
+        //    });
+        //}
+        public async Task ControlTimerAsync(string action)
+        {
+            switch (action.ToLower())
+            {
+                case "lancer":
+                    if (!_timer.Enabled)
+                    {
+                        _timer.Start();
+                    }
+                    break;
+
+                case "stopper":
+                    if (_timer.Enabled)
+                    {
+                        _timer.Stop();
+                    }
+                    break;
+
+                case "resetter":
+                    _timer.Stop();
+                    _elapsedTime = TimeSpan.Zero;
+                    if (_lblTimeDisplay.InvokeRequired)
+                    {
+                        _lblTimeDisplay.Invoke(new Action(() => _lblTimeDisplay.Text = ""));
+                    }
+                    else
+                    {
+                        _lblTimeDisplay.Text = "";
+                    }
+                    break;
+
+                default:
+                    throw new ArgumentException("Action non reconnue. Utilisez 'lancer', 'stopper' ou 'resetter'.");
+            }
+
+            await Task.CompletedTask; // Pour respecter la signature async
+        }
+    }
 
 
 }

@@ -183,11 +183,14 @@ namespace Aerolithe
                         Text = "X",
                         Dock = DockStyle.Fill,
                         Font = new Font(FontFamily.GenericSansSerif, 6),
-                        BackColor = Color.Black,
-                        ForeColor = Color.White,
+                        BackColor = Color.FromArgb(100, 30, 30, 30),
+                        ForeColor = Color.Red,
                         Margin = new Padding(0),
                         FlatStyle = FlatStyle.Flat
                     };
+
+                    deleteButton.FlatAppearance.BorderSize = 0; 
+                    deleteButton.FlatAppearance.BorderColor = Color.Black;
 
                     deleteButton.Click += (s, e) =>
                     {
