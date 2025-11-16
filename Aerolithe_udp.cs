@@ -110,7 +110,7 @@ namespace Aerolithe
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
-                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperLiftNema27IpAddress, stepperLiftNema23Port));
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperLiftNema23IpAddress, stepperLiftNema23Port));
                 }
             }
             catch (Exception ex)
@@ -147,22 +147,7 @@ namespace Aerolithe
             }
         }
 
-        public async Task UdpSendM5MessageAsync(string position)
-        {
-            try
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(position);
-                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
-                {
-                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(M5ipAddress, M5Port));
-                    AppendTextToConsoleNL("Message sent to M5 Dial:" + position);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+
 
         public async Task udpSendStepperMotorData(int vitesse, int position) // valeurs 
         {
@@ -173,7 +158,7 @@ namespace Aerolithe
         public async Task udpSendStepperMotorData(int vitesse) // valeurs 
         {
             string message = $"stepmotor movespeed {vitesse}";
-           await  UdpSendStepperMessageAsync(message);
+            await UdpSendStepperMessageAsync(message);
             //AppendTextToConsoleNL(message);
 
         }
@@ -182,14 +167,14 @@ namespace Aerolithe
         {
             string message = $"stepmotor moveto {vitesse},{position}";
             await UdpSendLiftStepperNema23MessageAsync(message);
-            AppendTextToConsoleNL(message);
+            //AppendTextToConsoleNL(message);
         }
 
         public async Task udpSendStepperLiftNema23MotorData(int vitesse) // valeurs 
         {
             string message = $"stepmotor movespeed {vitesse}";
             await UdpSendLiftStepperNema23MessageAsync(message);
-            AppendTextToConsoleNL(message);
+            //AppendTextToConsoleNL(message);
 
         }
 
@@ -249,7 +234,7 @@ namespace Aerolithe
                         var oscPacket = OscPacket.GetPacket(result.Buffer);
                         if (oscPacket is OscMessage oscMessage)
                         {
-                            var args = oscMessage.Arguments.ToArray() ;
+                            var args = oscMessage.Arguments.ToArray();
                             var arguments = string.Join(", ", args.Select(a => a.ToString()));
 
                             string message = oscMessage.Address + "#" + arguments;
@@ -290,6 +275,28 @@ namespace Aerolithe
         {
             //AppendTextToConsoleNL("là");
             //AppendTextToConsoleNL("Message Reçu: " + message);
+            #region liftVerticalMotor
+            if (message.Contains("Stepper Lift: topLimitPressed"))
+            {
+                AppendTextToConsoleNL("Stepper Lift: top LimitPressed");
+            }
+            if (message.Contains("Stepper Lift: bottomLimitPressed"))
+            {
+                AppendTextToConsoleNL("Stepper Lift: bottom LimitPressed");
+            }
+            if (message.Contains("Stepper lift data:"))
+            {
+                var data = message.Split(":")[1].Split(",");
+                appSettings.VerticalLiftCurrentPos = int.Parse(data[0]);
+                appSettings.VerticalLiftMaxPos = int.Parse(data[1]);
+                appSettings.VerticalLiftDefaultPos = int.Parse(data[2]);
+                displayVerticalLiftData();
+            }
+            if (message.Contains("Stepper Lift Max Position:"))
+            {
+                AppendTextToConsoleNL("Lift (Max position verticale): " + message.Split(":")[1]);
+            }
+            #endregion
             #region stepMotor
             if (message.Contains("calibration done, steppermotor maxPosition: "))
             {
@@ -403,9 +410,11 @@ namespace Aerolithe
                     lbl_actatorAngle_2.Text = "Actuateur:  " + actuatorAngle.ToString() + " degrés";
                 }));
                 //await AppendTextToConsoleNL($"Angle de l'actuateur: {actuatorAngle.ToString()}");
-                _actuatorAngleTcs?.SetResult(actuatorAngle);             
-            
+                _actuatorAngleTcs?.SetResult(actuatorAngle);
+
             }
+
+
             #endregion
 
         }
@@ -427,11 +436,11 @@ namespace Aerolithe
                 {
                     secondArg = args[1];
                 }
-                 
+
 
                 switch (address)
                 {
-                    
+
                     case "camera_osc_autofocus_btn":
                         await NikonAutofocus();
                         break;
@@ -458,7 +467,7 @@ namespace Aerolithe
                     case "lift_Nema23_osc_fader":
                         await udpSendStepperLiftNema23MotorData(int.Parse(firstArg) * 2000);
                         break;
-                    case "lift_JogWheel_osc_fader":                        
+                    case "lift_JogWheel_osc_fader":
                         await udpSendStepperLiftNema23MotorData(int.Parse(secondArg) * 2000);
                         await udpSendScissorData(int.Parse(firstArg) * 10);
                         break;
@@ -491,7 +500,28 @@ namespace Aerolithe
             #endregion
         }
 
+        private void displayVerticalLiftData()
+        {
+            //AppendTextToConsoleNL(
+            //    $"Lift Vertical\n    - Position actuelle: {appSettings.VerticalLiftCurrentPos}\n    - Position maximale: {appSettings.VerticalLiftMaxPos}\n    - Position définie par défaut: {appSettings.VerticalLiftDefaultPos}"
+            //);
 
+            if (lbl_VerticalLiftPosition.InvokeRequired)
+            {
+                lbl_VerticalLiftPosition.Invoke((MethodInvoker)(() =>
+                {
+                    lbl_VerticalLiftPosition.Text = "Position:      " + appSettings.VerticalLiftCurrentPos.ToString();
+                    lbl_VerticalLiftMaxPos.Text = "Maximum:         " + appSettings.VerticalLiftMaxPos.ToString();
+                    lbl_VerticalLiftDefaultPos.Text = "Défaut:      " + appSettings.VerticalLiftDefaultPos.ToString();
+                }));
+            }
+            else
+            {
+                lbl_VerticalLiftPosition.Text = "Position:  " + appSettings.VerticalLiftCurrentPos.ToString();
+                lbl_VerticalLiftMaxPos.Text = "Maximum: " + appSettings.VerticalLiftMaxPos.ToString();
+                lbl_VerticalLiftDefaultPos.Text = "Défaut: " + appSettings.VerticalLiftDefaultPos.ToString();
+            }
+        }
         public void UdpChecker()
         {
             udpClient = new UdpClient();

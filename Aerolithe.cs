@@ -26,19 +26,19 @@ namespace Aerolithe
     {
         // THIS IP ADDRESS 192.168.2.4 //
         public readonly IPAddress stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
-        public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
-        public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
-        public readonly IPAddress M5ipAddress = IPAddress.Parse("192.168.2.6");
-        public readonly IPAddress actuatorIpAddress = IPAddress.Parse("192.168.2.15");
-        public readonly IPAddress stepperLiftNema27IpAddress = IPAddress.Parse("192.168.2.16");
         public readonly int stepperCameraPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
+        public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
         public readonly int turntablePort = 44466;  // Port sur lequel on reçoit les messages UDP au ESP32 de la table tournante
-        public readonly int scissorLiftPort = 44477;  // Port sur lequel on reçoit les messages UDP au ESP32 du lift
-        public readonly int M5Port = 44488;
-        public readonly int stepperLiftNema23Port = 44433; // NEMA23
+        public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
+        public readonly int scissorLiftPort = 44477;  // Lift, moteur horizontal 
+        public readonly IPAddress actuatorIpAddress = IPAddress.Parse("192.168.2.15");
+        public readonly int actuatorPort = 44499;
+        public readonly IPAddress stepperLiftNema23IpAddress = IPAddress.Parse("192.168.2.16");
+        public readonly int stepperLiftNema23Port = 44433; // Lift, moteur vertical 
+
+
         public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
         private readonly int localPortOSC = 55545;
-        public readonly int actuatorPort = 44499;
 
 
         public bool stackedImageInBuffer = false;
@@ -136,6 +136,7 @@ namespace Aerolithe
             SetVariables();
 
             tabControl1.SelectedTab = tabPage3; tabControl4.SelectedTab = tabControl4.TabPages[2];
+            UdpSendLiftStepperNema23MessageAsync("stepmotor readData");
 
         }
 
@@ -414,7 +415,7 @@ namespace Aerolithe
         private void btn_liftMaxDown_Click(object sender, EventArgs e)
         {
             UdpSendStepperMessageAsync("lift setZero");
-            trkBar_Lift.Value = 500;
+            trkBar_LiftVertical.Value = 500;
         }
         private void btn_liftMaxUp_Click(object sender, EventArgs e)
         {
@@ -423,14 +424,14 @@ namespace Aerolithe
 
         private void trkBar_Lift_MouseUp(object sender, MouseEventArgs e)
         {
-            int val = trkBar_Lift.Value;
+            int val = trkBar_LiftVertical.Value;
             UdpSendScissorLiftMessageAsync("lift position " + val.ToString());
 
         }
 
         private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
         {
-            UdpSendScissorLiftMessageAsync("lift getPosition");
+            UdpSendLiftStepperNema23MessageAsync("stepmotor readData");
         }
 
         private async Task encoderRotationLift(int speed)
@@ -606,7 +607,7 @@ namespace Aerolithe
         }
 
 
-      
+
 
         public async Task AppendTextToFFMPEGConsoleNL(string message) // New Line
         {
@@ -917,7 +918,7 @@ namespace Aerolithe
             });
         }
 
-         
+
 
 
 
@@ -956,7 +957,7 @@ namespace Aerolithe
         {
             projet.SerieIncrement = int.Parse(txtBox_seqPad3.Text);
             AssembleImageName();
-            
+
 
             ResetSequenceCancellation();
             currentSequence = 2;
@@ -1030,7 +1031,7 @@ namespace Aerolithe
             {
                 btn_cancelPhotoShoot.Invoke(new Action(() =>
                 {
-                    btn_stopAutomaticFocusCapture.BackColor = Color.FromArgb(30,30,30) ;
+                    btn_stopAutomaticFocusCapture.BackColor = Color.FromArgb(30, 30, 30);
                     btn_cancelPhotoShoot.BackColor = Color.FromArgb(30, 30, 30);
                     lbl_CancelStatus.Text = "Cancel? OUI";
                 }));
@@ -1672,7 +1673,8 @@ namespace Aerolithe
                 projet.SerieIncrement = inc + 1;
                 if (lbl_SerieIncrement.InvokeRequired)
                 {
-                    lbl_SerieIncrement.Invoke(new Action(() => {
+                    lbl_SerieIncrement.Invoke(new Action(() =>
+                    {
                         lbl_SerieIncrement.Text = projet.SerieIncrement.ToString("D2");
                     }));
                 }
@@ -1680,8 +1682,8 @@ namespace Aerolithe
                 projet.Save(appSettings.ProjectPath);
                 txtBox_nomImages.ForeColor = Color.White;
             }
-           
-            
+
+
         }
 
 
@@ -2015,6 +2017,57 @@ namespace Aerolithe
                 mainConsoleScrollToCaret = true;
                 btn_consoleScrollToCaret.FlatAppearance.BorderSize = 0;
             }
+        }
+
+        private int lastHorizontalValue = -1;
+        private int lastVerticalValue = -1;
+
+        private void trkBar_LiftHorizontal_Scroll(object sender, EventArgs e)
+        {
+            int currentValue = trkBar_LiftHorizontal.Value * -5;
+            if (currentValue != lastHorizontalValue)
+            {
+                udpSendScissorData(currentValue);
+                lastHorizontalValue = currentValue;
+            }
+        }
+
+        private void trkBar_LiftVertical_Scroll(object sender, EventArgs e)
+        {
+            int currentValue = trkBar_LiftVertical.Value * 100;
+            if (currentValue != lastVerticalValue)
+            {
+                udpSendStepperLiftNema23MotorData(currentValue);
+                lastVerticalValue = currentValue;
+            }
+        }
+
+        private void trkBar_LiftHorizontal_MouseUp(object sender, MouseEventArgs e)
+        {
+            trkBar_LiftHorizontal.Value = 0;
+            udpSendScissorData(0);
+        }
+       
+        private void trkBar_LiftVertical_MouseUp(object sender, MouseEventArgs e)
+        {
+            trkBar_LiftVertical.Value = 0;
+            udpSendStepperLiftNema23MotorData(0);
+            UdpSendLiftStepperNema23MessageAsync("stepmotor readData");
+        }
+
+        private void btn_VerticalLiftStep_Calibration_Click(object sender, EventArgs e)
+        {
+            UdpSendLiftStepperNema23MessageAsync("stepmotor calibration");
+        }
+
+        private void btn_LiftVerticalDefault_Click(object sender, EventArgs e)
+        {
+            UdpSendLiftStepperNema23MessageAsync("stepmotor setDefault");
+        }
+
+        private void btn_VerticalLiftGoToDefault_Click(object sender, EventArgs e)
+        {
+            UdpSendLiftStepperNema23MessageAsync("stepmotor moveto " + appSettings.VerticalLiftDefaultPos.ToString());
         }
     }
 }

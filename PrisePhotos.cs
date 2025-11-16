@@ -28,6 +28,7 @@ namespace Aerolithe
         private int _Rotation = 0;
         private int _Serie = 0;
         private int totalPhotos = 0;
+        private bool calibrationInitialeLift = false;
         
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)

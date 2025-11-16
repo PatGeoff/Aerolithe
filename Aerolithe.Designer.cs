@@ -204,15 +204,21 @@
             tabPage2 = new TabPage();
             tableLayoutPanel40 = new TableLayoutPanel();
             tableLayoutPanel39 = new TableLayoutPanel();
-            panel3 = new Panel();
-            label68 = new Label();
-            trackBar1 = new TrackBar();
-            panel7 = new Panel();
-            label11 = new Label();
-            trkBar_Lift = new TrackBar();
-            btn_liftMaxDown = new Button();
-            btn_liftMaxUp = new Button();
+            trkBar_LiftVertical = new TrackBar();
+            tableLayoutPanel92 = new TableLayoutPanel();
             btn_printLiftPositionConsole = new Button();
+            btn_LiftVerticalDefault = new Button();
+            btn_VerticalLiftStep_Calibration = new Button();
+            tableLayoutPanel94 = new TableLayoutPanel();
+            tableLayoutPanel93 = new TableLayoutPanel();
+            lbl_VerticalLiftDefaultPos = new Label();
+            btn_VerticalLiftGoToDefault = new Button();
+            lbl_VerticalLiftMaxPos = new Label();
+            lbl_VerticalLiftPosition = new Label();
+            tableLayoutPanel91 = new TableLayoutPanel();
+            button4 = new Button();
+            trkBar_LiftHorizontal = new TrackBar();
+            button6 = new Button();
             tabPage6 = new TabPage();
             tableLayoutPanel27 = new TableLayoutPanel();
             tableLayoutPanel21 = new TableLayoutPanel();
@@ -469,10 +475,12 @@
             tabPage2.SuspendLayout();
             tableLayoutPanel40.SuspendLayout();
             tableLayoutPanel39.SuspendLayout();
-            panel3.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)trackBar1).BeginInit();
-            panel7.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)trkBar_Lift).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)trkBar_LiftVertical).BeginInit();
+            tableLayoutPanel92.SuspendLayout();
+            tableLayoutPanel94.SuspendLayout();
+            tableLayoutPanel93.SuspendLayout();
+            tableLayoutPanel91.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)trkBar_LiftHorizontal).BeginInit();
             tabPage6.SuspendLayout();
             tableLayoutPanel27.SuspendLayout();
             tableLayoutPanel21.SuspendLayout();
@@ -3060,137 +3068,70 @@
             tableLayoutPanel40.ColumnCount = 1;
             tableLayoutPanel40.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel40.Controls.Add(tableLayoutPanel39, 0, 0);
+            tableLayoutPanel40.Controls.Add(tableLayoutPanel91, 0, 1);
             tableLayoutPanel40.Dock = DockStyle.Fill;
             tableLayoutPanel40.Location = new Point(1, 1);
             tableLayoutPanel40.Name = "tableLayoutPanel40";
-            tableLayoutPanel40.RowCount = 2;
-            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 60.63123F));
-            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 39.36877F));
+            tableLayoutPanel40.RowCount = 3;
+            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Absolute, 266F));
+            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Absolute, 234F));
+            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel40.Size = new Size(459, 602);
             tableLayoutPanel40.TabIndex = 29;
             // 
             // tableLayoutPanel39
             // 
-            tableLayoutPanel39.ColumnCount = 1;
+            tableLayoutPanel39.ColumnCount = 2;
+            tableLayoutPanel39.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 29F));
             tableLayoutPanel39.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel39.Controls.Add(panel3, 0, 4);
-            tableLayoutPanel39.Controls.Add(panel7, 0, 3);
-            tableLayoutPanel39.Controls.Add(btn_liftMaxDown, 0, 0);
-            tableLayoutPanel39.Controls.Add(btn_liftMaxUp, 0, 1);
-            tableLayoutPanel39.Controls.Add(btn_printLiftPositionConsole, 0, 2);
+            tableLayoutPanel39.Controls.Add(trkBar_LiftVertical, 0, 0);
+            tableLayoutPanel39.Controls.Add(tableLayoutPanel92, 1, 0);
             tableLayoutPanel39.Dock = DockStyle.Fill;
             tableLayoutPanel39.Location = new Point(3, 3);
             tableLayoutPanel39.Name = "tableLayoutPanel39";
-            tableLayoutPanel39.RowCount = 5;
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
-            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
-            tableLayoutPanel39.Size = new Size(453, 359);
+            tableLayoutPanel39.RowCount = 1;
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel39.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel39.Size = new Size(453, 260);
             tableLayoutPanel39.TabIndex = 28;
             // 
-            // panel3
+            // trkBar_LiftVertical
             // 
-            panel3.Controls.Add(label68);
-            panel3.Controls.Add(trackBar1);
-            panel3.Dock = DockStyle.Fill;
-            panel3.Location = new Point(1, 285);
-            panel3.Margin = new Padding(1);
-            panel3.Name = "panel3";
-            panel3.Size = new Size(451, 73);
-            panel3.TabIndex = 28;
+            trkBar_LiftVertical.Dock = DockStyle.Fill;
+            trkBar_LiftVertical.Location = new Point(1, 1);
+            trkBar_LiftVertical.Margin = new Padding(1);
+            trkBar_LiftVertical.Maximum = 80;
+            trkBar_LiftVertical.Minimum = -80;
+            trkBar_LiftVertical.Name = "trkBar_LiftVertical";
+            trkBar_LiftVertical.Orientation = Orientation.Vertical;
+            trkBar_LiftVertical.RightToLeft = RightToLeft.No;
+            trkBar_LiftVertical.Size = new Size(27, 258);
+            trkBar_LiftVertical.TabIndex = 3;
+            trkBar_LiftVertical.TickFrequency = 0;
+            trkBar_LiftVertical.Scroll += trkBar_LiftVertical_Scroll;
+            trkBar_LiftVertical.MouseUp += trkBar_LiftVertical_MouseUp;
             // 
-            // label68
+            // tableLayoutPanel92
             // 
-            label68.AutoSize = true;
-            label68.ForeColor = Color.White;
-            label68.Location = new Point(10, 2);
-            label68.Margin = new Padding(1, 0, 1, 0);
-            label68.Name = "label68";
-            label68.Size = new Size(133, 15);
-            label68.TabIndex = 6;
-            label68.Text = "Élévateur Gauche Droite";
-            // 
-            // trackBar1
-            // 
-            trackBar1.Dock = DockStyle.Bottom;
-            trackBar1.Location = new Point(0, 28);
-            trackBar1.Margin = new Padding(1);
-            trackBar1.Maximum = 2500;
-            trackBar1.Minimum = 500;
-            trackBar1.Name = "trackBar1";
-            trackBar1.RightToLeft = RightToLeft.No;
-            trackBar1.Size = new Size(451, 45);
-            trackBar1.TabIndex = 3;
-            trackBar1.TickFrequency = 0;
-            trackBar1.Value = 500;
-            // 
-            // panel7
-            // 
-            panel7.Controls.Add(label11);
-            panel7.Controls.Add(trkBar_Lift);
-            panel7.Dock = DockStyle.Fill;
-            panel7.Location = new Point(1, 214);
-            panel7.Margin = new Padding(1);
-            panel7.Name = "panel7";
-            panel7.Size = new Size(451, 69);
-            panel7.TabIndex = 24;
-            // 
-            // label11
-            // 
-            label11.AutoSize = true;
-            label11.ForeColor = Color.White;
-            label11.Location = new Point(10, 2);
-            label11.Margin = new Padding(1, 0, 1, 0);
-            label11.Name = "label11";
-            label11.Size = new Size(105, 15);
-            label11.TabIndex = 6;
-            label11.Text = "Élévateur Haut Bas";
-            // 
-            // trkBar_Lift
-            // 
-            trkBar_Lift.Dock = DockStyle.Bottom;
-            trkBar_Lift.Location = new Point(0, 24);
-            trkBar_Lift.Margin = new Padding(1);
-            trkBar_Lift.Maximum = 2500;
-            trkBar_Lift.Minimum = 500;
-            trkBar_Lift.Name = "trkBar_Lift";
-            trkBar_Lift.RightToLeft = RightToLeft.No;
-            trkBar_Lift.Size = new Size(451, 45);
-            trkBar_Lift.TabIndex = 3;
-            trkBar_Lift.TickFrequency = 0;
-            trkBar_Lift.Value = 500;
-            trkBar_Lift.MouseUp += trkBar_Lift_MouseUp;
-            // 
-            // btn_liftMaxDown
-            // 
-            btn_liftMaxDown.BackColor = Color.FromArgb(30, 30, 30);
-            btn_liftMaxDown.Dock = DockStyle.Fill;
-            btn_liftMaxDown.ForeColor = Color.White;
-            btn_liftMaxDown.Location = new Point(1, 1);
-            btn_liftMaxDown.Margin = new Padding(1);
-            btn_liftMaxDown.Name = "btn_liftMaxDown";
-            btn_liftMaxDown.Size = new Size(451, 69);
-            btn_liftMaxDown.TabIndex = 25;
-            btn_liftMaxDown.Text = "Reset à zéro (max bas)";
-            btn_liftMaxDown.UseVisualStyleBackColor = false;
-            btn_liftMaxDown.Click += btn_liftMaxDown_Click;
-            // 
-            // btn_liftMaxUp
-            // 
-            btn_liftMaxUp.BackColor = Color.FromArgb(30, 30, 30);
-            btn_liftMaxUp.Dock = DockStyle.Fill;
-            btn_liftMaxUp.FlatAppearance.BorderSize = 0;
-            btn_liftMaxUp.ForeColor = Color.White;
-            btn_liftMaxUp.Location = new Point(1, 72);
-            btn_liftMaxUp.Margin = new Padding(1);
-            btn_liftMaxUp.Name = "btn_liftMaxUp";
-            btn_liftMaxUp.Size = new Size(451, 69);
-            btn_liftMaxUp.TabIndex = 26;
-            btn_liftMaxUp.Text = "Maximum hauteur";
-            btn_liftMaxUp.UseVisualStyleBackColor = false;
-            btn_liftMaxUp.Click += btn_liftMaxUp_Click;
+            tableLayoutPanel92.ColumnCount = 1;
+            tableLayoutPanel92.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel92.Controls.Add(btn_printLiftPositionConsole, 0, 2);
+            tableLayoutPanel92.Controls.Add(btn_LiftVerticalDefault, 0, 1);
+            tableLayoutPanel92.Controls.Add(btn_VerticalLiftStep_Calibration, 0, 0);
+            tableLayoutPanel92.Controls.Add(tableLayoutPanel94, 0, 3);
+            tableLayoutPanel92.Dock = DockStyle.Fill;
+            tableLayoutPanel92.Location = new Point(32, 3);
+            tableLayoutPanel92.Name = "tableLayoutPanel92";
+            tableLayoutPanel92.RowCount = 5;
+            tableLayoutPanel92.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tableLayoutPanel92.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tableLayoutPanel92.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tableLayoutPanel92.RowStyles.Add(new RowStyle(SizeType.Absolute, 100F));
+            tableLayoutPanel92.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel92.Size = new Size(418, 254);
+            tableLayoutPanel92.TabIndex = 4;
             // 
             // btn_printLiftPositionConsole
             // 
@@ -3198,14 +3139,188 @@
             btn_printLiftPositionConsole.Dock = DockStyle.Fill;
             btn_printLiftPositionConsole.FlatAppearance.BorderSize = 0;
             btn_printLiftPositionConsole.ForeColor = Color.White;
-            btn_printLiftPositionConsole.Location = new Point(1, 143);
+            btn_printLiftPositionConsole.Location = new Point(1, 73);
             btn_printLiftPositionConsole.Margin = new Padding(1);
             btn_printLiftPositionConsole.Name = "btn_printLiftPositionConsole";
-            btn_printLiftPositionConsole.Size = new Size(451, 69);
+            btn_printLiftPositionConsole.Size = new Size(416, 34);
             btn_printLiftPositionConsole.TabIndex = 27;
             btn_printLiftPositionConsole.Text = "Afficher la position dans la console";
             btn_printLiftPositionConsole.UseVisualStyleBackColor = false;
             btn_printLiftPositionConsole.Click += btn_printLiftPositionConsole_Click;
+            // 
+            // btn_LiftVerticalDefault
+            // 
+            btn_LiftVerticalDefault.BackColor = Color.FromArgb(30, 30, 30);
+            btn_LiftVerticalDefault.Dock = DockStyle.Fill;
+            btn_LiftVerticalDefault.FlatStyle = FlatStyle.Flat;
+            btn_LiftVerticalDefault.ForeColor = Color.White;
+            btn_LiftVerticalDefault.Location = new Point(3, 39);
+            btn_LiftVerticalDefault.Name = "btn_LiftVerticalDefault";
+            btn_LiftVerticalDefault.Size = new Size(412, 30);
+            btn_LiftVerticalDefault.TabIndex = 1;
+            btn_LiftVerticalDefault.Text = "Définir la hauteur par défaut";
+            btn_LiftVerticalDefault.UseVisualStyleBackColor = false;
+            btn_LiftVerticalDefault.Click += btn_LiftVerticalDefault_Click;
+            // 
+            // btn_VerticalLiftStep_Calibration
+            // 
+            btn_VerticalLiftStep_Calibration.BackColor = Color.FromArgb(30, 30, 30);
+            btn_VerticalLiftStep_Calibration.Dock = DockStyle.Fill;
+            btn_VerticalLiftStep_Calibration.FlatStyle = FlatStyle.Flat;
+            btn_VerticalLiftStep_Calibration.ForeColor = Color.White;
+            btn_VerticalLiftStep_Calibration.Location = new Point(3, 3);
+            btn_VerticalLiftStep_Calibration.Name = "btn_VerticalLiftStep_Calibration";
+            btn_VerticalLiftStep_Calibration.Size = new Size(412, 30);
+            btn_VerticalLiftStep_Calibration.TabIndex = 0;
+            btn_VerticalLiftStep_Calibration.Text = "Calibration";
+            btn_VerticalLiftStep_Calibration.UseVisualStyleBackColor = false;
+            btn_VerticalLiftStep_Calibration.Click += btn_VerticalLiftStep_Calibration_Click;
+            // 
+            // tableLayoutPanel94
+            // 
+            tableLayoutPanel94.ColumnCount = 1;
+            tableLayoutPanel94.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel94.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel94.Controls.Add(tableLayoutPanel93, 0, 2);
+            tableLayoutPanel94.Controls.Add(lbl_VerticalLiftMaxPos, 0, 1);
+            tableLayoutPanel94.Controls.Add(lbl_VerticalLiftPosition, 0, 0);
+            tableLayoutPanel94.Dock = DockStyle.Fill;
+            tableLayoutPanel94.Location = new Point(3, 111);
+            tableLayoutPanel94.Name = "tableLayoutPanel94";
+            tableLayoutPanel94.RowCount = 3;
+            tableLayoutPanel94.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel94.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel94.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel94.Size = new Size(412, 94);
+            tableLayoutPanel94.TabIndex = 29;
+            // 
+            // tableLayoutPanel93
+            // 
+            tableLayoutPanel93.ColumnCount = 2;
+            tableLayoutPanel93.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66.41222F));
+            tableLayoutPanel93.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 47F));
+            tableLayoutPanel93.Controls.Add(lbl_VerticalLiftDefaultPos, 0, 0);
+            tableLayoutPanel93.Controls.Add(btn_VerticalLiftGoToDefault, 1, 0);
+            tableLayoutPanel93.Dock = DockStyle.Fill;
+            tableLayoutPanel93.Location = new Point(3, 65);
+            tableLayoutPanel93.Name = "tableLayoutPanel93";
+            tableLayoutPanel93.RowCount = 1;
+            tableLayoutPanel93.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel93.Size = new Size(406, 26);
+            tableLayoutPanel93.TabIndex = 0;
+            // 
+            // lbl_VerticalLiftDefaultPos
+            // 
+            lbl_VerticalLiftDefaultPos.AutoSize = true;
+            lbl_VerticalLiftDefaultPos.Dock = DockStyle.Fill;
+            lbl_VerticalLiftDefaultPos.ForeColor = Color.White;
+            lbl_VerticalLiftDefaultPos.ImageAlign = ContentAlignment.MiddleLeft;
+            lbl_VerticalLiftDefaultPos.Location = new Point(3, 0);
+            lbl_VerticalLiftDefaultPos.Name = "lbl_VerticalLiftDefaultPos";
+            lbl_VerticalLiftDefaultPos.Size = new Size(353, 26);
+            lbl_VerticalLiftDefaultPos.TabIndex = 0;
+            lbl_VerticalLiftDefaultPos.Text = "Défaut";
+            lbl_VerticalLiftDefaultPos.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // btn_VerticalLiftGoToDefault
+            // 
+            btn_VerticalLiftGoToDefault.BackColor = Color.FromArgb(30, 30, 30);
+            btn_VerticalLiftGoToDefault.Dock = DockStyle.Fill;
+            btn_VerticalLiftGoToDefault.FlatAppearance.BorderSize = 0;
+            btn_VerticalLiftGoToDefault.FlatStyle = FlatStyle.Flat;
+            btn_VerticalLiftGoToDefault.ForeColor = Color.White;
+            btn_VerticalLiftGoToDefault.Location = new Point(362, 3);
+            btn_VerticalLiftGoToDefault.Name = "btn_VerticalLiftGoToDefault";
+            btn_VerticalLiftGoToDefault.Size = new Size(41, 20);
+            btn_VerticalLiftGoToDefault.TabIndex = 1;
+            btn_VerticalLiftGoToDefault.Text = "Aller";
+            btn_VerticalLiftGoToDefault.UseVisualStyleBackColor = false;
+            btn_VerticalLiftGoToDefault.Click += btn_VerticalLiftGoToDefault_Click;
+            // 
+            // lbl_VerticalLiftMaxPos
+            // 
+            lbl_VerticalLiftMaxPos.AutoSize = true;
+            lbl_VerticalLiftMaxPos.Dock = DockStyle.Fill;
+            lbl_VerticalLiftMaxPos.ForeColor = Color.White;
+            lbl_VerticalLiftMaxPos.ImageAlign = ContentAlignment.MiddleLeft;
+            lbl_VerticalLiftMaxPos.Location = new Point(3, 31);
+            lbl_VerticalLiftMaxPos.Name = "lbl_VerticalLiftMaxPos";
+            lbl_VerticalLiftMaxPos.Size = new Size(406, 31);
+            lbl_VerticalLiftMaxPos.TabIndex = 1;
+            lbl_VerticalLiftMaxPos.Text = "Maximum";
+            lbl_VerticalLiftMaxPos.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // lbl_VerticalLiftPosition
+            // 
+            lbl_VerticalLiftPosition.AutoSize = true;
+            lbl_VerticalLiftPosition.Dock = DockStyle.Fill;
+            lbl_VerticalLiftPosition.ForeColor = Color.White;
+            lbl_VerticalLiftPosition.ImageAlign = ContentAlignment.MiddleLeft;
+            lbl_VerticalLiftPosition.Location = new Point(3, 0);
+            lbl_VerticalLiftPosition.Name = "lbl_VerticalLiftPosition";
+            lbl_VerticalLiftPosition.Size = new Size(406, 31);
+            lbl_VerticalLiftPosition.TabIndex = 3;
+            lbl_VerticalLiftPosition.Text = "Position";
+            lbl_VerticalLiftPosition.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // tableLayoutPanel91
+            // 
+            tableLayoutPanel91.ColumnCount = 1;
+            tableLayoutPanel91.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel91.Controls.Add(button4, 0, 1);
+            tableLayoutPanel91.Controls.Add(trkBar_LiftHorizontal, 0, 0);
+            tableLayoutPanel91.Controls.Add(button6, 0, 2);
+            tableLayoutPanel91.ForeColor = Color.White;
+            tableLayoutPanel91.Location = new Point(3, 269);
+            tableLayoutPanel91.Name = "tableLayoutPanel91";
+            tableLayoutPanel91.RowCount = 4;
+            tableLayoutPanel91.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tableLayoutPanel91.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tableLayoutPanel91.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tableLayoutPanel91.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel91.Size = new Size(453, 120);
+            tableLayoutPanel91.TabIndex = 30;
+            // 
+            // button4
+            // 
+            button4.BackColor = Color.FromArgb(30, 30, 30);
+            button4.Dock = DockStyle.Fill;
+            button4.FlatStyle = FlatStyle.Flat;
+            button4.ForeColor = Color.White;
+            button4.Location = new Point(3, 39);
+            button4.Name = "button4";
+            button4.Size = new Size(447, 30);
+            button4.TabIndex = 4;
+            button4.Text = "Calibration";
+            button4.UseVisualStyleBackColor = false;
+            // 
+            // trkBar_LiftHorizontal
+            // 
+            trkBar_LiftHorizontal.Dock = DockStyle.Fill;
+            trkBar_LiftHorizontal.Location = new Point(1, 1);
+            trkBar_LiftHorizontal.Margin = new Padding(1);
+            trkBar_LiftHorizontal.Maximum = 20;
+            trkBar_LiftHorizontal.Minimum = -20;
+            trkBar_LiftHorizontal.Name = "trkBar_LiftHorizontal";
+            trkBar_LiftHorizontal.RightToLeft = RightToLeft.No;
+            trkBar_LiftHorizontal.Size = new Size(451, 34);
+            trkBar_LiftHorizontal.TabIndex = 3;
+            trkBar_LiftHorizontal.TickFrequency = 0;
+            trkBar_LiftHorizontal.Scroll += trkBar_LiftHorizontal_Scroll;
+            trkBar_LiftHorizontal.MouseUp += trkBar_LiftHorizontal_MouseUp;
+            // 
+            // button6
+            // 
+            button6.BackColor = Color.FromArgb(30, 30, 30);
+            button6.Dock = DockStyle.Fill;
+            button6.FlatStyle = FlatStyle.Flat;
+            button6.ForeColor = Color.White;
+            button6.Location = new Point(3, 75);
+            button6.Name = "button6";
+            button6.Size = new Size(447, 30);
+            button6.TabIndex = 5;
+            button6.Text = "Définir la position par défaut";
+            button6.UseVisualStyleBackColor = false;
             // 
             // tabPage6
             // 
@@ -6029,12 +6144,16 @@
             tabPage2.ResumeLayout(false);
             tableLayoutPanel40.ResumeLayout(false);
             tableLayoutPanel39.ResumeLayout(false);
-            panel3.ResumeLayout(false);
-            panel3.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)trackBar1).EndInit();
-            panel7.ResumeLayout(false);
-            panel7.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)trkBar_Lift).EndInit();
+            tableLayoutPanel39.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trkBar_LiftVertical).EndInit();
+            tableLayoutPanel92.ResumeLayout(false);
+            tableLayoutPanel94.ResumeLayout(false);
+            tableLayoutPanel94.PerformLayout();
+            tableLayoutPanel93.ResumeLayout(false);
+            tableLayoutPanel93.PerformLayout();
+            tableLayoutPanel91.ResumeLayout(false);
+            tableLayoutPanel91.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trkBar_LiftHorizontal).EndInit();
             tabPage6.ResumeLayout(false);
             tableLayoutPanel27.ResumeLayout(false);
             tableLayoutPanel21.ResumeLayout(false);
@@ -6181,11 +6300,7 @@
         private Label label4;
         private TabPage tabPage2;
         private Button btn_printLiftPositionConsole;
-        private Button btn_liftMaxUp;
-        private Button btn_liftMaxDown;
-        private Panel panel7;
-        private Label label11;
-        private TrackBar trkBar_Lift;
+        private TrackBar trkBar_LiftVertical;
         private TabPage tabPage6;
         private Button btn_actuator45deg;
         private Button btn_actuator25deg;
@@ -6522,8 +6637,18 @@
         private Label label62;
         private Label label61;
         private Label lbl_ProgressDisplay;
-        private Panel panel3;
-        private Label label68;
-        private TrackBar trackBar1;
+        private TrackBar trkBar_LiftHorizontal;
+        private TableLayoutPanel tableLayoutPanel91;
+        private Button btn_VerticalLiftStep_Calibration;
+        private Button btn_LiftVerticalDefault;
+        private TableLayoutPanel tableLayoutPanel92;
+        private Button button6;
+        private Button button4;
+        private Label lbl_VerticalLiftPosition;
+        private Label lbl_VerticalLiftMaxPos;
+        private TableLayoutPanel tableLayoutPanel93;
+        private Label lbl_VerticalLiftDefaultPos;
+        private Button btn_VerticalLiftGoToDefault;
+        private TableLayoutPanel tableLayoutPanel94;
     }
 }

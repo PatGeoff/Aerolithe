@@ -556,6 +556,12 @@ namespace Aerolithe
 
         public int NbrImg45Deg { get; set; }
 
+        public int VerticalLiftCurrentPos {  get; set; }
+
+        public int VerticalLiftMaxPos { get; set; } 
+
+        public int VerticalLiftDefaultPos { get; set; }
+
         public AppSettings Load()
         {
             // Crée le dossier Aerolithe s'il n'existe pas
