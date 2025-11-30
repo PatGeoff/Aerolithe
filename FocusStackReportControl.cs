@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ScottPlot.Statistics;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -73,6 +74,7 @@ namespace Aerolithe
 
         private void btn_RepriseRoutine_Click(object sender, EventArgs e)
         {
+
             using (var dialog = new RepriseDialogForm())
             {
                 var result = dialog.ShowDialog();
@@ -82,17 +84,38 @@ namespace Aerolithe
                 {
                     case 0:
                         // Cette série seulement
-                        MessageBox.Show(choix.ToString());
+                        ReprendreUneSerieRatee();
                         break;
                     case 1:
-                        // Toutes les séries à partir de celle-ci
-                        MessageBox.Show(choix.ToString());
+                        // Toutes les séries ratées
+                        ReprendreToutesLesSeriesRatees();
                         break;
                     case 2:
                         // Annuler
                         break;
                 }
             }
+        }
+        private void ReprendreUneSerieRatee()
+        {
+            switch (taskInfo.Serie)
+            {
+                case "0":
+                    Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
+                    Aerolithe.Instance.WaitForActuator(5);
+                    break;
+                case "1":
+                    Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
+                    break;
+                case "2":
+                    Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
+                    break;
+            }
+            
+        }
+        private void ReprendreToutesLesSeriesRatees()
+        {
+
         }
     }
 

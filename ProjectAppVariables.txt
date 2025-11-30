@@ -1,0 +1,35 @@
+﻿PROJECT SETTINGS
+
+ImageBaseName = ...       # GrosseRoche_2                              
+ImageNameRotationSerie = ImageBaseName + RotationSerieIncrement # .../GrosseRoche_2
+ImageNameFull =  ImageNameRotationSerie + FocusSerieIncrement + .jpg # .../GrosseRoche_2/49
+
+RotationSerieIncrement = 49
+FocusSerieIncrement = 62
+TopDownSerie = A
+
+ImageFolderPath = ... # appSettinsgs.projectPath + "\images
+TempImageFolderPath = ImageFolderPath + "\\"  ImageBaseName + "\\" + RotationSerieIncrement # appSettinsgs.projectPath + "\images\GrosseRoche_2\49
+FocusStackPath = ImageFolderPath + focusStackPath + "_" +  UpDownSerie # appSettinsgs.projectPath + "\images\focusStack_A
+
+_____________________________________________________
+APP SETTINGS
+
+
+ProjectPath
+MaxPictureAllowed
+DriveStep
+MaxDetections
+VitesseFocus
+DeltaStepIterations
+NbrCarresDetect
+ResCarresDetect
+MaskIntensity = 75
+GammaLV
+NbrImg5Deg
+NbrImg25Deg
+NbrImg45Deg
+VerticalLiftCurrentPos
+VerticalLiftMaxPos
+VerticalLiftDefaultPos
+ShutterSpeed

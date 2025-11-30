@@ -27,7 +27,6 @@ namespace Aerolithe
         private System.Timers.Timer checkTimer;
         private bool esp32Alive = false;
         private bool waveshareAlive = false;
-        public bool turntablePositionReached = false;
         public bool actuatorPositionReached = false;
         public int rotaryEncoderStepperMotorValue = 0;
         public bool rotaryEncoderSteperMotorTriggered = false;
@@ -55,7 +54,7 @@ namespace Aerolithe
         }
 
 
-        private async Task UdpSendActuatorMessageAsync(string message)
+        public async Task UdpSendActuatorMessageAsync(string message)
         {
             try
             {
@@ -72,7 +71,7 @@ namespace Aerolithe
         }
 
         private async Task UdpSendTurnTableMessageAsync(string message)
-        {
+        {            
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -87,7 +86,7 @@ namespace Aerolithe
             }
         }
 
-        public async Task UdpSendStepperMessageAsync(string message)
+        public async Task UdpSendCameraLinearMessageAsync(string message)
         {
             try
             {
@@ -149,16 +148,16 @@ namespace Aerolithe
 
 
 
-        public async Task udpSendStepperMotorData(int vitesse, int position) // valeurs 
+        public async Task udpSendCameraLinearMotorData(int vitesse, int position) // valeurs 
         {
             string message = $"stepmotor moveto {vitesse},{position}";
-            await UdpSendStepperMessageAsync(message);
+            await UdpSendCameraLinearMessageAsync(message);
         }
 
-        public async Task udpSendStepperMotorData(int vitesse) // valeurs 
+        public async Task udpSendCameraLinearMotorData(int vitesse) // valeurs 
         {
             string message = $"stepmotor movespeed {vitesse}";
-            await UdpSendStepperMessageAsync(message);
+            await UdpSendCameraLinearMessageAsync(message);
             //AppendTextToConsoleNL(message);
 
         }
@@ -254,14 +253,14 @@ namespace Aerolithe
 
         private void StepperMotorSetMaxValueEnableTrkbar(long position)
         {
-            if (stepperMotor_trkbar.InvokeRequired)
+            if (stepperCameraMotor_trkbar.InvokeRequired)
             {
-                stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Enabled = true));
-                stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Maximum = (int)position));
+                stepperCameraMotor_trkbar.Invoke(new Action(() => stepperCameraMotor_trkbar.Enabled = true));
+                stepperCameraMotor_trkbar.Invoke(new Action(() => stepperCameraMotor_trkbar.Maximum = (int)position));
                 txtBox_Console.Invoke(new Action(() => txtBox_Console.Text += "calibration done, trakcbar enabled" + Environment.NewLine));
                 stepperCurrentPosition = stepperMaxPositionValue / 2;
-                stepperMotor_trkbar.Invoke(new Action(() => stepperMotor_trkbar.Value = stepperCurrentPosition));
-                udpSendStepperMotorData(4000, stepperCurrentPosition);
+                stepperCameraMotor_trkbar.Invoke(new Action(() => stepperCameraMotor_trkbar.Value = stepperCurrentPosition));
+                udpSendCameraLinearMotorData(4000, stepperCurrentPosition);
             }
         }
 
@@ -319,27 +318,7 @@ namespace Aerolithe
                 }
             }
             // ESP32
-            if (message.Contains("ok esp32"))
-            {
-                esp32Alive = true;
-                picBox_esp32Com.Image = Resources.crochet;
-                //Debug.WriteLine("Reçu un OK du ESP32");
-            }
-            else
-            {
-                esp32Alive = false;
-                picBox_esp32Com.Image = Resources.echec;
-                //Debug.WriteLine("RIEN reçu du ESP32");
-            }
-            #endregion
-            #region Waveshare
-            // Waveshare
-            if (message.Contains("waveshare --> status ok"))
-            {
-                waveshareAlive = true;
-                picBox_waveshareCom.Image = Resources.crochet;
-                //Debug.WriteLine("Reçu un OK du Waveshare");
-            }
+          
             //if (message.Contains("Message de Table Tournante: Position atteinte"))
             //{
             //    turntablePositionReached = true;
@@ -353,7 +332,8 @@ namespace Aerolithe
                 //AppendTextToConsoleNL($"Position de la table tournante reçue: {turntablePosition.ToString()}");
                 if (trkBar_turntable.InvokeRequired)
                 {
-                    if (turntablePosition < 0) turntablePosition = 0;
+                    if (turntablePosition < 0 || turntablePosition > 4096) turntablePosition = 0;
+
                     trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
                 }
                 if (lbl_turntablePosition.InvokeRequired)
@@ -364,39 +344,24 @@ namespace Aerolithe
 
                 _turntablePositionTcs?.SetResult(turntablePosition); // vers Aerolithe.cs/getTurntablePosFromWaveshare()
             }
-            #endregion
-            #region M5
 
-            if (message.Contains("Encoder"))
-            {
-                AppendTextToConsoleNL(message);
-                string[] parts = message.Split(',');
-                if (parts[1] == "0") // 0 = Actuateur Linéaire
-                {
-                    int value = int.Parse(parts[2]);
-                    encoderRotationActuateur(value);
-
-                }
-                if (parts[1] == "1") // 1 = Scissor Lift
-                {
-                    int value = int.Parse(parts[2]);
-                    Task.Run(async () => await encoderRotationLift(value));
-
-                }
-                if (parts[1] == "2") // 2 = Table Tounante
-                {
-                    int value = int.Parse(parts[2]);
-                    encoderRotationTurnTable(value);
-
-
-                }
-                if (parts[1] == "3") // 3 = Caméra
-                {
-                    int value = int.Parse(parts[2]);
-                    encoderRotationStepper(value);
-
-                }
+            if (message.Contains("FarLimitSwitchPressed")) { 
+                cameraRailFarLimitSwitchPressed = true;
+                //AppendTextToConsoleNL("FarLimitSwitchPressed = True");
             }
+            if (message.Contains("FarLimitSwitchReleased")) {
+                cameraRailFarLimitSwitchPressed = false;
+                //AppendTextToConsoleNL("FarLimitSwitchPressed = False");
+            } 
+            if (message.Contains("NearLimitSwitchPressed")) {
+                cameraRailNearLimitSwitchPressed = true;
+                //AppendTextToConsoleNL("NearLimitSwitchPressed = True");
+            }
+            if (message.Contains("NearLimitSwitchReleased")) {
+                cameraRailNearLimitSwitchPressed = false;
+                //AppendTextToConsoleNL("NearLimitSwitchPressed = False");
+            } 
+
             #endregion
             #region Actuator
             if (message.Contains("actuator_angle"))
@@ -440,12 +405,14 @@ namespace Aerolithe
 
                 switch (address)
                 {
-
+                    case "camera_osc_centrage_btn":
+                        await RoutineAutoCentrage();
+                        break;                        
                     case "camera_osc_autofocus_btn":
                         await NikonAutofocus();
                         break;
                     case "camera_osc_motor_fader":
-                        udpSendStepperMotorData(int.Parse(firstArg) * 2000);
+                        udpSendCameraLinearMotorData(int.Parse(firstArg) * 2000);
                         break;
                     case "btn_drivestep":
                         driveStep.Value = double.Parse(firstArg);
@@ -489,6 +456,9 @@ namespace Aerolithe
                     case "actuator_osc_down_btn":
                         await UdpSendActuatorMessageAsync("actuator down");
                         break;
+                    case "actuator_osc_stop_btn":
+                        await UdpSendActuatorMessageAsync("actuator stop");
+                        break;
                     default: break;
 
                 }
@@ -522,32 +492,9 @@ namespace Aerolithe
                 lbl_VerticalLiftDefaultPos.Text = "Défaut: " + appSettings.VerticalLiftDefaultPos.ToString();
             }
         }
-        public void UdpChecker()
-        {
-            udpClient = new UdpClient();
-            checkTimer = new System.Timers.Timer(60000); // Set interval to 60 seconds (60000 ms)
-            checkTimer.Elapsed += CheckDevices;
-            checkTimer.AutoReset = true;
-            checkTimer.Enabled = true;
-        }
+      
 
-        public async Task CheckCommunication()
-        {
-
-            DateTime now = DateTime.Now;
-            lbl_lastTimePing.Text = now.ToString();
-            esp32Alive = false;
-            waveshareAlive = false;
-            await UdpSendStepperMessageAsync("status");
-            Thread.Sleep(500);
-            await UdpSendTurnTableMessageAsync("status");
-            Thread.Sleep(500);
-        }
-        private void CheckDevices(object? sender, ElapsedEventArgs e)
-        {
-            Task.Run(async () => await CheckCommunication());
-            Ping();
-        }
+       
 
     }
 }

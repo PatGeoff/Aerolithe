@@ -86,15 +86,15 @@ namespace Aerolithe
                                 PreparationDossierDestTemp();
                                 PreparationNomImage();
 
-                                Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.ImageNameFull + " ..."));
+                                Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageNameFull() + " ..."));
 
                                 using (var saveStream = new MemoryStream())
                                 {
                                     processedBitmap.Save(saveStream, ImageFormat.Jpeg);
                                     saveStream.Position = 0;
-                                    SaveStreamAsJpegWithProgress(saveStream, projet.ImageFullPath);
+                                    SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPath());
 
-                                    Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.ImageFullPath, panelSize));
+                                    Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPath(), panelSize));
                                 }
                             }
 
@@ -228,7 +228,7 @@ namespace Aerolithe
                         TextAlign = ContentAlignment.MiddleRight, // aligné à droite
                         ForeColor = Color.White,
                         Dock = DockStyle.Fill,
-                        Font = new Font(FontFamily.GenericSansSerif, 6)
+                        Font = new Font(FontFamily.GenericSansSerif, 7)
                     };
 
 

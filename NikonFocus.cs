@@ -248,7 +248,7 @@ namespace Aerolithe
 
             await NikonAutofocus();
             if (_stopRequested) return;
-            
+
             var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
 
             int maxTargetDown = 0;
@@ -278,7 +278,7 @@ namespace Aerolithe
                 if (_stopRequested) return;
                 ManualFocus(1, stepSize);
                 focusStackStepVar -= 1;
-                UpdateFocusStepVarLbl(focusStackStepVar);                
+                UpdateFocusStepVarLbl(focusStackStepVar);
                 await Task.Delay(delayTime);
             }
 
@@ -295,7 +295,7 @@ namespace Aerolithe
 
             ////////////////////////////////////////////////
             //  Deuxième passe : On monte jusqu'à ce qu'on ait 4 flous consécutifs (stockée dans blurDataDict) ////////////////////////////////////////////////
-            
+
             while (!_stopRequested)
             {
                 ManualFocus(0, stepSize);
@@ -310,7 +310,7 @@ namespace Aerolithe
                 else
                 {
                     blurConsecutiveCount++;
-                    
+
                 }
 
                 focusStackStepVar += 1;
@@ -338,19 +338,19 @@ namespace Aerolithe
 
             ////////////////////////////////////////////////
             // Troisième passe : retour à la première détection    ////////////////////////////////////////////////
-            
+
 
             if (_stopRequested) return;
             //int returnToStartSteps = (maxUpperPosition - maxTargetUp) / 2;
             //ManualFocus(1, returnToStartSteps * stepSize);
 
 
-            AppendTextToConsoleNL("stepSize = " + stepSize.ToString());
-            AppendTextToConsoleNL("delta = " + delta.ToString());
+            //AppendTextToConsoleNL("stepSize = " + stepSize.ToString());
+            //AppendTextToConsoleNL("delta = " + delta.ToString());
             int steps = (int)(delta * stepSize * 0.75);
-            AppendTextToConsoleNL(steps.ToString());
+            AppendTextToConsoleNL("stepSize = " + stepSize.ToString() + ", delta = " + delta.ToString() + ", steps = " + steps.ToString());
 
-            ManualFocus(1,steps);
+            ManualFocus(1, steps);
             await Task.Delay(500);
             focusStackStepVar = maxTargetUp;
             UpdateFocusStepVarLbl(maxTargetUp);
@@ -366,7 +366,7 @@ namespace Aerolithe
             }
 
             // Ajustement fin
-            while (blurredBlocks > minDetect*2 && !_stopRequested)
+            while (blurredBlocks > minDetect * 2 && !_stopRequested)
             {
                 if (_stopRequested) break;
                 ManualFocus(1, stepSize);
@@ -385,14 +385,14 @@ namespace Aerolithe
 
             // 📊 Affichage du graphique
             await DisplayBlurGraph(blurDataDict);
-            
+
         }
 
-     
+
 
         public async Task AutomaticFocusThenCapture(int focusIterations)
         {
-            
+
             int newStepSize = stepSize;
             Invoke(new Action(() =>
             {
@@ -404,7 +404,7 @@ namespace Aerolithe
             {
                 try
                 {
-                    string[] imageFiles = Directory.GetFiles(projet.TempImageFolderPath, "*.*")
+                    string[] imageFiles = Directory.GetFiles(projet.GetTempImageFolderPath(), "*.*")
                            .Where(file => file.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
                                           file.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
                                           file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
@@ -418,7 +418,7 @@ namespace Aerolithe
                         }
                         catch (Exception ex)
                         {
-                            AppendTextToConsoleNL(ex.Message);  
+                            AppendTextToConsoleNL(ex.Message);
                         }
                     }
                 }
@@ -428,11 +428,11 @@ namespace Aerolithe
                 }
 
             }
-            
+
             if (focusIterations > maxNbrPicturesAllowed)
             {
                 newStepSize = stepSize * focusIterations / maxNbrPicturesAllowed;
-                focusIterations = maxNbrPicturesAllowed;                
+                focusIterations = maxNbrPicturesAllowed;
             }
 
 
@@ -440,8 +440,26 @@ namespace Aerolithe
 
             int iterationsCompletees = 0;
             for (int i = 0; i < focusIterations; i++)
-            {                
-                //AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
+            {
+                ////AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
+                for (int j = 0; j <= 3; j++)
+                {
+                    if (i == 0 && blurredBlocks < minDetect)
+                    {
+                        // Reculer de 1 pour revenir au point net
+                        Debug.WriteLine($"Ajustement du focus pour atteindre {minDetect}. En ce moment blurredBlocks = {blurredBlocks}" );
+                        ManualFocus(1, stepSize);
+                        focusStackStepVar = 0;
+                        UpdateFocusStepVarLbl(focusStackStepVar);
+                        await Task.Delay(delayTime);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+               
+
                 if (blurredBlocks >= minDetect)
                 {
                     if (_stopRequested)
@@ -457,7 +475,7 @@ namespace Aerolithe
                     }
                     try
                     {
-                        await takePictureAsync(); 
+                        await takePictureAsync();
                         await Task.Delay(400);
                         ManualFocus(0, newStepSize);
                         await Task.Delay(delayTime);
@@ -470,12 +488,17 @@ namespace Aerolithe
                     }
                     Debug.WriteLine("itération " + i.ToString() + " blurredBLocks: " + blurredBlocks.ToString());
                 }
+                else
+                {
+                    AppendTextToConsoleNL("On a un problème de comparaison entre \n         blurredBlocks = " + blurredBlocks.ToString() + " et  minDetect = " + minDetect.ToString());
+                }
+               
 
                 iterationsCompletees += 1;
 
-   
+
             }
-            
+
             if (!_stopRequested)
             {
                 Invoke(new Action(() =>
@@ -485,7 +508,7 @@ namespace Aerolithe
             }
 
         }
-       
+
     }
 
 }

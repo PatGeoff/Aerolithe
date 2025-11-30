@@ -28,6 +28,11 @@
     <None Remove="MyResources\Images\**" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <None Remove="Resources\camera_offline2.png" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="MyResources\Images\echec.png" />
     <EmbeddedResource Include="MyResources\Images\crochet.png" />
@@ -52,13 +57,19 @@
     </Reference>
   </ItemGroup>
 
- <ItemGroup>
-  <Compile Update="Properties\Resources.Designer.cs">
-    <DesignTime>True</DesignTime>
-    <AutoGen>True</AutoGen>
-    <DependentUpon>Resources.resx</DependentUpon>
-  </Compile>
-</ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\camera_offline2.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
 
 <ItemGroup>
   <EmbeddedResource Update="Properties\Resources.resx">

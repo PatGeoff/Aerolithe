@@ -12,6 +12,9 @@ using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Drawing;
 using System.Timers;
+using System.Diagnostics.Eventing.Reader;
+using System.Xml.Linq;
+using static Emgu.CV.DISOpticalFlow;
 
 namespace Aerolithe
 {
@@ -25,7 +28,7 @@ namespace Aerolithe
         {
             appSettings = new AppSettings();
             projet = new ProjectPreferences();
-           
+
         }
 
         private void CreateNewProject()
@@ -56,16 +59,60 @@ namespace Aerolithe
                     {
                         File.Create(appSettings.ProjectPath).Dispose();
                     }
+                    CreateAllFolders(Path.GetDirectoryName(appSettings.ProjectPath));
 
-                    string projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
-                    btn_goToProjectFolder.Enabled = true;
-                    lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}";
+                    lbl_focusStackOutputDest.Text = projet.GetFocusStackPath();
+                    string nom = Path.GetFileName(appSettings.ProjectPath).Split('.')[0];
+                    projet.ImageNameBase = nom;
+                    string name = appSettings.ProjectPath;
+                    this.Text = name;
 
-
-                    SetImageFolder();
                     SavePrefsSettings();
+                    AssembleImageName();
+
                 }
             }
+        }
+
+        private void CreateAllFolders(string projectDirectory)
+        {
+
+            projet.ImageFolderPath = Path.Combine(projectDirectory, "images");
+            if (!Directory.Exists(projet.ImageFolderPath))
+            {
+                Directory.CreateDirectory(projet.ImageFolderPath);
+            }
+            var imagesFolderNameSides = Path.Combine(projectDirectory, "images", "serie_A");
+            if (!Directory.Exists(imagesFolderNameSides))
+            {
+                Directory.CreateDirectory(imagesFolderNameSides);
+            }
+            //if (projet.Cote == 0) projet.ImageFolderPath = imagesFolderNameSides;
+
+            imagesFolderNameSides = Path.Combine(projectDirectory, "images", "serie_B");
+            if (!Directory.Exists(imagesFolderNameSides))
+            {
+                Directory.CreateDirectory(imagesFolderNameSides);
+            }
+            //if (projet.Cote == 1) projet.ImageFolderPath = imagesFolderNameSides;
+            var focusStackFolderName = Path.Combine(projectDirectory, "images", "focusStack");
+            projet.FocusStackFolderName = focusStackFolderName;
+            if (!Directory.Exists(focusStackFolderName))
+            {
+                Directory.CreateDirectory(focusStackFolderName);
+            }
+            var focusStackFolderNameA = Path.Combine(focusStackFolderName, "focusStack_A");
+            if (!Directory.Exists(focusStackFolderNameA))
+            {
+                Directory.CreateDirectory(focusStackFolderNameA);
+            }
+            var focusStackFolderNameB = Path.Combine(focusStackFolderName, "focusStack_B");
+            if (!Directory.Exists(focusStackFolderNameB))
+            {
+                Directory.CreateDirectory(focusStackFolderNameB);
+            }
+           
+
         }
 
         private void SetVariables()
@@ -96,14 +143,14 @@ namespace Aerolithe
 
         public void OpenProject(string path)
         {
-            string projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
-            btn_goToProjectFolder.Enabled = true;
-            lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}" ;
-            txtBox_nomImages.Text = projet.ImageNameBase.Split("-")[0];
-            btn_goToImageFolder.Enabled = true;            
-            
+            //string projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
+            //lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}";
+            this.Text = appSettings.ProjectPath;
+
+
             try
             {
+                projet.Load(appSettings.ProjectPath);
                 stepSize = projet.StepSize;
                 hScrollBar_driveStep.Value = stepSize;
                 txtBox_DriveStep.Text = stepSize.ToString();
@@ -111,7 +158,10 @@ namespace Aerolithe
                 if (maxNbrPicturesAllowed == 0) maxNbrPicturesAllowed = 15;
                 textBox_nbrPhotosFS.Text = maxNbrPicturesAllowed.ToString();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("Erreur d'ouverture: " + ex.Message);
+            }
 
         }
 
@@ -123,7 +173,6 @@ namespace Aerolithe
                 return;
             }
             // Pas besoin ici???
-            // projet.ImageNameBase = txtBox_nomImages.Text + "-" + lbl_SerieIncrement.Text;
             appSettings.Save();
             projet.Save(appSettings.ProjectPath);
         }
@@ -135,12 +184,6 @@ namespace Aerolithe
                 CreateNewProject();
             }
 
-
-            if (!Directory.Exists(projet.ImageFolderPath))
-            {
-                Directory.CreateDirectory(projet.ImageFolderPath);
-            }
-
             using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
             {
                 folderDialog.Description = "Select or create the folder to save images in";
@@ -148,16 +191,15 @@ namespace Aerolithe
 
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    projet.ImageFolderPath = folderDialog.SelectedPath;
-                    btn_goToImageFolder.Enabled = true;
-                    lbl_ImgFolderPath.Text = projet.ImageFolderPath + "\\";
-                    SavePrefsSettings();
+                    projet.ImageFolderPath = folderDialog.SelectedPath;                    
+                    SavePrefsSettings();                    
+                    CreateAllFolders(projet.ImageFolderPath);
+                    AssembleImageName();
                 }
             }
-
         }
 
-        public void SetStackedImageFolderPath()
+        public void SetFocusStackFolder()
         {
             if (appSettings.ProjectPath == null)
             {
@@ -170,25 +212,13 @@ namespace Aerolithe
 
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    projet.FocusStackPath = folderDialog.SelectedPath;
-                    lbl_StackedPath.Text = projet.FocusStackPath;
+                    projet.FocusStackFolderName = folderDialog.SelectedPath;
+                    lbl_StackedPath.Text = projet.GetFocusStackPath();
                     SavePrefsSettings();
                 }
-
-
             }
         }
-
-        private void PopulateColorConversionDropdown()
-        {
-            comboBox_EmguConversion.Items.Clear();
-            foreach (ColorConversion conversion in Enum.GetValues(typeof(ColorConversion)))
-            {
-                comboBox_EmguConversion.Items.Add(conversion);
-            }
-            comboBox_EmguConversion.SelectedIndex = 12;
-        }
-
+              
         private void UpdateSequencePadding()
         {
             int pad1, pad2, pad3, qte1, qte2, qte3;
@@ -205,109 +235,96 @@ namespace Aerolithe
             txtBox_seqPad3.ForeColor = Color.White;
 
         }
-
-        private void PopulateColorColorDropdown()
-        {
-
-            comboBox_EmguColor.Items.Add("Rouge");
-            comboBox_EmguColor.Items.Add("Vert");
-            comboBox_EmguColor.Items.Add("Bleu");
-            comboBox_EmguColor.Items.Add("Gris");
-
-            comboBox_EmguColor.SelectedIndex = 3;
-        }
-
-       
-
+              
         private void PreparationDossierDestTemp()
         {
-            projet.TempImageFolderPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameBase.Split("-")[0], projet.SerieIncrement.ToString("D2"));
-            if (!Directory.Exists(projet.TempImageFolderPath))
+            AppendTextToConsoleNL("- PreparationDossierDestTemp");
+            //projet.TempImageFolderPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameBase.Split("-")[0], projet.RotationSerieIncrement.ToString("D2"));
+            if (!Directory.Exists(projet.GetTempImageFolderPath()))
             {
-                Directory.CreateDirectory(projet.TempImageFolderPath);
-            }            
-            
+                Directory.CreateDirectory(projet.GetTempImageFolderPath());
+            }
+
         }
 
-        // projet.SerieIncrement "-**"  -> pour chaque rotation de la table tournante
-        // projet.ImageIncrement "_**"  -> pour chaque photo du focusStack
+        // projet.RotationSerieIncrement "-**"  -> pour chaque rotation de la table tournante
+        // projet.FocusSerieIncrement "_**"  -> pour chaque photo du focusStack
 
 
         private void PreparationNomImage()
         {
-            //MessageBox.Show(projet.SerieIncrement.ToString());
-            oldImgIncr = projet.ImageIncrement;
-           
+            AppendTextToConsoleNL("* PreparationNomImage");
+            //MessageBox.Show(projet.RotationSerieIncrement.ToString());
+            oldImgIncr = projet.FocusSerieIncrement;
 
-            projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.SerieIncrement.ToString("D2");
-            projet.ImageNameFull = projet.ImageNameBase + "_" + projet.ImageIncrement.ToString("D2") + ".jpg";
-            projet.ImageFullPath = Path.Combine(projet.TempImageFolderPath, projet.ImageNameFull);
 
-            if (lbl_FullImageName.InvokeRequired)
-            {
-                lbl_FullImageName.Invoke(new Action(() =>
-                {
-                    lbl_FullImageName.Text = projet.ImageNameFull;
-                }));
-            }
-            else
-            {
-                lbl_FullImageName.Text = projet.ImageNameFull;
-            }          
+            //projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.RotationSerieIncrement.ToString("D2");
+            //projet.ImageNameFull = projet.ImageNameBase + "_" + projet.FocusSerieIncrement.ToString("D2") + ".jpg";
+            //projet.ImageFullPath = Path.Combine(projet.TempImageFolderPath, projet.ImageNameFull);
+
             
             projet.Save(appSettings.ProjectPath);
-            projet.ImageIncrement++;
+            projet.FocusSerieIncrement++;
+            AssembleImageName();
         }
 
         private async Task AssembleImageName()
         {
-            if (lbl_FullImageName.InvokeRequired)
+
+            if (lbl_ImgFullPath.InvokeRequired)
             {
-                lbl_FullImageName.Invoke(new Action(() =>
+                lbl_ImgFullPath.Invoke(new Action(() =>
                 {
-                    projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.SerieIncrement.ToString();
-                    lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
+                    lbl_ImgFullPath.Text = projet.GetImageFullPath();
+                    lbl_StackedPath.Text = projet.GetFocusStackPath();
                 }));
             }
             else
             {
-                projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.SerieIncrement.ToString();
-                lbl_FullImageName.Text = projet.ImageNameBase + "_**.jpg";
+                lbl_ImgFullPath.Text = projet.GetImageFullPath();
+                lbl_StackedPath.Text = projet.GetFocusStackPath();
             }
-            projet.Save(appSettings.ProjectPath);
+
         }
 
 
+        private void UpdateFocusStackImageFolder()
+        {
+
+        }
 
         private async Task ResetIncrementation()
         {
             oldImgIncr = 0;
-            projet.ImageIncrement = 0;
+            projet.FocusSerieIncrement = 0;
             AssembleImageName();
             projet.Save(appSettings.ProjectPath);
-                     
+
         }
 
         private void ResetSerieIncrement()
         {
-            lbl_SerieIncrement.Text = "00";
-            projet.SerieIncrement = 0;
+            projet.RotationSerieIncrement = 0;
+            projet.FocusSerieIncrement = 0;
             AssembleImageName();
             projet.Save(appSettings.ProjectPath);
         }
 
         public async Task IncrementImgSeq()
         {
-            int inc;
-            if (int.TryParse(lbl_SerieIncrement.Text, out inc))
-            {                
-                projet.SerieIncrement = inc + 1;
-                if (lbl_SerieIncrement.InvokeRequired)
-                {
-                    lbl_SerieIncrement.Invoke(new Action(() =>{
-                        lbl_SerieIncrement.Text = projet.SerieIncrement.ToString("D2");
-                    }));
-                }
+            projet.RotationSerieIncrement += 1;
+            AssembleImageName();
+            await Task.Delay(50);
+            projet.Save(appSettings.ProjectPath);
+            await Task.Delay(100);
+            
+        }
+
+        public async Task DecrementImgSeq()
+        {
+            if (projet.RotationSerieIncrement > 0)
+            {
+                projet.RotationSerieIncrement -= 1;
                 AssembleImageName();
                 await Task.Delay(50);
                 projet.Save(appSettings.ProjectPath);
@@ -315,26 +332,6 @@ namespace Aerolithe
             }
         }
 
-        public async Task DecrementImgSeq()
-        {
-            int inc;
-            if (int.TryParse(lbl_SerieIncrement.Text, out inc))
-            {
-                if (inc > 0)
-                {                   
-                    projet.SerieIncrement = inc - 1;
-                    if (lbl_SerieIncrement.InvokeRequired){
-                        lbl_SerieIncrement.Invoke(new Action(() =>
-                        {
-                            lbl_SerieIncrement.Text = projet.SerieIncrement.ToString("D2");
-                        }));
-                    }
-                    AssembleImageName();
-                    projet.Save(appSettings.ProjectPath);
-                }
-            }
-        }
-        
         public void DeleteAllPicturesInFolderWithPrompt()
         {
             flowLayoutPanel1.Controls.Clear();
@@ -408,115 +405,52 @@ namespace Aerolithe
     }
 
     // Les appSettings du projet 
+
     public class ProjectPreferences
     {
+        // --- Propriétés essentielles ---
+        public string ImageNameBase { get; set; }           // ex: "GrosseRoche_2"
+        public int RotationSerieIncrement { get; set; }     // ex: 49
+        public int FocusSerieIncrement { get; set; }        // ex: 62
+
+        public string ImageFolderPath { get; set; }         // ex: "C:\\Projet\\images"
+        public string FocusStackFolderName { get; set; }    // ex: "focusStack"
+
+        public int MaxPicturesAllowed { get; set; } = 30;        // Paramètre global
+        public int StepSize { get; set; } = 30;                // Paramètre global
+        public int Cote { get; set; } = 0;                      // 0 = B, 1 = A
 
 
-        private string _imageNameBase;
-        private string _imageNameFull;
-        private string _imageFolderPath;
-        private string _tempImageFolderPath;
-        private string _imageFullPath;
-        private string _focusStackPath;
-        private int _maxPicturesAllowed;
+        // --- Méthodes utilitaires ---
 
-        // image increment => nomImage-00_**.jpg  (**)
-        private int _imageIncrement;
-        // serie increment => nomImage-**_00.jpg  (**)
-        private int _serieIncrement;
-
-        private int _stepSize;
-
-        public int  MaxPicturesAllowed
+            public string GetImageNameFull()
         {
-            get {  return _maxPicturesAllowed; }
-            set { _maxPicturesAllowed = value; }
+            // Format: Base_Rotation_Focus.jpg
+            return $"{ImageNameBase}_{RotationSerieIncrement:D2}_{FocusSerieIncrement:D2}.jpg";
         }
 
-        public int StepSize
+        public string GetTempImageFolderPath()
         {
-            get { return _stepSize; }
-            set
-            {
-                _stepSize = value;
-            }
+            // ex: C:\Projet\images\GrosseRoche_2\49
+            string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
+            return Path.Combine(ImageFolderPath, coteFolder, RotationSerieIncrement.ToString("D2"));
         }
 
-        public string ImageNameBase
+        public string GetFocusStackPath()
         {
-            get => _imageNameBase;
-            set
-            {
-                _imageNameBase = value;
-                //Debug.WriteLine(_imageNameBase);
-                
-            }
-        }
-        public string ImageNameFull
-        {
-            get => _imageNameFull;
-            set
-            {
-                _imageNameFull = value;
-                //Debug.WriteLine(_imageNameFull);
-            }
-        }
-        public string ImageFolderPath
-        {
-            get => _imageFolderPath;
-            set
-            {
-                _imageFolderPath = value;
-                //Debug.WriteLine(_imageFolderPath);
-            }
-        }
-        public string TempImageFolderPath
-        {
-            get => _tempImageFolderPath;
-            set
-            {
-                _tempImageFolderPath = value;
-                //Debug.WriteLine(_tempImageFolderPath);
-            }
-        }
-        public string ImageFullPath
-        {
-            get => _imageFullPath;
-            set
-            {
-                _imageFullPath = value;
-                //Debug.WriteLine(_imageFullPath);
-            }
-        }
-        public string FocusStackPath
-        {
-            get =>_focusStackPath;
-            set
-            {
-                _focusStackPath = value;
-            }
-        }
-        public int ImageIncrement
-        {
-            get => _imageIncrement;
-            set 
-            {
-                _imageIncrement = value;
-            }
-        }        
-        public int SerieIncrement
-        {
-            get => _serieIncrement;
-            set
-            {
-                _serieIncrement = value;
-            }
-
+            // ex: C:\Projet\images\focusStack_A
+            string coteFolder = (Cote == 0) ? "focusStack_A" : "focusStack_B";
+            return Path.Combine(ImageFolderPath, $"{FocusStackFolderName}", coteFolder);
         }
 
+        public string GetImageFullPath()
+        {
+            return Path.Combine(GetTempImageFolderPath(), GetImageNameFull());
+        }
+
+        // --- Sauvegarde / Chargement ---
         public ProjectPreferences Load(string filePath)
         {
-
             if (!File.Exists(filePath))
             {
                 var defaultPrefs = new ProjectPreferences();
@@ -526,7 +460,6 @@ namespace Aerolithe
 
             string json = File.ReadAllText(filePath);
             return JsonConvert.DeserializeObject<ProjectPreferences>(json) ?? new ProjectPreferences();
-
         }
 
         public void Save(string filePath)
@@ -536,8 +469,8 @@ namespace Aerolithe
         }
     }
 
-    // Les appSettings de l'application Aerolithe
-    public class AppSettings 
+  
+    public class AppSettings
     {
         private static readonly string FolderPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
@@ -556,9 +489,9 @@ namespace Aerolithe
 
         public int NbrImg45Deg { get; set; }
 
-        public int VerticalLiftCurrentPos {  get; set; }
+        public int VerticalLiftCurrentPos { get; set; }
 
-        public int VerticalLiftMaxPos { get; set; } 
+        public int VerticalLiftMaxPos { get; set; }
 
         public int VerticalLiftDefaultPos { get; set; }
 
@@ -605,7 +538,7 @@ namespace Aerolithe
     }
 
 
-public class TimerController
+    public class TimerController
     {
         private System.Timers.Timer _timer;
         private TimeSpan _elapsedTime;
@@ -636,44 +569,7 @@ public class TimerController
             }
         }
 
-        //public async Task ControlTimerAsync(string action)
-        //{
-        //    await Task.Run(() =>
-        //    {
-        //        switch (action.ToLower())
-        //        {
-        //            case "lancer":
-        //                if (!_timer.Enabled)
-        //                {
-        //                    _timer.Start();
-        //                }
-        //                break;
 
-        //            case "stopper":
-        //                if (_timer.Enabled)
-        //                {
-        //                    _timer.Stop();
-        //                }
-        //                break;
-
-        //            case "resetter":
-        //                _timer.Stop();
-        //                _elapsedTime = TimeSpan.Zero;
-        //                if (_lblTimeDisplay.InvokeRequired)
-        //                {
-        //                    _lblTimeDisplay.Invoke(new Action(() => _lblTimeDisplay.Text = ""));
-        //                }
-        //                else
-        //                {
-        //                    _lblTimeDisplay.Text = "";
-        //                }
-        //                break;
-
-        //            default:
-        //                throw new ArgumentException("Action non reconnue. Utilisez 'lancer', 'stopper' ou 'resetter'.");
-        //        }
-        //    });
-        //}
         public async Task ControlTimerAsync(string action)
         {
             switch (action.ToLower())

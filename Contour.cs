@@ -25,12 +25,30 @@ namespace Aerolithe
     {
         private bool applyMaskToLiveView = false;
 
-        private Bitmap BrightnessMaskFromStream(MemoryStream stream, int threshold = 100)
+        //private Bitmap BrightnessMaskFromStream(MemoryStream stream, int threshold = 100)
+        //{
+        //    // Decode JPEG stream into Mat
+        //    byte[] imageBytes = stream.ToArray();
+        //    Mat image = new Mat();            
+        //    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, image);
+
+        //    // Convert to grayscale
+        //    Mat gray = new Mat();
+        //    CvInvoke.CvtColor(image, gray, ColorConversion.Bgr2Gray);
+
+        //    // Apply binary threshold
+        //    Mat binary = new Mat();
+        //    CvInvoke.Threshold(gray, binary, threshold, 255, ThresholdType.Binary);
+
+        //    return binary.ToBitmap();
+        //}
+
+
+        private Bitmap BrightnessMaskFromBytes(byte[] jpegBuffer, int threshold = 100)
         {
-            // Decode JPEG stream into Mat
-            byte[] imageBytes = stream.ToArray();
-            Mat image = new Mat();            
-            CvInvoke.Imdecode(imageBytes, ImreadModes.Color, image);
+            // Decode JPEG buffer directly into Mat
+            Mat image = new Mat();
+            CvInvoke.Imdecode(jpegBuffer, ImreadModes.Color, image);
 
             // Convert to grayscale
             Mat gray = new Mat();
@@ -42,8 +60,7 @@ namespace Aerolithe
 
             return binary.ToBitmap();
         }
-             
-     
+
         private async Task CalculDuFlou(MemoryStream memoryStream)
         {
             // Convert MemoryStream to byte array

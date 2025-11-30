@@ -34,9 +34,10 @@ namespace Aerolithe
 
         private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, int elevation, int rotation, int serie, string status = "En attente")
         {
+            AppendTextToConsoleNL("- EnqueueFocusStackTask");
             var task = new FocusStackTask
             {
-                Serie = serie,
+                Serie = serie -1,
                 Elevation = elevation,
                 Rotation = rotation,
                 ImagePaths = imagePaths,
@@ -68,26 +69,7 @@ namespace Aerolithe
                 _ = ProcessFocusStackQueue();
             }
         }
-        //private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, int elevation, int rotation, int serie, string status = "En attente")
-        //{
-        //    focusStackQueue.Add(new FocusStackTask
-        //    {
-        //        Serie = serie,
-        //        Elevation = elevation,
-        //        Rotation = rotation,
-        //        ImagePaths = imagePaths,
-        //        OutputPath = outputPath,
-        //        Status = status
-        //    });
-
-        //    UpdateQueueDisplay();
-
-        //    if (!isProcessingQueue)
-        //    {
-        //        _ = ProcessFocusStackQueue();
-        //    }
-        //}
-
+        
         public async Task MakeFocusStack()
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -129,41 +111,88 @@ namespace Aerolithe
             }
         }
 
-        public async Task MakeFocusStackSerie()
+        //public async Task MakeFocusStackSerie()
+        //{
+        //    AppendTextToConsoleNL("- MakeFocusStackSerie");
+        //    if (!_stopRequested)
+        //    {
+
+        //        if (InvokeRequired)
+        //        {
+        //            Invoke(new Action(async () => MakeFocusStackSerie()));
+        //            return;
+        //        }
+        //        //this.BeginInvoke((Action)(() => AppendTextToConsoleNL("on se rend ici?????")));
+        //        if (!Directory.Exists(projet.FocusStackPath))
+        //        {
+        //            Directory.CreateDirectory(projet.FocusStackPath);
+        //            MessageBox.Show("Dossier " + projet.FocusStackPath + " créé");
+        //            //await Task.Delay(500);
+        //        }
+        //        string folderPath = projet.TempImageFolderPath;
+
+        //        string[] extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
+
+        //        var imageFiles = Directory.GetFiles(folderPath)
+        //                                  .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
+        //                                  .ToArray();
+
+        //        string baseName = imageFiles.Length > 0
+        //            ? Path.GetFileNameWithoutExtension(imageFiles[0])
+        //            : "Erreur";
+
+
+        //        baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
+        //        string suggestedFileName = baseName + "_stacked.jpg";
+        //        string outputPath = Path.Combine(projet.FocusStackPath, suggestedFileName);
+
+
+        //        //await Task.Delay(300);
+
+        //        if (imageFiles.Length > 0)
+        //        {
+        //            AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0]);
+        //            AppendTextToConsoleNL("Nom du fichier de destination : " + baseName);
+        //            EnqueueFocusStackTask(imageFiles, outputPath, (int)actuatorAngle, turntablePosition, _Serie);
+        //        }
+        //        else
+        //        {
+        //            // Crée une tâche avec un statut "Erreur" et sans images
+        //            EnqueueFocusStackTask(new string[0], outputPath, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
+        //            AppendTextToConsoleNL("Aucune image trouvée dans le dossier.");
+        //        }
+        //        return Task.CompletedTask;
+        //    }
+
+        //}
+        public Task MakeFocusStackSerie()
         {
-           if (!_stopRequested)
+            if (_stopRequested) return Task.CompletedTask;
+
+            this.BeginInvoke((Action)(() => AppendTextToConsoleNL("on se rend ici?????")));
+
+            if (!Directory.Exists(projet.GetFocusStackPath()))
             {
-                if (InvokeRequired)
-                {
-                    Invoke(new Action(async () => await MakeFocusStackSerie()));
-                    return;
-                }
-                if (!Directory.Exists(projet.FocusStackPath))
-                {
-                    Directory.CreateDirectory(projet.FocusStackPath);
-                    MessageBox.Show("Dossier " + projet.FocusStackPath + " créé");
-                    await Task.Delay(500);
-                }
-                string folderPath = projet.TempImageFolderPath;
+                Directory.CreateDirectory(projet.GetFocusStackPath());
+                this.BeginInvoke((Action)(() => MessageBox.Show("Dossier " + projet.GetFocusStackPath() + " créé")));
+            }
 
-                string[] extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
+            string folderPath = projet.GetTempImageFolderPath();
+            string[] extensions = { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
 
-                var imageFiles = Directory.GetFiles(folderPath)
-                                          .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
-                                          .ToArray();
+            var imageFiles = Directory.GetFiles(folderPath)
+                                      .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
+                                      .ToArray();
 
-                string baseName = imageFiles.Length > 0
-                    ? Path.GetFileNameWithoutExtension(imageFiles[0])
-                    : "Erreur";
-                             
+            string baseName = imageFiles.Length > 0
+                ? Path.GetFileNameWithoutExtension(imageFiles[0])
+                : "Erreur";
 
-                baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
-                string suggestedFileName = baseName + "_stacked.jpg";
-                string outputPath = Path.Combine(projet.FocusStackPath, suggestedFileName);
+            baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
+            string outputPath = Path.Combine(projet.GetFocusStackPath(), baseName + "_stacked.jpg");
 
-               
-                await Task.Delay(300);
-
+            this.BeginInvoke((Action)(() =>
+            {
                 if (imageFiles.Length > 0)
                 {
                     AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0]);
@@ -172,99 +201,42 @@ namespace Aerolithe
                 }
                 else
                 {
-                    // Crée une tâche avec un statut "Erreur" et sans images
-                    EnqueueFocusStackTask(new string[0], outputPath, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
+                    EnqueueFocusStackTask(Array.Empty<string>(), outputPath, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
                     AppendTextToConsoleNL("Aucune image trouvée dans le dossier.");
                 }
-            }
-           
+            }));
+
+            return Task.CompletedTask;
         }
 
-        private async Task ProcessFocusStackQueue()
+        private Task ProcessFocusStackQueue()
         {
-            if (isProcessingQueue) return;
+            AppendTextToConsoleNL("- ProcessFocusStackQueue");
+            if (isProcessingQueue) return Task.CompletedTask;
             isProcessingQueue = true;
 
-            while (true)
-            {
-                var nextTask = focusStackQueue.FirstOrDefault(t => t.Status == "En attente");
-                if (nextTask == null) break;
+            var pendingTasks = focusStackQueue.Where(t => t.Status == "En attente").ToList();
 
+            foreach (var nextTask in pendingTasks)
+            {
                 nextTask.Status = "En cours";
                 UpdateQueueDisplay();
 
-                try
+                _ = Task.Run(async () =>
                 {
+                   
                     bool success = await RunFocusStack(nextTask.ImagePaths, nextTask.OutputPath);
                     nextTask.Status = success ? "Terminé" : "Erreur";
-                }
-                catch
-                {
-                    nextTask.Status = "Erreur";
-                }
-
-                UpdateQueueDisplay();
+                    this.BeginInvoke((Action)(UpdateQueueDisplay));
+                });
             }
 
             isProcessingQueue = false;
+            return Task.CompletedTask;
         }
-
-        //private void UpdateQueueDisplay()
-        //{
-        //    if (richTextBox_PicReport.InvokeRequired)
-        //    {
-        //        richTextBox_PicReport.Invoke(new Action(UpdateQueueDisplay));
-        //        return;
-        //    }
-
-        //    richTextBox_PicReport.Clear();
-
-        //    if (focusStackQueue.Count == 0)
-        //    {
-        //        richTextBox_PicReport.SelectionColor = Color.LightGray;
-        //        richTextBox_PicReport.AppendText(" La file d'attente est vide.");
-        //        return;
-        //    }
-
-
-        //    foreach (var task in focusStackQueue)
-        //    {
-
-
-        //        string fileName = Path.GetFileName(task.OutputPath);
-        //        string prefix = $"  {task.Serie}\t{task.Elevation}°\t{task.Rotation}°\t📷 {fileName}\t—    Statut :  ";
-
-        //        richTextBox_PicReport.SelectionColor = Color.White;
-        //        richTextBox_PicReport.AppendText(prefix);
-
-        //        switch (task.Status)
-        //        {
-        //            case "Terminé":
-        //                richTextBox_PicReport.SelectionColor = Color.LimeGreen;
-        //                break;
-        //            case "En cours":
-        //                richTextBox_PicReport.SelectionColor = Color.Orange;
-        //                break;
-        //            case "Erreur":
-        //                richTextBox_PicReport.SelectionColor = Color.Red;
-        //                break;
-        //            case "En attente":
-        //                richTextBox_PicReport.SelectionColor = Color.DeepSkyBlue;
-        //                break;
-        //            default:
-        //                richTextBox_PicReport.SelectionColor = Color.White;
-        //                break;
-        //        }
-
-        //        richTextBox_PicReport.AppendText(task.Status + "\n");
-        //    }
-
-        //    richTextBox_PicReport.SelectionColor = Color.White;
-        //    richTextBox_PicReport.Refresh();
-        //    richTextBox_PicReport.ScrollToCaret();
-        //}
         private void UpdateQueueDisplay()
         {
+            AppendTextToConsoleNL("- UpdateQueueDisplay");
             foreach (var task in focusStackQueue)
             {
                 if (taskControls.TryGetValue(task, out var control))
@@ -285,6 +257,7 @@ namespace Aerolithe
 
         public async Task<bool> RunFocusStack(string[] imagePaths, string outputImage)
         {
+            AppendTextToConsoleNL("- RunFocusStack");
             string exePath = Path.Combine(Application.StartupPath, "MyResources", "Focus-stack", "focus-stack.exe");
 
             if (!File.Exists(exePath))
@@ -344,18 +317,19 @@ namespace Aerolithe
 
                 if (process.ExitCode == 0 && File.Exists(outputImage))
                 {
+                    focusStackOutputPath = outputImage;
                     if (picBox_FocusStackedImage.InvokeRequired)
                     {
                         picBox_FocusStackedImage.Invoke(() =>
                         {
-                            picBox_FocusStackedImage.Image = Image.FromFile(outputImage);
+                            picBox_FocusStackedImage.Image = Image.FromFile(outputImage);                            
                         });
                     }
                     else
                     {
                         picBox_FocusStackedImage.Image = Image.FromFile(outputImage);
                     }
-
+                    AppendTextToConsoleNL("- Focus Stack Terminé");
                     return true;
                 }
                 else
