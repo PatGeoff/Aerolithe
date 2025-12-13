@@ -54,10 +54,16 @@ namespace Aerolithe
             liveViewTimer.Tick += new EventHandler(LiveViewTimer_Tick);
             liveViewTimer.Interval = 1000 / 10;  // 1000 / 30 = 30 images seconde. 1000 /10 = 10 images seconde
 
+            AppendTextToConsoleNL("liveViewTimer initialisé");
             // Initialize Nikon manager
-            manager = new NikonManager("Type0022.md3");
+
+            var exeDir = Path.GetDirectoryName(Environment.ProcessPath)!;
+            var md3Path = Path.Combine(AppContext.BaseDirectory, "MyResources", "NikonLibs", "Type0022.md3");
+            manager = new NikonManager(md3Path);
+
             manager.DeviceAdded += new DeviceAddedDelegate(manager_DeviceAdded);
             manager.DeviceRemoved += new DeviceRemovedDelegate(manager_DeviceRemoved);
+            AppendTextToConsoleNL("NIkon Type0022.md3 et dll initialisés");
 
         }
 
@@ -67,42 +73,29 @@ namespace Aerolithe
 
             try
             {
-                // Set the device name
-                //label_name.Text = device.Name;
-
-                // Enable buttons
-                //ToggleButtons(true);
                 device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_SaveMedia, (uint)eNkMAIDSaveMedia.kNkMAIDSaveMedia_SDRAM);
 
-                // Hook up device capture events
                 device.ImageReady += new ImageReadyDelegate(device_ImageReady);
-                //AppendTextToConsoleNL("device_ImageReady delegate added");
-                //device.ThumbnailReady += new ThumbnailReadyDelegate(OnThumbnailReady);
                 device.CaptureComplete += new CaptureCompleteDelegate(device_CaptureComplete);
-                //device.PreviewReady += new PreviewReadyDelegate(device_PreviewReady);
                 device.Progress += new ProgressDelegate(OnNikonProgress);
-                //AppendTextToConsoleNL("device_OnProgress delegate added");
+                AppendTextToConsoleNL("Nikon delegates initialisés");
                 deviceLoaded();
             }
             catch (NikonException ex)
             {
-                // Handle Nikon-specific exceptions
                 Console.WriteLine("NikonException: " + ex.Message);
-                // Display placeholder image
                 picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
             }
             catch (Exception ex)
             {
-                // Handle other exceptions
                 Console.WriteLine("Exception: " + ex.Message);
-                // Display placeholder image
                 picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
             }
         }
 
         void deviceLoaded()
         {
-
+            AppendTextToConsoleNL("Une Nikon a été trouvée");
             if (!device.LiveViewEnabled)
             {
                 device.LiveViewEnabled = true;
@@ -111,17 +104,11 @@ namespace Aerolithe
             }
             liveViewTimer.Start();
 
-            // Get the drivestep range
-            driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);
-            //AppendTextToConsoleNL($"Drive Step Range: Min={driveStep.Min}, Max={driveStep.Max}");            
+            driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);    
             lbl_driveStepMin.Text = driveStep.Min.ToString();
             lbl_driveStepMax.Text = driveStep.Max.ToString();
             hScrollBar_driveStep.Minimum = (int)driveStep.Min;
             hScrollBar_driveStep.Maximum = (int)driveStep.Max;
-            //SetCrosshair();
-            //GetFocusRange();
-            //textBox_Error.Text = "À venir";
-
             //GetAperture();
 
             GetImageType();
@@ -200,7 +187,6 @@ namespace Aerolithe
                         float gammaValue = trackBar_Gamma.Value / 10.0f;
 
 
-                        // Appliquer LUT gamma
                         using (Mat lut = new Mat(1, 256, DepthType.Cv8U, 1))
                         {
                             System.Runtime.InteropServices.Marshal.Copy(lutData, 0, lut.DataPointer, lutData.Length);
@@ -208,8 +194,6 @@ namespace Aerolithe
                         }
 
 
-                        // Masque de luminosité
-                        //maskBitmapLive = BrightnessMaskFromStream(stream, hScrollBar_liveMaskThresh.Value);
                         maskBitmapLive = BrightnessMaskFromBytes(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value);
                         picBox_liveMaskLum.Image = maskBitmapLive;
 
@@ -217,16 +201,15 @@ namespace Aerolithe
                         var localBitmap = (Bitmap)maskBitmapLive.Clone();
                         _ = Task.Run(async () =>
                         {
-                            var offsets = await CalculeDuCentrageAsync(localBitmap);
+                            await CalculeDuCentrageAsync(localBitmap);
                             localBitmap.Dispose();
-
-                            chkBox_CalculerCentrage.Invoke(new Action(() =>
+                            lbl_Centrage.Invoke(new Action(() =>
                             {
-                                chkBox_CalculerCentrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}";
+                                lbl_Centrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}";
                             }));
                         });
 
-
+                      
 
                         using (var sourceImage = background.ToImage<Bgr, byte>())
                         using (var maskGray = maskBitmapLive.ToImage<Gray, byte>())
@@ -237,8 +220,8 @@ namespace Aerolithe
                             using (var invertedMask = resizedMask.Not())
                             using (var maskBgr = invertedMask.Convert<Bgr, byte>())
                             {
-                                sourceImage._And(maskBgr);
-                                picBox_MLMask.Image = sourceImage.ToBitmap();
+                               //sourceImage._And(maskBgr);
+                               //picBox_MLMask.Image = sourceImage.ToBitmap();
                             }
 
                             // ❌ Calcul du flou global (désactivé)
@@ -247,6 +230,7 @@ namespace Aerolithe
 
                             // ✅ Calcul de la carte de netteté locale
                             Mat grayImage = background.ToImage<Gray, byte>().Mat;
+
                             int blockSize = trackBar_blobCount.Value * 16;
 
                             double[,] sharpnessGrid = ComputeSharpnessGrid(grayImage, blockSize);
@@ -311,161 +295,6 @@ namespace Aerolithe
                 isProcessing = false;
             }
         }
-
-
-        //async void LiveViewTimer_Tick(object? sender, EventArgs e)
-        //{
-        //    try
-        //    {
-        //        if (!chkBox_liveView.Checked) chkBox_liveView.Checked = true;
-        //        imageView = device.GetLiveViewImage();
-
-        //        if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)
-        //        {
-        //            liveViewStatus = true;
-
-        //            using (Mat background = new Mat())
-        //            {
-        //                using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
-        //                {
-        //                    byte[] imageBytes = stream.ToArray();
-        //                    CvInvoke.Imdecode(imageBytes, ImreadModes.Color, background);
-        //                    float gammaValue = trackBar_Gamma.Value / 10.0f;
-
-        //                    // LUT gamma correction
-        //                    byte[] lutData = new byte[256];
-        //                    for (int i = 0; i < 256; i++)
-        //                    {
-        //                        double normalized = i / 255.0;
-        //                        double corrected = Math.Pow(normalized, gammaValue);
-        //                        lutData[i] = (byte)(Math.Min(255, corrected * 255.0));
-        //                    }
-
-        //                    using (Mat lut = new Mat(1, 256, DepthType.Cv8U, 1))
-        //                    {
-        //                        System.Runtime.InteropServices.Marshal.Copy(lutData, 0, lut.DataPointer, lutData.Length);
-        //                        CvInvoke.LUT(background, lut, background);
-        //                    }
-
-        //                    // Affichage brut
-        //                    picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
-
-        //                    // Masque de luminosité
-        //                    maskBitmapLive = BrightnessMaskFromStream(stream, hScrollBar_liveMaskThresh.Value);
-        //                    picBox_liveMaskLum.Image = maskBitmapLive;
-
-        //                    if (calculerCentre)
-        //                    {
-        //                        var localBitmap = (Bitmap)maskBitmapLive.Clone();
-        //                        offsets = await CalculeDuCentrageAsync(localBitmap);
-        //                        localBitmap.Dispose();
-
-        //                        if (chkBox_CalculerCentrage.InvokeRequired)
-        //                        {
-        //                            chkBox_CalculerCentrage.Invoke(new Action(() =>
-        //                            {
-        //                                chkBox_CalculerCentrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}";
-        //                            }));
-        //                        }
-        //                        else
-        //                        {
-        //                            chkBox_CalculerCentrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}";
-        //                        }
-        //                    }
-        //                    else
-        //                    {
-        //                        if (chkBox_CalculerCentrage.InvokeRequired)
-        //                        {
-        //                            chkBox_CalculerCentrage.Invoke(new Action(() =>
-        //                            {
-        //                                chkBox_CalculerCentrage.Text = "";
-        //                            }));
-        //                        }
-        //                        else
-        //                        {
-        //                            chkBox_CalculerCentrage.Text = "";
-        //                        }
-        //                    }
-
-        //                    using (var sourceImage = background.ToImage<Bgr, byte>())
-        //                    using (var maskGray = maskBitmapLive.ToImage<Gray, byte>())
-        //                    using (var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear))
-        //                    {
-
-
-        //                        using (var invertedMask = resizedMask.Not())
-        //                        using (var maskBgr = invertedMask.Convert<Bgr, byte>())
-        //                        {
-        //                            sourceImage._And(maskBgr);
-        //                            picBox_MLMask.Image = sourceImage.ToBitmap();
-        //                        }
-
-        //                        // ❌ Calcul du flou global (désactivé)
-        //                        //await Task.Run(async () => await CalculDuFlou(stream));
-        //                        //await Task.Run(async () => await CalculDuFlouFromImage(sourceImage));
-
-        //                        // ✅ Calcul de la carte de netteté locale
-        //                        Mat grayImage = background.ToImage<Gray, byte>().Mat;
-        //                        int blockSize = trackBar_blobCount.Value * 16;
-
-        //                        double[,] sharpnessGrid = ComputeSharpnessGrid(grayImage, blockSize);
-
-        //                        // Tu peux stocker cette carte dans une variable globale ou l'utiliser dans AutomaticFocusMapping()
-        //                        currentLiveViewFocusMap = new FocusMap
-        //                        {
-        //                            FocusPosition = focusStackStepVar, // à définir selon ton système <-----  @(*#%&(@&$(&$  ICI
-        //                            SharpnessGrid = sharpnessGrid
-        //                        };
-        //                        // Création de l'image avec les blocs flous
-        //                        Image<Bgr, byte> overlayImage = background.ToImage<Bgr, byte>();
-
-
-        //                        for (int y = 0; y < sharpnessGrid.GetLength(0); y++)
-        //                        {
-        //                            for (int x = 0; x < sharpnessGrid.GetLength(1); x++)
-        //                            {
-        //                                double sharpness = sharpnessGrid[y, x];
-        //                                blurThreshold = (double)trackBar_blurThreshold.Value;
-        //                                if (sharpness >= blurThreshold)
-        //                                {
-        //                                    Rectangle rect = new Rectangle(x * blockSize, y * blockSize, blockSize, blockSize);
-        //                                    overlayImage.Draw(rect, new Bgr(Color.LimeGreen), 1); // contour verte pour les zones nettes
-        //                                }
-
-        //                            }
-        //                        }
-
-        //                        blurredBlocks = sharpnessGrid.Cast<double>().Count(v => v >= blurThreshold);
-        //                        lbl_blobCount.Text = blurredBlocks.ToString();
-
-
-        //                        // Affichage selon l'état de la checkbox
-        //                        if (checkBox_ShowSharpnessOverlay.Checked)
-        //                        {
-        //                            picBox_LiveView_Main.Image = overlayImage.ToBitmap();
-        //                        }
-        //                        else
-        //                        {
-        //                            picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
-        //                        }
-        //                    }
-        //                    lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";
-        //                }
-        //            }
-        //        }
-        //        else
-        //        {
-        //            liveViewStatus = false;
-        //            picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
-        //        }
-        //    }
-        //    catch (NikonException ex)
-        //    {
-        //        Console.WriteLine("NikonException: " + ex.Message);
-        //        picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
-        //    }
-
-        //}
 
 
 

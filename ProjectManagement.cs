@@ -15,6 +15,8 @@ using System.Timers;
 using System.Diagnostics.Eventing.Reader;
 using System.Xml.Linq;
 using static Emgu.CV.DISOpticalFlow;
+using System.Runtime.InteropServices;
+using Microsoft.VisualBasic;
 
 namespace Aerolithe
 {
@@ -402,6 +404,133 @@ namespace Aerolithe
 
         }
 
+
+
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
+        static extern IntPtr LoadLibrary(string lpFileName);
+
+        void TestLoadNikonDlls()
+        {
+            string baseDir = AppContext.BaseDirectory;
+            string[] files = { "NkdPTP.dll", "dnssd.dll", "NkRoyalmile.dll" };
+            foreach (var f in files)
+            {
+                string p = Path.Combine(baseDir, "MyResources", "NikonLibs", f); // adapte si nécessaire
+                IntPtr h = LoadLibrary(p);
+                if (h == IntPtr.Zero)
+                {
+                    int err = Marshal.GetLastWin32Error();
+                    AppendTextToConsoleNL($"{f} LoadLibrary FAILED (Win32 {err})\nPath: {p}");
+                }
+                else
+                {
+                    AppendTextToConsoleNL($"{f} LoadLibrary OK\nPath: {p}");
+                }
+            }
+        }
+        private string PromptCreateUser()
+        {
+
+            string username = Interaction.InputBox(
+                    "Veuillez entrer le courriel de l'utilisateur :", // message
+                    "Ajout d'un utilisateur",                         // titre
+                    ""                                                // valeur par défaut
+                );
+
+            return username.Trim();
+
+        }
+
+        private void CreateUser(string userName)
+        {
+            string _userName = userName?? string.Empty;
+            Panel panel = new Panel
+            {
+                Size = new Size(432, 26),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
+            TableLayoutPanel tbl = new TableLayoutPanel
+            {
+                ColumnCount = 3,
+                Dock = DockStyle.Fill
+            };
+
+
+            // Largeur des colonnes : 26 | (reste) | 26
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 26));   // Col 0 : 26 px
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));   // Col 1 : 100% du reste
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 26));   // Col 2 : 26 px
+
+            // Hauteur de la (seule) ligne : 26 px
+            tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
+
+            panel.Controls.Add(tbl);
+
+            CheckBox ckb = new CheckBox
+            {
+                Checked = true,
+                Text = "",
+                Padding = new Padding(5)
+            };
+
+            Label lbl = new Label
+            {
+                Text = _userName,
+                TextAlign = ContentAlignment.MiddleCenter, 
+                ForeColor = Color.White,
+                Dock = DockStyle.Fill,
+                Font = new Font(FontFamily.GenericSansSerif, 12)
+            };
+
+            Button dB = new Button
+            {
+
+                BackgroundImage = Properties.Resources.echec,
+                BackgroundImageLayout = ImageLayout.Zoom,
+                Size = new Size(12, 12),
+                AutoSize = false,
+                Dock = DockStyle.None,                 // ✅ ne pas remplir la cellule
+                Anchor = AnchorStyles.None,            // ✅ centré automatiquement dans la cellule
+                Margin = new Padding(0),               // évite un décalage
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false
+
+            };
+
+            dB.FlatAppearance.BorderSize = 0;
+            dB.FlatAppearance.BorderColor = Color.Black;
+
+            dB.Click += (s, e) =>
+            {
+                var result = MessageBox.Show(
+                    "Voulez-vous supprimer l'utilisateur de la liste d'envoi?",
+                    "Supression du courrielà envoyer",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
+
+                if (result == DialogResult.Yes)
+                {
+                    try
+                    {
+                        flowlayoutPanel_Messagerie.Controls.Remove(panel);
+                        panel.Dispose();
+
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Erreur lors de la suppression du fichier : {ex.Message}");
+                    }
+                }
+            };
+
+            tbl.Controls.Add(ckb, 0, 0);
+            tbl.Controls.Add(lbl, 1, 0);
+            tbl.Controls.Add(dB, 2,0);
+
+            flowlayoutPanel_Messagerie.Controls.Add(panel);
+        }
     }
 
     // Les appSettings du projet 
@@ -469,7 +598,13 @@ namespace Aerolithe
         }
     }
 
-  
+    public class MessagingUserSetting
+    {
+        public string Email { get; set; } = string.Empty;
+        public bool Send { get; set; } = true;
+    }
+
+
     public class AppSettings
     {
         private static readonly string FolderPath = Path.Combine(
@@ -495,6 +630,8 @@ namespace Aerolithe
 
         public int VerticalLiftDefaultPos { get; set; }
 
+        public List<MessagingUserSetting> MessagingUsers { get; set; } = new();
+
         public AppSettings Load()
         {
             // Crée le dossier Aerolithe s'il n'existe pas
@@ -515,6 +652,7 @@ namespace Aerolithe
             {
                 string json = File.ReadAllText(SettingsFilePath);
                 var settings = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
+                settings.MessagingUsers ??= new List<MessagingUserSetting>();
                 return settings;
             }
             catch (Exception ex)
@@ -535,6 +673,38 @@ namespace Aerolithe
             string json = JsonConvert.SerializeObject(this, Formatting.Indented);
             File.WriteAllText(SettingsFilePath, json);
         }
+
+        public void UpsertMessagingUser(string email, bool send)
+        {
+            email = NormalizeEmail(email);
+            var existing = MessagingUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+            if (existing is null)
+            {
+                MessagingUsers.Add(new MessagingUserSetting { Email = email, Send = send });
+            }
+            else
+            {
+                existing.Send = send;
+            }
+        }
+
+        public void RemoveMessagingUser(string email)
+        {
+            email = NormalizeEmail(email);
+            MessagingUsers.RemoveAll(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public bool GetSendForEmail(string email, bool defaultValue = true)
+        {
+            email = NormalizeEmail(email);
+            var item = MessagingUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+            return item?.Send ?? defaultValue;
+        }
+
+        private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim();
+
+
+       
     }
 
 

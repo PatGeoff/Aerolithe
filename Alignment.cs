@@ -13,14 +13,16 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         public bool calculerCentre = false;
-        private (double offsetX, double offsetY, Rectangle boundingBox, bool hasBlackOnBorder) offsets;
+        private OffsetsData offsets = new OffsetsData();
         bool cancelAutoCentrage = false;
         bool cameraRailFarLimitSwitchPressed = false;
         bool cameraRailNearLimitSwitchPressed = false;
 
-        private async Task<(double offsetX, double offsetY, Rectangle boundingBox, bool hasBlackOnBorder)> CalculeDuCentrageAsync(Bitmap maskBitmap)
+        private async Task CalculeDuCentrageAsync(Bitmap maskBitmap)
+       // private async Task<(double offsetX, double offsetY, Rectangle boundingBox, bool hasBlackOnBorder)> CalculeDuCentrageAsync(Bitmap maskBitmap)
         {
-            return await Task.Run(() =>
+            await Task.Run(() =>
+            //return await Task.Run(() =>
             {
                 int width = maskBitmap.Width;
                 int height = maskBitmap.Height;
@@ -72,31 +74,98 @@ namespace Aerolithe
                     maskBitmap.UnlockBits(bmpData);
                 }
 
+
                 if (maxX == 0 && maxY == 0)
-                    return (0, 0, Rectangle.Empty, hasBlackOnBorder);
+                {
+                    offsets.offsetX = 0;
+                    offsets.offsetY = 0;
+                    offsets.hasBlackOnBorder = false; // Aucun pixel noir trouvé
+                }
+                else
+                {
+                    double centerX = (minX + maxX) / 2.0;
+                    double centerY = (minY + maxY) / 2.0;
 
-                double centerX = (minX + maxX) / 2.0;
-                double centerY = (minY + maxY) / 2.0;
+                    double imgCenterX = width / 2.0;
+                    double imgCenterY = height / 2.0;
 
-                double imgCenterX = width / 2.0;
-                double imgCenterY = height / 2.0;
+                    offsets.offsetX = centerX - imgCenterX;
+                    offsets.offsetY = centerY - imgCenterY;
+                    offsets.hasBlackOnBorder = hasBlackOnBorder; // ✅ Mettre la vraie valeur
+                }
 
-                double offsetX = centerX - imgCenterX;
-                double offsetY = centerY - imgCenterY;
 
-                Rectangle boundingBox = new Rectangle(minX, minY, maxX - minX, maxY - minY);
-                offsets.offsetX = offsetX; 
-                offsets.offsetY = offsetY;
-                return (offsetX, offsetY, boundingBox, hasBlackOnBorder);
+                //Rectangle boundingBox = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+                //offsets.offsetX = offsetX;
+                //offsets.offsetY = offsetY;
+                //return (offsetX, offsetY, boundingBox, hasBlackOnBorder);
             });
         }
 
-        private async Task RoutineAutoCentrage(int timeoutMs = 8000)
+        private async Task RoutineLineareReculerHorsCadre()
+        {
+            bool commandSent = false;
+            await GetLinearSwitchesStateFromLinear();
+            while (!cancelAutoCentrage && !_stopRequested && !cameraRailFarLimitSwitchPressed)
+            {
+                // offsets est mis à jour par LiveViewTimer_Tick en parallèle
+                if (offsets.hasBlackOnBorder)
+                {
+                    if (!commandSent)
+                    {
+                        udpSendCameraLinearMotorData(-2000);
+                        commandSent = true;
+                    }
+                }
+                else
+                {
+                    udpSendCameraLinearMotorData(0);
+                    break;
+                }
+
+                await Task.Delay(50); // Libère le thread UI et laisse LiveViewTimer tourner
+            }
+        }
+        private async Task RoutineCalibrationLineareNearest()
+        {
+            AppendTextToConsoleNL("- RoutineCalibrationLinearNearest");
+            AppendTextToConsoleNL($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}, offsets.hasBlackOnBorder = {offsets.hasBlackOnBorder}");
+            bool commandSent = false;
+            await GetLinearSwitchesStateFromLinear();
+            await Task.Delay(200);
+
+            while (!cancelAutoCentrage && !_stopRequested && !cameraRailNearLimitSwitchPressed)
+            {
+                // offsets est mis à jour par LiveViewTimer_Tick en parallèle
+                if (!offsets.hasBlackOnBorder)
+                {
+                    if (!commandSent)
+                    {
+                        udpSendCameraLinearMotorData(2000);
+                        commandSent = true;
+                    }
+                }
+                else
+                {
+                    udpSendCameraLinearMotorData(0);
+                    AppendTextToConsoleNL($"cameraRailNearLimitSwitchPressed = {cameraRailNearLimitSwitchPressed} et offsets.hasBlackOnBorder = {offsets.hasBlackOnBorder}");
+                    AppendTextToConsoleNL("- RoutineCalibrationLinearNearest terminée");
+                    break;
+                }
+
+
+                await Task.Delay(50); // Libère le thread UI et laisse LiveViewTimer tourner
+            }
+            AppendTextToConsoleNL($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}, offsets.hasBlackOnBorder = {offsets.hasBlackOnBorder},cameraRailNearLimitSwitchPressed = {cameraRailNearLimitSwitchPressed}, cameraRailFarLimitSwitchPressed = {cameraRailFarLimitSwitchPressed}");
+            AppendTextToConsoleNL("- RoutineCalibrationLinearNearest terminée");
+        }
+
+        private async Task RoutineAutoCentrage(int timeoutMs = 20000)
         {
             AppendTextToConsoleNL("- RoutineAutoCentrage");
             cancelAutoCentrage = false;
 
-
+            double kP = 0.3; // proportionnel
             const double tolerance = 5.0;
             const int minStep = 2;
             const int maxStep = 50;
@@ -106,31 +175,10 @@ namespace Aerolithe
 
             // Corriger X
             Debug.WriteLine($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}");
+
+
             while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs && !cancelAutoCentrage && !_stopRequested)
             {
-
-                if (cancelAutoCentrage)
-                {
-                    Debug.WriteLine("Centrage annulé.");
-                    udpSendStepperLiftNema23MotorData(0);
-                    udpSendScissorData(0);
-                    udpSendCameraLinearMotorData(0);
-                    calculerCentre = false;
-                    if (chkBox_CalculerCentrage.InvokeRequired)
-                    {
-                        chkBox_CalculerCentrage.Invoke(new Action(() =>
-                        {
-                            chkBox_CalculerCentrage.Checked = false;
-                            chkBox_CalculerCentrage.Text = "";
-                        }));
-                    }
-                    else
-                    {
-                        chkBox_CalculerCentrage.Checked = false;
-                        chkBox_CalculerCentrage.Text = "";
-                    }
-                    return;
-                }
 
 
                 Debug.WriteLine("Routine Auto Centrage démarrée");
@@ -147,7 +195,7 @@ namespace Aerolithe
                     break;
                 }
 
-                int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * 0.3, minStep, maxStep);
+                int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * kP, minStep, maxStep);
                 int stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
 
                 udpSendScissorData(stepX);
@@ -155,24 +203,12 @@ namespace Aerolithe
                 Debug.WriteLine($"Move X: {stepX} (offsetX={offsetX})");
 
 
-
-
-                int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * 0.3, minStep, maxStep);
+                int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * kP, minStep, maxStep);
                 int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
 
                 udpSendStepperLiftNema23MotorData(stepY * 100);
 
                 Debug.WriteLine($"Move Y: {stepY} (offsetY={offsetY})");
-
-                //if (offsets.hasBlackOnBorder && !cameraRailFarLimitSwitchPressed)
-                //{
-                //    udpSendCameraLinearMotorData(-2000);
-                //}
-                //else if (cameraRailNearLimitSwitchPressed == false)
-                //{
-                //    while (!offsets.hasBlackOnBorder)
-                //        udpSendCameraLinearMotorData(0);
-                //}
 
                 await Task.Delay(delayMs);
             }
@@ -181,244 +217,50 @@ namespace Aerolithe
             udpSendStepperLiftNema23MotorData(0);
             udpSendScissorData(0);
             udpSendCameraLinearMotorData(0);
-            calculerCentre = false;
-            if (chkBox_CalculerCentrage.InvokeRequired)
-            {
-                chkBox_CalculerCentrage.Invoke(new Action(() =>
-                {
-                    chkBox_CalculerCentrage.Checked = false;
-                    chkBox_CalculerCentrage.Text = "";
-                }));
-            }
-            else
-            {
-                chkBox_CalculerCentrage.Checked = false;
-                chkBox_CalculerCentrage.Text = "";
-            }
+
             AppendTextToConsoleNL("Routine Auto Centrage terminée");
             Debug.WriteLine("Routine terminée (timeout ou centrage).");
 
         }
 
-        //private async Task RoutineAutoCentrage(int timeoutMs = 8000)
-        //{
-        //    AppendTextToConsoleNL("- RoutineAutoCentrage");
-        //    cancelAutoCentrage = false;
-        //    calculerCentre = true;
-
-        //    const double tolerance = 5.0;
-        //    const int minStep = 2;
-        //    const int maxStep = 50;
-        //    const int delayMs = 300; // petit délai pour laisser le mouvement se faire
-
-        //    var startTime = DateTime.Now;
-
-        //    // Corriger X
-        //    Debug.WriteLine($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}");
-        //    while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs && !cancelAutoCentrage && !_stopRequested)
-        //    {
-
-        //        if (cancelAutoCentrage)
-        //        {
-        //            Debug.WriteLine("Centrage annulé.");
-        //            udpSendStepperLiftNema23MotorData(0);
-        //            udpSendScissorData(0);
-        //            udpSendCameraLinearMotorData(0);
-        //            calculerCentre = false;
-        //            if (chkBox_CalculerCentrage.InvokeRequired)
-        //            {
-        //                chkBox_CalculerCentrage.Invoke(new Action(() =>
-        //                {
-        //                    chkBox_CalculerCentrage.Checked = false;
-        //                    chkBox_CalculerCentrage.Text = "";
-        //                }));
-        //            }
-        //            else
-        //            {
-        //                chkBox_CalculerCentrage.Checked = false;
-        //                chkBox_CalculerCentrage.Text = "";
-        //            }
-        //            return;
-        //        }
-
-
-
-        //        Debug.WriteLine("Routine Auto Centrage démarrée");
-
-        //        var offsetX = offsets.offsetX;
-        //        var offsetY = offsets.offsetY;
-
-        //        if (Math.Abs(offsetX) <= tolerance && Math.Abs(offsetY) <= tolerance)
-        //        {
-        //            Debug.WriteLine("Centrage terminé: En deça de la tolérance");
-        //            AppendTextToConsoleNL("Centrage terminé: En deça de la tolérance");
-        //            break;
-        //        }
-
-        //        int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * 0.3, minStep, maxStep);
-        //        int stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
-
-        //        udpSendScissorData(stepX);
-
-        //        Debug.WriteLine($"Move X: {stepX} (offsetX={offsetX})");
-
-
-
-
-        //        int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * 0.3, minStep, maxStep);
-        //        int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
-
-        //        udpSendStepperLiftNema23MotorData(stepY * 100);
-
-        //        Debug.WriteLine($"Move Y: {stepY} (offsetY={offsetY})");
-
-        //        if (offsets.hasBlackOnBorder && !cameraRailFarLimitSwitchPressed)
-        //        {
-        //            udpSendCameraLinearMotorData(-2000);
-        //        }
-        //        else if (cameraRailNearLimitSwitchPressed == false)
-        //        {
-        //            while (!offsets.hasBlackOnBorder)
-        //                udpSendCameraLinearMotorData(2000);
-        //        }
-
-        //        await Task.Delay(delayMs);
-        //    }
-
-
-        //    udpSendStepperLiftNema23MotorData(0);
-        //    udpSendScissorData(0);
-        //    udpSendCameraLinearMotorData(0);
-        //    calculerCentre = false;
-        //    if (chkBox_CalculerCentrage.InvokeRequired)
-        //    {
-        //        chkBox_CalculerCentrage.Invoke(new Action(() =>
-        //        {
-        //            chkBox_CalculerCentrage.Checked = false;
-        //            chkBox_CalculerCentrage.Text = "";
-        //        }));
-        //    }
-        //    else
-        //    {
-        //        chkBox_CalculerCentrage.Checked = false;
-        //        chkBox_CalculerCentrage.Text = "";
-        //    }
-        //    AppendTextToConsoleNL("Routine Auto Centrage terminée");
-        //    Debug.WriteLine("Routine terminée (timeout ou centrage).");
-
-        //}
-
-
-
-        //private async Task RoutineAutoCentrage(int timeoutMs = 8000)
-        //{
-        //    AppendTextToConsoleNL("- RoutineAutoCentrage");
-        //    cancelAutoCentrage = false;
-        //    calculerCentre = true;
-        //    const double tolerance = 5.0;
-        //    const int minStep = 2;
-        //    const int maxStep = 50;
-        //    const int delayMs = 300;
-        //    const int cameraMoveDurationMs = 3000;
-        //    const int forwardSpeed = 2000;
-        //    const int backwardSpeed = -2000;
-
-        //    var startTime = DateTime.Now;
-
-        //    // ---- Phase 1 : Positionner la caméra ----
-        //    Debug.WriteLine("Phase 1: Positionnement caméra");
-        //    var cameraStartTime = DateTime.Now;
-        //    while ((DateTime.Now - cameraStartTime).TotalMilliseconds < timeoutMs / 2 &&
-        //           !cancelAutoCentrage && !_stopRequested)
-        //    {
-        //        if (!offsets.hasBlackOnBorder && !cameraRailNearLimitSwitchPressed)
-        //        {
-        //            udpSendCameraLinearMotorData(forwardSpeed);
-        //            await Task.Delay(cameraMoveDurationMs);
-        //            udpSendCameraLinearMotorData(0);
-        //            Debug.WriteLine("Avance caméra");
-        //        }
-        //        else
-        //        {
-        //            if (offsets.hasBlackOnBorder && !cameraRailFarLimitSwitchPressed)
-        //            {
-        //                udpSendCameraLinearMotorData(backwardSpeed);
-        //                await Task.Delay(cameraMoveDurationMs);
-        //                udpSendCameraLinearMotorData(0);
-        //                Debug.WriteLine("Recul caméra (ajustement)");
-        //            }
-
-        //            break;
-        //        }
-        //        await Task.Delay(delayMs);
-        //    }
-
-        //    // ---- Phase 2 : Centrage XY ----
-        //    Debug.WriteLine("Phase 2: Centrage XY");
-        //    var xyStartTime = DateTime.Now;
-        //    while ((DateTime.Now - xyStartTime).TotalMilliseconds < timeoutMs / 2 &&
-        //           !cancelAutoCentrage && !_stopRequested)
-        //    {
-        //        // Recalcul offsets à chaque boucle
-        //        var offsetX = offsets.offsetX;
-        //        var offsetY = offsets.offsetY;
-        //        Debug.WriteLine($"{offsetX}:{offsetY}");
-        //        if (Math.Abs(offsetX) <= tolerance && Math.Abs(offsetY) <= tolerance)
-        //        {
-        //            Debug.WriteLine($"XY centré (offsetX={offsetX}, offsetY={offsetY})");
-        //            break;
-        //        }
-
-        //        int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * 0.3, minStep, maxStep);
-        //        int stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
-        //        udpSendScissorData(stepX);
-
-        //        int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * 0.3, minStep, maxStep);
-        //        int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
-        //        udpSendStepperLiftNema23MotorData(stepY * 100);
-
-        //        Debug.WriteLine($"Move X: {stepX}, Move Y: {stepY} (offsetX={offsetX}, offsetY={offsetY})");
-
-        //        await Task.Delay(delayMs);
-        //    }
-
-        //    // ---- Phase 3 : Ajustement final Z ----
-        //    Debug.WriteLine("Phase 3: Ajustement final caméra");
-        //    if (offsets.hasBlackOnBorder && !cameraRailFarLimitSwitchPressed)
-        //    {
-        //        udpSendCameraLinearMotorData(backwardSpeed);
-        //        await Task.Delay(cameraMoveDurationMs);
-        //        udpSendCameraLinearMotorData(0);
-        //        Debug.WriteLine("Recul final caméra");
-        //    }
-
-        //    // Stop moteurs
-        //    udpSendStepperLiftNema23MotorData(0);
-        //    udpSendScissorData(0);
-        //    udpSendCameraLinearMotorData(0);
-        //    calculerCentre = false;
-        //    ResetCentrageCheckbox();
-        //    AppendTextToConsoleNL("Routine Auto Centrage terminée");
-        //    Debug.WriteLine("Routine terminée.");
-        //    await NikonAutofocus();
-        //}
-
-        private void ResetCentrageCheckbox()
+        private async Task RoutineCalibration()
         {
-            if (chkBox_CalculerCentrage.InvokeRequired)
+            try
             {
-                chkBox_CalculerCentrage.Invoke(new Action(() =>
+
+                if (isCalibrating) return;
+                isCalibrating = true;
+                await RoutineAutoCentrage();
+                await RoutineCalibrationLineareNearest();
+                await nikonDoFocus();
+                if (offsets.hasBlackOnBorder)
                 {
-                    chkBox_CalculerCentrage.Checked = false;
-                    chkBox_CalculerCentrage.Text = "";
-                }));
+                    await RoutineLineareReculerHorsCadre();
+                    await nikonDoFocus();
+                }
+                await RoutineAutoCentrage();
             }
-            else
+            catch (Exception ex)
             {
-                chkBox_CalculerCentrage.Checked = false;
-                chkBox_CalculerCentrage.Text = "";
+                AppendTextToConsoleNL("Erreur: " + ex.ToString());
             }
+            finally
+            {
+                isCalibrating = false;
+            }
+
         }
 
+        public class OffsetsData
+        {
+            public double offsetX;
+            public double offsetY;
+            public Rectangle boundingBox;
+            public bool hasBlackOnBorder;
+        }
+
+
     }
+
+
 }

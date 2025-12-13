@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Emgu.CV;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -24,8 +25,8 @@ namespace Aerolithe
 
         public class FocusStackTask
         {
-            public int Serie {  get; set; }
-            public int Elevation {  get; set; }
+            public int Serie { get; set; }
+            public int Elevation { get; set; }
             public int Rotation { get; set; }
             public string[] ImagePaths { get; set; }
             public string OutputPath { get; set; }
@@ -37,7 +38,7 @@ namespace Aerolithe
             AppendTextToConsoleNL("- EnqueueFocusStackTask");
             var task = new FocusStackTask
             {
-                Serie = serie -1,
+                Serie = serie - 1,
                 Elevation = elevation,
                 Rotation = rotation,
                 ImagePaths = imagePaths,
@@ -57,7 +58,7 @@ namespace Aerolithe
             };
 
             var control = new FocusStackReportControl();
-            control.SetTaskInfo(info); 
+            control.SetTaskInfo(info);
 
             flowPanelReports.Controls.Add(control);
             taskControls[task] = control;
@@ -69,7 +70,7 @@ namespace Aerolithe
                 _ = ProcessFocusStackQueue();
             }
         }
-        
+
         public async Task MakeFocusStack()
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -91,11 +92,11 @@ namespace Aerolithe
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
                     string selectedFolder = folderDialog.SelectedPath;
-
+                    string cote = projet.Cote == 1 ? "A" : "B";
                     string suggestedFileName = Microsoft.VisualBasic.Interaction.InputBox(
                         "Nom du fichier de sortie :",
                         "Nom du fichier",
-                        baseName + "_stacked.jpg");
+                        baseName + $"_{cote}" + "_stacked.jpg");
 
                     string outputPath = Path.Combine(selectedFolder, suggestedFileName);
                     if (lbl_focusStackOutputDest.InvokeRequired)
@@ -111,60 +112,6 @@ namespace Aerolithe
             }
         }
 
-        //public async Task MakeFocusStackSerie()
-        //{
-        //    AppendTextToConsoleNL("- MakeFocusStackSerie");
-        //    if (!_stopRequested)
-        //    {
-
-        //        if (InvokeRequired)
-        //        {
-        //            Invoke(new Action(async () => MakeFocusStackSerie()));
-        //            return;
-        //        }
-        //        //this.BeginInvoke((Action)(() => AppendTextToConsoleNL("on se rend ici?????")));
-        //        if (!Directory.Exists(projet.FocusStackPath))
-        //        {
-        //            Directory.CreateDirectory(projet.FocusStackPath);
-        //            MessageBox.Show("Dossier " + projet.FocusStackPath + " créé");
-        //            //await Task.Delay(500);
-        //        }
-        //        string folderPath = projet.TempImageFolderPath;
-
-        //        string[] extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
-
-        //        var imageFiles = Directory.GetFiles(folderPath)
-        //                                  .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
-        //                                  .ToArray();
-
-        //        string baseName = imageFiles.Length > 0
-        //            ? Path.GetFileNameWithoutExtension(imageFiles[0])
-        //            : "Erreur";
-
-
-        //        baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
-        //        string suggestedFileName = baseName + "_stacked.jpg";
-        //        string outputPath = Path.Combine(projet.FocusStackPath, suggestedFileName);
-
-
-        //        //await Task.Delay(300);
-
-        //        if (imageFiles.Length > 0)
-        //        {
-        //            AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0]);
-        //            AppendTextToConsoleNL("Nom du fichier de destination : " + baseName);
-        //            EnqueueFocusStackTask(imageFiles, outputPath, (int)actuatorAngle, turntablePosition, _Serie);
-        //        }
-        //        else
-        //        {
-        //            // Crée une tâche avec un statut "Erreur" et sans images
-        //            EnqueueFocusStackTask(new string[0], outputPath, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
-        //            AppendTextToConsoleNL("Aucune image trouvée dans le dossier.");
-        //        }
-        //        return Task.CompletedTask;
-        //    }
-
-        //}
         public Task MakeFocusStackSerie()
         {
             if (_stopRequested) return Task.CompletedTask;
@@ -209,31 +156,63 @@ namespace Aerolithe
             return Task.CompletedTask;
         }
 
-        private Task ProcessFocusStackQueue()
+
+
+        private async Task ProcessFocusStackQueue()
         {
             AppendTextToConsoleNL("- ProcessFocusStackQueue");
-            if (isProcessingQueue) return Task.CompletedTask;
+            if (isProcessingQueue) return;
             isProcessingQueue = true;
 
-            var pendingTasks = focusStackQueue.Where(t => t.Status == "En attente").ToList();
-
-            foreach (var nextTask in pendingTasks)
+            try
             {
-                nextTask.Status = "En cours";
-                UpdateQueueDisplay();
-
-                _ = Task.Run(async () =>
+                while (true)
                 {
-                   
+                    var nextTask = focusStackQueue.FirstOrDefault(t => t.Status == "En attente");
+                    if (nextTask == null || _stopRequested) break;
+
+                    nextTask.Status = "En cours";
+                    UpdateQueueDisplay();
+
                     bool success = await RunFocusStack(nextTask.ImagePaths, nextTask.OutputPath);
                     nextTask.Status = success ? "Terminé" : "Erreur";
                     this.BeginInvoke((Action)(UpdateQueueDisplay));
-                });
+                }
             }
-
-            isProcessingQueue = false;
-            return Task.CompletedTask;
+            finally
+            {
+                isProcessingQueue = false;
+            }
         }
+
+
+        //private Task ProcessFocusStackQueue()
+        //{
+        //    AppendTextToConsoleNL("- ProcessFocusStackQueue");
+        //    if (isProcessingQueue) return Task.CompletedTask;
+        //    isProcessingQueue = true;
+
+        //    var pendingTasks = focusStackQueue.Where(t => t.Status == "En attente").ToList();
+
+        //    foreach (var nextTask in pendingTasks)
+        //    {
+        //        nextTask.Status = "En cours";
+        //        UpdateQueueDisplay();
+
+        //        _ = Task.Run(async () =>
+        //        {
+
+        //            bool success = await RunFocusStack(nextTask.ImagePaths, nextTask.OutputPath);
+        //            nextTask.Status = success ? "Terminé" : "Erreur";
+        //            this.BeginInvoke((Action)(UpdateQueueDisplay));
+        //        });
+        //    }
+
+        //    isProcessingQueue = false;
+        //    return Task.CompletedTask;
+        //}
+
+
         private void UpdateQueueDisplay()
         {
             AppendTextToConsoleNL("- UpdateQueueDisplay");
@@ -284,23 +263,29 @@ namespace Aerolithe
                 process.StartInfo = psi;
                 process.OutputDataReceived += async (sender, e) =>
                 {
+
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        await AppendTextToFFMPEGConsoleNL(e.Data);
-
+                        if (chkBox_displayStackProgress.Checked)
+                        {
+                            await AppendTextToFFMPEGConsoleNL(e.Data);
+                        }
                         var match = Regex.Match(e.Data, @"\[(\d+)/(\d+)\]");
                         if (match.Success)
                         {
                             int current = int.Parse(match.Groups[1].Value);
                             int total = int.Parse(match.Groups[2].Value);
-
-                            progressBar_ImageSave.Invoke(() =>
-                            {
-                                progressBar_ImageSave.Maximum = total;
-                                progressBar_ImageSave.Value = Math.Min(current, total);
-                            });
+                            
+                                progressBar_ImageSave.Invoke(() =>
+                                {
+                                    progressBar_ImageSave.Maximum = total;
+                                    progressBar_ImageSave.Value = Math.Min(current, total);
+                                });
+                           
                         }
                     }
+
+
                 };
 
                 process.ErrorDataReceived += async (sender, e) =>
@@ -315,23 +300,43 @@ namespace Aerolithe
 
                 await Task.Run(() => process.WaitForExit());
 
+
                 if (process.ExitCode == 0 && File.Exists(outputImage))
                 {
                     focusStackOutputPath = outputImage;
-                    if (picBox_FocusStackedImage.InvokeRequired)
+
+                    Action updateImage = () =>
                     {
-                        picBox_FocusStackedImage.Invoke(() =>
+                        using (var original = new Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>(outputImage))
                         {
-                            picBox_FocusStackedImage.Image = Image.FromFile(outputImage);                            
-                        });
-                    }
+                            int boxWidth = picBox_FocusStackedImage.Width;
+                            int boxHeight = picBox_FocusStackedImage.Height;
+
+                            // Calcul du ratio
+                            double ratioX = (double)boxWidth / original.Width;
+                            double ratioY = (double)boxHeight / original.Height;
+                            double ratio = Math.Min(ratioX, ratioY); // garde le ratio sans dépasser
+
+                            int newWidth = (int)(original.Width * ratio);
+                            int newHeight = (int)(original.Height * ratio);
+
+                            var resized = original.Resize(newWidth, newHeight, Emgu.CV.CvEnum.Inter.Linear);
+
+                            // Assigner l'image redimensionnée
+                            picBox_FocusStackedImage.Image = resized.ToBitmap();
+                        }
+                    };
+
+                    if (picBox_FocusStackedImage.InvokeRequired)
+                        picBox_FocusStackedImage.Invoke(updateImage);
                     else
-                    {
-                        picBox_FocusStackedImage.Image = Image.FromFile(outputImage);
-                    }
+                        updateImage();
+
                     AppendTextToConsoleNL("- Focus Stack Terminé");
                     return true;
                 }
+
+
                 else
                 {
                     MessageBox.Show("Erreur lors du traitement.");

@@ -11,6 +11,7 @@ using Emgu.CV.XImgproc;
 using System.Threading;
 using System.CodeDom;
 using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace Aerolithe
 {
@@ -31,6 +32,10 @@ namespace Aerolithe
         private bool calibrationInitialeLift = false;
         private string[] angleStr = { "5", "25", "45" };
 
+        private Stopwatch _stopwatch = new Stopwatch();
+        private CancellationTokenSource _cts;
+
+
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)
         {
             if (appSettings.ProjectPath == null)
@@ -42,13 +47,15 @@ namespace Aerolithe
                     return;
                 }
             }
-             
+            _stopwatch.Start();
+            _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
+            await RoutineCalibration();
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
             await Task.Delay(800);
 
-            
+
             int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad2.Text), int.Parse(txtBox_seqPad3.Text) };
-            serieId = [appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg ];
+            serieId = [appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg];
 
             await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
             cancellationToken.ThrowIfCancellationRequested();
@@ -64,7 +71,7 @@ namespace Aerolithe
                 for (int i = 1; i <= serieId[serie]; i++)
                 {
                     if (_stopRequested) return;
-                   
+
                     oldImgIncr = projet.FocusSerieIncrement = 0;
                     projet.Save(appSettings.ProjectPath);
                     _Serie = i;
@@ -91,13 +98,19 @@ namespace Aerolithe
                     if (_stopRequested) return;
                     AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres}°");
 
-                    if (lbl_ProgressDisplay.InvokeRequired)
+                    if (lbl_CoteSerie.InvokeRequired)
                     {
-                        lbl_ProgressDisplay.Invoke(new Action(() => {
-                            string cote = (projet.Cote == 0) ? "A" : "B"; 
-                            lbl_ProgressDisplay.Text = $"{cote}({angleStr[serie]}°)  {i}/{serieId[serie]}";
+                        lbl_CoteSerie.Invoke(new Action(() =>
+                        {
+                            string cote = (projet.Cote == 0) ? "A" : "B";
+                            lbl_CoteSerie.Text = cote;
+                            lbl_ElevSerie.Text = $"{angleStr[serie]}°";
+                            lbl_RotSerie.Text = $"{i}/{serieId[serie]}";
                         }));
                     }
+
+                   
+
 
                     //projet.FocusSerieIncrement = i - 1 + paddingNbr[serie];
                     projet.FocusSerieIncrement = 0;
@@ -115,7 +128,7 @@ namespace Aerolithe
                                 AppendTextToConsoleNL("Focus Stack lancé");
 
                                 _ = Task.Run(() => MakeFocusStackSerie());
-                               
+
                             }
                             if (flowLayoutPanel1.InvokeRequired)
                             {
@@ -124,7 +137,7 @@ namespace Aerolithe
                         }
                         catch (Exception e)
                         {
-                           AppendTextToConsoleNL(e.Message);
+                            AppendTextToConsoleNL(e.Message);
                             //throw;
                             return;
                         }
@@ -142,7 +155,7 @@ namespace Aerolithe
             {
                 AppendTextToConsoleNL($" Erreur dans la séquence : {ex.Message}");
             }
- 
+            _stopwatch.Stop();
         }
 
         private async Task AppliquerMasqueEtFocusStepAsync()
@@ -216,11 +229,17 @@ namespace Aerolithe
 
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
         {
+
+
+            _stopwatch.Start();
+            _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
+           
             await UdpSendActuatorMessageAsync("actuator 5");
             if (_stopRequested) return;
             await WaitForActuator(5);
             if (_stopRequested) return;
             await Task.Delay(1000);
+            await RoutineCalibration();
             if (_stopRequested) return;
             cancellationToken.ThrowIfCancellationRequested();
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
@@ -238,7 +257,7 @@ namespace Aerolithe
             await WaitForActuator(25);
             if (_stopRequested) return;
             await Task.Delay(1000);
-
+            await RoutineCalibration();
             cancellationToken.ThrowIfCancellationRequested();
             //await WaitForActuatorPosition(25, cancellationToken);
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
@@ -254,7 +273,7 @@ namespace Aerolithe
             await WaitForActuator(45);
             if (_stopRequested) return;
             await Task.Delay(1000);
-
+            await RoutineCalibration(); 
             cancellationToken.ThrowIfCancellationRequested();
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
             currentSequence = 2;
@@ -262,52 +281,10 @@ namespace Aerolithe
             await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
             if (_stopRequested) return;
             AppendTextToConsoleNL("Séquence 3 terminée");
+            _cts?.Cancel();
+            _stopwatch.Stop();
         }
 
-
-        //private async Task WaitForTurntablePositionAsync(int targetPosition, CancellationToken cancellationToken)
-        //{
-        //    AppendTextToConsoleNL("- WaitForTurntablePositionAsync");
-        //    int tolerance = 10;
-        //    int maxRetries = 100;
-        //    int retryCount = 0;
-        //    bool positionReached = false;
-
-        //    while (retryCount < maxRetries)
-        //    {
-        //        if (_stopRequested) return;
-        //        await getTurntablePosFromWaveshare();
-
-        //        // Mise à jour des labels via Invoke
-        //        if (lbl_ttCurrentPos.InvokeRequired)
-        //        {
-        //            lbl_ttCurrentPos.Invoke(new Action(() =>
-        //            {
-        //                lbl_ttCurrentPos.Text = "Table Tournante: " + turntablePosition.ToString() + " / " + ttTargetPosition.ToString();
-        //            }));
-        //        }
-        //        else
-        //        {
-        //            lbl_ttCurrentPos.Text = "Table Tournante: " + turntablePosition.ToString() + " / " + ttTargetPosition.ToString();
-        //        }
-
-
-        //        if (turntablePosition >= targetPosition - tolerance && turntablePosition <= targetPosition + tolerance)
-        //        {
-        //            positionReached = true;
-        //            break;
-        //        }
-
-        //        await Task.Delay(50, cancellationToken);
-        //        retryCount++;
-        //    }
-
-        //    string message = positionReached
-        //        ? "La table tournante a atteint sa position."
-        //        : "La table tournante n'a pas atteint sa position après 100 essais.";
-
-        //    AppendTextToConsoleNL(message);
-        //}
 
         private async Task<bool> WaitForTurntablePositionAsync(int targetPos, int tolerance = 80, int timeoutMs = 10000, int checkInterval = 100)
         {
@@ -332,5 +309,64 @@ namespace Aerolithe
             AppendTextToConsoleNL($"Timeout : position actuelle {turntablePosition}°, cible {targetPos}°");
             return false;
         }
+
+
+
+
+
+        private async Task UpdateTimerAsync(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                if (_stopwatch.IsRunning)
+                {
+                    TimeSpan elapsed = _stopwatch.Elapsed;
+                    string formatted = $"{elapsed.Hours:D2}h {elapsed.Minutes:D2}m {elapsed.Seconds:D2}s";
+
+                    // Invoke pour mise à jour UI
+                    if (!token.IsCancellationRequested)
+                    {
+                        this.Invoke((Action)(() => lbl_timer.Text = formatted));
+                    }
+                }
+
+                await Task.Delay(1000, token); // rafraîchit chaque seconde
+            }
+        }
+
+        private async Task StartTimer()
+        {
+            _cts?.Cancel(); // stoppe l'ancien timer s'il existe
+            _cts = new CancellationTokenSource();
+            _stopwatch.Start();
+            await Task.Run(() => UpdateTimerAsync(_cts.Token));
+        }
+
+        private async Task PauseTimer()
+        {
+            if (_stopwatch.IsRunning)
+                _stopwatch.Stop();
+            else
+                _stopwatch.Start();
+
+        }
+
+
+        private async Task StopTimer()
+        {
+            _cts?.Cancel();
+            _stopwatch.Reset();
+
+            // Mise à jour du label via Invoke pour thread-safe
+            if (lbl_timer.InvokeRequired)
+            {
+                lbl_timer.Invoke((Action)(() => lbl_timer.Text = ""));
+            }
+            else
+            {
+                lbl_timer.Text = "";
+            }
+        }
+
     }
 }

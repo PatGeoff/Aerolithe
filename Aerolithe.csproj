@@ -2,11 +2,12 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,12 +31,32 @@
 
 
   <ItemGroup>
+    <None Remove="MyResources\NikonLibs\dnssd.dll" />
+    <None Remove="MyResources\NikonLibs\NkdPTP.dll" />
+    <None Remove="MyResources\NikonLibs\NkRoyalmile.dll" />
+    <None Remove="MyResources\NikonLibs\SharpOSC.dll" />
+    <None Remove="MyResources\NikonLibs\Type0022.md3" />
     <None Remove="Resources\camera_offline2.png" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="MyResources\Images\echec.png" />
     <EmbeddedResource Include="MyResources\Images\crochet.png" />
+    <Content Include="MyResources\NikonLibs\dnssd.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="MyResources\NikonLibs\NkdPTP.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="MyResources\NikonLibs\NkRoyalmile.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="MyResources\NikonLibs\SharpOSC.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="MyResources\NikonLibs\Type0022.md3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

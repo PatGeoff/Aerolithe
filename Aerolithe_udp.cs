@@ -17,6 +17,9 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 using Nikon;
 using System.Windows.Forms.VisualStyles;
 using System.Drawing;
+using System.Globalization;
+using System.Net.NetworkInformation;
+using System.Text.RegularExpressions;
 
 
 
@@ -41,11 +44,10 @@ namespace Aerolithe
                 udpClient = new UdpClient(localPort); // Initialize UdpClient
                 udpClientOSC = new UdpClient(localPortOSC);
                 Task.Run(() => listenUDP());
-
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error initializing UDP client: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                //MessageBox.Show($"Error initializing UDP client: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             // Initialize the timer
             _oscTimer = new System.Timers.Timer(150); // 500 milliseconds
@@ -71,7 +73,7 @@ namespace Aerolithe
         }
 
         private async Task UdpSendTurnTableMessageAsync(string message)
-        {            
+        {
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -145,8 +147,6 @@ namespace Aerolithe
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
-
 
         public async Task udpSendCameraLinearMotorData(int vitesse, int position) // valeurs 
         {
@@ -318,7 +318,7 @@ namespace Aerolithe
                 }
             }
             // ESP32
-          
+
             //if (message.Contains("Message de Table Tournante: Position atteinte"))
             //{
             //    turntablePositionReached = true;
@@ -345,22 +345,32 @@ namespace Aerolithe
                 _turntablePositionTcs?.SetResult(turntablePosition); // vers Aerolithe.cs/getTurntablePosFromWaveshare()
             }
 
-            if (message.Contains("FarLimitSwitchPressed")) { 
+            if (message.Contains("FarLimitSwitchPressed"))
+            {
                 cameraRailFarLimitSwitchPressed = true;
-                //AppendTextToConsoleNL("FarLimitSwitchPressed = True");
+                AppendTextToConsoleNL("FarLimitSwitchPressed = True");
             }
-            if (message.Contains("FarLimitSwitchReleased")) {
+            if (message.Contains("FarLimitSwitchReleased"))
+            {
                 cameraRailFarLimitSwitchPressed = false;
-                //AppendTextToConsoleNL("FarLimitSwitchPressed = False");
-            } 
-            if (message.Contains("NearLimitSwitchPressed")) {
-                cameraRailNearLimitSwitchPressed = true;
-                //AppendTextToConsoleNL("NearLimitSwitchPressed = True");
+                AppendTextToConsoleNL("FarLimitSwitchPressed = False");
             }
-            if (message.Contains("NearLimitSwitchReleased")) {
+            if (message.Contains("NearLimitSwitchPressed"))
+            {
+                cameraRailNearLimitSwitchPressed = true;
+                AppendTextToConsoleNL("NearLimitSwitchPressed = True");
+            }
+            if (message.Contains("NearLimitSwitchReleased"))
+            {
                 cameraRailNearLimitSwitchPressed = false;
-                //AppendTextToConsoleNL("NearLimitSwitchPressed = False");
-            } 
+                AppendTextToConsoleNL("NearLimitSwitchPressed = False");
+            }
+            if (message.Contains("StepperSwitchState"))
+            {
+                string[] msg = message.Split(",");
+                cameraRailNearLimitSwitchPressed = (msg[1] == "0") ? false : true;
+
+            }
 
             #endregion
             #region Actuator
@@ -407,7 +417,7 @@ namespace Aerolithe
                 {
                     case "camera_osc_centrage_btn":
                         await RoutineAutoCentrage();
-                        break;                        
+                        break;
                     case "camera_osc_autofocus_btn":
                         await NikonAutofocus();
                         break;
@@ -492,9 +502,243 @@ namespace Aerolithe
                 lbl_VerticalLiftDefaultPos.Text = "Défaut: " + appSettings.VerticalLiftDefaultPos.ToString();
             }
         }
-      
 
-       
+        private async Task GetLinearSwitchesStateFromLinear()
+        {
+            await UdpSendCameraLinearMessageAsync("stepmotor switchState");
+            AppendTextToConsoleNL($"NearLimitSwitchPressed = {cameraRailNearLimitSwitchPressed}, cameraRailFarLimitSwitchPressed = {cameraRailFarLimitSwitchPressed}");
+
+        }
+
+        public static class NetworkChecks
+        {
+            /// <summary>
+            /// Vérifie si l'interface Wi‑Fi est connectée au SSID "Aérolithe" et si son IPv4 est 192.168.2.4.
+            /// Retourne true si les deux conditions sont remplies, et fournit un message détaillé dans 'details'.
+            /// </summary>
+            public static bool IsOnAerolitheWifi(out string details)
+            {
+                details = "";
+
+                // 1) Récupérer SSID via netsh
+                string ssid = GetCurrentWifiSsidViaNetsh();
+                if (string.IsNullOrWhiteSpace(ssid))
+                {
+                    details = "Impossible d'obtenir le SSID Wi‑Fi (netsh). Carte non connectée ou permissions insuffisantes.";
+                    return false;
+                }
+
+                // Comparaison SSID (exacte, sensible aux accents, insensible à la casse)
+                bool onAerolitheSsid =
+                    string.Compare(ssid.Trim(), "Aérolithe", CultureInfo.InvariantCulture,
+                                   CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) == 0;
+
+                // 2) Récupérer l'IPv4 de l'interface Wi‑Fi (Wireless80211)
+                var wifiIf = NetworkInterface.GetAllNetworkInterfaces()
+                                .FirstOrDefault(ni =>
+                                    ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 &&
+                                    ni.OperationalStatus == OperationalStatus.Up);
+
+                if (wifiIf == null)
+                {
+                    details = $"SSID actuel: {ssid} ; aucune interface Wi‑Fi UP détectée.";
+                    return false;
+                }
+
+                var ip = wifiIf.GetIPProperties()
+                               .UnicastAddresses
+                               .FirstOrDefault(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                               ?.Address;
+
+                if (ip == null)
+                {
+                    details = $"SSID actuel: {ssid} ; aucune adresse IPv4 sur l'interface {wifiIf.Name}.";
+                    return false;
+                }
+
+                bool ipMatch = ip.Equals(IPAddress.Parse("192.168.2.4"));
+                details = $"SSID actuel: {ssid} ; Interface: {wifiIf.Name} ; IPv4: {ip}.";
+
+                return onAerolitheSsid && ipMatch;
+            }
+
+            /// <summary>
+            /// Appelle 'netsh wlan show interfaces' et parse le SSID de l'interface actuellement connectée.
+            /// </summary>
+            private static string GetCurrentWifiSsidViaNetsh()
+            {
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "netsh",
+                        Arguments = "wlan show interfaces",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true,
+                        StandardOutputEncoding = Encoding.UTF8
+                    };
+                    using var p = Process.Start(psi);
+                    string output = p!.StandardOutput.ReadToEnd();
+                    p.WaitForExit();
+
+                    // Cherche la ligne "SSID                   : Aérolithe"
+                    // Parfois il y a "Nom SSID" en français selon la langue de Windows.
+                    // On tente plusieurs clés possibles.
+                    var ssidRegexes = new[]
+                    {
+                new Regex(@"^\s*SSID\s*:\s*(.+)$", RegexOptions.Multiline | RegexOptions.CultureInvariant),
+                new Regex(@"^\s*Nom\s+SSID\s*:\s*(.+)$", RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            };
+
+                    foreach (var rx in ssidRegexes)
+                    {
+                        var m = rx.Match(output);
+                        if (m.Success)
+                        {
+                            var ssid = m.Groups[1].Value.Trim();
+                            // Éviter les suffixes (ex : "Aérolithe (1)") si Windows ajoute un numéro :
+                            if (ssid.EndsWith(")") && ssid.Contains("("))
+                            {
+                                // Facultatif : garde tel quel si tu utilises des SSID disjoints.
+                                // Ici, on ne coupe pas par défaut.
+                            }
+                            return ssid;
+                        }
+                    }
+
+                    return string.Empty;
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+        }
+
+
+
+
+
+        // === Ping asynchrone d'un hôte ===
+        public static async Task<bool> PingHostAsync(IPAddress host, int timeoutMs = 1000)
+        {
+            try
+            {
+                using var ping = new Ping();
+                var reply = await ping.SendPingAsync(host, timeoutMs);
+                return reply.Status == IPStatus.Success;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // === Met à jour un label (texte + couleur) en respectant le thread UI ===
+        private void UpdateStatusLabel(string deviceName, bool isConnected)
+        {
+            if (!_labelMap.TryGetValue(deviceName, out var lbl))
+                return; // Si pas de label défini, on ignore.
+
+            var text = isConnected ? "Connecté" : "NON Connecté";
+            var color = isConnected ? Color.ForestGreen : Color.Firebrick;
+
+            if (lbl.InvokeRequired)
+            {
+                lbl.Invoke(new Action(() =>
+                {
+                    lbl.Text = text;
+                    lbl.ForeColor = color;
+                }));
+            }
+            else
+            {
+                lbl.Text = text;
+                lbl.ForeColor = color;
+            }
+        }
+
+        // === Met à jour le bouton d'alerte selon l'état global ===
+        private void UpdateWarningButton(bool allConnected)
+        {
+            void SetUi()
+            {
+                // Texte: "!" en rouge si au moins un NON connecté, sinon vide
+                btn_WarningPing.Text = allConnected ? string.Empty : "!";
+                btn_WarningPing.ForeColor = allConnected ? SystemColors.ControlText : Color.Firebrick;
+
+                // Optionnel: style supplémentaire
+                // btn_WarningPing.Font = new Font(btn_WarningPing.Font, allConnected ? FontStyle.Regular : FontStyle.Bold);
+                // btn_WarningPing.BackColor = allConnected ? SystemColors.Control : Color.MistyRose;
+            }
+
+            if (btn_WarningPing.InvokeRequired)
+                btn_WarningPing.Invoke(new Action(SetUi));
+            else
+                SetUi();
+        }
+
+        // === Ping de tous les appareils + mise à jour des labels et du bouton ===
+        public async Task PingAll()
+        {
+            // Lance les pings en parallèle
+            var tasks = devices.Select(async dev =>
+            {
+                bool ok = await PingHostAsync(dev.Address, timeoutMs: 1000); // garde le timeout similaire
+                UpdateStatusLabel(dev.Name, ok);
+                return ok; // On retourne l'état pour calculer l'état global
+            }).ToArray();
+
+            // Attendre tous les résultats
+            bool[] results = await Task.WhenAll(tasks);
+            bool allConnected = results.All(r => r);
+
+            // Met à jour le bouton d'alerte
+            UpdateWarningButton(allConnected);
+        }
+
+        // === Boucle périodique (async) pour pinger toutes les X secondes ===
+        public void StartAutoPingLoop(TimeSpan? period = null)
+        {
+            var interval = period ?? TimeSpan.FromSeconds(60);
+
+            // Annule une boucle existante si nécessaire
+            _autoPingCts?.Cancel();
+            _autoPingCts = new CancellationTokenSource();
+            var token = _autoPingCts.Token;
+
+            // Tâche fire-and-forget (capturée par le CTS)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // .NET 6+ : PeriodicTimer
+                    var timer = new PeriodicTimer(interval);
+
+                    // Ping immédiat au démarrage
+                    await PingAll();
+
+                    // Ping périodique
+                    while (await timer.WaitForNextTickAsync(token))
+                    {
+                        await PingAll();
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Arrêt attendu
+                }
+                catch (Exception ex)
+                {
+                    // Si tu veux loguer l'erreur :
+                    // AppendTextToConsoleNL($"AutoPing error: {ex.Message}");
+                    Debug.WriteLine($"AutoPing error: {ex.Message}");
+                }
+            }, token);
+        }
+
+
 
     }
 }

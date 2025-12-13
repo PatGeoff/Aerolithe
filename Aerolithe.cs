@@ -20,26 +20,37 @@ using System.Drawing.Printing;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms.VisualStyles;
 using Aerolithe.Properties;
+using Microsoft.VisualBasic;
 
 namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
         // THIS IP ADDRESS 192.168.2.4 //
-        public readonly IPAddress stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
-        public readonly int stepperCameraPort = 44455;    // Port sur lequel on envoie les messages UDP au ESP32 du stepper motor et de l'actuateur
-        public readonly IPAddress turntableIpAddress = IPAddress.Parse("192.168.2.12");
-        public readonly int turntablePort = 44466;  // Port sur lequel on reçoit les messages UDP au ESP32 de la table tournante
-        public readonly IPAddress scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
-        public readonly int scissorLiftPort = 44477;  // Lift, moteur horizontal 
-        public readonly IPAddress actuatorIpAddress = IPAddress.Parse("192.168.2.15");
+
+        // Champs d’instance (readonly) : on les initialise dans le constructeur
+        public readonly IPAddress stepperCameraIpAddress;
+        public readonly int stepperCameraPort = 44455;
+
+        public readonly IPAddress turntableIpAddress;
+        public readonly int turntablePort = 44466;
+
+        public readonly IPAddress scissorLiftIpAddress;
+        public readonly int scissorLiftPort = 44477;
+
+        public readonly IPAddress actuatorIpAddress;
         public readonly int actuatorPort = 44499;
-        public readonly IPAddress stepperLiftNema23IpAddress = IPAddress.Parse("192.168.2.16");
-        public readonly int stepperLiftNema23Port = 44433; // Lift, moteur vertical 
 
+        public readonly IPAddress stepperLiftNema23IpAddress;
+        public readonly int stepperLiftNema23Port = 44433;
 
-        public readonly int localPort = 55544;      // Port sur lequel on reçoit les messages UDP
+        public readonly int localPort = 55544;
         private readonly int localPortOSC = 55545;
+
+        private readonly (string Name, IPAddress Address)[] devices;
+
+        private Dictionary<string, Label> _labelMap;
+        private CancellationTokenSource _autoPingCts;
 
 
         public bool stackedImageInBuffer = false;
@@ -61,6 +72,7 @@ namespace Aerolithe
         private UdpClient udpClient;
         private UdpClient udpClientOSC;
         private TaskCompletionSource<int> _turntablePositionTcs;
+        private TaskCompletionSource<int> _linearPositionTcs;
         private TaskCompletionSource<double> _actuatorAngleTcs;
         private CancellationTokenSource tokenSource;
 
@@ -74,69 +86,178 @@ namespace Aerolithe
 
         public Aerolithe()
         {
+
             InitializeComponent();
+
+
+            stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
+            turntableIpAddress = IPAddress.Parse("192.168.2.12");
+            scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
+            actuatorIpAddress = IPAddress.Parse("192.168.2.15");
+            stepperLiftNema23IpAddress = IPAddress.Parse("192.168.2.16");
+
+            devices = new[]
+                   {
+            ("Stepper Camera",        stepperCameraIpAddress),
+            ("Turntable",             turntableIpAddress),
+            ("Actuator",              actuatorIpAddress),
+            ("Stepper Lift NEMA23",   stepperLiftNema23IpAddress),
+            ("Scissor Lift",          scissorLiftIpAddress)
+            };
+
+
+            _labelMap = new Dictionary<string, Label>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Stepper Camera",       lbl_IP_stepperCamera },
+            { "Turntable",            lbl_IP_turnTable },
+            { "Scissor Lift",         lbl_IP_scissorLift },
+            { "Actuator",             lbl_IP_Actuator },
+            { "Stepper Lift NEMA23",  lbl_IP_stepperNema23Lift },
+        };
+
+            StartAutoPingLoop(TimeSpan.FromSeconds(60));
+
+
+            if (!NetworkChecks.IsOnAerolitheWifi(out var info))
+            {
+                MessageBox.Show("L'application ne fonctionnera pas comme il faut.\n\nVeuillez vérifier que vous êtes connectés au réseau wifi \"Aerolithe\" et que l'adresse IP de l'ordinateur est 192.168.2.4");
+
+            }
+
+
+            var nikonDir = Path.Combine(AppContext.BaseDirectory, "MyResources", "NikonLibs");
+            var oldPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            Environment.SetEnvironmentVariable("PATH", nikonDir + Path.PathSeparator + oldPath,
+                EnvironmentVariableTarget.Process);
+
+
+
             InitClasses();
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true; // Ensure the form receives key events
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
 
-            appSettings = appSettings.Load();
-            Debug.WriteLine(appSettings.ProjectPath);
-            if (!File.Exists(appSettings.ProjectPath)) appSettings.ProjectPath = "";
-            appSettings.Save();
-            if (!string.IsNullOrEmpty(appSettings.ProjectPath))
+            try
             {
-                Debug.WriteLine("here");
-                try
-                {
-                    projet = projet.Load(appSettings.ProjectPath);
-                    txtBox_nbrImg5deg.Text = appSettings.NbrImg5Deg.ToString();
-                    txtBox_nbrImg25deg.Text = appSettings.NbrImg25Deg.ToString();
-                    txtBox_nbrImg45deg.Text = appSettings.NbrImg45Deg.ToString();
-
-
-
-
-                    OpenProject(appSettings.ProjectPath);
-                    if (!string.IsNullOrWhiteSpace(projet.ImageFolderPath))
-                    {
-                        lbl_ImgFullPath.Text = projet.ImageFolderPath + "\\";
-                    }
-
-
-                    if (!string.IsNullOrWhiteSpace(projet.ImageNameBase))
-                    {
-                        AssembleImageName();
-                    }
-
-
-                    if (!string.IsNullOrWhiteSpace(projet.GetFocusStackPath()))
-                    {
-                        lbl_StackedPath.Text = projet.GetFocusStackPath();
-                    }
-
-
-                }
-                catch (Exception e)
-                {
-                    Debug.WriteLine("Erreur:" + e);
-                }
-
+                appSettings = appSettings.Load();
+                Debug.WriteLine(appSettings.ProjectPath);
+                if (!File.Exists(appSettings.ProjectPath)) appSettings.ProjectPath = "";
+                appSettings.Save();
             }
-            CamSetup();
+            catch (Exception e)
+            {
+                MessageBox.Show("Erreur durant appSettings.Load()\nerreur: " + e.Message);
+                throw;
+            }
+            try
+            {
+                if (!string.IsNullOrEmpty(appSettings.ProjectPath))
+                {
+                    try
+                    {
+                        projet = projet.Load(appSettings.ProjectPath);
+                        txtBox_nbrImg5deg.Text = appSettings.NbrImg5Deg.ToString();
+                        txtBox_nbrImg25deg.Text = appSettings.NbrImg25Deg.ToString();
+                        txtBox_nbrImg45deg.Text = appSettings.NbrImg45Deg.ToString();
+
+                        OpenProject(appSettings.ProjectPath);
+                        if (!string.IsNullOrWhiteSpace(projet.ImageFolderPath))
+                        {
+                            lbl_ImgFullPath.Text = projet.ImageFolderPath + "\\";
+                        }
+
+
+                        if (!string.IsNullOrWhiteSpace(projet.ImageNameBase))
+                        {
+                            AssembleImageName();
+                        }
+
+
+                        if (!string.IsNullOrWhiteSpace(projet.GetFocusStackPath()))
+                        {
+                            lbl_StackedPath.Text = projet.GetFocusStackPath();
+                        }
+
+
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.WriteLine("Erreur:" + e);
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Erreur durant project.Load()\nerreur: " + e.Message);
+                throw;
+            }
+
+            try
+            {
+                CamSetup();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Erreur durant CamSetup()\nerreur: " + e.Message);
+                throw;
+            }
             ToolTipsSetup();
             // ButtonSetup();
-            InitializeUdpClient();
-            Task.Run(() => listenUDP());
+            try
+            {
+                InitializeUdpClient();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Erreur durant InitializeUdpClient()\nerreur: " + e.Message);
+                throw;
+            }
+
+            //try
+            //{
+            //    Task.Run(() => listenUDP());
+            //    MessageBox.Show("Task.Run(() => listenUDP()) LANCÉ");
+            //}
+            //catch (Exception e)
+            //{
+            //    MessageBox.Show("Erreur durant Task.Run(() => listenUDP())\nerreur: " + e.Message);
+            //    throw;
+            //}
             SetupPen();
             SetTooltips();
-            getActuatorAngleFromEsp32();
-            getTurntablePosFromWaveshare();
+            try
+            {
+                getActuatorAngleFromEsp32();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Erreur durant getActuatorAngleFromEsp32()\nerreur: " + e.Message);
+                throw;
+            }
+            try
+            {
+                getTurntablePosFromWaveshare();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Erreur durant getTurntablePosFromWaveshare()\nerreur: " + e.Message);
+                throw;
+            }
             SetVariables();
 
             //tabControl1.SelectedTab = tabPage3; tabControl4.SelectedTab = tabControl4.TabPages[2];
-            UdpSendLiftStepperNema23MessageAsync("stepmotor readData");
+            try
+            {
+                UdpSendLiftStepperNema23MessageAsync("stepmotor readData");
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Erreur durant UdpSendLiftStepperNema23MessageAsync(\"stepmotor readData\")\nerreur: " + e.Message);
+                throw;
+            }
             Instance = this; // Définit l'instance globale pour la classe FocusStackReportControl
+            TestLoadNikonDlls();
         }
 
 
@@ -144,7 +265,7 @@ namespace Aerolithe
         {
             System.Windows.Forms.ToolTip toolTipMask = new System.Windows.Forms.ToolTip();
             System.Windows.Forms.ToolTip toolTipCutoff = new System.Windows.Forms.ToolTip();
-            toolTipCutoff.SetToolTip(btn_displayLineBlack, "Afficher le cutoff");
+
 
         }
 
@@ -325,59 +446,7 @@ namespace Aerolithe
             }
 
         }
-
-        //private async Task getTurntablePosFromWaveshare()
-        //{
-        //    int timeoutMs = 2000;
-        //    AppendTextToConsoleNL("- getTurntablePosFromWaveshare");
-        //    try
-        //    {
-        //        _turntablePositionTcs = new TaskCompletionSource<int>();
-
-        //        // Envoie la requête pour obtenir la position
-        //        await UdpSendTurnTableMessageAsync("Aerolithe_Asks_GetPosition");
-
-        //        await Task.Delay(500);
-        //        // Crée une tâche de timeout
-        //        var timeoutTask = Task.Delay(timeoutMs);
-        //        var completedTask = await Task.WhenAny(_turntablePositionTcs.Task, timeoutTask);
-
-        //        if (completedTask == timeoutTask)
-        //        {
-        //            AppendTextToConsoleNL("⚠ Timeout : pas de réponse Waveshare après " + timeoutMs + " ms");
-        //            return; // Sort sans bloquer
-        //        }
-
-        //        // Si la réponse est reçue avant le timeout
-        //        turntablePosition = await _turntablePositionTcs.Task;
-
-        //        // Mise à jour UI thread-safe
-        //        if (trkBar_turntable.InvokeRequired)
-        //        {
-        //            trkBar_turntable.Invoke(new Action(() =>
-        //            {
-        //                trkBar_turntable.Value = turntablePosition;
-        //                lbl_turntablePosition.Text = turntablePosition + "/ 4096";
-        //                lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)) + " degrés";
-        //                lbl_ttCurrentPos.Text = $"Table Tournante: {turntablePosition} / {ttTargetPosition}";
-        //            }));
-        //        }
-        //        else
-        //        {
-        //            trkBar_turntable.Value = turntablePosition;
-        //            lbl_turntablePosition.Text = turntablePosition + "/ 4096";
-        //            lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)) + " degrés";
-        //            lbl_ttCurrentPos.Text = $"Table Tournante: {turntablePosition} / {ttTargetPosition}";
-        //        }
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        AppendTextToConsoleNL("Erreur getTurntablePosFromWaveshare : " + e.Message);
-        //    }
-        //}
-
-
-
+             
 
         private async Task getActuatorAngleFromEsp32()
         {
@@ -639,7 +708,11 @@ namespace Aerolithe
         private void AppendFormattedTextInternal(string text, Color color, System.Windows.Forms.RichTextBox textbox)
         {
             textbox.SelectionStart = textbox.Text.Length;
-            if (mainConsoleScrollToCaret) textbox.ScrollToCaret();
+            if (mainConsoleScrollToCaret)
+            {
+                textbox.ScrollToCaret();
+            }
+
             textbox.Select(); // Active le caret sans voler le focus
             textbox.SelectionLength = 0;
 
@@ -666,11 +739,6 @@ namespace Aerolithe
         }
 
 
-
-        private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            Application.Exit();
-        }
         private void picBox_LiveView_Main_DoubleClick(object sender, EventArgs e)
         {
             if (picBox_LiveView_Main.Image != null)
@@ -971,7 +1039,10 @@ namespace Aerolithe
 
         private async void StopSequences()
         {
+            //tokenSource.Cancel();
+            _cts?.Cancel();
             _stopRequested = true;
+            StopTimer();
             if (btn_cancelPhotoShoot.InvokeRequired)
             {
                 btn_cancelPhotoShoot.Invoke(new Action(() =>
@@ -1924,25 +1995,11 @@ namespace Aerolithe
             UdpSendLiftStepperNema23MessageAsync("stepmotor moveto " + appSettings.VerticalLiftDefaultPos.ToString());
         }
 
-        private void chkBox_CalculerCentrage_CheckedChanged(object sender, EventArgs e)
-        {
-            if (chkBox_CalculerCentrage.Checked)
-            {
-                AppendTextToConsoleNL($"{offsets.offsetX} {offsets.offsetY}");
-                calculerCentre = true;
-            }
-            else
-            {
-                chkBox_CalculerCentrage.Text = "";
-                calculerCentre = false;
-            }
-        }
+
 
         private void btn_LiftAutoCenterRoutine_Click(object sender, EventArgs e)
         {
             calculerCentre = true;
-            chkBox_CalculerCentrage.Checked = calculerCentre;
-
             Task.Run(async () =>
             {
                 await Task.Delay(400); // délai avant la routine
@@ -2014,6 +2071,8 @@ namespace Aerolithe
         {
             ToggleCote(0);
             projet.Cote = 0;
+            string coteFolder = (projet.Cote == 0) ? "A" : "B";
+            lbl_CoteSerie.Text = coteFolder;
             projet.Save(appSettings.ProjectPath);
             AssembleImageName();
         }
@@ -2022,6 +2081,8 @@ namespace Aerolithe
         {
             ToggleCote(1);
             projet.Cote = 1;
+            string coteFolder = (projet.Cote == 0) ? "A" : "B";
+            lbl_CoteSerie.Text = coteFolder;
             projet.Save(appSettings.ProjectPath);
             AssembleImageName();
         }
@@ -2077,6 +2138,58 @@ namespace Aerolithe
             }
         }
 
-      
+
+
+        private bool isCalibrating = false;
+
+
+        private async void btn_LinearCalibration_Click(object sender, EventArgs e)
+        {
+
+            await RoutineCalibration();
+        }
+
+
+        private async void btn_GetSwtichesState_Click(object sender, EventArgs e)
+        {
+            //AppendTextToConsoleNL("État des switch demandé");
+            await GetLinearSwitchesStateFromLinear();
+        }
+
+        private void btn_AjoutUser_Click(object sender, EventArgs e)
+        {
+
+            string usr = PromptCreateUser();
+            if (usr != null)
+            {
+                CreateUser(usr);
+            }
+        }
+
+        private void Aerolithe_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            Application.Exit();
+            Application.ExitThread();
+        }
+
+        private async void btn_PingAll_Click(object sender, EventArgs e)
+        {
+            await PingAll();
+
+        }
+
+        private void btn_WarningPing_Click(object sender, EventArgs e)
+        {
+            tabControl1.SelectedTab = tabPage7;
+            tabControl2.SelectedTab = tabPage12;
+        }
+
+       
+
+        private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            _autoPingCts?.Cancel();
+            base.OnFormClosing(e);
+        }
     }
 }

@@ -10,6 +10,7 @@ using ScottPlot.WinForms;
 using ScottPlot;
 using System.Security.Permissions;
 using ScottPlot.Plottables;
+using ScottPlot.Statistics;
 
 namespace Aerolithe
 {
@@ -36,6 +37,7 @@ namespace Aerolithe
 
         public async Task nikonDoFocus()
         {
+            AppendTextToConsoleNL("- nikonDoFocus");
             try
             {
                 focusReadyTcs = new TaskCompletionSource<bool>();
@@ -59,6 +61,7 @@ namespace Aerolithe
 
         public async Task NikonAutofocus()
         {
+            AppendTextToConsoleNL("- NikonAutofocus");
             //var sw = Stopwatch.StartNew();
             //Debug.WriteLine($"[NikonAutoFocus()] lancement à : {sw.ElapsedMilliseconds} ms");
             try
@@ -231,6 +234,7 @@ namespace Aerolithe
 
         public async Task AutomaticFocusRoutine()
         {
+            AppendTextToConsoleNL("- AutomaticFocusRoutine");
             if (_stopRequested) return;
             if (btn_stopAutomaticFocusCapture.InvokeRequired)
             {
@@ -435,12 +439,20 @@ namespace Aerolithe
                 focusIterations = maxNbrPicturesAllowed;
             }
 
-
+           
             AppendTextToConsoleNL(focusIterations.ToString() + " photos seront prises à " + newStepSize.ToString() + " steps  (Settings / Détection flou / Nbr de photo max)");
 
             int iterationsCompletees = 0;
             for (int i = 0; i < focusIterations; i++)
             {
+                if (lbl_StackSerie.InvokeRequired)
+                {
+
+                    lbl_StackSerie.Invoke(new Action(() =>
+                    {
+                        lbl_StackSerie.Text = $"{i}/{focusIterations}";
+                    }));
+                }
                 ////AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
                 for (int j = 0; j <= 3; j++)
                 {
