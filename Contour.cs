@@ -61,142 +61,142 @@ namespace Aerolithe
             return binary.ToBitmap();
         }
 
-        private async Task CalculDuFlou(MemoryStream memoryStream)
-        {
-            // Convert MemoryStream to byte array
+        //private async Task CalculDuFlou(MemoryStream memoryStream)
+        //{
+        //    // Convert MemoryStream to byte array
 
-            byte[] byteArray = memoryStream.ToArray();
-            //AppendTextToConsoleNL("Byte array length: " + byteArray.Length);
+        //    byte[] byteArray = memoryStream.ToArray();
+        //    //AppendTextToConsoleNL("Byte array length: " + byteArray.Length);
 
-            // Convert byte array to Mat using VectorOfByte
-            using (VectorOfByte buf2 = new VectorOfByte(byteArray))
-            {
-                Mat frame = new Mat();
-                CvInvoke.Imdecode(buf2, ImreadModes.Color, frame);
-                //AppendTextToConsoleNL("Frame decoded: " + !frame.IsEmpty);
+        //    // Convert byte array to Mat using VectorOfByte
+        //    using (VectorOfByte buf2 = new VectorOfByte(byteArray))
+        //    {
+        //        Mat frame = new Mat();
+        //        CvInvoke.Imdecode(buf2, ImreadModes.Color, frame);
+        //        //AppendTextToConsoleNL("Frame decoded: " + !frame.IsEmpty);
 
-                if (!frame.IsEmpty)
-                {
-                    // Convert frame to grayscale
-                    Mat gray = new Mat();
-                    //ColorConversion colorConversion = (ColorConversion)comboBox_EmguConversion.SelectedIndex;
-                    //CvInvoke.CvtColor(frame, gray, colorConversion);
-                    //AppendTextToConsoleNL("Converted to grayscale");
-                    CvInvoke.CvtColor(frame, gray, ColorConversion.Bgr2Gray);
+        //        if (!frame.IsEmpty)
+        //        {
+        //            // Convert frame to grayscale
+        //            Mat gray = new Mat();
+        //            //ColorConversion colorConversion = (ColorConversion)comboBox_EmguConversion.SelectedIndex;
+        //            //CvInvoke.CvtColor(frame, gray, colorConversion);
+        //            //AppendTextToConsoleNL("Converted to grayscale");
+        //            CvInvoke.CvtColor(frame, gray, ColorConversion.Bgr2Gray);
 
-                    //Mat convertedFrame = new Mat();
-                    //int indx = comboBox_EmguColor.SelectedIndex;
+        //            //Mat convertedFrame = new Mat();
+        //            //int indx = comboBox_EmguColor.SelectedIndex;
 
-                    //switch (indx)
-                    //{
-                    //    case 0: // Red channel
-                    //        CvInvoke.ExtractChannel(frame, convertedFrame, 2); // 2 is the index for the red channel
-                    //        break;
-                    //    case 1: // Green channel
-                    //        CvInvoke.ExtractChannel(frame, convertedFrame, 1); // 1 is the index for the green channel
-                    //        break;
-                    //    case 2: // Blue channel
-                    //        CvInvoke.ExtractChannel(frame, convertedFrame, 0); // 0 is the index for the blue channel
-                    //        break;
-                    //    case 3: // Grayscale
-                    //        CvInvoke.CvtColor(frame, convertedFrame, ColorConversion.Bgr2Gray);
-                    //        break;
-                    //    default:
-                    //        CvInvoke.CvtColor(frame, convertedFrame, ColorConversion.Bgr2Gray); // Default to grayscale
-                    //        break;
-                    //}
-                    //Mat hsv = new Mat();
-                    //CvInvoke.CvtColor(convertedFrame, hsv, selectedConversion);
+        //            //switch (indx)
+        //            //{
+        //            //    case 0: // Red channel
+        //            //        CvInvoke.ExtractChannel(frame, convertedFrame, 2); // 2 is the index for the red channel
+        //            //        break;
+        //            //    case 1: // Green channel
+        //            //        CvInvoke.ExtractChannel(frame, convertedFrame, 1); // 1 is the index for the green channel
+        //            //        break;
+        //            //    case 2: // Blue channel
+        //            //        CvInvoke.ExtractChannel(frame, convertedFrame, 0); // 0 is the index for the blue channel
+        //            //        break;
+        //            //    case 3: // Grayscale
+        //            //        CvInvoke.CvtColor(frame, convertedFrame, ColorConversion.Bgr2Gray);
+        //            //        break;
+        //            //    default:
+        //            //        CvInvoke.CvtColor(frame, convertedFrame, ColorConversion.Bgr2Gray); // Default to grayscale
+        //            //        break;
+        //            //}
+        //            //Mat hsv = new Mat();
+        //            //CvInvoke.CvtColor(convertedFrame, hsv, selectedConversion);
 
-                    // Apply Laplacian filter
-                    Mat laplacian = new Mat();
-                    CvInvoke.Laplacian(gray, laplacian, DepthType.Cv64F);
-                    //AppendTextToConsoleNL("Laplacian applied");
+        //            // Apply Laplacian filter
+        //            Mat laplacian = new Mat();
+        //            CvInvoke.Laplacian(gray, laplacian, DepthType.Cv64F);
+        //            //AppendTextToConsoleNL("Laplacian applied");
 
-                    // Calculate mean and standard deviation
-                    Mat mean = new Mat();
-                    Mat stddev = new Mat();
-                    CvInvoke.MeanStdDev(laplacian, mean, stddev);
-                    //AppendTextToConsoleNL("Mean and standard deviation calculated");
+        //            // Calculate mean and standard deviation
+        //            Mat mean = new Mat();
+        //            Mat stddev = new Mat();
+        //            CvInvoke.MeanStdDev(laplacian, mean, stddev);
+        //            //AppendTextToConsoleNL("Mean and standard deviation calculated");
 
-                    // Retrieve the standard deviation value
-                    double[] stddevValues = new double[stddev.Rows * stddev.Cols];
-                    stddev.CopyTo(stddevValues);
-                    if (stddevValues.Length > 0)
-                    {
-                        double variance = Math.Pow(stddevValues[0], 2);
-                        //AppendTextToConsoleNL($"Variance: {variance}");
-                        blurrynessAmount = variance;
-                        // Update the label on the UI thread
-                        lbl_bluriness.Invoke((MethodInvoker)(() =>
-                        {
-                            lbl_bluriness.Text = variance.ToString("F2");
-                            //AppendTextToConsoleNL("Label updated");
-                        }));
+        //            // Retrieve the standard deviation value
+        //            double[] stddevValues = new double[stddev.Rows * stddev.Cols];
+        //            stddev.CopyTo(stddevValues);
+        //            if (stddevValues.Length > 0)
+        //            {
+        //                double variance = Math.Pow(stddevValues[0], 2);
+        //                //AppendTextToConsoleNL($"Variance: {variance}");
+        //                blurrynessAmount = variance;
+        //                // Update the label on the UI thread
+        //                lbl_bluriness.Invoke((MethodInvoker)(() =>
+        //                {
+        //                    lbl_bluriness.Text = variance.ToString("F2");
+        //                    //AppendTextToConsoleNL("Label updated");
+        //                }));
                        
-                    }
-                    else
-                    {
-                        //AppendTextToConsoleNL("Failed to retrieve standard deviation values");
-                    }
-                }
-                else
-                {
-                    //AppendTextToConsoleNL("Frame is empty");
-                }
-            }
-        }
+        //            }
+        //            else
+        //            {
+        //                //AppendTextToConsoleNL("Failed to retrieve standard deviation values");
+        //            }
+        //        }
+        //        else
+        //        {
+        //            //AppendTextToConsoleNL("Frame is empty");
+        //        }
+        //    }
+        //}
 
-        private async Task CalculDuFlouFromImage(Image<Bgr, byte> image)
-        {
+        //private async Task CalculDuFlouFromImage(Image<Bgr, byte> image)
+        //{
             
 
-            try
-            {
-                // Convertir en niveaux de gris
-                using (Mat gray = new Mat())
-                {
-                    CvInvoke.CvtColor(image, gray, ColorConversion.Bgr2Gray);
+        //    try
+        //    {
+        //        // Convertir en niveaux de gris
+        //        using (Mat gray = new Mat())
+        //        {
+        //            CvInvoke.CvtColor(image, gray, ColorConversion.Bgr2Gray);
 
-                    // Appliquer le filtre Laplacien
-                    using (Mat laplacian = new Mat())
-                    {
-                        CvInvoke.Laplacian(gray, laplacian, DepthType.Cv64F);
+        //            // Appliquer le filtre Laplacien
+        //            using (Mat laplacian = new Mat())
+        //            {
+        //                CvInvoke.Laplacian(gray, laplacian, DepthType.Cv64F);
 
-                        // Calculer la moyenne et l'écart-type
-                        using (Mat mean = new Mat())
-                        using (Mat stddev = new Mat())
-                        {
-                            CvInvoke.MeanStdDev(laplacian, mean, stddev);
+        //                // Calculer la moyenne et l'écart-type
+        //                using (Mat mean = new Mat())
+        //                using (Mat stddev = new Mat())
+        //                {
+        //                    CvInvoke.MeanStdDev(laplacian, mean, stddev);
 
-                            double[] stddevValues = new double[stddev.Rows * stddev.Cols];
-                            stddev.CopyTo(stddevValues);
+        //                    double[] stddevValues = new double[stddev.Rows * stddev.Cols];
+        //                    stddev.CopyTo(stddevValues);
 
-                            if (stddevValues.Length > 0)
-                            {
-                                double variance = Math.Pow(stddevValues[0], 2);
-                                blurrynessAmountMask = variance;
+        //                    if (stddevValues.Length > 0)
+        //                    {
+        //                        double variance = Math.Pow(stddevValues[0], 2);
+        //                        blurrynessAmountMask = variance;
 
-                                lbl_blurinessMask.Invoke((MethodInvoker)(() =>
-                                {
-                                    lbl_blurinessMask.Text = variance.ToString("F2");
-                                }));
+        //                        lbl_blurinessMask.Invoke((MethodInvoker)(() =>
+        //                        {
+        //                            lbl_blurinessMask.Text = variance.ToString("F2");
+        //                        }));
 
                                
-                            }
-                            else
-                            {
-                                //AppendTextToConsoleNL("Échec du calcul de l'écart-type.");
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleNL("Erreur dans CalculDuFlouFromImage : " + ex.Message);
-            }
-        }
+        //                    }
+        //                    else
+        //                    {
+        //                        //AppendTextToConsoleNL("Échec du calcul de l'écart-type.");
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        AppendTextToConsoleNL("Erreur dans CalculDuFlouFromImage : " + ex.Message);
+        //    }
+        //}
 
         public void MasqueAvecPixels()
         {

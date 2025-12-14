@@ -510,22 +510,20 @@ namespace Aerolithe
 
         }
 
+
         public static class NetworkChecks
         {
             /// <summary>
             /// Vérifie si l'interface Wi‑Fi est connectée au SSID "Aérolithe" et si son IPv4 est 192.168.2.4.
-            /// Retourne true si les deux conditions sont remplies, et fournit un message détaillé dans 'details'.
+            /// Retourne (ok, details) de manière asynchrone pour ne pas bloquer l'UI.
             /// </summary>
-            public static bool IsOnAerolitheWifi(out string details)
+            public static async Task<(bool ok, string details)> IsOnAerolitheWifiAsync(CancellationToken ct = default)
             {
-                details = "";
-
-                // 1) Récupérer SSID via netsh
-                string ssid = GetCurrentWifiSsidViaNetsh();
+                // 1) Récupérer SSID via netsh (async)
+                string ssid = await GetCurrentWifiSsidViaNetshAsync(ct).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(ssid))
                 {
-                    details = "Impossible d'obtenir le SSID Wi‑Fi (netsh). Carte non connectée ou permissions insuffisantes.";
-                    return false;
+                    return (false, "Impossible d'obtenir le SSID Wi‑Fi (netsh). Carte non connectée ou permissions insuffisantes.");
                 }
 
                 // Comparaison SSID (exacte, sensible aux accents, insensible à la casse)
@@ -533,39 +531,36 @@ namespace Aerolithe
                     string.Compare(ssid.Trim(), "Aérolithe", CultureInfo.InvariantCulture,
                                    CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) == 0;
 
-                // 2) Récupérer l'IPv4 de l'interface Wi‑Fi (Wireless80211)
-                var wifiIf = NetworkInterface.GetAllNetworkInterfaces()
+                // 2) Récupérer l'IPv4 de l'interface Wi‑Fi (Wireless80211) sans bloquer l'UI
+                var (wifiIf, ip) = await Task.Run(() =>
+                {
+                    var iface = NetworkInterface.GetAllNetworkInterfaces()
                                 .FirstOrDefault(ni =>
                                     ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 &&
                                     ni.OperationalStatus == OperationalStatus.Up);
 
+                    IPAddress? ipv4 = iface?.GetIPProperties()
+                                            ?.UnicastAddresses
+                                            ?.FirstOrDefault(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                                            ?.Address;
+                    return (iface, ipv4);
+                }, ct).ConfigureAwait(false);
+
                 if (wifiIf == null)
-                {
-                    details = $"SSID actuel: {ssid} ; aucune interface Wi‑Fi UP détectée.";
-                    return false;
-                }
-
-                var ip = wifiIf.GetIPProperties()
-                               .UnicastAddresses
-                               .FirstOrDefault(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-                               ?.Address;
-
+                    return (false, $"SSID actuel: {ssid} ; aucune interface Wi‑Fi UP détectée.");
                 if (ip == null)
-                {
-                    details = $"SSID actuel: {ssid} ; aucune adresse IPv4 sur l'interface {wifiIf.Name}.";
-                    return false;
-                }
+                    return (false, $"SSID actuel: {ssid} ; aucune adresse IPv4 sur l'interface {wifiIf.Name}.");
 
                 bool ipMatch = ip.Equals(IPAddress.Parse("192.168.2.4"));
-                details = $"SSID actuel: {ssid} ; Interface: {wifiIf.Name} ; IPv4: {ip}.";
+                string details = $"SSID actuel: {ssid} ; Interface: {wifiIf.Name} ; IPv4: {ip}.";
 
-                return onAerolitheSsid && ipMatch;
+                return (onAerolitheSsid && ipMatch, details);
             }
 
             /// <summary>
-            /// Appelle 'netsh wlan show interfaces' et parse le SSID de l'interface actuellement connectée.
+            /// Appelle 'netsh wlan show interfaces' et parse le SSID de l'interface actuellement connectée (async).
             /// </summary>
-            private static string GetCurrentWifiSsidViaNetsh()
+            private static async Task<string> GetCurrentWifiSsidViaNetshAsync(CancellationToken ct)
             {
                 try
                 {
@@ -578,13 +573,18 @@ namespace Aerolithe
                         CreateNoWindow = true,
                         StandardOutputEncoding = Encoding.UTF8
                     };
-                    using var p = Process.Start(psi);
-                    string output = p!.StandardOutput.ReadToEnd();
-                    p.WaitForExit();
 
-                    // Cherche la ligne "SSID                   : Aérolithe"
-                    // Parfois il y a "Nom SSID" en français selon la langue de Windows.
-                    // On tente plusieurs clés possibles.
+                    using var p = Process.Start(psi);
+                    if (p == null) return string.Empty;
+
+                    // Lecture asynchrone du flux de sortie
+                    string output = await p.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+
+                    // Permet d’annuler proprement si le token est déclenché
+                    if (!p.HasExited)
+                        p.WaitForExit();
+
+                    // Regex multi-langue (FR/EN) sur le SSID
                     var ssidRegexes = new[]
                     {
                 new Regex(@"^\s*SSID\s*:\s*(.+)$", RegexOptions.Multiline | RegexOptions.CultureInvariant),
@@ -597,12 +597,7 @@ namespace Aerolithe
                         if (m.Success)
                         {
                             var ssid = m.Groups[1].Value.Trim();
-                            // Éviter les suffixes (ex : "Aérolithe (1)") si Windows ajoute un numéro :
-                            if (ssid.EndsWith(")") && ssid.Contains("("))
-                            {
-                                // Facultatif : garde tel quel si tu utilises des SSID disjoints.
-                                // Ici, on ne coupe pas par défaut.
-                            }
+                            // Si Windows ajoute "(1)" pour distinguer, tu peux nettoyer ici selon ton besoin
                             return ssid;
                         }
                     }
@@ -615,8 +610,6 @@ namespace Aerolithe
                 }
             }
         }
-
-
 
 
 
@@ -741,4 +734,6 @@ namespace Aerolithe
 
 
     }
+
+
 }

@@ -58,11 +58,7 @@
             label17 = new Label();
             comboBox_shutterTime = new ComboBox();
             tableLayoutPanel37 = new TableLayoutPanel();
-            lbl_blurinessMask = new Label();
             chkBox_liveView = new CheckBox();
-            label54 = new Label();
-            lbl_bluriness = new Label();
-            label57 = new Label();
             tableLayoutPanel69 = new TableLayoutPanel();
             chkBox_applyMask = new CheckBox();
             chkBox_savePicture = new CheckBox();
@@ -895,11 +891,7 @@
             tableLayoutPanel37.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 62F));
             tableLayoutPanel37.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116F));
             tableLayoutPanel37.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel37.Controls.Add(lbl_blurinessMask, 4, 0);
             tableLayoutPanel37.Controls.Add(chkBox_liveView, 0, 0);
-            tableLayoutPanel37.Controls.Add(label54, 1, 0);
-            tableLayoutPanel37.Controls.Add(lbl_bluriness, 2, 0);
-            tableLayoutPanel37.Controls.Add(label57, 3, 0);
             tableLayoutPanel37.Dock = DockStyle.Fill;
             tableLayoutPanel37.Location = new Point(3, 34);
             tableLayoutPanel37.Name = "tableLayoutPanel37";
@@ -907,17 +899,6 @@
             tableLayoutPanel37.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel37.Size = new Size(437, 27);
             tableLayoutPanel37.TabIndex = 27;
-            // 
-            // lbl_blurinessMask
-            // 
-            lbl_blurinessMask.AutoSize = true;
-            lbl_blurinessMask.Dock = DockStyle.Fill;
-            lbl_blurinessMask.ForeColor = Color.White;
-            lbl_blurinessMask.Location = new Point(385, 0);
-            lbl_blurinessMask.Name = "lbl_blurinessMask";
-            lbl_blurinessMask.Size = new Size(49, 27);
-            lbl_blurinessMask.TabIndex = 90;
-            lbl_blurinessMask.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // chkBox_liveView
             // 
@@ -934,41 +915,6 @@
             chkBox_liveView.Text = "LiveView ON";
             chkBox_liveView.UseVisualStyleBackColor = true;
             chkBox_liveView.CheckedChanged += chkBox_liveView_CheckedChanged;
-            // 
-            // label54
-            // 
-            label54.AutoSize = true;
-            label54.Dock = DockStyle.Fill;
-            label54.ForeColor = Color.White;
-            label54.Location = new Point(98, 0);
-            label54.Name = "label54";
-            label54.Size = new Size(103, 27);
-            label54.TabIndex = 88;
-            label54.Text = "Flou du LiveView:";
-            label54.TextAlign = ContentAlignment.MiddleRight;
-            // 
-            // lbl_bluriness
-            // 
-            lbl_bluriness.Dock = DockStyle.Fill;
-            lbl_bluriness.ForeColor = Color.White;
-            lbl_bluriness.Location = new Point(205, 0);
-            lbl_bluriness.Margin = new Padding(1, 0, 1, 0);
-            lbl_bluriness.Name = "lbl_bluriness";
-            lbl_bluriness.Size = new Size(60, 27);
-            lbl_bluriness.TabIndex = 86;
-            lbl_bluriness.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // label57
-            // 
-            label57.AutoSize = true;
-            label57.Dock = DockStyle.Fill;
-            label57.ForeColor = Color.White;
-            label57.Location = new Point(269, 0);
-            label57.Name = "label57";
-            label57.Size = new Size(110, 27);
-            label57.TabIndex = 89;
-            label57.Text = "Flou du LV masqué:";
-            label57.TextAlign = ContentAlignment.MiddleRight;
             // 
             // tableLayoutPanel69
             // 
@@ -1441,11 +1387,13 @@
             // 
             // tabControl3
             // 
+            tabControl3.Appearance = TabAppearance.FlatButtons;
             tabControl3.Controls.Add(tabPage14);
             tabControl3.Controls.Add(tabPage15);
             tabControl3.Dock = DockStyle.Fill;
-            tabControl3.ImeMode = ImeMode.On;
-            tabControl3.ItemSize = new Size(215, 24);
+            tabControl3.HotTrack = true;
+            tabControl3.ImeMode = ImeMode.NoControl;
+            tabControl3.ItemSize = new Size(209, 24);
             tabControl3.Location = new Point(3, 135);
             tabControl3.Name = "tabControl3";
             tabControl3.Padding = new Point(86, 3);
@@ -5348,7 +5296,6 @@
         private Panel panel11;
         private Panel panel12;
         private TableLayoutPanel tableLayoutPanelMAIN;
-        private Label lbl_bluriness;
         private CheckBox chkBox_liveView;
         private TableLayoutPanel tableLayoutPanel1;
         private TableLayoutPanel tableLayoutPanel3;
@@ -5433,14 +5380,11 @@
         private Label lbl_Serie45Angle;
         private Label lbl_Serie25Angle;
         private Label lbl_Serie5Angle;
-        private Label lbl_blurinessMask;
-        private Label label57;
         private TabControl tabControl3;
         private TabPage tabPage14;
         private TabPage tabPage15;
         private Button btn_SelectFocusStackImg;
         private Label lbl_focusStackOutputDest;
-        private Label label54;
         private TableLayoutPanel tableLayoutPanel67;
         private Button btn_goToFSFolder;
         private Button btn_clearFocusStepVar;

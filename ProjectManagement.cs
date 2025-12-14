@@ -17,6 +17,7 @@ using System.Xml.Linq;
 using static Emgu.CV.DISOpticalFlow;
 using System.Runtime.InteropServices;
 using Microsoft.VisualBasic;
+using System.Collections.Concurrent;
 
 namespace Aerolithe
 {
@@ -113,7 +114,7 @@ namespace Aerolithe
             {
                 Directory.CreateDirectory(focusStackFolderNameB);
             }
-           
+
 
         }
 
@@ -193,8 +194,8 @@ namespace Aerolithe
 
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    projet.ImageFolderPath = folderDialog.SelectedPath;                    
-                    SavePrefsSettings();                    
+                    projet.ImageFolderPath = folderDialog.SelectedPath;
+                    SavePrefsSettings();
                     CreateAllFolders(projet.ImageFolderPath);
                     AssembleImageName();
                 }
@@ -220,7 +221,7 @@ namespace Aerolithe
                 }
             }
         }
-              
+
         private void UpdateSequencePadding()
         {
             int pad1, pad2, pad3, qte1, qte2, qte3;
@@ -237,7 +238,7 @@ namespace Aerolithe
             txtBox_seqPad3.ForeColor = Color.White;
 
         }
-              
+
         private void PreparationDossierDestTemp()
         {
             AppendTextToConsoleNL("- PreparationDossierDestTemp");
@@ -264,7 +265,7 @@ namespace Aerolithe
             //projet.ImageNameFull = projet.ImageNameBase + "_" + projet.FocusSerieIncrement.ToString("D2") + ".jpg";
             //projet.ImageFullPath = Path.Combine(projet.TempImageFolderPath, projet.ImageNameFull);
 
-            
+
             projet.Save(appSettings.ProjectPath);
             projet.FocusSerieIncrement++;
             AssembleImageName();
@@ -319,7 +320,7 @@ namespace Aerolithe
             await Task.Delay(50);
             projet.Save(appSettings.ProjectPath);
             await Task.Delay(100);
-            
+
         }
 
         public async Task DecrementImgSeq()
@@ -443,7 +444,7 @@ namespace Aerolithe
 
         private void CreateUser(string userName)
         {
-            string _userName = userName?? string.Empty;
+            string _userName = userName ?? string.Empty;
             Panel panel = new Panel
             {
                 Size = new Size(432, 26),
@@ -477,7 +478,7 @@ namespace Aerolithe
             Label lbl = new Label
             {
                 Text = _userName,
-                TextAlign = ContentAlignment.MiddleCenter, 
+                TextAlign = ContentAlignment.MiddleCenter,
                 ForeColor = Color.White,
                 Dock = DockStyle.Fill,
                 Font = new Font(FontFamily.GenericSansSerif, 12)
@@ -527,7 +528,7 @@ namespace Aerolithe
 
             tbl.Controls.Add(ckb, 0, 0);
             tbl.Controls.Add(lbl, 1, 0);
-            tbl.Controls.Add(dB, 2,0);
+            tbl.Controls.Add(dB, 2, 0);
 
             flowlayoutPanel_Messagerie.Controls.Add(panel);
         }
@@ -552,7 +553,7 @@ namespace Aerolithe
 
         // --- Méthodes utilitaires ---
 
-            public string GetImageNameFull()
+        public string GetImageNameFull()
         {
             // Format: Base_Rotation_Focus.jpg
             return $"{ImageNameBase}_{RotationSerieIncrement:D2}_{FocusSerieIncrement:D2}.jpg";
@@ -704,7 +705,7 @@ namespace Aerolithe
         private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim();
 
 
-       
+
     }
 
 
@@ -776,6 +777,103 @@ namespace Aerolithe
             }
 
             await Task.CompletedTask; // Pour respecter la signature async
+        }
+    }
+
+
+
+
+
+    public static class AppLifecycle
+    {
+        private static readonly ConcurrentBag<CancellationTokenSource> _ctsBag = new();
+        private static readonly ConcurrentBag<IDisposable> _disposablesBag = new();
+        private static readonly ConcurrentBag<Task> _tasksBag = new();
+
+        private static CancellationTokenSource _globalCts = new();
+        public static CancellationToken GlobalToken => _globalCts.Token;
+
+        public static CancellationTokenSource RegisterCts(CancellationTokenSource cts)
+        { if (cts != null) _ctsBag.Add(cts); return cts; }
+
+        public static T RegisterDisposable<T>(T disposable) where T : IDisposable
+        { if (disposable != null) _disposablesBag.Add(disposable); return disposable; }
+
+        public static void RegisterTask(Task task)
+        { if (task != null) _tasksBag.Add(task); }
+
+        public static CancellationTokenSource CreateLinkedCts(params CancellationToken[] tokens)
+        {
+            var linked = CancellationTokenSource.CreateLinkedTokenSource(
+                tokens?.Length > 0 ? new[] { _globalCts.Token }.Concat(tokens).ToArray()
+                                   : new[] { _globalCts.Token });
+            _ctsBag.Add(linked);
+            return linked;
+        }
+
+        public static void StopAllGraceful(int waitMsPerTask = 500)
+        {
+            try { _globalCts.Cancel(); } catch { }
+            foreach (var cts in _ctsBag) { try { cts.Cancel(); } catch { } }
+            foreach (var d in _disposablesBag) { try { d.Dispose(); } catch { } }
+            foreach (var t in _tasksBag) { try { t.Wait(waitMsPerTask); } catch { } }
+        }
+
+
+        public static void StopAllGraceful()
+            => StopAllGraceful(waitMsPerTask: 500);
+
+
+        public static void HardExitAfter(Action gracefulStop, int graceMs = 1500, bool killIfStuck = true)
+        {
+            try
+            {
+                gracefulStop?.Invoke();
+                Thread.Sleep(graceMs);
+                if (killIfStuck)
+                {
+                    try { System.Windows.Forms.Application.Exit(); } catch { }
+                    Environment.Exit(0);
+                }
+            }
+            catch { Environment.Exit(0); }
+        }
+
+        public static void Clear()
+        {
+            while (_ctsBag.TryTake(out _)) { }
+            while (_disposablesBag.TryTake(out _)) { }
+            while (_tasksBag.TryTake(out _)) { }
+            try { _globalCts.Dispose(); } catch { }
+            _globalCts = new CancellationTokenSource();
+        }
+
+        private static Mutex _singleInstanceMutex;
+
+        public static bool EnsureSingleInstance(string mutexName = "Aerolithe_SingleInstance")
+        {
+            bool createdNew = false;
+            _singleInstanceMutex = new Mutex(true, mutexName, out createdNew);
+            return createdNew;
+        }
+
+        public static void TryCloseOtherInstances(string processName = "Aerolithe", int waitMs = 1500)
+        {
+            try
+            {
+                var current = Process.GetCurrentProcess();
+                foreach (var p in Process.GetProcessesByName(processName))
+                {
+                    if (p.Id == current.Id) continue;
+                    try
+                    {
+                        if (p.CloseMainWindow()) p.WaitForExit(waitMs);
+                        if (!p.HasExited) p.Kill(); // dernier recours
+                    }
+                    catch { }
+                }
+            }
+            catch { }
         }
     }
 

@@ -117,13 +117,8 @@ namespace Aerolithe
 
             StartAutoPingLoop(TimeSpan.FromSeconds(60));
 
-
-            if (!NetworkChecks.IsOnAerolitheWifi(out var info))
-            {
-                MessageBox.Show("L'application ne fonctionnera pas comme il faut.\n\nVeuillez vérifier que vous êtes connectés au réseau wifi \"Aerolithe\" et que l'adresse IP de l'ordinateur est 192.168.2.4");
-
-            }
-
+            this.Shown += Aerolithe_ShownAsync;
+           
 
             var nikonDir = Path.Combine(AppContext.BaseDirectory, "MyResources", "NikonLibs");
             var oldPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
@@ -133,6 +128,7 @@ namespace Aerolithe
 
 
             InitClasses();
+
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true; // Ensure the form receives key events
             picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
@@ -214,16 +210,6 @@ namespace Aerolithe
                 throw;
             }
 
-            //try
-            //{
-            //    Task.Run(() => listenUDP());
-            //    MessageBox.Show("Task.Run(() => listenUDP()) LANCÉ");
-            //}
-            //catch (Exception e)
-            //{
-            //    MessageBox.Show("Erreur durant Task.Run(() => listenUDP())\nerreur: " + e.Message);
-            //    throw;
-            //}
             SetupPen();
             SetTooltips();
             try
@@ -258,8 +244,31 @@ namespace Aerolithe
             }
             Instance = this; // Définit l'instance globale pour la classe FocusStackReportControl
             TestLoadNikonDlls();
+
+            ToggleCote(projet.Cote);
+
         }
 
+
+     
+
+        private async void Aerolithe_ShownAsync(object? sender, EventArgs e)
+        {
+            // Appel asynchrone avec cancellation optionnelle
+            var (ok, info) = await NetworkChecks.IsOnAerolitheWifiAsync(AppLifecycle.GlobalToken);
+
+            if (!ok)
+            {
+                MessageBox.Show(
+                    "L'application ne fonctionnera pas comme il faut.\n\n" +
+                    "Veuillez vérifier que vous êtes connectés au réseau wifi \"Aerolithe\" et que l'adresse IP de l'ordinateur est 192.168.2.4\n\n" +
+                    info, // <-- détail utile (SSID actuel, interface, IP)
+                    "Réseau Aérolithe non détecté",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+            }
+        }
 
         private void SetTooltips()
         {
@@ -2178,10 +2187,11 @@ namespace Aerolithe
 
         }
 
-        private void btn_WarningPing_Click(object sender, EventArgs e)
+        private async void btn_WarningPing_Click(object sender, EventArgs e)
         {
             tabControl1.SelectedTab = tabPage7;
             tabControl2.SelectedTab = tabPage12;
+            await PingAll();
         }
 
        
@@ -2189,7 +2199,7 @@ namespace Aerolithe
         private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
         {
             _autoPingCts?.Cancel();
-            base.OnFormClosing(e);
+           // base.OnFormClosing(e);
         }
     }
 }
