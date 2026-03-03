@@ -1,26 +1,28 @@
 ﻿//Aerolithe.cs
 
 using Aerolithe.Properties;
+using Aerolithe.Properties;
+using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
+using Emgu.CV.XPhoto;
+using Microsoft.VisualBasic;
+using Nikon;
+using ScottPlot.Statistics;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Printing;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
-using System.Windows.Forms;
-using Emgu.CV;
-using Emgu.CV.CvEnum;
-using Emgu.CV.Structure;
-using Nikon;
-using System.Drawing;
-using System.Threading;
-using Emgu.CV.XPhoto;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-using static Emgu.Util.Platform;
-using System.Drawing.Printing;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
-using Aerolithe.Properties;
-using Microsoft.VisualBasic;
+using static Emgu.CV.DISOpticalFlow;
+using static Emgu.Util.Platform;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Aerolithe
 {
@@ -54,19 +56,13 @@ namespace Aerolithe
 
 
         public bool stackedImageInBuffer = false;
-        private bool isDragging = false;
-        private Point startPoint;
-        private bool mainConsoleScrollToCaret = true;
-        private bool focusStackConsoleScrollToCaret = true;
-        private bool stackConsoleScrollToCaret = true;
 
         public bool _DebugContinue = true;
 
         private bool isChangingCheckState = false;
         //private string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MyResources\\Models", "u2net.onnx");
 
-        private int[] serieId = null;
-        private int serieProgress = 0;
+        private int[] serieId = [];
 
 
         private UdpClient udpClient;
@@ -82,7 +78,9 @@ namespace Aerolithe
         public static Aerolithe Instance { get; private set; }
         //private CustomFlowLayoutPanel customFlowLayoutPanel1, customFlowLayoutPanel2, customFlowLayoutPanel3;
 
-
+        private bool StackConsoleView = false;
+        private bool MainConsoleScrollToCarret = true;
+        private bool StackConsoleScrollToCarret = true;
 
         public Aerolithe()
         {
@@ -118,7 +116,7 @@ namespace Aerolithe
             StartAutoPingLoop(TimeSpan.FromSeconds(60));
 
             this.Shown += Aerolithe_ShownAsync;
-           
+
 
             var nikonDir = Path.Combine(AppContext.BaseDirectory, "MyResources", "NikonLibs");
             var oldPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
@@ -250,7 +248,7 @@ namespace Aerolithe
         }
 
 
-     
+
 
         private async void Aerolithe_ShownAsync(object? sender, EventArgs e)
         {
@@ -455,7 +453,7 @@ namespace Aerolithe
             }
 
         }
-             
+
 
         private async Task getActuatorAngleFromEsp32()
         {
@@ -602,6 +600,7 @@ namespace Aerolithe
 
         public async Task<bool> WaitForActuator(double target)
         {
+            AppendTextToConsoleNL("* WaitForActuator");
             double delta = 3;
             int timeoutMs = 10000;
             DateTime startTime = DateTime.Now;
@@ -717,7 +716,7 @@ namespace Aerolithe
         private void AppendFormattedTextInternal(string text, Color color, System.Windows.Forms.RichTextBox textbox)
         {
             textbox.SelectionStart = textbox.Text.Length;
-            if (mainConsoleScrollToCaret)
+            if (MainConsoleScrollToCarret)
             {
                 textbox.ScrollToCaret();
             }
@@ -863,7 +862,7 @@ namespace Aerolithe
             Task.Run(async () =>
             {
                 tokenSource = new CancellationTokenSource();
-                await SequencePrisePhotoTotale(tokenSource.Token);
+                await SequencePrisePhotoTotale(tokenSource.Token, 0, 0);
             });
         }
 
@@ -894,7 +893,7 @@ namespace Aerolithe
             Task.Run(async () =>
             {
                 tokenSource = new CancellationTokenSource();
-                await SequencePrisePhotoTotale(tokenSource.Token);
+                await SequencePrisePhotoTotale(tokenSource.Token, 0, 0);
             });
         }
 
@@ -927,7 +926,7 @@ namespace Aerolithe
                 if (_stopRequested) return;
                 await WaitForActuator(5);
                 tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence, 0);
             });
         }
 
@@ -956,7 +955,7 @@ namespace Aerolithe
                 if (_stopRequested) return;
                 await WaitForActuator(25);
                 tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence, 0);
             });
 
         }
@@ -987,7 +986,7 @@ namespace Aerolithe
                 if (_stopRequested) return;
                 await WaitForActuator(45);
                 tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence, 0);
             });
         }
 
@@ -1940,17 +1939,9 @@ namespace Aerolithe
 
         private void btn_consoleScrollToCaret_Click(object sender, EventArgs e)
         {
-            if (mainConsoleScrollToCaret)
-            {
-                mainConsoleScrollToCaret = false;
-                btn_consoleScrollToCaret.FlatAppearance.BorderSize = 1;
-            }
+            MainConsoleScrollToCarret = !MainConsoleScrollToCarret;
+            btn_consoleScrollToCaret.BackColor = MainConsoleScrollToCarret ? Color.FromArgb(60, 60, 60) : Color.FromArgb(25, 25, 25);
 
-            else
-            {
-                mainConsoleScrollToCaret = true;
-                btn_consoleScrollToCaret.FlatAppearance.BorderSize = 0;
-            }
         }
 
         private int lastHorizontalValue = -1;
@@ -2101,6 +2092,8 @@ namespace Aerolithe
         {
             btn_coteA.BackColor = (newCote == 0) ? Color.FromArgb(0, 120, 0) : Color.FromArgb(30, 30, 30);
             btn_coteB.BackColor = (newCote == 1) ? Color.FromArgb(0, 120, 0) : Color.FromArgb(30, 30, 30);
+            string coteFolder = (projet.Cote == 0) ? "A" : "B";
+            lbl_CoteSerie.Text = coteFolder;
         }
 
 
@@ -2194,12 +2187,117 @@ namespace Aerolithe
             await PingAll();
         }
 
-       
+
 
         private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
         {
             _autoPingCts?.Cancel();
-           // base.OnFormClosing(e);
+            // base.OnFormClosing(e);
+        }
+
+        private void repriseDerniereSequence_Click(object sender, EventArgs e)
+        {
+            _autoPingCts?.Cancel();
+            if (projet.Serie < 0) projet.Serie = 0;
+
+            string cote = lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
+
+            DialogResult result = MessageBox.Show(
+                $"Reprendre à partir de la dernière séquence réussie?\nSérie {projet.Serie}\nAngle {angleIndexes[projet.Serie]}\nCôté {projet.Cote}\nRotation {projet.RotationSerieIncrement}",
+                "Confirmation",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question
+            );
+
+            if (result == DialogResult.Yes)
+            {
+                lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
+                lbl_ElevSerie.Text = angleIndexes[projet.Serie].ToString();
+
+                Task.Run(async () =>
+                {
+                    tokenSource = new CancellationTokenSource();
+                    await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
+                });
+            }
+
+        }
+
+
+        private void btn_StackConsoleView_Click(object sender, EventArgs e)
+        {
+            StackConsoleView = !StackConsoleView;
+            btn_StackConsoleView.BackColor = StackConsoleView ? Color.FromArgb(60, 60, 60) : Color.FromArgb(25, 25, 25);
+        }
+
+        private void btn_ffmpegJobClear_Click(object sender, EventArgs e)
+        {
+            flowPanelReports.Controls.Clear();
+        }
+
+
+
+        private void RepriseSpecifiqueToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            tabControl1.SelectedTab = tabPage3;
+            tabControl4.SelectedTab = tabPage18;
+
+        //    _autoPingCts?.Cancel();
+
+        //    // Valeurs par défaut proposées = valeurs actuelles de 'projet'
+        //    string serieStr = Interaction.InputBox(
+        //        "Entrer la Série (0 (= 5°)\n1 (= 25°)\n2 (= 45°)) :",
+        //        "Paramètre - Série",
+        //        projet.Serie.ToString());
+
+        //    if (string.IsNullOrWhiteSpace(serieStr)) return; // Annulé
+        //    if (!int.TryParse(serieStr, out int serie) || serie < 0 || serie > 2)
+        //    {
+        //        MessageBox.Show("Série invalide.\nEntrer 0, 1 ou 2", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        //        return;
+        //    }
+
+
+        //    string coteStr = Interaction.InputBox(
+        //        "Entrer le Côté (A ou B) :",
+        //        "Paramètre - Côté",
+        //        (projet.Cote == 0 ? "A" : "B"));
+
+        //    if (string.IsNullOrWhiteSpace(coteStr)) return; // Annulé
+        //    coteStr = coteStr.Trim().ToUpperInvariant();
+        //    int cote = coteStr == "A" ? 0 : (coteStr == "B" ? 1 : -1);
+        //    if (cote == -1)
+        //    {
+        //        MessageBox.Show("Côté invalide. Valeurs permises : A ou B.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        //        return;
+        //    }
+
+
+        //    string rotationStr = Interaction.InputBox(
+        //        "Entrer le numéro du dossier à partir duquel débuter\nSe référer possiblement au dernier ou à l'avant dernier dossier de photos réussies\nEx: 49",
+        //        "Paramètre - Rotation",
+        //        projet.RotationSerieIncrement.ToString());
+
+        //    if (string.IsNullOrWhiteSpace(rotationStr)) return; // Annulé
+        //    if (!int.TryParse(rotationStr, out int rotation))
+        //    {
+        //        MessageBox.Show("Rotation invalide.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        //        return;
+        //    }
+
+        //    // Mise à jour du modèle et de l'UI
+        //    projet.Serie = serie;
+        //    projet.Cote = cote;
+        //    projet.RotationSerieIncrement = rotation;
+
+        //    lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
+        //    lbl_ElevSerie.Text = angleIndexes[projet.Serie].ToString();
+
+        //    Task.Run(async () =>
+        //    {
+        //        tokenSource = new CancellationTokenSource();
+        //        await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
+        //    });
         }
     }
 }

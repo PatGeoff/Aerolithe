@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV;
+using Emgu.CV.Structure;
 using System.Drawing.Imaging;
 using Emgu.CV.Util;
 using System.Diagnostics;
@@ -352,6 +353,11 @@ namespace Aerolithe
             {
                 // if (ex.Message Z= eNkMAIDResult.kNkMAIDResult_DeviceBusy) 
             }
+        }
+
+        private async Task DrawHistogram()
+        {
+
         }
     }
 }

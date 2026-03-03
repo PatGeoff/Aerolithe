@@ -268,24 +268,32 @@ namespace Aerolithe
 
             projet.Save(appSettings.ProjectPath);
             projet.FocusSerieIncrement++;
-            AssembleImageName();
+           
         }
 
-        private async Task AssembleImageName()
+        private void AssembleImageName()
         {
-
-            if (lbl_ImgFullPath.InvokeRequired)
+            AppendTextToConsoleNL(" - AssembleImageName()");
+            try
             {
-                lbl_ImgFullPath.Invoke(new Action(() =>
+                if (lbl_ImgFullPath.InvokeRequired)
+                {
+                    lbl_ImgFullPath.Invoke(new Action(() =>
+                    {
+                        lbl_ImgFullPath.Text = projet.GetImageFullPath();
+                        lbl_StackedPath.Text = projet.GetFocusStackPath();
+                    }));
+                }
+                else
                 {
                     lbl_ImgFullPath.Text = projet.GetImageFullPath();
                     lbl_StackedPath.Text = projet.GetFocusStackPath();
-                }));
+                }
             }
-            else
+            catch (Exception ex)
             {
-                lbl_ImgFullPath.Text = projet.GetImageFullPath();
-                lbl_StackedPath.Text = projet.GetFocusStackPath();
+                AppendTextToConsoleNL(ex.Message);
+
             }
 
         }
@@ -297,20 +305,37 @@ namespace Aerolithe
         }
 
         private async Task ResetIncrementation()
-        {
-            oldImgIncr = 0;
-            projet.FocusSerieIncrement = 0;
-            AssembleImageName();
-            projet.Save(appSettings.ProjectPath);
+        {            
+            AppendTextToConsoleNL(" * ResetIncrementation()");
+
+            try
+            {
+                oldImgIncr = 0;
+                projet.FocusSerieIncrement = 0;
+                AssembleImageName();
+                projet.Save(appSettings.ProjectPath);
+            }
+            catch (Exception e)
+            {
+                AppendTextToConsoleNL(e.Message);
+            }
 
         }
 
         private void ResetSerieIncrement()
         {
-            projet.RotationSerieIncrement = 0;
-            projet.FocusSerieIncrement = 0;
-            AssembleImageName();
-            projet.Save(appSettings.ProjectPath);
+            AppendTextToConsoleNL(" * ResetIncrementation()");
+            try
+            {
+                projet.RotationSerieIncrement = 0;
+                projet.FocusSerieIncrement = 0;
+                AssembleImageName();
+                projet.Save(appSettings.ProjectPath);
+            }
+            catch (Exception e)
+            {
+                AppendTextToConsoleNL(e.Message);
+            }
         }
 
         public async Task IncrementImgSeq()
@@ -550,6 +575,7 @@ namespace Aerolithe
         public int StepSize { get; set; } = 30;                // Paramètre global
         public int Cote { get; set; } = 0;                      // 0 = B, 1 = A
 
+        public int Serie { get; set; } = 0;                     // Série 0 = 5° , etc
 
         // --- Méthodes utilitaires ---
 
@@ -599,13 +625,7 @@ namespace Aerolithe
         }
     }
 
-    public class MessagingUserSetting
-    {
-        public string Email { get; set; } = string.Empty;
-        public bool Send { get; set; } = true;
-    }
-
-
+   
     public class AppSettings
     {
         private static readonly string FolderPath = Path.Combine(
@@ -675,39 +695,45 @@ namespace Aerolithe
             File.WriteAllText(SettingsFilePath, json);
         }
 
-        public void UpsertMessagingUser(string email, bool send)
-        {
-            email = NormalizeEmail(email);
-            var existing = MessagingUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
-            if (existing is null)
-            {
-                MessagingUsers.Add(new MessagingUserSetting { Email = email, Send = send });
-            }
-            else
-            {
-                existing.Send = send;
-            }
-        }
+        //public void UpsertMessagingUser(string email, bool send)
+        //{
+        //    email = NormalizeEmail(email);
+        //    var existing = MessagingUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+        //    if (existing is null)
+        //    {
+        //        MessagingUsers.Add(new MessagingUserSetting { Email = email, Send = send });
+        //    }
+        //    else
+        //    {
+        //        existing.Send = send;
+        //    }
+        //}
 
-        public void RemoveMessagingUser(string email)
-        {
-            email = NormalizeEmail(email);
-            MessagingUsers.RemoveAll(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
-        }
+        //public void RemoveMessagingUser(string email)
+        //{
+        //    email = NormalizeEmail(email);
+        //    MessagingUsers.RemoveAll(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+        //}
 
-        public bool GetSendForEmail(string email, bool defaultValue = true)
-        {
-            email = NormalizeEmail(email);
-            var item = MessagingUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
-            return item?.Send ?? defaultValue;
-        }
+        //public bool GetSendForEmail(string email, bool defaultValue = true)
+        //{
+        //    email = NormalizeEmail(email);
+        //    var item = MessagingUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+        //    return item?.Send ?? defaultValue;
+        //}
 
-        private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim();
+        //private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim();
 
 
 
     }
 
+
+    public class MessagingUserSetting
+    {
+        public string Email { get; set; } = string.Empty;
+        public bool Send { get; set; } = true;
+    }
 
     public class TimerController
     {

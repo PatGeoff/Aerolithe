@@ -1,23 +1,24 @@
-﻿using System;
+﻿using Emgu.CV;
+using Emgu.CV.Cuda;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Reg;
+using Emgu.CV.Structure;
+using Emgu.CV.Util;
+using Nikon;
+using SharpOSC;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using System.Threading.Tasks;
-using Timer = System.Windows.Forms.Timer;
-using Nikon;
-using Emgu.CV.CvEnum;
-using Emgu.CV.Structure;
-using Emgu.CV;
-
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
-using System.IO;
-using Emgu.CV.Reg;
-using System.Drawing.Imaging;
-using System.Runtime.InteropServices;
-using System.Numerics;
-using SharpOSC;
-using Emgu.CV.Cuda;
-using System.Diagnostics;
+using Timer = System.Windows.Forms.Timer;
 
 namespace Aerolithe
 {
@@ -25,7 +26,6 @@ namespace Aerolithe
     {
         public NikonManager manager;
         public NikonDevice device;
-        public NikonImage nkImage;
         public NikonRange driveStep;
         private Timer liveViewTimer;
         public Image capturedImage;
@@ -39,6 +39,16 @@ namespace Aerolithe
         private Image liveViewCompositedImage;
         private readonly object imageLock = new object();
         public Bitmap maskBitmapLive;
+        
+
+
+        // Taille du rendu histogramme (pixels)
+        private static readonly Size _histRenderSize = new Size(256, 120);
+
+        // Paramètres d'histogramme (256 bins sur [0..256))
+        private static readonly int[] _histBins = new[] { 256 };
+        private static readonly RangeF[] _histRange = new[] { new RangeF(0, 256) };
+
 
 
         private bool isProcessing = false;
@@ -184,6 +194,24 @@ namespace Aerolithe
                     using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
                     {
                         CvInvoke.Imdecode(imageView.JpegBuffer, ImreadModes.Color, background);
+
+
+
+                        //_ = Task.Run(() =>
+                        //{
+                        //    try
+                        //    {
+                        //        AfficheHistogramme(background, picBox_Histogramme); // ton PictureBox de luminance
+                        //    }
+                        //    finally
+                        //    {
+
+                        //    }
+                           
+                        //});
+
+
+
                         float gammaValue = trackBar_Gamma.Value / 10.0f;
 
 
@@ -238,7 +266,7 @@ namespace Aerolithe
                             // Tu peux stocker cette carte dans une variable globale ou l'utiliser dans AutomaticFocusMapping()
                             currentLiveViewFocusMap = new FocusMap
                             {
-                                FocusPosition = focusStackStepVar, // à définir selon ton système <-----  @(*#%&(@&$(&$  ICI
+                                FocusPosition = focusStackStepVar, // <-----  @(*#%&(@&$(&$  ----   ICI 
                                 SharpnessGrid = sharpnessGrid
                             };
                             // Création de l'image avec les blocs flous
@@ -275,6 +303,12 @@ namespace Aerolithe
                             }
                         }
                         lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";
+
+                        Mat histSource = background.Clone();
+
+                      
+
+
                         background.Dispose();
                     }
 
@@ -293,6 +327,28 @@ namespace Aerolithe
             finally
             {
                 isProcessing = false;
+            }
+        }
+
+
+
+        private void ShowValueHistogramHSV(Mat bgrSource, PictureBox targetLum)
+        {
+            try
+            {
+                using (var small = new Mat())
+                {
+                    double scale = 320.0 / bgrSource.Width;
+                    int newW = 320;
+                    int newH = Math.Max(1, (int)Math.Round(bgrSource.Height * scale));
+                    CvInvoke.Resize(bgrSource, small, new Size(newW, newH), 0, 0, Inter.Linear);
+
+                   // CvInvoke.CalcHist(bgrSource, new )
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"HSV value histogram error: {ex.Message}");
             }
         }
 

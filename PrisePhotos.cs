@@ -12,6 +12,7 @@ using System.Threading;
 using System.CodeDom;
 using System.Diagnostics;
 using System.Windows.Forms;
+using System.Drawing.Text;
 
 namespace Aerolithe
 {
@@ -31,12 +32,13 @@ namespace Aerolithe
         private int totalPhotos = 0;
         private bool calibrationInitialeLift = false;
         private string[] angleStr = { "5", "25", "45" };
+        private int[] angleIndexes = [ 5, 25, 45 ];
 
         private Stopwatch _stopwatch = new Stopwatch();
         private CancellationTokenSource _cts;
 
 
-        private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie)
+        private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie, int rotationDepart)
         {
             if (appSettings.ProjectPath == null)
             {
@@ -61,20 +63,31 @@ namespace Aerolithe
             cancellationToken.ThrowIfCancellationRequested();
             await WaitForTurntablePositionAsync(0);
             await Task.Delay(800);
-            int divider = 4096 / serieId[serie];
+            int divider = 0;
+            try
+            {
+                divider = 4096 / serieId[serie];
+            }
+            catch (Exception e)
+            {
+                AppendTextToConsoleNL(e.Message);
+                AppendTextToConsoleNL("S'assurer qu'il y a bien un nombre d'image valide aux séquences 1, 2 et 3 dans l'onglet Caméra/Automation");
+            }
 
             await ResetIncrementation();
 
             AppendTextToConsoleNL("Série " + (serie).ToString() + "/" + serieId[serie].ToString());
             try
             {
-                for (int i = 1; i <= serieId[serie]; i++)
+                for (int i = rotationDepart; i <= serieId[serie]; i++)
                 {
                     if (_stopRequested) return;
 
                     oldImgIncr = projet.FocusSerieIncrement = 0;
-                    projet.Save(appSettings.ProjectPath);
                     _Serie = i;
+                    projet.Serie = _Serie;
+                    projet.Save(appSettings.ProjectPath);
+                    
                     if (_stopRequested) return;
 
                     PreparationDossierDestTemp();
@@ -109,7 +122,7 @@ namespace Aerolithe
                         }));
                     }
 
-                   
+
 
 
                     //projet.FocusSerieIncrement = i - 1 + paddingNbr[serie];
@@ -227,63 +240,111 @@ namespace Aerolithe
 
         }
 
-        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
+        private async Task SequencePrisePhotoIndividuelleAsync(CancellationToken ct, int serie, int angle, int rotation)
         {
+            AppendTextToConsoleNL($"actuator {angle}");
+            await UdpSendActuatorMessageAsync($"actuator {angle}");
+            if (_stopRequested) return;
+
+            await WaitForActuator(angle);
+            if (_stopRequested) return;
+
+            await Task.Delay(1000);
+
+            await RoutineCalibration();
+            if (_stopRequested) return;
+
+            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
+
+            tokenSource = new CancellationTokenSource();
+            await PrisePhotoSequenceAsync(tokenSource.Token, serie, rotation);
+            if (_stopRequested) return;
+
+            AppendTextToConsoleNL($"Séquence { + 1} terminée");
 
 
+        }
+
+        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken, int serieIndex, int rotation)
+        {
             _stopwatch.Start();
             _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
+
+
+            for (int i = serieIndex; i < angleIndexes.Length; i++)
+            {
+                AppendTextToConsoleNL($"i = {i} et angleIndexes.Length = {angleIndexes.Length}");
+                try
+                {
+                    await SequencePrisePhotoIndividuelleAsync(cancellationToken, i,  angleIndexes[i], rotation);
+                    projet.Serie = i;
+                    projet.Save(appSettings.ProjectPath);
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL($"Erreur à * SequencePrisePhotoTotale:  {ex.Message}");
+                }
+                
+            }
            
-            await UdpSendActuatorMessageAsync("actuator 5");
-            if (_stopRequested) return;
-            await WaitForActuator(5);
-            if (_stopRequested) return;
-            await Task.Delay(1000);
-            await RoutineCalibration();
-            if (_stopRequested) return;
-            cancellationToken.ThrowIfCancellationRequested();
-            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
-            currentSequence = 0;
-            tokenSource = new CancellationTokenSource();
-            if (_stopRequested) return;
-            await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-            if (_stopRequested) return;
-            AppendTextToConsoleNL("Séquence 1 terminée");
-            await Task.Delay(1000);
-            if (_stopRequested) return;
 
-            await UdpSendActuatorMessageAsync("actuator 25");
-            if (_stopRequested) return;
-            await WaitForActuator(25);
-            if (_stopRequested) return;
-            await Task.Delay(1000);
-            await RoutineCalibration();
-            cancellationToken.ThrowIfCancellationRequested();
-            //await WaitForActuatorPosition(25, cancellationToken);
-            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
-            currentSequence = 1;
-            tokenSource = new CancellationTokenSource();
-            await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-            if (_stopRequested) return;
-            AppendTextToConsoleNL("Séquence 2 terminée");
-
-            await Task.Delay(1000);
-            await UdpSendActuatorMessageAsync("actuator 45");
-            if (_stopRequested) return;
-            await WaitForActuator(45);
-            if (_stopRequested) return;
-            await Task.Delay(1000);
-            await RoutineCalibration(); 
-            cancellationToken.ThrowIfCancellationRequested();
-            AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
-            currentSequence = 2;
-            tokenSource = new CancellationTokenSource();
-            await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-            if (_stopRequested) return;
-            AppendTextToConsoleNL("Séquence 3 terminée");
-            _cts?.Cancel();
-            _stopwatch.Stop();
         }
+
+        //private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
+        //{
+        //    _stopwatch.Start();
+        //    _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
+
+        //    await UdpSendActuatorMessageAsync("actuator 5");
+        //    if (_stopRequested) return;
+        //    await WaitForActuator(5);
+        //    if (_stopRequested) return;
+        //    await Task.Delay(1000);
+        //    await RoutineCalibration();
+        //    if (_stopRequested) return;
+        //    cancellationToken.ThrowIfCancellationRequested();
+        //    AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
+        //    currentSequence = 0;
+        //    tokenSource = new CancellationTokenSource();
+        //    if (_stopRequested) return;
+        //    await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+        //    if (_stopRequested) return;
+        //    AppendTextToConsoleNL("Séquence 1 terminée");
+        //    await Task.Delay(1000);
+        //    if (_stopRequested) return;
+
+        //    await UdpSendActuatorMessageAsync("actuator 25");
+        //    if (_stopRequested) return;
+        //    await WaitForActuator(25);
+        //    if (_stopRequested) return;
+        //    await Task.Delay(1000);
+        //    await RoutineCalibration();
+        //    cancellationToken.ThrowIfCancellationRequested();
+        //    //await WaitForActuatorPosition(25, cancellationToken);
+        //    AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
+        //    currentSequence = 1;
+        //    tokenSource = new CancellationTokenSource();
+        //    await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+        //    if (_stopRequested) return;
+        //    AppendTextToConsoleNL("Séquence 2 terminée");
+
+        //    await Task.Delay(1000);
+        //    await UdpSendActuatorMessageAsync("actuator 45");
+        //    if (_stopRequested) return;
+        //    await WaitForActuator(45);
+        //    if (_stopRequested) return;
+        //    await Task.Delay(1000);
+        //    await RoutineCalibration(); 
+        //    cancellationToken.ThrowIfCancellationRequested();
+        //    AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
+        //    currentSequence = 2;
+        //    tokenSource = new CancellationTokenSource();
+        //    await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
+        //    if (_stopRequested) return;
+        //    AppendTextToConsoleNL("Séquence 3 terminée");
+        //    _cts?.Cancel();
+        //    _stopwatch.Stop();
+        //}
 
 
         private async Task<bool> WaitForTurntablePositionAsync(int targetPos, int tolerance = 80, int timeoutMs = 10000, int checkInterval = 100)

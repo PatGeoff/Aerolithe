@@ -266,7 +266,7 @@ namespace Aerolithe
 
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        if (chkBox_displayStackProgress.Checked)
+                        if (StackConsoleView)
                         {
                             await AppendTextToFFMPEGConsoleNL(e.Data);
                         }

@@ -58,6 +58,7 @@ namespace Aerolithe
 
         public async Task UdpSendActuatorMessageAsync(string message)
         {
+            AppendTextToConsoleNL("* UdpSendActuatorMessageAsync");
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -191,7 +192,6 @@ namespace Aerolithe
             // Optionally await both if you want to wait for them to complete
             // await Task.WhenAll(listenMessagesTask, listenOSCMessagesTask);
         }
-
 
         private async Task ListenForMessages()
         {
