@@ -246,6 +246,8 @@ namespace Aerolithe
 
             ToggleCote(projet.Cote);
 
+            if (appSettings.ProjectPath != null) CreateAllFolders(Path.GetDirectoryName(appSettings.ProjectPath));
+
         }
 
 

@@ -22,7 +22,7 @@ namespace Aerolithe
         private int currentSequence = 0;
         private TaskCompletionSource<bool> imageReadyTcs;
         private int lastPercent = -1;
-        private Size panelSize = new Size(125, 100);
+        private Size panelSize = new Size(250, 200);
         private int oldImgIncr = -1;
 
 
@@ -82,7 +82,7 @@ namespace Aerolithe
                             else
                                 savePicture = chkBox_savePicture.Checked;
 
-                            if (savePicture && projet.ImageFolderPath != null && projet.ImageNameBase != null)
+                            if (savePicture && projet.ImageFolderPath != null && projet.ImageNameBase != null )
                             {
                                 PreparationDossierDestTemp();
                                 PreparationNomImage();
@@ -93,7 +93,12 @@ namespace Aerolithe
                                 {
                                     processedBitmap.Save(saveStream, ImageFormat.Jpeg);
                                     saveStream.Position = 0;
+
+                                   
+                                   
                                     SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPath());
+                                    
+                                    
 
                                     Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPath(), panelSize));
                                 }
@@ -133,7 +138,8 @@ namespace Aerolithe
             var maskGray = maskBitmapLive.ToImage<Gray, byte>();
             var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
 
-            var invertedMask = resizedMask.Not();
+            //var invertedMask = resizedMask.Not();
+            var invertedMask = resizedMask;
             var maskBgr = invertedMask.Convert<Bgr, byte>();
 
             sourceImage._And(maskBgr);
@@ -328,6 +334,8 @@ namespace Aerolithe
                 }
             }
         }
+
+        
 
 
         private void ManualFocus(int up, double newFocusValue)

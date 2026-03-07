@@ -41,7 +41,7 @@ namespace Aerolithe
         private readonly object imageLock = new object();
         public Bitmap maskBitmapLive;
         public bool maskFreeze = false;
-        
+
 
 
         // Taille du rendu histogramme (pixels)
@@ -116,7 +116,7 @@ namespace Aerolithe
             }
             liveViewTimer.Start();
 
-            driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);    
+            driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);
             lbl_driveStepMin.Text = driveStep.Min.ToString();
             lbl_driveStepMax.Text = driveStep.Max.ToString();
             hScrollBar_driveStep.Minimum = (int)driveStep.Min;
@@ -193,23 +193,12 @@ namespace Aerolithe
 
                     Mat background = new Mat();
 
+
                     using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
                     {
                         CvInvoke.Imdecode(imageView.JpegBuffer, ImreadModes.Color, background);
-                        //_ = Task.Run(() =>
-                        //{
-                        //    try
-                        //    {
-                        //        AfficheHistogramme(background, picBox_Histogramme); // ton PictureBox de luminance
-                        //    }
-                        //    finally
-                        //    {
-
-                        //    }                           
-                        //});
 
                         float gammaValue = trackBar_Gamma.Value / 10.0f;
-
 
                         using (Mat lut = new Mat(1, 256, DepthType.Cv8U, 1))
                         {
@@ -222,7 +211,6 @@ namespace Aerolithe
                         else if (maskBitmapLive == null) maskBitmapLive = await BrightnessMaskFromBytes(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value, false);
 
                         picBox_liveMaskLum.Image = maskBitmapLive;
-
 
                         var localBitmap = (Bitmap)maskBitmapLive.Clone();
 
@@ -237,79 +225,77 @@ namespace Aerolithe
                             }));
                         });
 
-                      
-
                         using (var sourceImage = background.ToImage<Bgr, byte>())
                         using (var maskGray = maskBitmapLive.ToImage<Gray, byte>())
-                        using (var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear))
+                        using (var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Nearest)) // (option: Inter.Nearest pour masque binaire)
                         {
-
-
                             using (var invertedMask = resizedMask.Not())
-                            using (var maskBgr = invertedMask.Convert<Bgr, byte>())
-                            {
-                               //sourceImage._And(maskBgr);
-                               //picBox_MLMask.Image = sourceImage.ToBitmap();
-                            }
+                            using (var maskBgr = invertedMask.Convert<Bgr, byte>()) { }
 
-                            // ✅ Calcul de la carte de netteté locale
+                            //        // ✅ Calcul de la carte de netteté locale
                             Mat grayImage = background.ToImage<Gray, byte>().Mat;
 
-                            int blockSize = trackBar_blobCount.Value * 16;
+                            int blockSize = trackBar_blobCount.Value * 8;
 
-                            double[,] sharpnessGrid = ComputeSharpnessGrid(grayImage, blockSize);
-                            //double[,] sharpnessGrid = ComputeSharpnessGridMasked(grayImage, resizedMask.Mat, blockSize, 0.5);
 
-                            // Tu peux stocker cette carte dans une variable globale ou l'utiliser dans AutomaticFocusMapping()
-                            currentLiveViewFocusMap = new FocusMap
+
+                            using var grayForFocus = new Mat();
+                            CvInvoke.CvtColor(background, grayForFocus, ColorConversion.Bgr2Gray);
+
+                            // 3) Érosion pour s’éloigner de la bordure (marge = ~blockSize/4)
+                            //int borderPx = Math.Max(4, blockSize / 4);
+                            using var kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
+                            using var safeMask = new Mat();
+                            CvInvoke.Erode(resizedMask, safeMask, kernel, new Point(-1, -1), 1, BorderType.Constant, new MCvScalar(0));
+                            //CvInvoke.Erode(resizedMask, safeMask, kernel, new Point(-1, -1), borderPx, BorderType.Constant, new MCvScalar(0));
+
+
+                            double[,] sharpnessGrid = ComputeSharpnessGridMaskedROI(grayForFocus, safeMask, blockSize, 0.8);
+
+
+                            //double[,] sharpnessGrid = ComputeSharpnessGrid(grayImage, blockSize);
+
+                                // Tu peux stocker cette carte dans une variable globale ou l'utiliser dans AutomaticFocusMapping()
+                                currentLiveViewFocusMap = new FocusMap
                             {
                                 FocusPosition = focusStackStepVar, // <-----  @(*#%&(@&$(&$  ----   ICI 
                                 SharpnessGrid = sharpnessGrid
                             };
 
-                            // Création de l'image avec les blocs flous
-                            Image<Bgr, byte> overlayImage = background.ToImage<Bgr, byte>();
+                                    // Création de l'image avec les blocs nets
+                                    Image<Bgr, byte> overlayImage = background.ToImage<Bgr, byte>();
 
-
-                            for (int y = 0; y < sharpnessGrid.GetLength(0); y++)
-                            {
-                                for (int x = 0; x < sharpnessGrid.GetLength(1); x++)
-                                {
-                                    double sharpness = sharpnessGrid[y, x];
-                                    blurThreshold = (double)trackBar_blurThreshold.Value;
-                                    if (sharpness >= blurThreshold)
+                                    for (int y = 0; y < sharpnessGrid.GetLength(0); y++)
                                     {
-                                        Rectangle rect = new Rectangle(x * blockSize, y * blockSize, blockSize, blockSize);
-                                        overlayImage.Draw(rect, new Bgr(Color.LimeGreen), 1); // contour verte pour les zones nettes
+                                        for (int x = 0; x < sharpnessGrid.GetLength(1); x++)
+                                        {
+                                            double sharpness = sharpnessGrid[y, x];
+                                            blurThreshold = (double)trackBar_blurThreshold.Value;
+                                            if (sharpness >= blurThreshold)
+                                            {
+                                                Rectangle rect = new Rectangle(x * blockSize, y * blockSize, blockSize, blockSize);
+                                                overlayImage.Draw(rect, new Bgr(Color.LimeGreen), 1); // contour vert pour les zones nettes
+                                            }
+                                        }
                                     }
 
+                                    blurredBlocks = sharpnessGrid.Cast<double>().Count(v => v >= blurThreshold);
+                                    lbl_blobCount.Text = blurredBlocks.ToString();
+
+                                    // Affichage selon l'état de la checkbox
+                                    if (projet.ViewSharpnessOverlay)
+                                    {
+                                        picBox_LiveView_Main.Image = overlayImage.ToBitmap();
+                                    }
+                                    else
+                                    {
+                                        picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
+                                    }
                                 }
+
+
+
                             }
-
-                            blurredBlocks = sharpnessGrid.Cast<double>().Count(v => v >= blurThreshold);
-                            lbl_blobCount.Text = blurredBlocks.ToString();
-
-
-                            // Affichage selon l'état de la checkbox
-                            if (projet.ViewSharpnessOverlay)
-                            {
-                                picBox_LiveView_Main.Image = overlayImage.ToBitmap();
-                            }
-                            else
-                            {
-                                picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
-                            }
-                        }
-                        lbl_LiveViewStreamSize.Text = $"LiveView Width: {background.Width} Height: {background.Height};";
-
-                        Mat histSource = background.Clone();
-
-                      
-
-
-                        background.Dispose();
-                    }
-
                 }
                 else
                 {
@@ -341,7 +327,7 @@ namespace Aerolithe
                     int newH = Math.Max(1, (int)Math.Round(bgrSource.Height * scale));
                     CvInvoke.Resize(bgrSource, small, new Size(newW, newH), 0, 0, Inter.Linear);
 
-                   // CvInvoke.CalcHist(bgrSource, new )
+                    // CvInvoke.CalcHist(bgrSource, new )
                 }
             }
             catch (Exception ex)

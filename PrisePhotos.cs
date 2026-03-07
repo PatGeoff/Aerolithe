@@ -89,7 +89,7 @@ namespace Aerolithe
             AppendTextToConsoleNL("Série " + (serie + 1).ToString() + "/" + serieId[serie].ToString());
             try
             {
-                for (int i = rotationDepart; i <= serieId[serie]; i++)
+                for (int i = rotationDepart; i <= serieId[serie]-1; i++)
                 {
                     if (_stopRequested) return;
 
@@ -138,7 +138,7 @@ namespace Aerolithe
                             string cote = (projet.Cote == 0) ? "A" : "B";
                             lbl_CoteSerie.Text = cote;
                             lbl_ElevSerie.Text = $"{angleStr[serie]}°";
-                            lbl_RotSerie.Text = $"{i}/{serieId[serie]}";
+                            lbl_RotSerie.Text = $"{i+1}/{serieId[serie]}";
                         }));
                     }
 

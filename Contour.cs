@@ -307,9 +307,6 @@ namespace Aerolithe
         }
 
 
-       
-
-       
 
         public void PostFocusStackMask()
         {
@@ -323,7 +320,7 @@ namespace Aerolithe
                     var maskGray = maskBitmapLive.ToImage<Emgu.CV.Structure.Gray, byte>();
 
                     var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
-                    var invertedMask = resizedMask.Not();
+                    var invertedMask = resizedMask;
                     var maskBgr = invertedMask.Convert<Emgu.CV.Structure.Bgr, byte>();
 
                     sourceImage._And(maskBgr);

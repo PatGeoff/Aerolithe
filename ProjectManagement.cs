@@ -101,6 +101,7 @@ namespace Aerolithe
             //if (projet.Cote == 1) projet.ImageFolderPath = imagesFolderNameSides;
             var focusStackFolderName = Path.Combine(projectDirectory, "images", "focusStack");
             projet.FocusStackFolderName = focusStackFolderName;
+
             if (!Directory.Exists(focusStackFolderName))
             {
                 Directory.CreateDirectory(focusStackFolderName);
@@ -116,6 +117,17 @@ namespace Aerolithe
                 Directory.CreateDirectory(focusStackFolderNameB);
             }
 
+            var maskFolderName = Path.Combine(focusStackFolderName, "masques_A");
+            if (!Directory.Exists(maskFolderName))
+            {
+                Directory.CreateDirectory(maskFolderName);
+            }
+
+            maskFolderName = Path.Combine(focusStackFolderName, "masques_B");
+            if (!Directory.Exists(maskFolderName))
+            {
+                Directory.CreateDirectory(maskFolderName);
+            }
 
         }
 
@@ -417,8 +429,8 @@ namespace Aerolithe
 
             // Configuration générale (facultatif)
             toolTip.AutoPopDelay = 5000;
-            toolTip.InitialDelay = 200;
-            toolTip.ReshowDelay = 200;
+            toolTip.InitialDelay = 50;
+            toolTip.ReshowDelay = 50;
             toolTip.ShowAlways = true;
 
             // ToolTips spécifiques
@@ -428,7 +440,12 @@ namespace Aerolithe
             toolTip.SetToolTip(lbl_BlockAmountBlurDetet, "Grosseur des carrés de détection, les valeurs étant 16,32,64 ou 128");
             toolTip.SetToolTip(textBox_minDetect, "Seuil minimum de détections pour considérer une image d'avoir une partie nette.");
             toolTip.SetToolTip(textBox_nbrPhotosFS, "Seuil maximal de photos prises lors d'un focus stack");
-
+            toolTip.SetToolTip(lbl_FreezeMask, "Freeze le masque ci-haut");
+            toolTip.SetToolTip(btn_freezeMask, "Freeze le masque ci-haut");
+            toolTip.SetToolTip(lbl_saveMaskinFolder, "N'applique pas le masque mais le sauvegarde dans les dossiers ../images/focusstack/masques_A ou masques_B");
+            toolTip.SetToolTip(btn_maskSave, "N'applique pas le masque mais le sauvegarde dans les dossiers ../images/focusstack/masques_A ou masques_B");
+            toolTip.SetToolTip(lbl_applyMaskFS, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
+            toolTip.SetToolTip(btn_maskAuto, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
         }
 
 
@@ -611,9 +628,9 @@ namespace Aerolithe
 
         public string GetMaskFolderPath()
         {
-            // ex: C:\Projet\images\focusStack_A
+            // ex: C:\Projet\images\focusStack\Masks
             string coteFolder = (Cote == 0) ? "focusStack_A" : "focusStack_B";
-            return Path.Combine(ImageFolderPath, $"_Mask_{FocusStackFolderName}", coteFolder);
+            return Path.Combine(ImageFolderPath, $"_Masks_{FocusStackFolderName}", coteFolder);
         }
 
         public string GetImageFullPath()
