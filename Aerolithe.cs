@@ -115,7 +115,8 @@ namespace Aerolithe
 
             StartAutoPingLoop(TimeSpan.FromSeconds(60));
 
-            this.Shown += Aerolithe_ShownAsync;
+            // Vérifie si on est sur le réseau WIFI Aérolithe et popup un message d'erreur sinon. À remettre à la version finale
+            //this.Shown += Aerolithe_ShownAsync;
 
 
             var nikonDir = Path.Combine(AppContext.BaseDirectory, "MyResources", "NikonLibs");
@@ -669,7 +670,7 @@ namespace Aerolithe
 
         public async Task AppendTextToConsoleNL(string message) // New Line
         {
-
+            
             System.Windows.Forms.RichTextBox textbox = txtBox_Console;
 
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
@@ -2242,62 +2243,86 @@ namespace Aerolithe
             tabControl1.SelectedTab = tabPage3;
             tabControl4.SelectedTab = tabPage18;
 
-        //    _autoPingCts?.Cancel();
+            //    _autoPingCts?.Cancel();
 
-        //    // Valeurs par défaut proposées = valeurs actuelles de 'projet'
-        //    string serieStr = Interaction.InputBox(
-        //        "Entrer la Série (0 (= 5°)\n1 (= 25°)\n2 (= 45°)) :",
-        //        "Paramètre - Série",
-        //        projet.Serie.ToString());
+            //    // Valeurs par défaut proposées = valeurs actuelles de 'projet'
+            //    string serieStr = Interaction.InputBox(
+            //        "Entrer la Série (0 (= 5°)\n1 (= 25°)\n2 (= 45°)) :",
+            //        "Paramètre - Série",
+            //        projet.Serie.ToString());
 
-        //    if (string.IsNullOrWhiteSpace(serieStr)) return; // Annulé
-        //    if (!int.TryParse(serieStr, out int serie) || serie < 0 || serie > 2)
-        //    {
-        //        MessageBox.Show("Série invalide.\nEntrer 0, 1 ou 2", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        //        return;
-        //    }
-
-
-        //    string coteStr = Interaction.InputBox(
-        //        "Entrer le Côté (A ou B) :",
-        //        "Paramètre - Côté",
-        //        (projet.Cote == 0 ? "A" : "B"));
-
-        //    if (string.IsNullOrWhiteSpace(coteStr)) return; // Annulé
-        //    coteStr = coteStr.Trim().ToUpperInvariant();
-        //    int cote = coteStr == "A" ? 0 : (coteStr == "B" ? 1 : -1);
-        //    if (cote == -1)
-        //    {
-        //        MessageBox.Show("Côté invalide. Valeurs permises : A ou B.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        //        return;
-        //    }
+            //    if (string.IsNullOrWhiteSpace(serieStr)) return; // Annulé
+            //    if (!int.TryParse(serieStr, out int serie) || serie < 0 || serie > 2)
+            //    {
+            //        MessageBox.Show("Série invalide.\nEntrer 0, 1 ou 2", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //        return;
+            //    }
 
 
-        //    string rotationStr = Interaction.InputBox(
-        //        "Entrer le numéro du dossier à partir duquel débuter\nSe référer possiblement au dernier ou à l'avant dernier dossier de photos réussies\nEx: 49",
-        //        "Paramètre - Rotation",
-        //        projet.RotationSerieIncrement.ToString());
+            //    string coteStr = Interaction.InputBox(
+            //        "Entrer le Côté (A ou B) :",
+            //        "Paramètre - Côté",
+            //        (projet.Cote == 0 ? "A" : "B"));
 
-        //    if (string.IsNullOrWhiteSpace(rotationStr)) return; // Annulé
-        //    if (!int.TryParse(rotationStr, out int rotation))
-        //    {
-        //        MessageBox.Show("Rotation invalide.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        //        return;
-        //    }
+            //    if (string.IsNullOrWhiteSpace(coteStr)) return; // Annulé
+            //    coteStr = coteStr.Trim().ToUpperInvariant();
+            //    int cote = coteStr == "A" ? 0 : (coteStr == "B" ? 1 : -1);
+            //    if (cote == -1)
+            //    {
+            //        MessageBox.Show("Côté invalide. Valeurs permises : A ou B.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //        return;
+            //    }
 
-        //    // Mise à jour du modèle et de l'UI
-        //    projet.Serie = serie;
-        //    projet.Cote = cote;
-        //    projet.RotationSerieIncrement = rotation;
 
-        //    lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
-        //    lbl_ElevSerie.Text = angleIndexes[projet.Serie].ToString();
+            //    string rotationStr = Interaction.InputBox(
+            //        "Entrer le numéro du dossier à partir duquel débuter\nSe référer possiblement au dernier ou à l'avant dernier dossier de photos réussies\nEx: 49",
+            //        "Paramètre - Rotation",
+            //        projet.RotationSerieIncrement.ToString());
 
-        //    Task.Run(async () =>
-        //    {
-        //        tokenSource = new CancellationTokenSource();
-        //        await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
-        //    });
+            //    if (string.IsNullOrWhiteSpace(rotationStr)) return; // Annulé
+            //    if (!int.TryParse(rotationStr, out int rotation))
+            //    {
+            //        MessageBox.Show("Rotation invalide.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //        return;
+            //    }
+
+            //    // Mise à jour du modèle et de l'UI
+            //    projet.Serie = serie;
+            //    projet.Cote = cote;
+            //    projet.RotationSerieIncrement = rotation;
+
+            //    lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
+            //    lbl_ElevSerie.Text = angleIndexes[projet.Serie].ToString();
+
+            //    Task.Run(async () =>
+            //    {
+            //        tokenSource = new CancellationTokenSource();
+            //        await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
+            //    });
+        }
+
+        private void btn_maskAuto_Click(object sender, EventArgs e)
+        {
+            projet.MaskAuto = !projet.MaskAuto;
+            btn_maskAuto.Text = projet.MaskAuto ? "" : "";
+        }
+
+        private void btn_maskSave_Click(object sender, EventArgs e)
+        {
+            projet.MaskSave = !projet.MaskSave;
+            btn_maskSave.Text = projet.MaskSave ? "" : "";
+        }
+
+        private void btn_ShowSharpnessOverlay_Click(object sender, EventArgs e)
+        {
+            projet.ViewSharpnessOverlay = !projet.ViewSharpnessOverlay;
+            btn_ShowSharpnessOverlay.Text = projet.ViewSharpnessOverlay ? "" : "";
+        }
+
+        private void btn_freezeMask_Click(object sender, EventArgs e)
+        {
+            maskFreeze = !maskFreeze;
+            btn_freezeMask.Text = maskFreeze ? "" : "";
         }
     }
 }

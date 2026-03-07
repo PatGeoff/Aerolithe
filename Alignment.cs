@@ -18,53 +18,60 @@ namespace Aerolithe
         bool cameraRailFarLimitSwitchPressed = false;
         bool cameraRailNearLimitSwitchPressed = false;
 
-        private async Task CalculeDuCentrageAsync(Bitmap maskBitmap)
-       // private async Task<(double offsetX, double offsetY, Rectangle boundingBox, bool hasBlackOnBorder)> CalculeDuCentrageAsync(Bitmap maskBitmap)
+
+        private async Task CalculeDuCentrageAsync(Bitmap maskBitmap, int polarity /* 0: noir, 1: blanc */)
         {
             await Task.Run(() =>
-            //return await Task.Run(() =>
             {
                 int width = maskBitmap.Width;
                 int height = maskBitmap.Height;
 
-                int minX = width, maxX = 0, minY = height, maxY = 0;
-                bool hasBlackOnBorder = false;
+                int minX = width, maxX = -1, minY = height, maxY = -1;
+                bool hasFgOnBorder = false;
 
                 var rect = new Rectangle(0, 0, width, height);
                 var bmpData = maskBitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, maskBitmap.PixelFormat);
 
                 try
                 {
-                    int bytesPerPixel = Image.GetPixelFormatSize(maskBitmap.PixelFormat) / 8;
+                    int bpp = Image.GetPixelFormatSize(maskBitmap.PixelFormat) / 8;
                     int stride = bmpData.Stride;
                     int totalBytes = stride * height;
                     byte[] pixelBuffer = new byte[totalBytes];
 
                     System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, pixelBuffer, 0, totalBytes);
 
+                    bool fgIsBlack = (polarity == 0);
+
                     for (int y = 0; y < height; y++)
                     {
                         int rowStart = y * stride;
                         for (int x = 0; x < width; x++)
                         {
-                            int index = rowStart + x * bytesPerPixel;
-
+                            int index = rowStart + x * bpp;
                             if (index + 2 >= pixelBuffer.Length) break;
 
-                            byte b = pixelBuffer[index];
+                            byte b = pixelBuffer[index + 0];
                             byte g = pixelBuffer[index + 1];
                             byte r = pixelBuffer[index + 2];
+                            // Si ARGB (bpp == 4), alpha = pixelBuffer[index + 3] (inutile ici)
 
-                            if (r == 0 && g == 0 && b == 0) // pixel noir
+                            bool isForeground =
+                                fgIsBlack
+                                ? (r == 0 && g == 0 && b == 0)
+                                : (r == 255 && g == 255 && b == 255);
+
+                            if (!isForeground) continue;
+
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+
+                            if (!hasFgOnBorder)
                             {
-                                if (x < minX) minX = x;
-                                if (x > maxX) maxX = x;
-                                if (y < minY) minY = y;
-                                if (y > maxY) maxY = y;
-
-                                // Vérifier si pixel noir touche un bord
                                 if (x == 0 || x == width - 1 || y == 0 || y == height - 1)
-                                    hasBlackOnBorder = true;
+                                    hasFgOnBorder = true;
                             }
                         }
                     }
@@ -74,12 +81,11 @@ namespace Aerolithe
                     maskBitmap.UnlockBits(bmpData);
                 }
 
-
-                if (maxX == 0 && maxY == 0)
+                if (maxX < 0 || maxY < 0) // Aucun pixel foreground
                 {
                     offsets.offsetX = 0;
                     offsets.offsetY = 0;
-                    offsets.hasBlackOnBorder = false; // Aucun pixel noir trouvé
+                    offsets.hasBlackOnBorder = false; // ou renommer en hasFgOnBorder
                 }
                 else
                 {
@@ -91,16 +97,11 @@ namespace Aerolithe
 
                     offsets.offsetX = centerX - imgCenterX;
                     offsets.offsetY = centerY - imgCenterY;
-                    offsets.hasBlackOnBorder = hasBlackOnBorder; // ✅ Mettre la vraie valeur
+                    offsets.hasBlackOnBorder = hasFgOnBorder; // garde le champ existant
                 }
-
-
-                //Rectangle boundingBox = new Rectangle(minX, minY, maxX - minX, maxY - minY);
-                //offsets.offsetX = offsetX;
-                //offsets.offsetY = offsetY;
-                //return (offsetX, offsetY, boundingBox, hasBlackOnBorder);
             });
         }
+
 
         private async Task RoutineLineareReculerHorsCadre()
         {
@@ -162,6 +163,11 @@ namespace Aerolithe
 
         private async Task RoutineAutoCentrage(int timeoutMs = 20000)
         {
+            if (!offsets.hasBlackOnBorder && !cancelAutoCentrage) {
+
+                RoutineCalibrationLineareNearest();
+            }
+
             AppendTextToConsoleNL("- RoutineAutoCentrage");
             cancelAutoCentrage = false;
 
@@ -210,6 +216,8 @@ namespace Aerolithe
 
                 Debug.WriteLine($"Move Y: {stepY} (offsetY={offsetY})");
 
+                if (offsets.hasBlackOnBorder) await RoutineLineareReculerHorsCadre();
+
                 await Task.Delay(delayMs);
             }
 
@@ -230,6 +238,7 @@ namespace Aerolithe
 
                 if (isCalibrating) return;
                 isCalibrating = true;
+                await nikonDoFocus();
                 await RoutineAutoCentrage();
                 await RoutineCalibrationLineareNearest();
                 await nikonDoFocus();

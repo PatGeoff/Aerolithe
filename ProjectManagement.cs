@@ -18,6 +18,7 @@ using static Emgu.CV.DISOpticalFlow;
 using System.Runtime.InteropServices;
 using Microsoft.VisualBasic;
 using System.Collections.Concurrent;
+using System.DirectoryServices.ActiveDirectory;
 
 namespace Aerolithe
 {
@@ -570,12 +571,21 @@ namespace Aerolithe
 
         public string ImageFolderPath { get; set; }         // ex: "C:\\Projet\\images"
         public string FocusStackFolderName { get; set; }    // ex: "focusStack"
-
+                
+        
         public int MaxPicturesAllowed { get; set; } = 30;        // Paramètre global
         public int StepSize { get; set; } = 30;                // Paramètre global
         public int Cote { get; set; } = 0;                      // 0 = B, 1 = A
 
         public int Serie { get; set; } = 0;                     // Série 0 = 5° , etc
+
+        public bool MaskAuto { get; set; } = true;
+
+        public bool MaskSave { get; set; } = true;
+
+        public bool ViewSharpnessOverlay { get; set; } = true;
+
+      
 
         // --- Méthodes utilitaires ---
 
@@ -597,6 +607,13 @@ namespace Aerolithe
             // ex: C:\Projet\images\focusStack_A
             string coteFolder = (Cote == 0) ? "focusStack_A" : "focusStack_B";
             return Path.Combine(ImageFolderPath, $"{FocusStackFolderName}", coteFolder);
+        }
+
+        public string GetMaskFolderPath()
+        {
+            // ex: C:\Projet\images\focusStack_A
+            string coteFolder = (Cote == 0) ? "focusStack_A" : "focusStack_B";
+            return Path.Combine(ImageFolderPath, $"_Mask_{FocusStackFolderName}", coteFolder);
         }
 
         public string GetImageFullPath()
@@ -650,6 +667,10 @@ namespace Aerolithe
         public int VerticalLiftMaxPos { get; set; }
 
         public int VerticalLiftDefaultPos { get; set; }
+
+        public bool MaskAuto { get; set; }
+
+        public bool MaskSave { get; set; }
 
         public List<MessagingUserSetting> MessagingUsers { get; set; } = new();
 

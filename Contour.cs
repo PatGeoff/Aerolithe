@@ -61,188 +61,255 @@ namespace Aerolithe
             return binary.ToBitmap();
         }
 
-        //private async Task CalculDuFlou(MemoryStream memoryStream)
-        //{
-        //    // Convert MemoryStream to byte array
 
-        //    byte[] byteArray = memoryStream.ToArray();
-        //    //AppendTextToConsoleNL("Byte array length: " + byteArray.Length);
 
-        //    // Convert byte array to Mat using VectorOfByte
-        //    using (VectorOfByte buf2 = new VectorOfByte(byteArray))
-        //    {
-        //        Mat frame = new Mat();
-        //        CvInvoke.Imdecode(buf2, ImreadModes.Color, frame);
-        //        //AppendTextToConsoleNL("Frame decoded: " + !frame.IsEmpty);
-
-        //        if (!frame.IsEmpty)
-        //        {
-        //            // Convert frame to grayscale
-        //            Mat gray = new Mat();
-        //            //ColorConversion colorConversion = (ColorConversion)comboBox_EmguConversion.SelectedIndex;
-        //            //CvInvoke.CvtColor(frame, gray, colorConversion);
-        //            //AppendTextToConsoleNL("Converted to grayscale");
-        //            CvInvoke.CvtColor(frame, gray, ColorConversion.Bgr2Gray);
-
-        //            //Mat convertedFrame = new Mat();
-        //            //int indx = comboBox_EmguColor.SelectedIndex;
-
-        //            //switch (indx)
-        //            //{
-        //            //    case 0: // Red channel
-        //            //        CvInvoke.ExtractChannel(frame, convertedFrame, 2); // 2 is the index for the red channel
-        //            //        break;
-        //            //    case 1: // Green channel
-        //            //        CvInvoke.ExtractChannel(frame, convertedFrame, 1); // 1 is the index for the green channel
-        //            //        break;
-        //            //    case 2: // Blue channel
-        //            //        CvInvoke.ExtractChannel(frame, convertedFrame, 0); // 0 is the index for the blue channel
-        //            //        break;
-        //            //    case 3: // Grayscale
-        //            //        CvInvoke.CvtColor(frame, convertedFrame, ColorConversion.Bgr2Gray);
-        //            //        break;
-        //            //    default:
-        //            //        CvInvoke.CvtColor(frame, convertedFrame, ColorConversion.Bgr2Gray); // Default to grayscale
-        //            //        break;
-        //            //}
-        //            //Mat hsv = new Mat();
-        //            //CvInvoke.CvtColor(convertedFrame, hsv, selectedConversion);
-
-        //            // Apply Laplacian filter
-        //            Mat laplacian = new Mat();
-        //            CvInvoke.Laplacian(gray, laplacian, DepthType.Cv64F);
-        //            //AppendTextToConsoleNL("Laplacian applied");
-
-        //            // Calculate mean and standard deviation
-        //            Mat mean = new Mat();
-        //            Mat stddev = new Mat();
-        //            CvInvoke.MeanStdDev(laplacian, mean, stddev);
-        //            //AppendTextToConsoleNL("Mean and standard deviation calculated");
-
-        //            // Retrieve the standard deviation value
-        //            double[] stddevValues = new double[stddev.Rows * stddev.Cols];
-        //            stddev.CopyTo(stddevValues);
-        //            if (stddevValues.Length > 0)
-        //            {
-        //                double variance = Math.Pow(stddevValues[0], 2);
-        //                //AppendTextToConsoleNL($"Variance: {variance}");
-        //                blurrynessAmount = variance;
-        //                // Update the label on the UI thread
-        //                lbl_bluriness.Invoke((MethodInvoker)(() =>
-        //                {
-        //                    lbl_bluriness.Text = variance.ToString("F2");
-        //                    //AppendTextToConsoleNL("Label updated");
-        //                }));
-                       
-        //            }
-        //            else
-        //            {
-        //                //AppendTextToConsoleNL("Failed to retrieve standard deviation values");
-        //            }
-        //        }
-        //        else
-        //        {
-        //            //AppendTextToConsoleNL("Frame is empty");
-        //        }
-        //    }
-        //}
-
-        //private async Task CalculDuFlouFromImage(Image<Bgr, byte> image)
-        //{
-            
-
-        //    try
-        //    {
-        //        // Convertir en niveaux de gris
-        //        using (Mat gray = new Mat())
-        //        {
-        //            CvInvoke.CvtColor(image, gray, ColorConversion.Bgr2Gray);
-
-        //            // Appliquer le filtre Laplacien
-        //            using (Mat laplacian = new Mat())
-        //            {
-        //                CvInvoke.Laplacian(gray, laplacian, DepthType.Cv64F);
-
-        //                // Calculer la moyenne et l'écart-type
-        //                using (Mat mean = new Mat())
-        //                using (Mat stddev = new Mat())
-        //                {
-        //                    CvInvoke.MeanStdDev(laplacian, mean, stddev);
-
-        //                    double[] stddevValues = new double[stddev.Rows * stddev.Cols];
-        //                    stddev.CopyTo(stddevValues);
-
-        //                    if (stddevValues.Length > 0)
-        //                    {
-        //                        double variance = Math.Pow(stddevValues[0], 2);
-        //                        blurrynessAmountMask = variance;
-
-        //                        lbl_blurinessMask.Invoke((MethodInvoker)(() =>
-        //                        {
-        //                            lbl_blurinessMask.Text = variance.ToString("F2");
-        //                        }));
-
-                               
-        //                    }
-        //                    else
-        //                    {
-        //                        //AppendTextToConsoleNL("Échec du calcul de l'écart-type.");
-        //                    }
-        //                }
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        AppendTextToConsoleNL("Erreur dans CalculDuFlouFromImage : " + ex.Message);
-        //    }
-        //}
-
-        public void MasqueAvecPixels()
+        private async Task<Bitmap> BrightnessMaskFromBytes(
+            byte[] jpegBuffer,
+            int threshold = 100,
+            bool invert = false)
         {
-    //        Bitmap original = (Bitmap)picBox_SharpImage.Image;
-    //        Bitmap mask = new Bitmap(original.Width, original.Height, PixelFormat.Format24bppRgb);
+            if (jpegBuffer == null || jpegBuffer.Length == 0)
+                throw new ArgumentException("jpegBuffer est nul ou vide.", nameof(jpegBuffer));
 
-    //        int threshold = hScrollBar_ThresholdMaskValue.Value;
-    //        Rectangle rect = new Rectangle(0, 0, original.Width, original.Height);
+            return await Task.Run(() =>
+            {
+                // 1) Decode en niveaux de gris (1 canal)
+                using var gray = new Mat();
+                CvInvoke.Imdecode(jpegBuffer, ImreadModes.Grayscale, gray);
+                if (gray.IsEmpty)
+                    throw new InvalidOperationException("Échec du décodage JPEG.");
 
-    //        BitmapData originalData = original.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-    //        BitmapData maskData = mask.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+                int h = gray.Rows;
+                int w = gray.Cols;
 
-    //        int stride = originalData.Stride;
-    //        int bytes = stride * original.Height;
-    //        byte[] pixelBuffer = new byte[bytes];
-    //        byte[] resultBuffer = new byte[bytes];
+                // 2) Correction d’illumination (flou large) pour neutraliser ombres/coins gris
+                int k = Math.Max(31, (int)(Math.Max(w, h) * 0.03));  // ~3% de la grande dimension
+                if ((k & 1) == 0) k++;                                // kernel impair
+                using var illum = new Mat();
+                CvInvoke.GaussianBlur(gray, illum, new Size(k, k), k * 0.5);
 
-    //        System.Runtime.InteropServices.Marshal.Copy(originalData.Scan0, pixelBuffer, 0, bytes);
+                using var norm = new Mat();
+                CvInvoke.Subtract(gray, illum, norm);
+                CvInvoke.Normalize(norm, norm, 0, 255, NormType.MinMax, DepthType.Cv8U);
 
-    //        for (int y = 0; y < original.Height; y++)
-    //        {
-    //            int rowOffset = y * stride;
-    //            for (int x = 0; x < original.Width; x++)
-    //            {
-    //                int index = rowOffset + x * 3;
+                // 3) Petit lissage pour calmer le bruit
+                CvInvoke.GaussianBlur(norm, norm, new Size(3, 3), 0);
 
-    //                byte b = pixelBuffer[index];
-    //                byte g = pixelBuffer[index + 1];
-    //                byte r = pixelBuffer[index + 2];
+                // 4) Seuillage
+                //    - threshold < 0 → Otsu auto (objet sombre → BinaryInv)
+                //    - sinon manuel selon 'invert'
+                using var bin = new Mat();
+                if (threshold < 0)
+                {
+                    CvInvoke.Threshold(norm, bin, 0, 255, ThresholdType.BinaryInv | ThresholdType.Otsu);
+                }
+                else
+                {
+                    threshold = Math.Max(0, Math.Min(255, threshold));
+                    var t = invert ? ThresholdType.BinaryInv : ThresholdType.Binary;
+                    CvInvoke.Threshold(norm, bin, threshold, 255, t);
+                }
 
-    //                int brightness = (int)(r * 0.299 + g * 0.587 + b * 0.114);
-    //                byte color = (brightness < threshold) ? (byte)0 : (byte)255;
+                // 5) Morphologie légère pour lisser (coût faible)
+                using var k3 = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
+                CvInvoke.MorphologyEx(bin, bin, MorphOp.Open, k3, new Point(-1, -1), 1, BorderType.Reflect, default);
+                CvInvoke.MorphologyEx(bin, bin, MorphOp.Close, k3, new Point(-1, -1), 1, BorderType.Reflect, default);
 
-    //                resultBuffer[index] = color;
-    //                resultBuffer[index + 1] = color;
-    //                resultBuffer[index + 2] = color;
-    //            }
-    //        }
+                // 6) Connected Components: garder le meilleur blob (aire - pénalité distance centre)
+                using var labels = new Mat();      // CV_32S
+                using var stats = new Mat();       // CV_32S
+                using var centroids = new Mat();   // CV_64F
+                int n = CvInvoke.ConnectedComponentsWithStats(bin, labels, stats, centroids, LineType.EightConnected, DepthType.Cv32S);
 
-    //        System.Runtime.InteropServices.Marshal.Copy(resultBuffer, 0, maskData.Scan0, bytes);
+                // Si rien trouvé (n<=1 → seulement le fond), on tente quand même de remplir via contours externes
+                if (n <= 1)
+                {
+                    using var filled = FillByExternalContours(bin);
+                    if (invert) CvInvoke.BitwiseNot(filled, filled);
+                    return filled.ToBitmap();
+                }
 
-    //        original.UnlockBits(originalData);
-    //        mask.UnlockBits(maskData);
+                int bestIdx = -1;
+                double bestScore = double.NegativeInfinity;
+                float cxImg = w / 2f;
+                float cyImg = h / 2f;
 
-    //        picBox_SharpImageMask.Image = mask;
-       }
+                var statsArr = stats.GetData();
+                var centArr = centroids.GetData();
+
+                for (int i = 1; i < n; i++) // 0 = fond
+                {
+                    int area = (int)statsArr.GetValue(i, (int)ConnectedComponentsTypes.Area);
+                    double ccx = (double)centArr.GetValue(i, 0);
+                    double ccy = (double)centArr.GetValue(i, 1);
+                    double dist2 = (ccx - cxImg) * (ccx - cxImg) + (ccy - cyImg) * (ccy - cyImg);
+
+                    // Score simple & peu coûteux
+                    double score = area - 0.1 * dist2;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestIdx = i;
+                    }
+                }
+
+                // 7) Masque du meilleur label (plein 0/255)
+                using var finalMask = new Mat();
+                CvInvoke.InRange(labels, new ScalarArray(bestIdx), new ScalarArray(bestIdx), finalMask);
+
+
+                // Stats du meilleur composant
+                int left = (int)statsArr.GetValue(bestIdx, (int)ConnectedComponentsTypes.Left);
+                int top = (int)statsArr.GetValue(bestIdx, (int)ConnectedComponentsTypes.Top);
+                int width = (int)statsArr.GetValue(bestIdx, (int)ConnectedComponentsTypes.Width);
+                int height = (int)statsArr.GetValue(bestIdx, (int)ConnectedComponentsTypes.Height);
+
+                int right = left + width - 1;
+                int bottom = top + height - 1;
+
+                // 7bis) Fermer contre les bords du frame si touchés
+                // (on "coud" le masque sur le bord pour que le contour devienne fermable)
+                if (left <= 0)
+                    CvInvoke.Line(finalMask, new Point(0, top), new Point(0, bottom), new MCvScalar(255), 1);
+
+                if (right >= w - 1)
+                    CvInvoke.Line(finalMask, new Point(w - 1, top), new Point(w - 1, bottom), new MCvScalar(255), 1);
+
+                if (top <= 0)
+                    CvInvoke.Line(finalMask, new Point(left, 0), new Point(right, 0), new MCvScalar(255), 1);
+
+                if (bottom >= h - 1)
+                    CvInvoke.Line(finalMask, new Point(left, h - 1), new Point(right, h - 1), new MCvScalar(255), 1);
+
+
+                // 7ter) GAP SEALER — reconstruction morphologique (robuste aux grands gaps)
+                int seal = Math.Max(1, (int)Math.Round(Math.Max(w, h) * 0.006)); // ~0.6% de la grande dim.
+                seal = Math.Min(seal, 25);
+                if ((seal & 1) == 0) seal++; // noyau impair
+
+                using var kSeal = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(seal, seal), new Point(-1, -1));
+
+                // 7ter.a) Épaissir le trait pour obturer les fuites
+                using var edges = new Mat();
+                CvInvoke.Dilate(finalMask, edges, kSeal, new Point(-1, -1), 1, BorderType.Reflect, default);
+
+                // 7ter.b) Complément : fond blanc, trait noir
+                using var comp = new Mat();
+                CvInvoke.BitwiseNot(edges, comp);
+
+                // 7ter.c) Flood fill depuis le bord pour marquer l'extérieur
+                using var ff = comp.Clone(); // CV_8U
+                Rectangle _bbox;
+                CvInvoke.FloodFill(
+                    ff,
+                    null,               // mask nul (OpenCV construit en interne)
+                    new Point(0, 0),    // seed sur le bord (assure-toi que (0,0) est background)
+                    new MCvScalar(0),   // on peint l'extérieur en 0
+                    out _bbox,
+                    new MCvScalar(0),   // loDiff=0 → correspondance stricte
+                    new MCvScalar(0),   // upDiff=0
+                    Connectivity.EightConnected,     // <-- paramètre séparé
+                    FloodFillType.Default            // <-- paramètre séparé
+                );
+
+                // 8) Les pixels restés à 255 dans 'ff' sont l'intérieur fermé
+                using var solid = new Mat();
+                CvInvoke.Threshold(ff, solid, 254, 255, ThresholdType.Binary);
+
+                // 9) (Optionnel) Retract pour compenser la dilatation
+                CvInvoke.Erode(solid, solid, kSeal, new Point(-1, -1), 1, BorderType.Reflect, default);
+
+                // 10) Inversion éventuelle selon 'invert'
+                if (invert) CvInvoke.BitwiseNot(solid, solid);
+
+                return solid.ToBitmap();
+
+
+                /////////////
+
+
+                //// 7ter) GAP SEALER — reconstruction morphologique (robuste aux grands gaps)
+                //int seal = Math.Max(1, (int)Math.Round(Math.Max(w, h) * 0.006)); // ~0.6%
+                //seal = Math.Min(seal, 25);
+                //if ((seal & 1) == 0) seal++; // noyau impair
+
+                //using var kSeal = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(seal, seal), new Point(-1, -1));
+
+                //// 7ter.a) Épaissir le trait pour obturer les fuites
+                //using var edges = new Mat();
+                //CvInvoke.Dilate(finalMask, edges, kSeal, new Point(-1, -1), 1, BorderType.Reflect, default);
+
+                //// 7ter.b) Complément : zones libres = 255, trait = 0
+                //using var comp = new Mat();
+                //CvInvoke.BitwiseNot(edges, comp);
+
+                //// *** Correctif clé : pad 1 px pour garantir la connexité de l’extérieur ***
+                //using var padded = new Mat();
+                //CvInvoke.CopyMakeBorder(comp, padded, 1, 1, 1, 1, BorderType.Constant, new MCvScalar(0));
+
+                //// 7ter.c) Flood fill depuis (0,0) dans l’image paddée (extérieur)
+                //Rectangle bboxIgnore;
+                //CvInvoke.FloodFill(
+                //    padded,
+                //    null,
+                //    new Point(0, 0),
+                //    new MCvScalar(0),  // on peint l’extérieur en 0
+                //    out bboxIgnore,
+                //    new MCvScalar(0),
+                //    new MCvScalar(0),
+                //    Connectivity.EightConnected,
+                //    FloodFillType.Default
+                //);
+
+                //// Recadrer le padding pour revenir à la taille d’origine
+                //var roi = new Rectangle(1, 1, w, h);
+                //using var ff = new Mat(padded, roi);
+
+                //// 8) Les pixels restés à 255 sont l’intérieur fermé
+                //using var solid = new Mat();
+                //CvInvoke.Threshold(ff, solid, 254, 255, ThresholdType.Binary);
+
+                //// 9) Rétraction (optionnelle) pour compenser la dilatation
+                //CvInvoke.Erode(solid, solid, kSeal, new Point(-1, -1), 1, BorderType.Reflect, default);
+
+                //// 10) Inversion éventuelle selon 'invert'
+                //if (invert) CvInvoke.BitwiseNot(solid, solid);
+
+                //return solid.ToBitmap();
+
+
+            });
+        }
+
+
+
+        private static Mat FillByExternalContours(Mat binaryMask /* CV_8U, 0/255 */)
+        {
+            int h = binaryMask.Rows, w = binaryMask.Cols;
+
+            using var contours = new VectorOfVectorOfPoint();
+            CvInvoke.FindContours(binaryMask, contours, null, RetrType.External, ChainApproxMethod.ChainApproxSimple);
+
+            var filled = Mat.Zeros(h, w, DepthType.Cv8U, 1); // sortie
+
+            if (contours.Size > 0)
+            {
+                // Dessine tous les contours externes en « rempli » (thickness=-1)
+                CvInvoke.DrawContours(filled, contours, -1, new MCvScalar(255), thickness: -1, lineType: LineType.EightConnected);
+            }
+            else
+            {
+                // Aucun contour → copie brute (évite de renvoyer un noir si bin valait qqch)
+                binaryMask.CopyTo(filled);
+            }
+
+            return filled;
+        }
+
+
+       
+
+       
 
         public void PostFocusStackMask()
         {

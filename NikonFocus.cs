@@ -253,144 +253,154 @@ namespace Aerolithe
             await NikonAutofocus();
             if (_stopRequested) return;
 
-            var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
-
-            int maxTargetDown = 0;
-            int maxUpperPosition = 0;
-            int maxTargetUp = -1;
-
-            // maxTargetDown = le focusStackStepVar le plus bas (négatif) où il y a eu une détection. Plus bas que ça c'est flou
-            // maxTargetUp = le focusStackStepVar le plus haut où il ya détection. En haut de ça c'est flou
-            // maxUpperPosition = le focusStackStepVar le plus haut où la caméra s'est rendue, très probablement 4 steps de plus que maxTargetUp
-            // Delta = le range entre les deux maxTargetDown et maxTargetUp
-
-            ////////////////////////////////////////////////
-            //  Première passe : reculer (non stockée dans blurDataDict) ////////////////////////////////////////////////
-
-            ManualFocus(1, stepSize * iterations);
-            focusStackStepVar = iterations * -1;
-            UpdateFocusStepVarLbl(focusStackStepVar);
-
-            AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
-            await Task.Delay(500);
-
-            if (_stopRequested) return;
-
-            //  Reculer davantage si flou encore détecté
-            while (blurredBlocks >= minDetect && !_stopRequested)
+            maskFreeze = true;
+            if (btn_freezeMask.InvokeRequired)
             {
+                btn_freezeMask.Invoke(new Action(() =>
+                {
+                    btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+                }));
+            }
+
+
+                var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
+
+                int maxTargetDown = 0;
+                int maxUpperPosition = 0;
+                int maxTargetUp = -1;
+
+                // maxTargetDown = le focusStackStepVar le plus bas (négatif) où il y a eu une détection. Plus bas que ça c'est flou
+                // maxTargetUp = le focusStackStepVar le plus haut où il ya détection. En haut de ça c'est flou
+                // maxUpperPosition = le focusStackStepVar le plus haut où la caméra s'est rendue, très probablement 4 steps de plus que maxTargetUp
+                // Delta = le range entre les deux maxTargetDown et maxTargetUp
+
+                ////////////////////////////////////////////////
+                //  Première passe : reculer (non stockée dans blurDataDict) ////////////////////////////////////////////////
+
+                ManualFocus(1, stepSize * iterations);
+                focusStackStepVar = iterations * -1;
+                UpdateFocusStepVarLbl(focusStackStepVar);
+
+                AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
+                await Task.Delay(500);
+
                 if (_stopRequested) return;
-                ManualFocus(1, stepSize);
-                focusStackStepVar -= 1;
-                UpdateFocusStepVarLbl(focusStackStepVar);
-                await Task.Delay(delayTime);
-            }
 
-            maxTargetDown = focusStackStepVar;
-
-            //AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
-            //AppendTextToConsoleNL($"maxTargetDown = {maxTargetDown}");
-
-            await Task.Delay(200);
-
-
-            int blurConsecutiveCount = 0;
-            int i = 0;
-
-            ////////////////////////////////////////////////
-            //  Deuxième passe : On monte jusqu'à ce qu'on ait 4 flous consécutifs (stockée dans blurDataDict) ////////////////////////////////////////////////
-
-            while (!_stopRequested)
-            {
-                ManualFocus(0, stepSize);
-                await Task.Delay(delayTime);
-
-                if (blurredBlocks >= minDetect)
+                //  Reculer davantage si flou encore détecté
+                while (blurredBlocks >= minDetect && !_stopRequested)
                 {
-                    blurDataDict[i] = (focusStackStepVar, blurredBlocks);
-                    maxTargetUp = focusStackStepVar;
-                    blurConsecutiveCount = 0;
-                }
-                else
-                {
-                    blurConsecutiveCount++;
-
+                    if (_stopRequested) return;
+                    ManualFocus(1, stepSize);
+                    focusStackStepVar -= 1;
+                    UpdateFocusStepVarLbl(focusStackStepVar);
+                    await Task.Delay(delayTime);
                 }
 
-                focusStackStepVar += 1;
-                UpdateFocusStepVarLbl(focusStackStepVar);
+                maxTargetDown = focusStackStepVar;
 
-                if (blurConsecutiveCount >= 4 && focusStackStepVar > 0)
+                //AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
+                //AppendTextToConsoleNL($"maxTargetDown = {maxTargetDown}");
+
+                await Task.Delay(200);
+
+
+                int blurConsecutiveCount = 0;
+                int i = 0;
+
+                ////////////////////////////////////////////////
+                //  Deuxième passe : On monte jusqu'à ce qu'on ait 4 flous consécutifs (stockée dans blurDataDict) ////////////////////////////////////////////////
+
+                while (!_stopRequested)
                 {
-                    //AppendTextToConsoleNL("Arrêt anticipé : 4 flous consécutifs détectés.");
-                    break;
+                    ManualFocus(0, stepSize);
+                    await Task.Delay(delayTime);
+
+                    if (blurredBlocks >= minDetect)
+                    {
+                        blurDataDict[i] = (focusStackStepVar, blurredBlocks);
+                        maxTargetUp = focusStackStepVar;
+                        blurConsecutiveCount = 0;
+                    }
+                    else
+                    {
+                        blurConsecutiveCount++;
+
+                    }
+
+                    focusStackStepVar += 1;
+                    UpdateFocusStepVarLbl(focusStackStepVar);
+
+                    if (blurConsecutiveCount >= 4 && focusStackStepVar > 0)
+                    {
+                        //AppendTextToConsoleNL("Arrêt anticipé : 4 flous consécutifs détectés.");
+                        break;
+                    }
+                    i++;
                 }
-                i++;
-            }
 
 
-            //AppendTextToConsoleNL("-- maxTargetUp = " + maxTargetUp.ToString());
+                //AppendTextToConsoleNL("-- maxTargetUp = " + maxTargetUp.ToString());
 
 
-            maxUpperPosition = focusStackStepVar;
-            // delta = nombre de steps maximum
-            delta = maxTargetUp + Math.Abs(maxTargetDown);
-            //AppendTextToConsoleNL("-- maxUpperPosition = " + maxUpperPosition.ToString());
-            //AppendTextToConsoleNL($"delta ({delta.ToString()}) =  steps entre max up et max down à {stepSize} stepSize");
+                maxUpperPosition = focusStackStepVar;
+                // delta = nombre de steps maximum
+                delta = maxTargetUp + Math.Abs(maxTargetDown);
+                //AppendTextToConsoleNL("-- maxUpperPosition = " + maxUpperPosition.ToString());
+                //AppendTextToConsoleNL($"delta ({delta.ToString()}) =  steps entre max up et max down à {stepSize} stepSize");
 
-            await Task.Delay(500);
+                await Task.Delay(500);
 
-            ////////////////////////////////////////////////
-            // Troisième passe : retour à la première détection    ////////////////////////////////////////////////
-
-
-            if (_stopRequested) return;
-            //int returnToStartSteps = (maxUpperPosition - maxTargetUp) / 2;
-            //ManualFocus(1, returnToStartSteps * stepSize);
+                ////////////////////////////////////////////////
+                // Troisième passe : retour à la première détection    ////////////////////////////////////////////////
 
 
-            //AppendTextToConsoleNL("stepSize = " + stepSize.ToString());
-            //AppendTextToConsoleNL("delta = " + delta.ToString());
-            int steps = (int)(delta * stepSize * 0.75);
-            AppendTextToConsoleNL("stepSize = " + stepSize.ToString() + ", delta = " + delta.ToString() + ", steps = " + steps.ToString());
+                if (_stopRequested) return;
+                //int returnToStartSteps = (maxUpperPosition - maxTargetUp) / 2;
+                //ManualFocus(1, returnToStartSteps * stepSize);
 
-            ManualFocus(1, steps);
-            await Task.Delay(500);
-            focusStackStepVar = maxTargetUp;
-            UpdateFocusStepVarLbl(maxTargetUp);
 
-            if (blurredBlocks < minDetect)
-            {
-                while (blurredBlocks < minDetect && !_stopRequested)
+                //AppendTextToConsoleNL("stepSize = " + stepSize.ToString());
+                //AppendTextToConsoleNL("delta = " + delta.ToString());
+                int steps = (int)(delta * stepSize * 0.75);
+                AppendTextToConsoleNL("stepSize = " + stepSize.ToString() + ", delta = " + delta.ToString() + ", steps = " + steps.ToString());
+
+                ManualFocus(1, steps);
+                await Task.Delay(500);
+                focusStackStepVar = maxTargetUp;
+                UpdateFocusStepVarLbl(maxTargetUp);
+
+                if (blurredBlocks < minDetect)
+                {
+                    while (blurredBlocks < minDetect && !_stopRequested)
+                    {
+                        if (_stopRequested) break;
+                        ManualFocus(0, stepSize);
+                        await Task.Delay(delayTime * 5);
+                    }
+                }
+
+                // Ajustement fin
+                while (blurredBlocks > minDetect * 2 && !_stopRequested)
                 {
                     if (_stopRequested) break;
-                    ManualFocus(0, stepSize);
+                    ManualFocus(1, stepSize);
                     await Task.Delay(delayTime * 5);
                 }
+
+                //_DebugContinue = false;
+                //await WaitForDebugContinue();
+
+                // Reculer de 1 pour revenir au point net
+                ManualFocus(0, stepSize);
+                focusStackStepVar = 0;
+                UpdateFocusStepVarLbl(focusStackStepVar);
+                await Task.Delay(delayTime);
+
+
+                // 📊 Affichage du graphique
+                await DisplayBlurGraph(blurDataDict);
+
             }
-
-            // Ajustement fin
-            while (blurredBlocks > minDetect * 2 && !_stopRequested)
-            {
-                if (_stopRequested) break;
-                ManualFocus(1, stepSize);
-                await Task.Delay(delayTime * 5);
-            }
-
-            //_DebugContinue = false;
-            //await WaitForDebugContinue();
-
-            // Reculer de 1 pour revenir au point net
-            ManualFocus(0, stepSize);
-            focusStackStepVar = 0;
-            UpdateFocusStepVarLbl(focusStackStepVar);
-            await Task.Delay(delayTime);
-
-
-            // 📊 Affichage du graphique
-            await DisplayBlurGraph(blurDataDict);
-
-        }
 
 
 
@@ -439,7 +449,7 @@ namespace Aerolithe
                 focusIterations = maxNbrPicturesAllowed;
             }
 
-           
+
             AppendTextToConsoleNL(focusIterations.ToString() + " photos seront prises à " + newStepSize.ToString() + " steps  (Settings / Détection flou / Nbr de photo max)");
 
             int iterationsCompletees = 0;
@@ -459,7 +469,7 @@ namespace Aerolithe
                     if (i == 0 && blurredBlocks < minDetect)
                     {
                         // Reculer de 1 pour revenir au point net
-                        Debug.WriteLine($"Ajustement du focus pour atteindre {minDetect}. En ce moment blurredBlocks = {blurredBlocks}" );
+                        Debug.WriteLine($"Ajustement du focus pour atteindre {minDetect}. En ce moment blurredBlocks = {blurredBlocks}");
                         ManualFocus(1, stepSize);
                         focusStackStepVar = 0;
                         UpdateFocusStepVarLbl(focusStackStepVar);
@@ -470,7 +480,7 @@ namespace Aerolithe
                         break;
                     }
                 }
-               
+
 
                 if (blurredBlocks >= minDetect)
                 {
@@ -504,7 +514,7 @@ namespace Aerolithe
                 {
                     AppendTextToConsoleNL("On a un problème de comparaison entre \n         blurredBlocks = " + blurredBlocks.ToString() + " et  minDetect = " + minDetect.ToString());
                 }
-               
+
 
                 iterationsCompletees += 1;
 

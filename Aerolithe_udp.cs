@@ -47,7 +47,7 @@ namespace Aerolithe
             }
             catch (Exception ex)
             {
-                //MessageBox.Show($"Error initializing UDP client: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error initializing UDP client: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             // Initialize the timer
             _oscTimer = new System.Timers.Timer(150); // 500 milliseconds
@@ -221,7 +221,7 @@ namespace Aerolithe
 
         private async Task ListenForOSCMessages()
         {
-
+            AppendTextToConsoleNL("ListenForOSCMessages() lancé");
             while (true)
             {
                 try
@@ -238,6 +238,7 @@ namespace Aerolithe
 
                             string message = oscMessage.Address + "#" + arguments;
                             CheckOSCMessage(message);
+                            //AppendTextToConsoleNL(message);
                         }
                     }
                 }

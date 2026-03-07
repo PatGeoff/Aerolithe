@@ -17,6 +17,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
 using Timer = System.Windows.Forms.Timer;
 
@@ -39,6 +40,7 @@ namespace Aerolithe
         private Image liveViewCompositedImage;
         private readonly object imageLock = new object();
         public Bitmap maskBitmapLive;
+        public bool maskFreeze = false;
         
 
 
@@ -194,9 +196,6 @@ namespace Aerolithe
                     using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
                     {
                         CvInvoke.Imdecode(imageView.JpegBuffer, ImreadModes.Color, background);
-
-
-
                         //_ = Task.Run(() =>
                         //{
                         //    try
@@ -206,11 +205,8 @@ namespace Aerolithe
                         //    finally
                         //    {
 
-                        //    }
-                           
+                        //    }                           
                         //});
-
-
 
                         float gammaValue = trackBar_Gamma.Value / 10.0f;
 
@@ -221,15 +217,19 @@ namespace Aerolithe
                             CvInvoke.LUT(background, lut, background);
                         }
 
+                        // Calcule et affichage du masque
+                        if (!maskFreeze) maskBitmapLive = await BrightnessMaskFromBytes(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value, false);
+                        else if (maskBitmapLive == null) maskBitmapLive = await BrightnessMaskFromBytes(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value, false);
 
-                        maskBitmapLive = BrightnessMaskFromBytes(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value);
                         picBox_liveMaskLum.Image = maskBitmapLive;
 
 
                         var localBitmap = (Bitmap)maskBitmapLive.Clone();
+
+                        // Centrage du masque
                         _ = Task.Run(async () =>
                         {
-                            await CalculeDuCentrageAsync(localBitmap);
+                            await CalculeDuCentrageAsync(localBitmap, 1);
                             localBitmap.Dispose();
                             lbl_Centrage.Invoke(new Action(() =>
                             {
@@ -252,16 +252,13 @@ namespace Aerolithe
                                //picBox_MLMask.Image = sourceImage.ToBitmap();
                             }
 
-                            // ❌ Calcul du flou global (désactivé)
-                            //await Task.Run(async () => await CalculDuFlou(stream));
-                            //await Task.Run(async () => await CalculDuFlouFromImage(sourceImage));
-
                             // ✅ Calcul de la carte de netteté locale
                             Mat grayImage = background.ToImage<Gray, byte>().Mat;
 
                             int blockSize = trackBar_blobCount.Value * 16;
 
                             double[,] sharpnessGrid = ComputeSharpnessGrid(grayImage, blockSize);
+                            //double[,] sharpnessGrid = ComputeSharpnessGridMasked(grayImage, resizedMask.Mat, blockSize, 0.5);
 
                             // Tu peux stocker cette carte dans une variable globale ou l'utiliser dans AutomaticFocusMapping()
                             currentLiveViewFocusMap = new FocusMap
@@ -269,6 +266,7 @@ namespace Aerolithe
                                 FocusPosition = focusStackStepVar, // <-----  @(*#%&(@&$(&$  ----   ICI 
                                 SharpnessGrid = sharpnessGrid
                             };
+
                             // Création de l'image avec les blocs flous
                             Image<Bgr, byte> overlayImage = background.ToImage<Bgr, byte>();
 
@@ -293,7 +291,7 @@ namespace Aerolithe
 
 
                             // Affichage selon l'état de la checkbox
-                            if (checkBox_ShowSharpnessOverlay.Checked)
+                            if (projet.ViewSharpnessOverlay)
                             {
                                 picBox_LiveView_Main.Image = overlayImage.ToBitmap();
                             }

@@ -40,6 +40,15 @@ namespace Aerolithe
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie, int rotationDepart)
         {
+            maskFreeze = false;
+            if (btn_freezeMask.InvokeRequired)
+            {
+                btn_freezeMask.Invoke(new Action(() =>
+                {
+                    btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+                }));
+            }
+
             if (appSettings.ProjectPath == null)
             {
                 SavePrefsSettings();  // Demande à setter le projet
@@ -51,6 +60,7 @@ namespace Aerolithe
             }
             _stopwatch.Start();
             _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
+            
             await RoutineCalibration();
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
             await Task.Delay(800);
@@ -76,12 +86,22 @@ namespace Aerolithe
 
             await ResetIncrementation();
 
-            AppendTextToConsoleNL("Série " + (serie).ToString() + "/" + serieId[serie].ToString());
+            AppendTextToConsoleNL("Série " + (serie + 1).ToString() + "/" + serieId[serie].ToString());
             try
             {
                 for (int i = rotationDepart; i <= serieId[serie]; i++)
                 {
                     if (_stopRequested) return;
+
+                    maskFreeze = false;
+                    if (btn_freezeMask.InvokeRequired)
+                    {
+                        btn_freezeMask.Invoke(new Action(() =>
+                        {
+                            btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+                        }));
+                    }
+
 
                     oldImgIncr = projet.FocusSerieIncrement = 0;
                     _Serie = i;
@@ -91,7 +111,7 @@ namespace Aerolithe
                     if (_stopRequested) return;
 
                     PreparationDossierDestTemp();
-                    int degres = (i - 1) * divider;
+                    int degres = i * divider;
                     ttTargetPosition = degres;
                     _Rotation = degres;
                     await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
@@ -121,9 +141,6 @@ namespace Aerolithe
                             lbl_RotSerie.Text = $"{i}/{serieId[serie]}";
                         }));
                     }
-
-
-
 
                     //projet.FocusSerieIncrement = i - 1 + paddingNbr[serie];
                     projet.FocusSerieIncrement = 0;
@@ -251,14 +268,15 @@ namespace Aerolithe
 
             await Task.Delay(1000);
 
-            await RoutineCalibration();
-            if (_stopRequested) return;
+            //await RoutineCalibration();
+            //if (_stopRequested) return;
 
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
 
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, serie, rotation);
             if (_stopRequested) return;
+            
 
             AppendTextToConsoleNL($"Séquence { + 1} terminée");
 
@@ -273,6 +291,16 @@ namespace Aerolithe
 
             for (int i = serieIndex; i < angleIndexes.Length; i++)
             {
+                maskFreeze = false;
+                if (btn_freezeMask.InvokeRequired)
+                {
+                    btn_freezeMask.Invoke(new Action(() =>
+                    {
+                        btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+                    }));
+                }
+
+                if (_stopRequested) return;
                 AppendTextToConsoleNL($"i = {i} et angleIndexes.Length = {angleIndexes.Length}");
                 try
                 {
@@ -284,10 +312,7 @@ namespace Aerolithe
                 {
                     AppendTextToConsoleNL($"Erreur à * SequencePrisePhotoTotale:  {ex.Message}");
                 }
-                
             }
-           
-
         }
 
         //private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)

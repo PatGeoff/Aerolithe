@@ -124,6 +124,15 @@ namespace Aerolithe
                 this.BeginInvoke((Action)(() => MessageBox.Show("Dossier " + projet.GetFocusStackPath() + " créé")));
             }
 
+            if (projet.MaskSave)
+            {
+                if (!Directory.Exists(projet.GetMaskFolderPath()))
+                {
+                    Directory.CreateDirectory(projet.GetMaskFolderPath());
+                    this.BeginInvoke((Action)(() => MessageBox.Show("Dossier " + projet.GetMaskFolderPath() + " créé")));
+                }
+            }
+
             string folderPath = projet.GetTempImageFolderPath();
             string[] extensions = { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
 
