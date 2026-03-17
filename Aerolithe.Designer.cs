@@ -255,6 +255,9 @@
             lbl_IP_Actuator = new Label();
             tabPage10 = new TabPage();
             tableLayoutPanel79 = new TableLayoutPanel();
+            tableLayoutPanel52 = new TableLayoutPanel();
+            txtBox_DefaultMaskThresh = new TextBox();
+            label16 = new Label();
             tableLayoutPanel84 = new TableLayoutPanel();
             textBox_FocusIterations = new TextBox();
             label59 = new Label();
@@ -328,7 +331,7 @@
             tableLayoutPanel71 = new TableLayoutPanel();
             lbl_maskAmount = new Label();
             tl_ApplyMask = new TableLayoutPanel();
-            btn_maskAuto = new Button();
+            btn_applyMask = new Button();
             lbl_applyMaskFS = new Label();
             tl_SaveMask = new TableLayoutPanel();
             lbl_saveMaskinFolder = new Label();
@@ -448,6 +451,7 @@
             tableLayoutPanel42.SuspendLayout();
             tabPage10.SuspendLayout();
             tableLayoutPanel79.SuspendLayout();
+            tableLayoutPanel52.SuspendLayout();
             tableLayoutPanel84.SuspendLayout();
             tableLayoutPanel83.SuspendLayout();
             tableLayoutPanel82.SuspendLayout();
@@ -3824,6 +3828,7 @@
             // 
             tableLayoutPanel79.ColumnCount = 1;
             tableLayoutPanel79.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel79.Controls.Add(tableLayoutPanel52, 0, 6);
             tableLayoutPanel79.Controls.Add(tableLayoutPanel84, 0, 4);
             tableLayoutPanel79.Controls.Add(tableLayoutPanel83, 0, 3);
             tableLayoutPanel79.Controls.Add(tableLayoutPanel82, 0, 2);
@@ -3834,16 +3839,63 @@
             tableLayoutPanel79.Location = new Point(6, 6);
             tableLayoutPanel79.Margin = new Padding(6);
             tableLayoutPanel79.Name = "tableLayoutPanel79";
-            tableLayoutPanel79.RowCount = 7;
+            tableLayoutPanel79.RowCount = 8;
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 70F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 70F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 70F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 70F));
+            tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel79.Size = new Size(823, 1236);
             tableLayoutPanel79.TabIndex = 0;
+            // 
+            // tableLayoutPanel52
+            // 
+            tableLayoutPanel52.ColumnCount = 3;
+            tableLayoutPanel52.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 370F));
+            tableLayoutPanel52.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 71F));
+            tableLayoutPanel52.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel52.Controls.Add(txtBox_DefaultMaskThresh, 1, 0);
+            tableLayoutPanel52.Controls.Add(label16, 0, 0);
+            tableLayoutPanel52.Dock = DockStyle.Fill;
+            tableLayoutPanel52.Location = new Point(6, 414);
+            tableLayoutPanel52.Margin = new Padding(6);
+            tableLayoutPanel52.Name = "tableLayoutPanel52";
+            tableLayoutPanel52.RowCount = 1;
+            tableLayoutPanel52.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel52.Size = new Size(811, 52);
+            tableLayoutPanel52.TabIndex = 6;
+            // 
+            // txtBox_DefaultMaskThresh
+            // 
+            txtBox_DefaultMaskThresh.BackColor = Color.FromArgb(40, 40, 40);
+            txtBox_DefaultMaskThresh.BorderStyle = BorderStyle.FixedSingle;
+            txtBox_DefaultMaskThresh.Dock = DockStyle.Fill;
+            txtBox_DefaultMaskThresh.ForeColor = Color.White;
+            txtBox_DefaultMaskThresh.Location = new Point(376, 6);
+            txtBox_DefaultMaskThresh.Margin = new Padding(6);
+            txtBox_DefaultMaskThresh.Name = "txtBox_DefaultMaskThresh";
+            txtBox_DefaultMaskThresh.Size = new Size(59, 39);
+            txtBox_DefaultMaskThresh.TabIndex = 5;
+            txtBox_DefaultMaskThresh.Text = "20";
+            txtBox_DefaultMaskThresh.TextAlign = HorizontalAlignment.Center;
+            txtBox_DefaultMaskThresh.TextChanged += txtBox_DefaultMaskThresh_TextChanged;
+            txtBox_DefaultMaskThresh.KeyDown += txtBox_DefaultMaskThresh_KeyDown;
+            // 
+            // label16
+            // 
+            label16.AutoSize = true;
+            label16.Dock = DockStyle.Fill;
+            label16.ForeColor = Color.White;
+            label16.Location = new Point(6, 0);
+            label16.Margin = new Padding(6, 0, 6, 0);
+            label16.Name = "label16";
+            label16.Size = new Size(358, 52);
+            label16.TabIndex = 1;
+            label16.Text = "Valeur par défaut du masquage";
+            label16.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // tableLayoutPanel84
             // 
@@ -3894,10 +3946,10 @@
             // tableLayoutPanel83
             // 
             tableLayoutPanel83.ColumnCount = 4;
-            tableLayoutPanel83.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 232F));
-            tableLayoutPanel83.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 74F));
+            tableLayoutPanel83.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 267F));
+            tableLayoutPanel83.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
             tableLayoutPanel83.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel83.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 451F));
+            tableLayoutPanel83.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 406F));
             tableLayoutPanel83.Controls.Add(label55, 0, 0);
             tableLayoutPanel83.Controls.Add(label56, 2, 0);
             tableLayoutPanel83.Controls.Add(textBox_FocusFreqSpeed, 1, 0);
@@ -3918,7 +3970,7 @@
             label55.Location = new Point(6, 0);
             label55.Margin = new Padding(6, 0, 6, 0);
             label55.Name = "label55";
-            label55.Size = new Size(220, 58);
+            label55.Size = new Size(255, 58);
             label55.TabIndex = 1;
             label55.Text = "Vitesse focus en série";
             label55.TextAlign = ContentAlignment.MiddleLeft;
@@ -3928,10 +3980,10 @@
             label56.AutoSize = true;
             label56.Dock = DockStyle.Fill;
             label56.ForeColor = Color.White;
-            label56.Location = new Point(312, 0);
+            label56.Location = new Point(345, 0);
             label56.Margin = new Padding(6, 0, 6, 0);
             label56.Name = "label56";
-            label56.Size = new Size(42, 58);
+            label56.Size = new Size(54, 58);
             label56.TabIndex = 2;
             label56.Text = "ms";
             label56.TextAlign = ContentAlignment.MiddleLeft;
@@ -3942,10 +3994,10 @@
             textBox_FocusFreqSpeed.BorderStyle = BorderStyle.FixedSingle;
             textBox_FocusFreqSpeed.Dock = DockStyle.Fill;
             textBox_FocusFreqSpeed.ForeColor = Color.White;
-            textBox_FocusFreqSpeed.Location = new Point(238, 6);
+            textBox_FocusFreqSpeed.Location = new Point(273, 6);
             textBox_FocusFreqSpeed.Margin = new Padding(6);
             textBox_FocusFreqSpeed.Name = "textBox_FocusFreqSpeed";
-            textBox_FocusFreqSpeed.Size = new Size(62, 39);
+            textBox_FocusFreqSpeed.Size = new Size(60, 39);
             textBox_FocusFreqSpeed.TabIndex = 3;
             textBox_FocusFreqSpeed.Text = "75";
             textBox_FocusFreqSpeed.TextAlign = HorizontalAlignment.Center;
@@ -4073,8 +4125,8 @@
             // tableLayoutPanel80
             // 
             tableLayoutPanel80.ColumnCount = 3;
-            tableLayoutPanel80.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 232F));
-            tableLayoutPanel80.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 74F));
+            tableLayoutPanel80.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 274F));
+            tableLayoutPanel80.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 82F));
             tableLayoutPanel80.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel80.Controls.Add(textBox_minDetect, 1, 0);
             tableLayoutPanel80.Controls.Add(label41, 0, 0);
@@ -4093,10 +4145,10 @@
             textBox_minDetect.BorderStyle = BorderStyle.FixedSingle;
             textBox_minDetect.Dock = DockStyle.Fill;
             textBox_minDetect.ForeColor = Color.White;
-            textBox_minDetect.Location = new Point(238, 6);
+            textBox_minDetect.Location = new Point(280, 6);
             textBox_minDetect.Margin = new Padding(6);
             textBox_minDetect.Name = "textBox_minDetect";
-            textBox_minDetect.Size = new Size(62, 39);
+            textBox_minDetect.Size = new Size(70, 39);
             textBox_minDetect.TabIndex = 4;
             textBox_minDetect.Text = "5";
             textBox_minDetect.TextAlign = HorizontalAlignment.Center;
@@ -4111,7 +4163,7 @@
             label41.Location = new Point(6, 0);
             label41.Margin = new Padding(6, 0, 6, 0);
             label41.Name = "label41";
-            label41.Size = new Size(220, 58);
+            label41.Size = new Size(262, 58);
             label41.TabIndex = 0;
             label41.Text = "Minimum détections";
             label41.TextAlign = ContentAlignment.MiddleLeft;
@@ -4793,7 +4845,7 @@
             tl_ApplyMask.ColumnCount = 2;
             tl_ApplyMask.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
             tl_ApplyMask.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50F));
-            tl_ApplyMask.Controls.Add(btn_maskAuto, 1, 0);
+            tl_ApplyMask.Controls.Add(btn_applyMask, 1, 0);
             tl_ApplyMask.Controls.Add(lbl_applyMaskFS, 0, 0);
             tl_ApplyMask.Dock = DockStyle.Fill;
             tl_ApplyMask.Location = new Point(4, 4);
@@ -4803,21 +4855,21 @@
             tl_ApplyMask.Size = new Size(134, 46);
             tl_ApplyMask.TabIndex = 18;
             // 
-            // btn_maskAuto
+            // btn_applyMask
             // 
-            btn_maskAuto.BackColor = Color.FromArgb(30, 30, 30);
-            btn_maskAuto.Dock = DockStyle.Fill;
-            btn_maskAuto.FlatAppearance.BorderSize = 0;
-            btn_maskAuto.FlatStyle = FlatStyle.Flat;
-            btn_maskAuto.Font = new Font("Phosphor", 13F);
-            btn_maskAuto.ForeColor = Color.White;
-            btn_maskAuto.Location = new Point(83, 3);
-            btn_maskAuto.Name = "btn_maskAuto";
-            btn_maskAuto.Size = new Size(48, 40);
-            btn_maskAuto.TabIndex = 12;
-            btn_maskAuto.Text = "";
-            btn_maskAuto.UseVisualStyleBackColor = false;
-            btn_maskAuto.Click += btn_maskAuto_Click;
+            btn_applyMask.BackColor = Color.FromArgb(30, 30, 30);
+            btn_applyMask.Dock = DockStyle.Fill;
+            btn_applyMask.FlatAppearance.BorderSize = 0;
+            btn_applyMask.FlatStyle = FlatStyle.Flat;
+            btn_applyMask.Font = new Font("Phosphor", 13F);
+            btn_applyMask.ForeColor = Color.White;
+            btn_applyMask.Location = new Point(83, 3);
+            btn_applyMask.Name = "btn_applyMask";
+            btn_applyMask.Size = new Size(48, 40);
+            btn_applyMask.TabIndex = 12;
+            btn_applyMask.Text = "";
+            btn_applyMask.UseVisualStyleBackColor = false;
+            btn_applyMask.Click += btn_maskAuto_Click;
             // 
             // lbl_applyMaskFS
             // 
@@ -5577,6 +5629,8 @@
             tableLayoutPanel42.PerformLayout();
             tabPage10.ResumeLayout(false);
             tableLayoutPanel79.ResumeLayout(false);
+            tableLayoutPanel52.ResumeLayout(false);
+            tableLayoutPanel52.PerformLayout();
             tableLayoutPanel84.ResumeLayout(false);
             tableLayoutPanel84.PerformLayout();
             tableLayoutPanel83.ResumeLayout(false);
@@ -5975,7 +6029,7 @@
         private Label label47;
         private Button button3;
         public Button btn_maskSave;
-        public Button btn_maskAuto;
+        public Button btn_applyMask;
         private Label lbl_applyMaskFS;
         private Label label14;
         private Splitter splitter1;
@@ -5988,5 +6042,8 @@
         public TableLayoutPanel tl_ApplyMask;
         public TableLayoutPanel tl_SaveMask;
         public TableLayoutPanel tl_FreezeMask;
+        private TableLayoutPanel tableLayoutPanel52;
+        private TextBox txtBox_DefaultMaskThresh;
+        private Label label16;
     }
 }

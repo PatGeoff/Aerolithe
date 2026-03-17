@@ -119,6 +119,8 @@ namespace Aerolithe
 
                     bool positionOk = await WaitForTurntablePositionAsync(degres);
 
+                    await nikonDoFocus();
+
                     if (!positionOk)
                     {
                         // Gérer le cas où la position n'est pas atteinte

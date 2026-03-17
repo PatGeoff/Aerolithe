@@ -1,18 +1,19 @@
-﻿using Nikon;
+﻿using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
+using Emgu.CV.Structure;
+using Emgu.CV.Util;
+using Nikon;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing.Imaging;
+using System.Drawing.Text;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Emgu.CV.CvEnum;
-using Emgu.CV.Structure;
-using Emgu.CV;
-using Emgu.CV.Structure;
-using System.Drawing.Imaging;
-using Emgu.CV.Util;
-using System.Diagnostics;
-using System.Drawing.Text;
+using static Emgu.CV.DISOpticalFlow;
 
 namespace Aerolithe
 {
@@ -46,7 +47,7 @@ namespace Aerolithe
         }
         private async void device_ImageReady(NikonDevice sender, NikonImage image)
         {
-          
+
 
             try
             {
@@ -56,16 +57,19 @@ namespace Aerolithe
                     return;
                 }
 
+
+
+
                 Bitmap finalBitmap = null;
 
                 try
                 {
                     // Lecture de l'état du checkbox dans le thread UI
-                    bool applyMask = false;
-                    if (chkBox_applyMask.InvokeRequired)
-                        chkBox_applyMask.Invoke(() => applyMask = chkBox_applyMask.Checked);
-                    else
-                        applyMask = chkBox_applyMask.Checked;
+                    //bool applyMask = false;
+                    //if (chkBox_applyMask.InvokeRequired)
+                    //    chkBox_applyMask.Invoke(() => applyMask = chkBox_applyMask.Checked);
+                    //else
+                    //    applyMask = chkBox_applyMask.Checked;
 
                     // Traitement complet dans un thread séparé
                     finalBitmap = await Task.Run(() =>
@@ -73,7 +77,9 @@ namespace Aerolithe
                         using (var memoryStream = new MemoryStream(image.Buffer))
                         using (var originalBitmap = new Bitmap(memoryStream))
                         {
-                            var processedBitmap = applyMask ? ApplyMask(originalBitmap) : new Bitmap(originalBitmap);
+                            projet.PictureWidth = originalBitmap.Width;
+                            projet.PictureHeight = originalBitmap.Height;
+                            var processedBitmap = projet.ApplyMask ? ApplyMask(originalBitmap) : new Bitmap(originalBitmap);
 
                             // Sauvegarde si activée
                             bool savePicture = false;
@@ -82,7 +88,7 @@ namespace Aerolithe
                             else
                                 savePicture = chkBox_savePicture.Checked;
 
-                            if (savePicture && projet.ImageFolderPath != null && projet.ImageNameBase != null )
+                            if (savePicture && projet.ImageFolderPath != null && projet.ImageNameBase != null)
                             {
                                 PreparationDossierDestTemp();
                                 PreparationNomImage();
@@ -94,11 +100,7 @@ namespace Aerolithe
                                     processedBitmap.Save(saveStream, ImageFormat.Jpeg);
                                     saveStream.Position = 0;
 
-                                   
-                                   
                                     SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPath());
-                                    
-                                    
 
                                     Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPath(), panelSize));
                                 }
@@ -135,8 +137,9 @@ namespace Aerolithe
         private Bitmap ApplyMask(Bitmap originalBitmap)
         {
             var sourceImage = originalBitmap.ToImage<Bgr, byte>();
-            var maskGray = maskBitmapLive.ToImage<Gray, byte>();
-            var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
+            //var maskGray = maskBitmapLive.ToImage<Gray, byte>();
+            var maskGray = maskMatLive.ToImage<Gray, byte>();
+            var resizedMask = maskGray.Resize(projet.PictureWidth, projet.PictureHeight, Emgu.CV.CvEnum.Inter.Linear);
 
             //var invertedMask = resizedMask.Not();
             var invertedMask = resizedMask;
@@ -196,7 +199,7 @@ namespace Aerolithe
                         FlatStyle = FlatStyle.Flat
                     };
 
-                    deleteButton.FlatAppearance.BorderSize = 0; 
+                    deleteButton.FlatAppearance.BorderSize = 0;
                     deleteButton.FlatAppearance.BorderColor = Color.Black;
 
                     deleteButton.Click += (s, e) =>
@@ -246,7 +249,7 @@ namespace Aerolithe
                         Dock = DockStyle.Fill
                     };
 
-                    
+
                     new ToolTip().SetToolTip(pictureBox, imagePath);
 
 
@@ -329,13 +332,211 @@ namespace Aerolithe
                     while ((bytesRead = tempStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         fileStream.Write(buffer, 0, bytesRead);
-                        totalBytesRead += bytesRead;                        
+                        totalBytesRead += bytesRead;
                     }
                 }
             }
         }
 
-        
+
+        public async Task SaveBitmapAsJpeg(Bitmap img, string outputPath)
+        {
+            try
+            {
+                using (var maskGray = img.ToImage<Gray, byte>())
+                using (var resizedMask = maskGray.Resize(projet.PictureWidth, projet.PictureHeight, Emgu.CV.CvEnum.Inter.Nearest)) // (option: Inter.Nearest pour masque binaire)
+                {
+                    resizedMask.Save(outputPath);
+                    AppendTextToConsoleNL($"Masque Sauvegardé: {outputPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("ERREUR:");
+                AppendTextToConsoleNL(ex.Message);
+            }
+
+        }
+
+        public async Task SaveMaskAsPngTransparentBlack(Bitmap img, string outputPathPng)
+        {
+            try
+            {
+                // S'assurer que le dossier existe
+                var dir = Path.GetDirectoryName(outputPathPng);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                await Task.Run(() =>
+                {
+                    // 1) Convertit en Gray et redimensionne en "Nearest" (préserve 0/255 du masque)
+                    using var maskGray = img.ToImage<Gray, byte>();
+                    using var resizedMask = maskGray.Resize(
+                        projet.PictureWidth,
+                        projet.PictureHeight,
+                        Emgu.CV.CvEnum.Inter.Nearest
+                    );
+
+                    // 2) Construire l'image BGRA :
+                    //    - RGB = 255 (blanc) pour les pixels opaques
+                    //    - A   = masque (0 = transparent, 255 = opaque)
+                    using var whiteBgr = new Image<Bgr, byte>(
+                        resizedMask.Width, resizedMask.Height,
+                        new Bgr(255, 255, 255)
+                    );
+
+                    using var alpha = resizedMask.Mat; // 8UC1 (0 ou 255)
+                    using var bgrMat = whiteBgr.Mat;
+
+                    // Split BGR
+                    var bgrChannels = bgrMat.Split(); // [0]=B, [1]=G, [2]=R
+
+                    try
+                    {
+                        // Merge en BGRA (4 canaux)
+                        using var bgra = new Mat();
+                        CvInvoke.Merge(new VectorOfMat(bgrChannels[0], bgrChannels[1], bgrChannels[2], alpha), bgra);
+
+                        // 3) Sauvegarde en .png (préserve l'alpha)
+                        CvInvoke.Imwrite(outputPathPng, bgra);
+                    }
+                    finally
+                    {
+                        foreach (var ch in bgrChannels) ch.Dispose();
+                    }
+                });
+
+                AppendTextToConsoleNL($"Masque PNG sauvegardé (noir transparent): {outputPathPng}");
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("ERREUR (PNG transparent):");
+                AppendTextToConsoleNL(ex.Message);
+            }
+        }
+
+
+        public async Task SaveMaskAsPngTransparentBlack(Mat maskSrc, string outputPathPng)
+        {
+            if (maskSrc == null || maskSrc.IsEmpty)
+            {
+                AppendTextToConsoleNL("ERREUR (PNG transparent): Mat source nul ou vide.");
+                return;
+            }
+
+            try
+            {
+                // S'assurer que le dossier existe
+                var dir = Path.GetDirectoryName(outputPathPng);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                await Task.Run(() =>
+                {
+                    // 1) Obtenir un masque 8UC1 (Gray, 0..255).
+                    //    - Si le Mat est couleur: le convertir en Gray.
+                    //    - Si la profondeur n'est pas 8 bits: normaliser/convertir vers 0..255.
+                    using var grayMask = new Mat();
+
+                    // Déterminer si multi-canaux
+                    int channels = maskSrc.NumberOfChannels;
+                    DepthType depth = maskSrc.Depth;
+
+                    if (channels == 1)
+                    {
+                        // Déjà mono-canal
+                        if (depth == DepthType.Cv8U)
+                        {
+                            // Copie directe en 8UC1
+                            maskSrc.CopyTo(grayMask);
+                        }
+                        else
+                        {
+                            // Convertir la profondeur vers 8 bits (normalisation)
+                            using var tmp = new Mat();
+                            // Normaliser la plage min..max vers 0..255 pour éviter les saturations injustifiées
+                            CvInvoke.Normalize(maskSrc, tmp, 0, 255, NormType.MinMax, DepthType.Cv8U);
+                            tmp.CopyTo(grayMask);
+                        }
+                    }
+                    else
+                    {
+                        // Convertir en niveaux de gris
+                        using var grayAnyDepth = new Mat();
+                        CvInvoke.CvtColor(maskSrc, grayAnyDepth, ColorConversion.Bgr2Gray); // supposition BGR par défaut
+                        if (grayAnyDepth.Depth == DepthType.Cv8U)
+                        {
+                            grayAnyDepth.CopyTo(grayMask);
+                        }
+                        else
+                        {
+                            using var tmp = new Mat();
+                            CvInvoke.Normalize(grayAnyDepth, tmp, 0, 255, NormType.MinMax, DepthType.Cv8U);
+                            tmp.CopyTo(grayMask);
+                        }
+                    }
+
+                    // Optionnel : binariser si tu veux forcer à {0,255} (décommenter si nécessaire)
+                    // CvInvoke.Threshold(grayMask, grayMask, 127, 255, ThresholdType.Binary);
+
+                    // 2) Redimensionner en "Nearest" pour préserver 0/255
+                    using var resizedMask = new Mat();
+                    CvInvoke.Resize(
+                        grayMask,
+                        resizedMask,
+                        new System.Drawing.Size(projet.PictureWidth, projet.PictureHeight),
+                        0, 0,
+                        Inter.Nearest
+                    );
+
+                    // 3) Construire l'image BGRA :
+                    //    - RGB = 255 (blanc) pour les pixels opaques
+                    //    - A   = masque (0 = transparent, 255 = opaque)
+                    using var whiteBgr = new Image<Bgr, byte>(
+                        resizedMask.Cols, resizedMask.Rows,
+                        new Bgr(255, 255, 255)
+                    );
+
+                    using var bgrMat = whiteBgr.Mat;
+                    using var bgra = new Mat();
+
+                    // Split BGR
+                    var bgrChannels = bgrMat.Split(); // [0]=B, [1]=G, [2]=R
+
+                    try
+                    {
+                        // S'assurer que l'alpha est 8UC1
+                        using var alpha = new Mat();
+                        if (resizedMask.Depth == DepthType.Cv8U && resizedMask.NumberOfChannels == 1)
+                        {
+                            resizedMask.CopyTo(alpha);
+                        }
+                        else
+                        {
+                            CvInvoke.Normalize(resizedMask, alpha, 0, 255, NormType.MinMax, DepthType.Cv8U);
+                        }
+
+                        // Merge en BGRA (4 canaux)
+                        using var vm = new VectorOfMat(bgrChannels[0], bgrChannels[1], bgrChannels[2], alpha);
+                        CvInvoke.Merge(vm, bgra);
+
+                        // 4) Sauvegarde en .png (préserve l'alpha)
+                        CvInvoke.Imwrite(outputPathPng, bgra);
+                    }
+                    finally
+                    {
+                        foreach (var ch in bgrChannels) ch.Dispose();
+                    }
+                });
+
+                AppendTextToConsoleNL($"Masque PNG sauvegardé (noir transparent): {outputPathPng}");
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("ERREUR (PNG transparent):");
+                AppendTextToConsoleNL(ex.Message);
+            }
+        }
 
 
         private void ManualFocus(int up, double newFocusValue)

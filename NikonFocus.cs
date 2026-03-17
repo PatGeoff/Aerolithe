@@ -11,6 +11,7 @@ using ScottPlot;
 using System.Security.Permissions;
 using ScottPlot.Plottables;
 using ScottPlot.Statistics;
+using Emgu.CV;
 
 namespace Aerolithe
 {
@@ -234,8 +235,16 @@ namespace Aerolithe
 
         public async Task AutomaticFocusRoutine()
         {
-            AppendTextToConsoleNL("- AutomaticFocusRoutine");
+            Invoke(new Action(() =>
+            {
+                hScrollBar_liveMaskThresh.Value = appSettings.ThreshVal;
+                lbl_maskAmount.Text = appSettings.ThreshVal.ToString();
+            }));
+           
+                AppendTextToConsoleNL("- AutomaticFocusRoutine");
             if (_stopRequested) return;
+
+            // Bouton STOP visible
             if (btn_stopAutomaticFocusCapture.InvokeRequired)
             {
                 btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
@@ -253,154 +262,469 @@ namespace Aerolithe
             await NikonAutofocus();
             if (_stopRequested) return;
 
-            maskFreeze = true;
-            if (btn_freezeMask.InvokeRequired)
+            await Task.Delay(700);
+
+            // Clone du masque Live
+            Mat uiClone = maskMatLive.Clone();
+
+            // ===============================
+            // 1) TEST DU MASQUE NOIR
+            // ===============================
+
+          
+
+            if (IsMatAllBlack(uiClone))
             {
-                btn_freezeMask.Invoke(new Action(() =>
+                maskFreeze = false;
+                int originalThresh = 20;
+                Invoke(new Action(() =>
                 {
-                    btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+                    btn_freezeMask.Text = "";
+                    originalThresh = hScrollBar_liveMaskThresh.Value;
+                }));
+                
+                bool foundValidMask = false;
+
+                for (int t = 60; t >= 0; t -= 1)
+                {
+                    Invoke(new Action(() =>
+                    {
+                        hScrollBar_liveMaskThresh.Value = t;
+                        lbl_maskAmount.Text = t.ToString();
+                    }));
+                    // Première acquisition du masque
+                    Mat testMask = await BrightnessMaskFromBytesMat(
+                        imageView.JpegBuffer,
+                        t,
+                        invert: false
+                    );
+
+                    // Si déjà noir → on passe au t suivant
+                    if (IsMatAllBlack(testMask))
+                    {
+                        testMask.Dispose();
+                        continue;
+                    }
+
+                    // Sinon → le masque est non-noir → on surveille 1 seconde
+                    bool stayedValidFor1s = true;
+                    var start = DateTime.Now;
+
+                    while ((DateTime.Now - start).TotalMilliseconds < 700)
+                    {
+                        await Task.Delay(50); // petite attente pour éviter trop de CPU
+
+                        Mat testMask2 = await BrightnessMaskFromBytesMat(
+                            imageView.JpegBuffer,
+                            t,
+                            invert: false
+                        );
+
+                        // Si ça redevient noir avant la fin → t ne convient pas
+                        if (IsMatAllBlack(testMask2))
+                        {
+                            stayedValidFor1s = false;
+                            testMask2.Dispose();
+                            break;
+                        }
+
+                        testMask2.Dispose();
+                    }
+
+                    testMask.Dispose();
+
+                    if (stayedValidFor1s)
+                    {
+                        // Valeur validée : stable pendant 1 seconde
+                        Mat finalMask = await BrightnessMaskFromBytesMat(
+                            imageView.JpegBuffer,
+                            t,
+                            invert: false
+                        );
+
+                        uiClone?.Dispose();
+                        uiClone = finalMask.Clone();
+                        finalMask.Dispose();
+
+                        foundValidMask = true;
+                        break;
+                    }
+                }
+
+                // Rien trouvé
+                if (!foundValidMask)
+                {
+                    Invoke(new Action(() =>
+                    {
+                        hScrollBar_liveMaskThresh.Value = originalThresh;
+                    }));                    
+
+                    MessageBox.Show(
+                        this,
+                        "Aucune valeur de seuil n’a tenu 1 seconde sans redevenir noire.\n" +
+                        "Vérifiez l’éclairage, la mise au point ou la luminosité.",
+                        "Erreur - Masque impossible",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    );
+
+                    return;
+                }
+
+                // Succès
+                maskFreeze = true;
+                Invoke(new Action(() =>
+                {
+                    btn_freezeMask.Text = "";
                 }));
             }
 
 
-                var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
+            else
+            {
+                
+                maskFreeze = true;
+                Invoke(new Action(() =>
+                {
+                    btn_freezeMask.Text = "";
+                }));
+            }
 
-                int maxTargetDown = 0;
-                int maxUpperPosition = 0;
-                int maxTargetUp = -1;
 
-                // maxTargetDown = le focusStackStepVar le plus bas (négatif) où il y a eu une détection. Plus bas que ça c'est flou
-                // maxTargetUp = le focusStackStepVar le plus haut où il ya détection. En haut de ça c'est flou
-                // maxUpperPosition = le focusStackStepVar le plus haut où la caméra s'est rendue, très probablement 4 steps de plus que maxTargetUp
-                // Delta = le range entre les deux maxTargetDown et maxTargetUp
+            // ====== SAUVEGARDE DU MASQUE ======
+            await SaveMaskAsPngTransparentBlack(maskMatLive, projet.GetMaskFullImagePath());
 
-                ////////////////////////////////////////////////
-                //  Première passe : reculer (non stockée dans blurDataDict) ////////////////////////////////////////////////
+          
+            var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
 
-                ManualFocus(1, stepSize * iterations);
-                focusStackStepVar = iterations * -1;
-                UpdateFocusStepVarLbl(focusStackStepVar);
+            int maxTargetDown = 0;
+            int maxUpperPosition = 0;
+            int maxTargetUp = -1;
 
-                AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
-                await Task.Delay(500);
+            // ====== 1) Première passe : reculer ======
+            ManualFocus(1, stepSize * iterations);
+            focusStackStepVar = iterations * -1;
+            UpdateFocusStepVarLbl(focusStackStepVar);
 
+            AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar);
+            await Task.Delay(500);
+            if (_stopRequested) return;
+
+            // Reculer jusqu'à ce que flou disparaît
+            while (blurredBlocks >= minDetect && !_stopRequested)
+            {
                 if (_stopRequested) return;
-
-                //  Reculer davantage si flou encore détecté
-                while (blurredBlocks >= minDetect && !_stopRequested)
-                {
-                    if (_stopRequested) return;
-                    ManualFocus(1, stepSize);
-                    focusStackStepVar -= 1;
-                    UpdateFocusStepVarLbl(focusStackStepVar);
-                    await Task.Delay(delayTime);
-                }
-
-                maxTargetDown = focusStackStepVar;
-
-                //AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
-                //AppendTextToConsoleNL($"maxTargetDown = {maxTargetDown}");
-
-                await Task.Delay(200);
-
-
-                int blurConsecutiveCount = 0;
-                int i = 0;
-
-                ////////////////////////////////////////////////
-                //  Deuxième passe : On monte jusqu'à ce qu'on ait 4 flous consécutifs (stockée dans blurDataDict) ////////////////////////////////////////////////
-
-                while (!_stopRequested)
-                {
-                    ManualFocus(0, stepSize);
-                    await Task.Delay(delayTime);
-
-                    if (blurredBlocks >= minDetect)
-                    {
-                        blurDataDict[i] = (focusStackStepVar, blurredBlocks);
-                        maxTargetUp = focusStackStepVar;
-                        blurConsecutiveCount = 0;
-                    }
-                    else
-                    {
-                        blurConsecutiveCount++;
-
-                    }
-
-                    focusStackStepVar += 1;
-                    UpdateFocusStepVarLbl(focusStackStepVar);
-
-                    if (blurConsecutiveCount >= 4 && focusStackStepVar > 0)
-                    {
-                        //AppendTextToConsoleNL("Arrêt anticipé : 4 flous consécutifs détectés.");
-                        break;
-                    }
-                    i++;
-                }
-
-
-                //AppendTextToConsoleNL("-- maxTargetUp = " + maxTargetUp.ToString());
-
-
-                maxUpperPosition = focusStackStepVar;
-                // delta = nombre de steps maximum
-                delta = maxTargetUp + Math.Abs(maxTargetDown);
-                //AppendTextToConsoleNL("-- maxUpperPosition = " + maxUpperPosition.ToString());
-                //AppendTextToConsoleNL($"delta ({delta.ToString()}) =  steps entre max up et max down à {stepSize} stepSize");
-
-                await Task.Delay(500);
-
-                ////////////////////////////////////////////////
-                // Troisième passe : retour à la première détection    ////////////////////////////////////////////////
-
-
-                if (_stopRequested) return;
-                //int returnToStartSteps = (maxUpperPosition - maxTargetUp) / 2;
-                //ManualFocus(1, returnToStartSteps * stepSize);
-
-
-                //AppendTextToConsoleNL("stepSize = " + stepSize.ToString());
-                //AppendTextToConsoleNL("delta = " + delta.ToString());
-                int steps = (int)(delta * stepSize * 0.75);
-                AppendTextToConsoleNL("stepSize = " + stepSize.ToString() + ", delta = " + delta.ToString() + ", steps = " + steps.ToString());
-
-                ManualFocus(1, steps);
-                await Task.Delay(500);
-                focusStackStepVar = maxTargetUp;
-                UpdateFocusStepVarLbl(maxTargetUp);
-
-                if (blurredBlocks < minDetect)
-                {
-                    while (blurredBlocks < minDetect && !_stopRequested)
-                    {
-                        if (_stopRequested) break;
-                        ManualFocus(0, stepSize);
-                        await Task.Delay(delayTime * 5);
-                    }
-                }
-
-                // Ajustement fin
-                while (blurredBlocks > minDetect * 2 && !_stopRequested)
-                {
-                    if (_stopRequested) break;
-                    ManualFocus(1, stepSize);
-                    await Task.Delay(delayTime * 5);
-                }
-
-                //_DebugContinue = false;
-                //await WaitForDebugContinue();
-
-                // Reculer de 1 pour revenir au point net
-                ManualFocus(0, stepSize);
-                focusStackStepVar = 0;
+                ManualFocus(1, stepSize);
+                focusStackStepVar--;
                 UpdateFocusStepVarLbl(focusStackStepVar);
                 await Task.Delay(delayTime);
-
-
-                // 📊 Affichage du graphique
-                await DisplayBlurGraph(blurDataDict);
-
             }
+
+            maxTargetDown = focusStackStepVar;
+            await Task.Delay(200);
+
+            int blurConsecutiveCount = 0;
+            int i = 0;
+
+            // ====== 2) Deuxième passe : monter ======
+            while (!_stopRequested)
+            {
+                ManualFocus(0, stepSize);
+                await Task.Delay(delayTime);
+
+                if (blurredBlocks >= minDetect)
+                {
+                    blurDataDict[i] = (focusStackStepVar, blurredBlocks);
+                    maxTargetUp = focusStackStepVar;
+                    blurConsecutiveCount = 0;
+                }
+                else
+                {
+                    blurConsecutiveCount++;
+                }
+
+                focusStackStepVar++;
+                UpdateFocusStepVarLbl(focusStackStepVar);
+
+                if (blurConsecutiveCount >= 4 && focusStackStepVar > 0)
+                    break;
+
+                i++;
+            }
+
+            maxUpperPosition = focusStackStepVar;
+            delta = maxTargetUp + Math.Abs(maxTargetDown);
+
+            await Task.Delay(500);
+
+            // ====== 3) Retour au point net ======
+            int steps = (int)(delta * stepSize * 0.75);
+            AppendTextToConsoleNL($"stepSize={stepSize}, delta={delta}, steps={steps}");
+
+            ManualFocus(1, steps);
+            await Task.Delay(500);
+
+            focusStackStepVar = maxTargetUp;
+            UpdateFocusStepVarLbl(focusStackStepVar);
+
+            if (blurredBlocks < minDetect)
+            {
+                while (blurredBlocks < minDetect && !_stopRequested)
+                {
+                    ManualFocus(0, stepSize);
+                    await Task.Delay(delayTime * 5);
+                }
+            }
+
+            while (blurredBlocks > minDetect * 2 && !_stopRequested)
+            {
+                ManualFocus(1, stepSize);
+                await Task.Delay(delayTime * 5);
+            }
+
+            ManualFocus(0, stepSize);
+            focusStackStepVar = 0;
+            UpdateFocusStepVarLbl(focusStackStepVar);
+            await Task.Delay(delayTime);
+
+            await DisplayBlurGraph(blurDataDict);
+        }
+
+        //public async Task AutomaticFocusRoutine()
+        //{
+        //    AppendTextToConsoleNL("- AutomaticFocusRoutine");
+        //    if (_stopRequested) return;
+        //    if (btn_stopAutomaticFocusCapture.InvokeRequired)
+        //    {
+        //        btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
+        //        {
+        //            btn_stopAutomaticFocusCapture.Visible = true;
+        //            btn_stopAutomaticFocusCapture.Enabled = true;
+        //        }));
+        //    }
+        //    else
+        //    {
+        //        btn_stopAutomaticFocusCapture.Visible = true;
+        //        btn_stopAutomaticFocusCapture.Enabled = true;
+        //    }
+
+        //    await NikonAutofocus();
+        //    if (_stopRequested) return;
+
+        //    await Task.Delay(700);
+
+
+
+        //    // Donner un CLONE au PictureBox pour éviter tout conflit/Dispose
+        //    //var uiClone = (Bitmap)maskBitmapLive.Clone();
+        //    Mat uiClone = maskMatLive.Clone();
+
+        //    // Check si c'est “tout noir” ---
+        //    if (IsMatAllBlack(uiClone))
+        //    {
+        //        blackMaskAttempts++;
+        //        maskFreeze = false;
+
+        //        if (btn_freezeMask.InvokeRequired)
+        //        {
+        //            btn_freezeMask.Invoke(new Action(() =>
+        //            {
+        //                btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+        //            }));
+        //        }
+
+        //        try
+        //        {
+        //            // Routine pour changer la valeur du threshold pour avoir un masque
+
+
+        //            // Première action : tenter un autofocus                
+        //            await nikonDoFocus();                    
+
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            System.Diagnostics.Debug.WriteLine($"[Focus] nikonDoFocus failed: {ex}");
+        //        }
+
+        //        if (blackMaskAttempts >= 2)
+        //        {
+        //            // Deuxième fois d’affilée → message d’erreur et reset du compteur
+        //            blackMaskAttempts = 0;
+        //            MessageBox.Show(
+        //                this,
+        //                "Le masque en direct est entièrement noir après tentative d’autofocus.\n" +
+        //                "Vérifiez la mise au point, l’éclairage, ou les seuils du masque.",
+        //                "Erreur - Masque noir",
+        //                MessageBoxButtons.OK,
+        //                MessageBoxIcon.Error
+        //            );
+        //        }
+
+        //        // On sort tôt du pipeline pour laisser le prochain tick relire une image
+        //        goto AfterMaskBlackValidation;
+        //    }
+        //    else
+        //    {
+        //        // Si c’est bon (pas noir), on reset le compteur
+        //        blackMaskAttempts = 0;
+        //        // On freeze le frame
+        //        maskFreeze = true;
+        //        if (btn_freezeMask.InvokeRequired)
+        //        {
+        //            btn_freezeMask.Invoke(new Action(() =>
+        //            {
+        //                btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+        //            }));
+        //        }
+        //    }
+
+        //    AfterMaskBlackValidation:;
+
+
+        //        //await SaveBitmapAsJpeg(maskBitmapLive,projet.GetMaskFullImagePath());
+        //        //await SaveMaskAsPngTransparentBlack(maskBitmapLive, projet.GetMaskFullImagePath());
+        //        await SaveMaskAsPngTransparentBlack(maskMatLive, projet.GetMaskFullImagePath());
+
+
+        //    var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
+
+        //    int maxTargetDown = 0;
+        //    int maxUpperPosition = 0;
+        //    int maxTargetUp = -1;
+
+        //    // maxTargetDown = le focusStackStepVar le plus bas (négatif) où il y a eu une détection. Plus bas que ça c'est flou
+        //    // maxTargetUp = le focusStackStepVar le plus haut où il ya détection. En haut de ça c'est flou
+        //    // maxUpperPosition = le focusStackStepVar le plus haut où la caméra s'est rendue, très probablement 4 steps de plus que maxTargetUp
+        //    // Delta = le range entre les deux maxTargetDown et maxTargetUp
+
+        //    ////////////////////////////////////////////////
+        //    //  Première passe : reculer (non stockée dans blurDataDict) ////////////////////////////////////////////////
+
+        //    ManualFocus(1, stepSize * iterations);
+        //    focusStackStepVar = iterations * -1;
+        //    UpdateFocusStepVarLbl(focusStackStepVar);
+
+        //    AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
+        //    await Task.Delay(500);
+
+        //    if (_stopRequested) return;
+
+        //    //  Reculer davantage si flou encore détecté
+        //    while (blurredBlocks >= minDetect && !_stopRequested)
+        //    {
+        //        if (_stopRequested) return;
+        //        ManualFocus(1, stepSize);
+        //        focusStackStepVar -= 1;
+        //        UpdateFocusStepVarLbl(focusStackStepVar);
+        //        await Task.Delay(delayTime);
+        //    }
+
+        //    maxTargetDown = focusStackStepVar;
+
+        //    //AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar.ToString());
+        //    //AppendTextToConsoleNL($"maxTargetDown = {maxTargetDown}");
+
+        //    await Task.Delay(200);
+
+
+        //    int blurConsecutiveCount = 0;
+        //    int i = 0;
+
+        //    ////////////////////////////////////////////////
+        //    //  Deuxième passe : On monte jusqu'à ce qu'on ait 4 flous consécutifs (stockée dans blurDataDict) ////////////////////////////////////////////////
+
+        //    while (!_stopRequested)
+        //    {
+        //        ManualFocus(0, stepSize);
+        //        await Task.Delay(delayTime);
+
+        //        if (blurredBlocks >= minDetect)
+        //        {
+        //            blurDataDict[i] = (focusStackStepVar, blurredBlocks);
+        //            maxTargetUp = focusStackStepVar;
+        //            blurConsecutiveCount = 0;
+        //        }
+        //        else
+        //        {
+        //            blurConsecutiveCount++;
+
+        //        }
+
+        //        focusStackStepVar += 1;
+        //        UpdateFocusStepVarLbl(focusStackStepVar);
+
+        //        if (blurConsecutiveCount >= 4 && focusStackStepVar > 0)
+        //        {
+        //            //AppendTextToConsoleNL("Arrêt anticipé : 4 flous consécutifs détectés.");
+        //            break;
+        //        }
+        //        i++;
+        //    }
+
+
+        //    //AppendTextToConsoleNL("-- maxTargetUp = " + maxTargetUp.ToString());
+
+
+        //    maxUpperPosition = focusStackStepVar;
+        //    // delta = nombre de steps maximum
+        //    delta = maxTargetUp + Math.Abs(maxTargetDown);
+        //    //AppendTextToConsoleNL("-- maxUpperPosition = " + maxUpperPosition.ToString());
+        //    //AppendTextToConsoleNL($"delta ({delta.ToString()}) =  steps entre max up et max down à {stepSize} stepSize");
+
+        //    await Task.Delay(500);
+
+        //    ////////////////////////////////////////////////
+        //    // Troisième passe : retour à la première détection    ////////////////////////////////////////////////
+
+
+        //    if (_stopRequested) return;
+        //    //int returnToStartSteps = (maxUpperPosition - maxTargetUp) / 2;
+        //    //ManualFocus(1, returnToStartSteps * stepSize);
+
+
+        //    //AppendTextToConsoleNL("stepSize = " + stepSize.ToString());
+        //    //AppendTextToConsoleNL("delta = " + delta.ToString());
+        //    int steps = (int)(delta * stepSize * 0.75);
+        //    AppendTextToConsoleNL("stepSize = " + stepSize.ToString() + ", delta = " + delta.ToString() + ", steps = " + steps.ToString());
+
+        //    ManualFocus(1, steps);
+        //    await Task.Delay(500);
+        //    focusStackStepVar = maxTargetUp;
+        //    UpdateFocusStepVarLbl(maxTargetUp);
+
+        //    if (blurredBlocks < minDetect)
+        //    {
+        //        while (blurredBlocks < minDetect && !_stopRequested)
+        //        {
+        //            if (_stopRequested) break;
+        //            ManualFocus(0, stepSize);
+        //            await Task.Delay(delayTime * 5);
+        //        }
+        //    }
+
+        //    // Ajustement fin
+        //    while (blurredBlocks > minDetect * 2 && !_stopRequested)
+        //    {
+        //        if (_stopRequested) break;
+        //        ManualFocus(1, stepSize);
+        //        await Task.Delay(delayTime * 5);
+        //    }
+
+        //    //_DebugContinue = false;
+        //    //await WaitForDebugContinue();
+
+        //    // Reculer de 1 pour revenir au point net
+        //    ManualFocus(0, stepSize);
+        //    focusStackStepVar = 0;
+        //    UpdateFocusStepVarLbl(focusStackStepVar);
+        //    await Task.Delay(delayTime);
+
+
+        //    // 📊 Affichage du graphique
+        //    await DisplayBlurGraph(blurDataDict);
+
+        //}
 
 
 

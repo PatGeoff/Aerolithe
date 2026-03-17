@@ -445,7 +445,7 @@ namespace Aerolithe
             toolTip.SetToolTip(lbl_saveMaskinFolder, "N'applique pas le masque mais le sauvegarde dans les dossiers ../images/focusstack/masques_A ou masques_B");
             toolTip.SetToolTip(btn_maskSave, "N'applique pas le masque mais le sauvegarde dans les dossiers ../images/focusstack/masques_A ou masques_B");
             toolTip.SetToolTip(lbl_applyMaskFS, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
-            toolTip.SetToolTip(btn_maskAuto, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
+            toolTip.SetToolTip(btn_applyMask, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
         }
 
 
@@ -596,16 +596,22 @@ namespace Aerolithe
 
         public int Serie { get; set; } = 0;                     // Série 0 = 5° , etc
 
-        public bool MaskAuto { get; set; } = true;
+        public bool ApplyMask { get; set; } = true;
 
         public bool MaskSave { get; set; } = true;
 
         public bool ViewSharpnessOverlay { get; set; } = true;
 
-      
+        public int PictureWidth { get; set; }
+        public int PictureHeight { get; set; }
+
+
 
         // --- Méthodes utilitaires ---
-
+        public string GetImageFullPath()
+        {
+            return Path.Combine(GetTempImageFolderPath(), GetImageNameFull());
+        }
         public string GetImageNameFull()
         {
             // Format: Base_Rotation_Focus.jpg
@@ -626,17 +632,36 @@ namespace Aerolithe
             return Path.Combine(ImageFolderPath, $"{FocusStackFolderName}", coteFolder);
         }
 
-        public string GetMaskFolderPath()
+        public string GetFocusStackImageFullPath()
         {
-            // ex: C:\Projet\images\focusStack\Masks
-            string coteFolder = (Cote == 0) ? "focusStack_A" : "focusStack_B";
-            return Path.Combine(ImageFolderPath, $"_Masks_{FocusStackFolderName}", coteFolder);
+            /// JPG
+            string nom = $"{ImageNameBase}_{RotationSerieIncrement:D2}.jpg";
+            return Path.Combine(GetFocusStackPath(), nom);
         }
 
-        public string GetImageFullPath()
+        ///
+
+        public string GetMaskFolderPath()
         {
-            return Path.Combine(GetTempImageFolderPath(), GetImageNameFull());
+            // ex: C:\Projet\images\masques_focusStack_A
+            string coteFolder = (Cote == 0) ? "masques_A" : "masques_B";
+            return Path.Combine(FocusStackFolderName, coteFolder);
+            //return ImageFolderPath;
         }
+
+        public string GetMaskImageName()
+        {
+            // PNG
+            return $"{ImageNameBase}_{RotationSerieIncrement:D2}_mask.png";
+        }
+
+        public string GetMaskFullImagePath()
+        {
+            return Path.Combine(GetMaskFolderPath(), GetMaskImageName());
+        }
+         
+        ///
+    
 
         // --- Sauvegarde / Chargement ---
         public ProjectPreferences Load(string filePath)
@@ -688,6 +713,10 @@ namespace Aerolithe
         public bool MaskAuto { get; set; }
 
         public bool MaskSave { get; set; }
+
+        public int ThreshVal { get; set; } = 20;
+
+
 
         public List<MessagingUserSetting> MessagingUsers { get; set; } = new();
 

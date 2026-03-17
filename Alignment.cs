@@ -163,10 +163,10 @@ namespace Aerolithe
 
         private async Task RoutineAutoCentrage(int timeoutMs = 20000)
         {
-            if (!offsets.hasBlackOnBorder && !cancelAutoCentrage) {
+            //if (!offsets.hasBlackOnBorder && !cancelAutoCentrage) {
 
-                RoutineCalibrationLineareNearest();
-            }
+            //    RoutineCalibrationLineareNearest();
+            //}
 
             AppendTextToConsoleNL("- RoutineAutoCentrage");
             cancelAutoCentrage = false;

@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing.Imaging;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -41,8 +42,11 @@ namespace Aerolithe
         private readonly object imageLock = new object();
         public Bitmap maskBitmapLive;
         public bool maskFreeze = false;
+        private int blackMaskAttempts = 0;
 
 
+        private Mat? maskMatLive;       // remplace maskBitmapLive
+        private readonly object _maskLock = new object(); // si tu veux un lock simple
 
         // Taille du rendu histogramme (pixels)
         private static readonly Size _histRenderSize = new Size(256, 120);
@@ -172,11 +176,9 @@ namespace Aerolithe
                 lastGammaValue = gammaValue;
             }
         }
-
-
+        // Le System.Windows.Form.Timer sur lequel LiveViewTimer_Tick s'exécute est sur le trhead principal donc pas besoin de Invoke dans les appels aux contrôles du UI.
         async void LiveViewTimer_Tick(object? sender, EventArgs e)
         {
-
             if (isProcessing) return;
             isProcessing = true;
 
@@ -189,82 +191,132 @@ namespace Aerolithe
                 {
                     liveViewStatus = true;
 
+                    // -- LUT Gamma (supposé remplir 'lutData' via UpdateGammaLUT) --
                     UpdateGammaLUT();
+                    float gammaValue = trackBar_Gamma.Value / 10.0f;
 
-                    Mat background = new Mat();
-
-
-                    using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
+                    using (var background = new Mat())
                     {
+                        // 1) Decode JPEG -> Mat couleur
                         CvInvoke.Imdecode(imageView.JpegBuffer, ImreadModes.Color, background);
 
-                        float gammaValue = trackBar_Gamma.Value / 10.0f;
-
-                        using (Mat lut = new Mat(1, 256, DepthType.Cv8U, 1))
+                        // 2) Applique LUT gamma (8 bits)
+                        using (var lut = new Mat(1, 256, DepthType.Cv8U, 1))
                         {
                             System.Runtime.InteropServices.Marshal.Copy(lutData, 0, lut.DataPointer, lutData.Length);
-                            CvInvoke.LUT(background, lut, background);
+                            CvInvoke.LUT(background, lut, background); // in-place OK
                         }
 
-                        // Calcule et affichage du masque
-                        if (!maskFreeze) maskBitmapLive = await BrightnessMaskFromBytes(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value, false);
-                        else if (maskBitmapLive == null) maskBitmapLive = await BrightnessMaskFromBytes(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value, false);
-
-                        picBox_liveMaskLum.Image = maskBitmapLive;
-
-                        var localBitmap = (Bitmap)maskBitmapLive.Clone();
-
-                        // Centrage du masque
-                        _ = Task.Run(async () =>
+                        // 3) Masque luminosité (pipeline Mat)
+                        Mat? maskMatForThisFrame = null;
+                        try
                         {
-                            await CalculeDuCentrageAsync(localBitmap, 1);
-                            localBitmap.Dispose();
-                            lbl_Centrage.Invoke(new Action(() =>
+                            if (!maskFreeze || maskMatLive == null)
+                                maskMatForThisFrame = await BrightnessMaskFromBytesMat(
+                                    imageView.JpegBuffer,
+                                    hScrollBar_liveMaskThresh.Value,
+                                    invert: false
+                                );
+                            else
+                                maskMatForThisFrame = maskMatLive; // réutilisation si freeze
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[LiveMask] BrightnessMaskFromBytesMat error: {ex}");
+                            maskMatForThisFrame = null;
+                        }
+
+                        // 3b) Si pas de masque -> Nettoyage de l'UI du masque et on saute
+                        if (maskMatForThisFrame == null || maskMatForThisFrame.IsEmpty)
+                        {
+                            this.BeginInvoke(new Action(() =>
                             {
-                                lbl_Centrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}";
+                                var oldUi = picBox_liveMaskLum.Image;
+                                picBox_liveMaskLum.Image = null;
+                                oldUi?.Dispose();
                             }));
-                        });
+                            goto AfterMaskWork;
+                        }
 
-                        using (var sourceImage = background.ToImage<Bgr, byte>())
-                        using (var maskGray = maskBitmapLive.ToImage<Gray, byte>())
-                        using (var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Nearest)) // (option: Inter.Nearest pour masque binaire)
+                        // 4) Remplacer le masque global (référence) + afficher un clone Bitmap sur l'UI
+                        var oldMat = maskMatLive;
+                        maskMatLive = maskMatForThisFrame;
+
+                        this.BeginInvoke(new Action(() =>
                         {
-                            using (var invertedMask = resizedMask.Not())
-                            using (var maskBgr = invertedMask.Convert<Bgr, byte>()) { }
+                            using var bmpTemp = maskMatForThisFrame.ToBitmap();    // conversion GDI+ confinée à l'UI
+                            var uiClone = (Bitmap)bmpTemp.Clone();                  // donner un clone au PictureBox
 
-                            //        // ✅ Calcul de la carte de netteté locale
-                            Mat grayImage = background.ToImage<Gray, byte>().Mat;
+                            var prevUi = picBox_liveMaskLum.Image;
+                            picBox_liveMaskLum.Image = uiClone;
+                            prevUi?.Dispose();
 
-                            int blockSize = trackBar_blobCount.Value * 8;
+                            // Libérer l'ancien Mat s'il n'est plus utilisé
+                            if (!ReferenceEquals(oldMat, maskMatForThisFrame))
+                                oldMat?.Dispose();
+                        }));
 
+                    AfterMaskWork:
+                        ;
 
-
-                            using var grayForFocus = new Mat();
-                            CvInvoke.CvtColor(background, grayForFocus, ColorConversion.Bgr2Gray);
-
-                            // 3) Érosion pour s’éloigner de la bordure (marge = ~blockSize/4)
-                            //int borderPx = Math.Max(4, blockSize / 4);
-                            using var kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
-                            using var safeMask = new Mat();
-                            CvInvoke.Erode(resizedMask, safeMask, kernel, new Point(-1, -1), 1, BorderType.Constant, new MCvScalar(0));
-                            //CvInvoke.Erode(resizedMask, safeMask, kernel, new Point(-1, -1), borderPx, BorderType.Constant, new MCvScalar(0));
-
-
-                            double[,] sharpnessGrid = ComputeSharpnessGridMaskedROI(grayForFocus, safeMask, blockSize, 0.8);
-
-
-                            //double[,] sharpnessGrid = ComputeSharpnessGrid(grayImage, blockSize);
-
-                                // Tu peux stocker cette carte dans une variable globale ou l'utiliser dans AutomaticFocusMapping()
-                                currentLiveViewFocusMap = new FocusMap
+                        // 5) Centrage en tâche de fond — on clone le Mat pour éviter Dispose concurrent
+                        if (maskMatLive != null && !maskMatLive.IsEmpty)
+                        {
+                            var localMaskMat = maskMatLive.Clone();
+                            _ = Task.Run(async () =>
                             {
-                                FocusPosition = focusStackStepVar, // <-----  @(*#%&(@&$(&$  ----   ICI 
-                                SharpnessGrid = sharpnessGrid
-                            };
+                                try
+                                {
+                                    // Si CalculeDuCentrageAsync attend un Bitmap :
+                                    using var localBitmap = localMaskMat.ToBitmap();
+                                    await CalculeDuCentrageAsync(localBitmap, 1);
 
-                                    // Création de l'image avec les blocs nets
-                                    Image<Bgr, byte> overlayImage = background.ToImage<Bgr, byte>();
+                                    lbl_Centrage.Invoke(new Action(() =>
+                                    {
+                                        lbl_Centrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}";
+                                    }));
+                                }
+                                finally
+                                {
+                                    localMaskMat.Dispose();
+                                }
+                            });
+                        }
 
+                        // 6) Pipeline de netteté / overlay avec le masque courant (Mat)
+                        if (maskMatForThisFrame != null && !maskMatForThisFrame.IsEmpty)
+                        {
+                            using (var sourceImage = background.ToImage<Bgr, byte>()) // si tu as besoin de Image<> pour d'autres opérations
+                            using (var maskGrayImg = maskMatForThisFrame.ToImage<Gray, byte>())
+                            using (var resizedMaskImg = maskGrayImg.Width != sourceImage.Width || maskGrayImg.Height != sourceImage.Height
+                                                         ? maskGrayImg.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Nearest)
+                                                         : maskGrayImg.Copy())
+                            using (var kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1)))
+                            using (var grayForFocus = new Mat())
+                            using (var safeMask = new Mat()) // Mat final pour ComputeSharpnessGridMaskedROI
+                            {
+                                // Inversion/convert éventuelles → si besoin d'un masque inversé pour dessin:
+                                // using (var invertedMask = resizedMaskImg.Not())
+                                // using (var maskBgr = invertedMask.Convert<Bgr, byte>()) { /* ... */ }
+
+                                // Image -> Mat pour la carte de netteté
+                                CvInvoke.CvtColor(background, grayForFocus, ColorConversion.Bgr2Gray);
+
+                                // Petite érosion pour s’éloigner des bords
+                                CvInvoke.Erode(resizedMaskImg, safeMask, kernel, new Point(-1, -1), 1, BorderType.Constant, new MCvScalar(0));
+
+                                int blockSize = trackBar_blobCount.Value * 8;
+                                double[,] sharpnessGrid = ComputeSharpnessGridMaskedROI(grayForFocus, safeMask, blockSize, 0.8);
+
+                                currentLiveViewFocusMap = new FocusMap
+                                {
+                                    FocusPosition = focusStackStepVar,  // ICI : ta position courante
+                                    SharpnessGrid = sharpnessGrid
+                                };
+
+                                // 7) Overlay des blocs nets
+                                using (var overlayImage = background.ToImage<Bgr, byte>()) // copie pour dessin
+                                {
                                     for (int y = 0; y < sharpnessGrid.GetLength(0); y++)
                                     {
                                         for (int x = 0; x < sharpnessGrid.GetLength(1); x++)
@@ -274,39 +326,56 @@ namespace Aerolithe
                                             if (sharpness >= blurThreshold)
                                             {
                                                 Rectangle rect = new Rectangle(x * blockSize, y * blockSize, blockSize, blockSize);
-                                                overlayImage.Draw(rect, new Bgr(Color.LimeGreen), 1); // contour vert pour les zones nettes
+                                                overlayImage.Draw(rect, new Bgr(Color.LimeGreen), 1);
                                             }
                                         }
                                     }
 
+                                    // Compte des blocs au-dessus du seuil
                                     blurredBlocks = sharpnessGrid.Cast<double>().Count(v => v >= blurThreshold);
                                     lbl_blobCount.Text = blurredBlocks.ToString();
 
-                                    // Affichage selon l'état de la checkbox
+                                    // 8) Affichage principal
+                                    var prevMain = picBox_LiveView_Main.Image;
                                     if (projet.ViewSharpnessOverlay)
                                     {
-                                        picBox_LiveView_Main.Image = overlayImage.ToBitmap();
+                                        // On génère un Bitmap frais et on remplace l'ancien
+                                        using var overlayBmp = overlayImage.ToBitmap();
+                                        picBox_LiveView_Main.Image = (Bitmap)overlayBmp.Clone(); // clone optionnel si tu veux standardiser
                                     }
                                     else
                                     {
-                                        picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
+                                        using var bgBmp = background.ToImage<Bgr, byte>().ToBitmap();
+                                        picBox_LiveView_Main.Image = (Bitmap)bgBmp.Clone(); // clone optionnel
                                     }
+                                    prevMain?.Dispose();
                                 }
-
-
-
                             }
+                        }
+                        else
+                        {
+                            // Pas de masque → afficher simplement le background
+                            var prevMain = picBox_LiveView_Main.Image;
+                            using var bgBmp = background.ToImage<Bgr, byte>().ToBitmap();
+                            picBox_LiveView_Main.Image = (Bitmap)bgBmp.Clone();
+                            prevMain?.Dispose();
+                        }
+                    } // end using background
                 }
                 else
                 {
                     liveViewStatus = false;
+                    var prevMain = picBox_LiveView_Main.Image;
                     picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+                    prevMain?.Dispose();
                 }
             }
             catch (NikonException ex)
             {
                 Console.WriteLine("NikonException: " + ex.Message);
+                var prevMain = picBox_LiveView_Main.Image;
                 picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+                prevMain?.Dispose();
             }
             finally
             {
@@ -314,6 +383,337 @@ namespace Aerolithe
             }
         }
 
+
+        //async void LiveViewTimer_Tick(object? sender, EventArgs e)
+        //{
+
+        //    if (isProcessing) return;
+        //    isProcessing = true;
+
+        //    try
+        //    {
+        //        if (!chkBox_liveView.Checked) chkBox_liveView.Checked = true;
+
+        //        imageView = device.GetLiveViewImage();
+        //        if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)
+        //        {
+        //            liveViewStatus = true;
+
+        //            UpdateGammaLUT();
+
+        //            Mat background = new Mat();
+
+
+        //            using (MemoryStream stream = new MemoryStream(imageView.JpegBuffer))
+        //            {
+        //                CvInvoke.Imdecode(imageView.JpegBuffer, ImreadModes.Color, background);
+
+        //                float gammaValue = trackBar_Gamma.Value / 10.0f;
+
+        //                using (Mat lut = new Mat(1, 256, DepthType.Cv8U, 1))
+        //                {
+        //                    System.Runtime.InteropServices.Marshal.Copy(lutData, 0, lut.DataPointer, lutData.Length);
+        //                    CvInvoke.LUT(background, lut, background);
+        //                }
+
+        //                Bitmap? maskForThisFrame = null;
+
+        //                try
+        //                {
+        //                    if (!maskFreeze || maskBitmapLive == null)
+        //                        maskForThisFrame = await BrightnessMaskFromBytes(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value, false);
+        //                    else
+        //                        maskForThisFrame = maskBitmapLive; // réutilisation si freeze
+        //                }
+        //                catch (Exception ex) // <--- catch large ici
+        //                {
+        //                    System.Diagnostics.Debug.WriteLine($"[LiveMask] BrightnessMaskFromBytes error: {ex}");
+        //                    maskForThisFrame = null;
+        //                }
+
+        //                // Si on n'a pas de masque ce tick → on nettoie l'UI et on saute
+        //                if (maskForThisFrame == null)
+        //                {
+        //                    var oldUi = picBox_liveMaskLum.Image;
+        //                    picBox_liveMaskLum.Image = null;
+        //                    oldUi?.Dispose();
+        //                    goto AfterMaskWork; // saute tout le pipeline basé sur le masque
+        //                }
+
+        //                // Remplacement atomique de la référence globale
+        //                var oldMask = maskBitmapLive;
+        //                maskBitmapLive = maskForThisFrame;
+
+        //                // Donner un CLONE au PictureBox pour éviter tout conflit/Dispose
+        //                var uiClone = (Bitmap)maskForThisFrame.Clone();
+        //                var prevUi = picBox_liveMaskLum.Image;
+        //                picBox_liveMaskLum.Image = uiClone;
+        //                prevUi?.Dispose();
+
+
+
+        //                // Conversion Emgu protégée (format et exceptions)
+        //                Image<Gray, byte>? maskGrayImage = null;
+        //                try
+        //                {
+        //                    // Si jamais ta version Emgu râle ici, remplace par Ensure8bppGray(maskForThisFrame) (helper plus bas)
+        //                    maskGrayImage = maskForThisFrame.ToImage<Gray, byte>();
+        //                }
+        //                catch (Exception ex)
+        //                {
+        //                    System.Diagnostics.Debug.WriteLine($"[LiveMask] ToImage<Gray, byte> failed: {ex}");
+        //                    goto AfterMaskWork;
+        //                }
+
+        //                using (maskGrayImage)
+        //                using (var resizedMask = maskGrayImage.Resize(background.Width, background.Height, Emgu.CV.CvEnum.Inter.Nearest))
+        //                {
+        //                    // ... ton pipeline (inversion/erosion/ComputeSharpnessGridMaskedROI, overlay, etc.)
+        //                }
+
+        //                // On peut libérer l'ancien masque si la référence a changé
+        //                if (!ReferenceEquals(oldMask, maskBitmapLive))
+        //                    oldMask?.Dispose();
+
+        //            AfterMaskWork:;
+
+        //                //
+
+
+        //            //    Mat? maskMatForThisFrame = null;
+
+        //            //    try
+        //            //    {
+        //            //        if (!maskFreeze || maskMatLive == null)
+        //            //            maskMatForThisFrame = await BrightnessMaskFromBytesMat(imageView.JpegBuffer, hScrollBar_liveMaskThresh.Value, false);
+        //            //        else
+        //            //            maskMatForThisFrame = maskMatLive; // réutilisation si freeze (attention à ne pas disposer)
+        //            //    }
+        //            //    catch (Exception ex)
+        //            //    {
+        //            //        System.Diagnostics.Debug.WriteLine($"[LiveMask] BrightnessMaskFromBytesMat error: {ex}");
+        //            //        maskMatForThisFrame = null;
+        //            //    }
+
+        //            //    if (maskMatForThisFrame == null)
+        //            //    {
+        //            //        // Nettoyage UI sur thread UI
+        //            //        this.BeginInvoke(new Action(() =>
+        //            //        {
+        //            //            var oldUi = picBox_liveMaskLum.Image;
+        //            //            picBox_liveMaskLum.Image = null;
+        //            //            oldUi?.Dispose();
+        //            //        }));
+        //            //        goto AfterMaskWork;
+        //            //    }
+
+        //            //    // Remplacement atomique de la référence globale Mat (pas de Dispose ici si freeze)
+        //            //    var oldMat = maskMatLive;
+        //            //    maskMatLive = maskMatForThisFrame;
+
+        //            //    // Affichage sur le thread UI
+        //            //    this.BeginInvoke(new Action(() =>
+        //            //    {
+        //            //        // Conversion => Bitmap temporaire
+        //            //        using var bmpTemp = maskMatForThisFrame.ToBitmap();
+
+        //            //        // Donner un CLONE au PictureBox
+        //            //        var uiClone = (Bitmap)bmpTemp.Clone();
+
+        //            //        var prevUi = picBox_liveMaskLum.Image;
+        //            //        picBox_liveMaskLum.Image = uiClone;
+        //            //        prevUi?.Dispose();
+
+        //            //        // Optionnel: si oldMat n’est plus utilisé nulle part, on peut le Dispose ici
+        //            //        // MAIS attention au freeze: ne pas disposer si réutilisé ailleurs !
+        //            //        if (!ReferenceEquals(oldMat, maskMatForThisFrame))
+        //            //            oldMat?.Dispose();
+        //            //    }));
+
+        //            //AfterMaskWork:
+        //            //    ;
+
+        //                // ---- Centrage en tâche de fond avec un clone isolé ----
+        //                if (maskBitmapLive != null)
+        //                {
+        //                    var localBitmap = (Bitmap)maskBitmapLive.Clone();
+        //                    _ = Task.Run(async () =>
+        //                    {
+        //                        try
+        //                        {
+        //                            await CalculeDuCentrageAsync(localBitmap, 1);
+        //                            lbl_Centrage.Invoke(new Action(() =>
+        //                            {
+        //                                lbl_Centrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}";
+        //                            }));
+        //                        }
+        //                        finally
+        //                        {
+        //                            localBitmap.Dispose();
+        //                        }
+        //                    });
+        //                }
+
+
+        //                using (var sourceImage = background.ToImage<Bgr, byte>())
+        //                using (var maskGray = maskBitmapLive.ToImage<Gray, byte>())
+        //                using (var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Nearest)) // (option: Inter.Nearest pour masque binaire)
+        //                {
+        //                    using (var invertedMask = resizedMask.Not())
+        //                    using (var maskBgr = invertedMask.Convert<Bgr, byte>()) { }
+
+        //                    //        // ✅ Calcul de la carte de netteté locale
+        //                    Mat grayImage = background.ToImage<Gray, byte>().Mat;
+
+        //                    int blockSize = trackBar_blobCount.Value * 8;
+
+
+
+        //                    using var grayForFocus = new Mat();
+        //                    CvInvoke.CvtColor(background, grayForFocus, ColorConversion.Bgr2Gray);
+
+        //                    // 3) Érosion pour s’éloigner de la bordure (marge = ~blockSize/4)
+        //                    //int borderPx = Math.Max(4, blockSize / 4);
+        //                    using var kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
+        //                    using var safeMask = new Mat();
+        //                    CvInvoke.Erode(resizedMask, safeMask, kernel, new Point(-1, -1), 1, BorderType.Constant, new MCvScalar(0));
+        //                    //CvInvoke.Erode(resizedMask, safeMask, kernel, new Point(-1, -1), borderPx, BorderType.Constant, new MCvScalar(0));
+
+
+        //                    double[,] sharpnessGrid = ComputeSharpnessGridMaskedROI(grayForFocus, safeMask, blockSize, 0.8);
+
+
+        //                    //double[,] sharpnessGrid = ComputeSharpnessGrid(grayImage, blockSize);
+
+        //                    // Tu peux stocker cette carte dans une variable globale ou l'utiliser dans AutomaticFocusMapping()
+        //                    currentLiveViewFocusMap = new FocusMap
+        //                    {
+        //                        FocusPosition = focusStackStepVar, // <-----  @(*#%&(@&$(&$  ----   ICI 
+        //                        SharpnessGrid = sharpnessGrid
+        //                    };
+
+        //                    // Création de l'image avec les blocs nets
+        //                    Image<Bgr, byte> overlayImage = background.ToImage<Bgr, byte>();
+
+        //                    for (int y = 0; y < sharpnessGrid.GetLength(0); y++)
+        //                    {
+        //                        for (int x = 0; x < sharpnessGrid.GetLength(1); x++)
+        //                        {
+        //                            double sharpness = sharpnessGrid[y, x];
+        //                            blurThreshold = (double)trackBar_blurThreshold.Value;
+        //                            if (sharpness >= blurThreshold)
+        //                            {
+        //                                Rectangle rect = new Rectangle(x * blockSize, y * blockSize, blockSize, blockSize);
+        //                                overlayImage.Draw(rect, new Bgr(Color.LimeGreen), 1); // contour vert pour les zones nettes
+        //                            }
+        //                        }
+        //                    }
+
+        //                    blurredBlocks = sharpnessGrid.Cast<double>().Count(v => v >= blurThreshold);
+        //                    lbl_blobCount.Text = blurredBlocks.ToString();
+
+        //                    // Affichage selon l'état de la checkbox
+        //                    if (projet.ViewSharpnessOverlay)
+        //                    {
+        //                        picBox_LiveView_Main.Image = overlayImage.ToBitmap();
+        //                    }
+        //                    else
+        //                    {
+        //                        picBox_LiveView_Main.Image = background.ToImage<Bgr, Byte>().ToBitmap();
+        //                    }
+        //                }
+
+
+
+        //            }
+        //        }
+        //        else
+        //        {
+        //            liveViewStatus = false;
+        //            picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+        //        }
+        //    }
+        //    catch (NikonException ex)
+        //    {
+        //        Console.WriteLine("NikonException: " + ex.Message);
+        //        picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+        //    }
+        //    finally
+        //    {
+        //        isProcessing = false;
+        //    }
+        //}
+
+
+
+
+
+
+        private static bool IsMatAllBlack(Mat mat)
+        {
+            if (mat == null || mat.IsEmpty) return true;
+
+            using var gray = new Mat();
+            if (mat.NumberOfChannels == 1)
+                mat.CopyTo(gray);
+            else
+                CvInvoke.CvtColor(mat, gray,
+                    mat.NumberOfChannels == 3 ? ColorConversion.Bgr2Gray : ColorConversion.Bgra2Gray);
+
+            double minVal = 0, maxVal = 0;
+            // Pour 2D, 2 éléments suffisent. Pour N-dim, dimensionner selon le nombre d’axes.
+            int[] minLoc = new int[gray.Dims >= 1 ? gray.Dims : 2];
+            int[] maxLoc = new int[minLoc.Length];
+
+            // Certaines versions attendent 'ref' sur les scalaires, et des tableaux pour les localisations :
+            CvInvoke.MinMaxIdx(gray, out minVal, out maxVal, minLoc, maxLoc, null);
+
+            return maxVal <= 0.0;
+        }
+
+
+
+
+
+        private static bool IsBitmapAllBlack(Bitmap bmp)
+        {
+            var rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
+            BitmapData? data = null;
+            try
+            {
+                data = bmp.LockBits(rect, ImageLockMode.ReadOnly, bmp.PixelFormat);
+                int bpp = Image.GetPixelFormatSize(bmp.PixelFormat) / 8;
+
+                unsafe
+                {
+                    byte* basePtr = (byte*)data.Scan0;
+                    for (int y = 0; y < bmp.Height; y++)
+                    {
+                        byte* row = basePtr + y * data.Stride;
+                        // On parcourt tous les octets de la ligne :
+                        for (int x = 0; x < bmp.Width * bpp; x++)
+                        {
+                            if (row[x] != 0) // le moindre octet non nul => pas “tout noir”
+                                return false;
+                        }
+                    }
+                }
+                return true; // rien de non-nul trouvé => tout noir
+            }
+            finally
+            {
+                if (data != null) bmp.UnlockBits(data);
+            }
+        }
+
+        private static Bitmap Ensure8bppGray(Bitmap src)
+        {
+            // Convertir proprement en 8bpp Gray via OpenCV
+            using var mat = src.ToImage<Bgr, byte>().Mat; // gère aussi 8/24/32 bpp d'entrée
+            using var gray = new Mat();
+            CvInvoke.CvtColor(mat, gray, ColorConversion.Bgr2Gray);
+            return gray.ToImage<Gray, byte>().ToBitmap(); // 8bpp indexed grayscale
+        }
 
 
         private void ShowValueHistogramHSV(Mat bgrSource, PictureBox targetLum)
@@ -380,6 +780,9 @@ namespace Aerolithe
                 comboBox_TaillePhotos.Items.Add(imgSize[i].ToString());
             }
             comboBox_TaillePhotos.SelectedIndex = imgSize.Index;
+
+            projet.PictureWidth = int.Parse((imgSize[imgSize.Index].ToString().Split("*")[0].Substring(2)));
+            projet.PictureHeight = int.Parse(imgSize[imgSize.Index].ToString().Split("*")[1][..^1]);
         }
 
         private void GetImageType()

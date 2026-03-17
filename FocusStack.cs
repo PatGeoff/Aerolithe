@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -30,10 +31,12 @@ namespace Aerolithe
             public int Rotation { get; set; }
             public string[] ImagePaths { get; set; }
             public string OutputPath { get; set; }
+            public string MaskPath { get; set; }
+            public bool ApplyMask { get; set; }
             public string Status { get; set; } // "En attente", "En cours", "Terminé", "Erreur"
         }
 
-        private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, int elevation, int rotation, int serie, string status = "En attente")
+        private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, string maskPath, bool applyMask, int elevation, int rotation, int serie, string status = "En attente")
         {
             AppendTextToConsoleNL("- EnqueueFocusStackTask");
             var task = new FocusStackTask
@@ -43,6 +46,8 @@ namespace Aerolithe
                 Rotation = rotation,
                 ImagePaths = imagePaths,
                 OutputPath = outputPath,
+                MaskPath = maskPath,
+                ApplyMask = applyMask,
                 Status = status
             };
 
@@ -71,6 +76,8 @@ namespace Aerolithe
             }
         }
 
+        // Quand on appuie sur le bouton pour faire un FocusStack. 
+        // Pas la version automatique
         public async Task MakeFocusStack()
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -107,7 +114,7 @@ namespace Aerolithe
                         }));
                     }
 
-                    EnqueueFocusStackTask(imagePaths, outputPath, (int)actuatorAngle, turntablePosition, _Serie);
+                    EnqueueFocusStackTask(imagePaths, outputPath, projet.GetMaskFullImagePath(), projet.ApplyMask, (int)actuatorAngle, turntablePosition, _Serie);
                 }
             }
         }
@@ -140,24 +147,26 @@ namespace Aerolithe
                                       .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
                                       .ToArray();
 
-            string baseName = imageFiles.Length > 0
-                ? Path.GetFileNameWithoutExtension(imageFiles[0])
-                : "Erreur";
+            //string baseName = imageFiles.Length > 0
+            //    ? Path.GetFileNameWithoutExtension(imageFiles[0])
+            //    : "Erreur";
 
-            baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
-            string outputPath = Path.Combine(projet.GetFocusStackPath(), baseName + "_stacked.jpg");
+            //baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
+            //string outputPath = Path.Combine(projet.GetFocusStackPath(), baseName + "_stacked.jpg");
+
+            string outputPath = projet.GetFocusStackImageFullPath();
+            string maskPath = projet.GetMaskFullImagePath();
 
             this.BeginInvoke((Action)(() =>
             {
                 if (imageFiles.Length > 0)
                 {
                     AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0]);
-                    AppendTextToConsoleNL("Nom du fichier de destination : " + baseName);
-                    EnqueueFocusStackTask(imageFiles, outputPath, (int)actuatorAngle, turntablePosition, _Serie);
+                    EnqueueFocusStackTask(imageFiles, outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, _Serie);
                 }
                 else
                 {
-                    EnqueueFocusStackTask(Array.Empty<string>(), outputPath, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
+                    EnqueueFocusStackTask(Array.Empty<string>(), outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
                     AppendTextToConsoleNL("Aucune image trouvée dans le dossier.");
                 }
             }));
@@ -195,31 +204,7 @@ namespace Aerolithe
         }
 
 
-        //private Task ProcessFocusStackQueue()
-        //{
-        //    AppendTextToConsoleNL("- ProcessFocusStackQueue");
-        //    if (isProcessingQueue) return Task.CompletedTask;
-        //    isProcessingQueue = true;
-
-        //    var pendingTasks = focusStackQueue.Where(t => t.Status == "En attente").ToList();
-
-        //    foreach (var nextTask in pendingTasks)
-        //    {
-        //        nextTask.Status = "En cours";
-        //        UpdateQueueDisplay();
-
-        //        _ = Task.Run(async () =>
-        //        {
-
-        //            bool success = await RunFocusStack(nextTask.ImagePaths, nextTask.OutputPath);
-        //            nextTask.Status = success ? "Terminé" : "Erreur";
-        //            this.BeginInvoke((Action)(UpdateQueueDisplay));
-        //        });
-        //    }
-
-        //    isProcessingQueue = false;
-        //    return Task.CompletedTask;
-        //}
+      
 
 
         private void UpdateQueueDisplay()
@@ -243,10 +228,247 @@ namespace Aerolithe
             }
         }
 
+        //public async Task<bool> RunFocusStack(string[] imagePaths, string outputImage, string maskPath, bool ApplyMask)
+        //{
+
+        //    AppendTextToConsoleNL("- RunFocusStack");
+        //    string exePath = Path.Combine(Application.StartupPath, "MyResources", "Focus-stack", "focus-stack.exe");
+
+
+        //    if (!File.Exists(exePath))
+        //    {
+        //        MessageBox.Show("focus-stack.exe introuvable !");
+        //        return false;
+        //    }
+
+        //    string args = $" --output=\"{outputImage}\" " + string.Join(" ", imagePaths.Select(p => $"\"{p}\""));
+
+        //    ProcessStartInfo psi = new ProcessStartInfo
+        //    {
+        //        FileName = exePath,
+        //        Arguments = args,
+        //        UseShellExecute = false,
+        //        RedirectStandardOutput = true,
+        //        RedirectStandardError = true,
+        //        CreateNoWindow = true,
+        //        StandardOutputEncoding = Encoding.UTF8
+        //    };
+
+        //    using (Process process = new Process())
+        //    {
+        //        process.StartInfo = psi;
+        //        process.OutputDataReceived += async (sender, e) =>
+        //        {
+
+        //            if (!string.IsNullOrEmpty(e.Data))
+        //            {
+        //                if (StackConsoleView)
+        //                {
+        //                    await AppendTextToFFMPEGConsoleNL(e.Data);
+        //                }
+        //                var match = Regex.Match(e.Data, @"\[(\d+)/(\d+)\]");
+        //                if (match.Success)
+        //                {
+        //                    int current = int.Parse(match.Groups[1].Value);
+        //                    int total = int.Parse(match.Groups[2].Value);
+
+        //                    progressBar_ImageSave.Invoke(() =>
+        //                    {
+        //                        progressBar_ImageSave.Maximum = total;
+        //                        progressBar_ImageSave.Value = Math.Min(current, total);
+        //                    });
+
+        //                }
+        //            }
+        //        };
+
+        //        process.ErrorDataReceived += async (sender, e) =>
+        //        {
+        //            if (!string.IsNullOrEmpty(e.Data))
+        //                await AppendTextToFFMPEGConsoleNL(e.Data);
+        //        };
+
+        //        process.Start();
+        //        process.BeginOutputReadLine();
+        //        process.BeginErrorReadLine();
+
+        //        await Task.Run(() => process.WaitForExit());
+
+
+        //       //if (process.ExitCode == 0 && File.Exists(outputImage) && File.Exists(maskPath))
+        //        if (process.ExitCode == 0 && File.Exists(outputImage) )
+        //            {
+        //           // //on applique le masque
+        //           //if (ApplyMask)
+        //           // {
+        //           //     using Bitmap _bmp = new Bitmap(outputImage);
+        //           //     using Bitmap _msk = new Bitmap(maskPath);
+        //           //     using Bitmap _png = await ApplyAlphaMaskFromJpg(_bmp, _msk);
+        //           //     await SavePngAndDeleteJpg(_png, outputImage);
+        //           // }
+
+                    
+
+
+        //            focusStackOutputPath = outputImage;
+
+        //            Action updateImage = () =>
+        //            {
+        //                using (var original = new Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>(outputImage))
+        //                {
+        //                    int boxWidth = picBox_FocusStackedImage.Width;
+        //                    int boxHeight = picBox_FocusStackedImage.Height;
+
+        //                    // Calcul du ratio
+        //                    double ratioX = (double)boxWidth / original.Width;
+        //                    double ratioY = (double)boxHeight / original.Height;
+        //                    double ratio = Math.Min(ratioX, ratioY); // garde le ratio sans dépasser
+
+        //                    int newWidth = (int)(original.Width * ratio);
+        //                    int newHeight = (int)(original.Height * ratio);
+
+        //                    var resized = original.Resize(newWidth, newHeight, Emgu.CV.CvEnum.Inter.Linear);
+
+        //                    // Assigner l'image redimensionnée
+        //                    picBox_FocusStackedImage.Image = resized.ToBitmap();
+        //                }
+        //            };
+
+        //            if (picBox_FocusStackedImage.InvokeRequired)
+        //                picBox_FocusStackedImage.Invoke(updateImage);
+        //            else
+        //                updateImage();
+
+        //            AppendTextToConsoleNL("- Focus Stack Terminé");
+        //            return true;
+        //        }
+
+
+        //        else
+        //        {
+        //            MessageBox.Show("Erreur lors du traitement.");
+        //            return false;
+        //        }
+        //    }
+        //}
+
+
+        public static async Task<Bitmap> ApplyAlphaMaskFromJpg(Bitmap sourceJpg, Bitmap maskJpg)
+        {
+            if (sourceJpg == null) throw new ArgumentNullException(nameof(sourceJpg));
+            if (maskJpg == null) throw new ArgumentNullException(nameof(maskJpg));
+
+            // Crée une surface 32bppArgb (avec alpha) et y dessine la source JPG
+            Bitmap argb = new Bitmap(sourceJpg.Width, sourceJpg.Height, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(argb))
+                g.DrawImage(sourceJpg, new Rectangle(0, 0, argb.Width, argb.Height));
+
+            // Adapter le masque à la même taille si besoin
+            Bitmap maskSized = maskJpg;
+            if (maskJpg.Width != argb.Width || maskJpg.Height != argb.Height)
+            {
+                maskSized = new Bitmap(argb.Width, argb.Height, PixelFormat.Format24bppRgb);
+                using (Graphics g = Graphics.FromImage(maskSized))
+                {
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(maskJpg, new Rectangle(0, 0, argb.Width, argb.Height));
+                }
+            }
+
+            try
+            {
+                // Verrouillage mémoire pour perf
+                var dataImg = argb.LockBits(new Rectangle(0, 0, argb.Width, argb.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+                // On normalise la lecture masque en 32bpp pour simplifier l’accès
+                using var mask32 = new Bitmap(maskSized.Width, maskSized.Height, PixelFormat.Format32bppArgb);
+                using (Graphics g = Graphics.FromImage(mask32))
+                    g.DrawImage(maskSized, new Rectangle(0, 0, mask32.Width, mask32.Height));
+                var dataMask = mask32.LockBits(new Rectangle(0, 0, mask32.Width, mask32.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+
+                unsafe
+                {
+                    for (int y = 0; y < argb.Height; y++)
+                    {
+                        byte* rowImg = (byte*)dataImg.Scan0 + y * dataImg.Stride;
+                        byte* rowMask = (byte*)dataMask.Scan0 + y * dataMask.Stride;
+
+                        for (int x = 0; x < argb.Width; x++)
+                        {
+                            // Masque JPG → pas d’alpha intrinsèque. On calcule l’intensité (luminance) du pixel masque
+                            byte mb = rowMask[x * 4 + 0];
+                            byte mg = rowMask[x * 4 + 1];
+                            byte mr = rowMask[x * 4 + 2];
+
+                            // Luminance perceptuelle (BT.601)
+                            int gray = (int)(0.299 * mr + 0.587 * mg + 0.114 * mb);
+
+                            // Blanc = opaque, noir = transparent
+                            byte alpha = (byte)gray;
+                            // Si tu veux inverser: byte alpha = (byte)(255 - gray);
+
+                            rowImg[x * 4 + 3] = alpha; // on écrase l’alpha
+                        }
+                    }
+                }
+
+                argb.UnlockBits(dataImg);
+                mask32.UnlockBits(dataMask);
+
+                return argb; // (à disposer par l’appelant)
+            }
+            finally
+            {
+                if (!ReferenceEquals(maskSized, maskJpg))
+                    maskSized.Dispose();
+            }
+        }
+
+
+        public static async Task SavePngAndDeleteJpg(Bitmap argbImage, string outputImageJpgPath)
+        {
+            if (argbImage == null) throw new ArgumentNullException(nameof(argbImage));
+            if (string.IsNullOrWhiteSpace(outputImageJpgPath)) throw new ArgumentNullException(nameof(outputImageJpgPath));
+
+            string pngPath = Path.ChangeExtension(outputImageJpgPath, ".png");
+            string dir = Path.GetDirectoryName(pngPath)!;
+            string tmpPath = Path.Combine(dir, Guid.NewGuid().ToString("N") + ".tmp.png");
+
+            // Sauvegarde PNG
+            argbImage.Save(tmpPath, ImageFormat.Png);
+
+            // Remplacement atomique
+            if (File.Exists(pngPath))
+            {
+                string backup = Path.Combine(dir, Guid.NewGuid().ToString("N") + ".bak.png");
+                File.Replace(tmpPath, pngPath, backup, ignoreMetadataErrors: true);
+                try { if (File.Exists(backup)) File.Delete(backup); } catch { /* ignore */ }
+            }
+            else
+            {
+                File.Move(tmpPath, pngPath);
+            }
+
+            // Supprimer l’ancien JPG
+            try
+            {
+                if (File.Exists(outputImageJpgPath)) {
+                    Debug.WriteLine($"Tentative d'effacement de l'image {outputImageJpgPath}");
+                    File.Delete(outputImageJpgPath);
+                }
+            }
+            catch
+            {
+                // log éventuel
+            }
+        }
+
+
         public async Task<bool> RunFocusStack(string[] imagePaths, string outputImage)
         {
+
             AppendTextToConsoleNL("- RunFocusStack");
             string exePath = Path.Combine(Application.StartupPath, "MyResources", "Focus-stack", "focus-stack.exe");
+
 
             if (!File.Exists(exePath))
             {
@@ -254,7 +476,7 @@ namespace Aerolithe
                 return false;
             }
 
-            string args = $"--output=\"{outputImage}\" " + string.Join(" ", imagePaths.Select(p => $"\"{p}\""));
+            string args = $" --output=\"{outputImage}\" " + string.Join(" ", imagePaths.Select(p => $"\"{p}\""));
 
             ProcessStartInfo psi = new ProcessStartInfo
             {
@@ -284,17 +506,15 @@ namespace Aerolithe
                         {
                             int current = int.Parse(match.Groups[1].Value);
                             int total = int.Parse(match.Groups[2].Value);
-                            
-                                progressBar_ImageSave.Invoke(() =>
-                                {
-                                    progressBar_ImageSave.Maximum = total;
-                                    progressBar_ImageSave.Value = Math.Min(current, total);
-                                });
-                           
+
+                            progressBar_ImageSave.Invoke(() =>
+                            {
+                                progressBar_ImageSave.Maximum = total;
+                                progressBar_ImageSave.Value = Math.Min(current, total);
+                            });
+
                         }
                     }
-
-
                 };
 
                 process.ErrorDataReceived += async (sender, e) =>
@@ -353,6 +573,8 @@ namespace Aerolithe
                 }
             }
         }
+
+
     }
 }
 

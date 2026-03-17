@@ -248,6 +248,12 @@ namespace Aerolithe
 
             if (appSettings.ProjectPath != null) CreateAllFolders(Path.GetDirectoryName(appSettings.ProjectPath));
 
+            btn_maskSave.Text = projet.MaskSave ? "" : "";
+            btn_applyMask.Text = projet.ApplyMask ? "" : "";
+            txtBox_DefaultMaskThresh.Text = appSettings.ThreshVal.ToString();
+            hScrollBar_liveMaskThresh.Value = appSettings.ThreshVal;
+            lbl_maskAmount.Text = appSettings.ThreshVal.ToString();
+
         }
 
 
@@ -672,7 +678,7 @@ namespace Aerolithe
 
         public async Task AppendTextToConsoleNL(string message) // New Line
         {
-            
+
             System.Windows.Forms.RichTextBox textbox = txtBox_Console;
 
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
@@ -750,13 +756,7 @@ namespace Aerolithe
         }
 
 
-        private void picBox_LiveView_Main_DoubleClick(object sender, EventArgs e)
-        {
-            if (picBox_LiveView_Main.Image != null)
-            {
-                MessageBox.Show(picBox_LiveView_Main.Image.Width.ToString() + " * " + picBox_LiveView_Main.Image.Height.ToString());
-            }
-        }
+
 
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
@@ -801,6 +801,8 @@ namespace Aerolithe
             NikonEnum imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
             imgSize.Index = comboBox_TaillePhotos.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize, imgSize);
+            projet.PictureWidth = int.Parse((imgSize[imgSize.Index].ToString().Split("*")[0].Substring(2)));
+            projet.PictureHeight = int.Parse(imgSize[imgSize.Index].ToString().Split("*")[1][..^1]);
             //imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
             //AppendTextToConsoleNL("la dimension des images prises est l'index : " + imgSize.Index.ToString());
         }
@@ -1041,15 +1043,22 @@ namespace Aerolithe
         private void btn_stopAutomaticFocusCapture_Click(object sender, EventArgs e)
         {
             StopSequences();
+            maskFreeze = false;
+            btn_freezeMask.Text = "";
 
         }
         private void btn_cancelPhotoShoot_Click(object sender, EventArgs e)
         {
             StopSequences();
+            maskFreeze = false;
+            btn_freezeMask.Text = "";
         }
 
         private async void StopSequences()
         {
+            maskFreeze = false;
+            btn_freezeMask.Text = "";
+
             //tokenSource.Cancel();
             _cts?.Cancel();
             _stopRequested = true;
@@ -2305,20 +2314,25 @@ namespace Aerolithe
 
         private void btn_maskAuto_Click(object sender, EventArgs e)
         {
-            projet.MaskAuto = !projet.MaskAuto;
-            btn_maskAuto.Text = projet.MaskAuto ? "" : "";
+            // Sauvegarder ou Appliquer le masque
+            projet.ApplyMask = !projet.ApplyMask;
+            btn_applyMask.Text = projet.ApplyMask ? "" : "";
+            projet.Save(appSettings.ProjectPath);
+
         }
 
         private void btn_maskSave_Click(object sender, EventArgs e)
         {
             projet.MaskSave = !projet.MaskSave;
             btn_maskSave.Text = projet.MaskSave ? "" : "";
+            projet.Save(appSettings.ProjectPath);
         }
 
         private void btn_ShowSharpnessOverlay_Click(object sender, EventArgs e)
         {
             projet.ViewSharpnessOverlay = !projet.ViewSharpnessOverlay;
             btn_ShowSharpnessOverlay.Text = projet.ViewSharpnessOverlay ? "" : "";
+
         }
 
         private void btn_freezeMask_Click(object sender, EventArgs e)
@@ -2326,5 +2340,27 @@ namespace Aerolithe
             maskFreeze = !maskFreeze;
             btn_freezeMask.Text = maskFreeze ? "" : "";
         }
+
+        private void txtBox_DefaultMaskThresh_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (int.TryParse(txtBox_DefaultMaskThresh.Text, out int value))
+                {
+                    txtBox_DefaultMaskThresh.ForeColor = Color.White;
+                    txtBox_DefaultMaskThresh.Text = value.ToString();
+                    appSettings.ThreshVal = value;
+                    hScrollBar_liveMaskThresh.Value = value;
+                    appSettings.Save();
+                }
+                // Empêche le son 'ding'
+                e.SuppressKeyPress = true;
+            }
+        }
+        private void txtBox_DefaultMaskThresh_TextChanged(object sender, EventArgs e)
+        {
+            txtBox_DefaultMaskThresh.ForeColor = Color.Gray;
+        }      
+      
     }
 }
