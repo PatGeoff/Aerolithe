@@ -105,14 +105,14 @@ namespace Aerolithe
             }
         }
 
-        public async Task UdpSendLiftStepperNema23MessageAsync(string message)
+        public async Task UdpSendLiftVerticalMessageAsync(string message)
         {
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
-                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(stepperLiftNema23IpAddress, stepperLiftNema23Port));
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(liftVerticalIpAddress, liftVerticalPort));
                 }
             }
             catch (Exception ex)
@@ -121,18 +121,15 @@ namespace Aerolithe
             }
         }
 
-        public async Task udpSendScissorData(int vitesse, int position)
+     
+        public async Task udpSendLiftHorizontalData(int vitesse)
         {
-            string message = $"lift moveto {vitesse},{position}";
-            await UdpSendScissorLiftMessageAsync(message);
-        }
-        public async Task udpSendScissorData(int vitesse)
-        {
-            string message = $"lift movespeed {vitesse}";
-            await UdpSendScissorLiftMessageAsync(message);
+            int speedFactor = 100;  // Pour le nema17 seulement
+            string message = $"stepmotor movespeed {vitesse * speedFactor}";
+            await UdpSendLiftHorizontalMessageAsync(message);
         }
 
-        public async Task UdpSendScissorLiftMessageAsync(string message)
+        public async Task UdpSendLiftHorizontalMessageAsync(string message)
         {
             try
             {
@@ -166,14 +163,14 @@ namespace Aerolithe
         public async Task udpSendStepperLiftNema23MotorData(int vitesse, int position) // valeurs 
         {
             string message = $"stepmotor moveto {vitesse},{position}";
-            await UdpSendLiftStepperNema23MessageAsync(message);
+            await UdpSendLiftVerticalMessageAsync(message);
             //AppendTextToConsoleNL(message);
         }
 
-        public async Task udpSendStepperLiftNema23MotorData(int vitesse) // valeurs 
+        public async Task udpSendLiftVerticalMotorData(int vitesse) // valeurs 
         {
             string message = $"stepmotor movespeed {vitesse}";
-            await UdpSendLiftStepperNema23MessageAsync(message);
+            await UdpSendLiftVerticalMessageAsync(message);
             //AppendTextToConsoleNL(message);
 
         }
@@ -273,16 +270,16 @@ namespace Aerolithe
         }
         private async Task CheckMessage(string message)
         {
-            //AppendTextToConsoleNL("là");
+            ////AppendTextToConsoleNL("là");
             //AppendTextToConsoleNL("Message Reçu: " + message);
             #region liftVerticalMotor
-            if (message.Contains("Stepper Lift: topLimitPressed"))
+            if (message.Contains("Lift Moteur Vertical: TopLimitPressed"))
             {
-                AppendTextToConsoleNL("Stepper Lift: top LimitPressed");
+                AppendTextToConsoleNL("Lift Moteur Vertical: TopLimitPressed");
             }
-            if (message.Contains("Stepper Lift: bottomLimitPressed"))
+            if (message.Contains("Lift Moteur Vertical: BottomLimitPressed"))
             {
-                AppendTextToConsoleNL("Stepper Lift: bottom LimitPressed");
+                AppendTextToConsoleNL("Lift Moteur Vertical: BottomLimitPressed");
             }
             if (message.Contains("Stepper lift data:"))
             {
@@ -440,14 +437,14 @@ namespace Aerolithe
                         }
                         break;
                     case "lift_osc_horizontal_fader":
-                        await udpSendScissorData(int.Parse(firstArg) * 10);
+                        await udpSendLiftHorizontalData(int.Parse(firstArg) * 10);
                         break;
                     case "lift_Nema23_osc_fader":
-                        await udpSendStepperLiftNema23MotorData(int.Parse(firstArg) * 2000);
+                        await udpSendLiftVerticalMotorData(int.Parse(firstArg) * 2000);
                         break;
                     case "lift_JogWheel_osc_fader":
-                        await udpSendStepperLiftNema23MotorData(int.Parse(secondArg) * 2000);
-                        await udpSendScissorData(int.Parse(firstArg) * 10);
+                        await udpSendLiftVerticalMotorData(int.Parse(secondArg) * 2000);
+                        await udpSendLiftHorizontalData(int.Parse(firstArg) * 10);
                         break;
                     case "tableTournante_osc_fader":
                         await UdpSendTurnTableMessageAsync($"turntable,{firstArg},{turntableSpeed}");

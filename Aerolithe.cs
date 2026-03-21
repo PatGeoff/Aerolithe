@@ -43,8 +43,8 @@ namespace Aerolithe
         public readonly IPAddress actuatorIpAddress;
         public readonly int actuatorPort = 44499;
 
-        public readonly IPAddress stepperLiftNema23IpAddress;
-        public readonly int stepperLiftNema23Port = 44433;
+        public readonly IPAddress liftVerticalIpAddress;
+        public readonly int liftVerticalPort = 44433;
 
         public readonly int localPort = 55544;
         private readonly int localPortOSC = 55545;
@@ -92,14 +92,14 @@ namespace Aerolithe
             turntableIpAddress = IPAddress.Parse("192.168.2.12");
             scissorLiftIpAddress = IPAddress.Parse("192.168.2.13");
             actuatorIpAddress = IPAddress.Parse("192.168.2.15");
-            stepperLiftNema23IpAddress = IPAddress.Parse("192.168.2.16");
+            liftVerticalIpAddress = IPAddress.Parse("192.168.2.16");
 
             devices = new[]
                    {
             ("Stepper Camera",        stepperCameraIpAddress),
             ("Turntable",             turntableIpAddress),
             ("Actuator",              actuatorIpAddress),
-            ("Stepper Lift NEMA23",   stepperLiftNema23IpAddress),
+            ("Lift Vertical",   liftVerticalIpAddress),
             ("Scissor Lift",          scissorLiftIpAddress)
             };
 
@@ -110,7 +110,7 @@ namespace Aerolithe
             { "Turntable",            lbl_IP_turnTable },
             { "Scissor Lift",         lbl_IP_scissorLift },
             { "Actuator",             lbl_IP_Actuator },
-            { "Stepper Lift NEMA23",  lbl_IP_stepperNema23Lift },
+            { "Lift Vertical",  lbl_IP_liftVertical },
         };
 
             StartAutoPingLoop(TimeSpan.FromSeconds(60));
@@ -234,7 +234,7 @@ namespace Aerolithe
             //tabControl1.SelectedTab = tabPage3; tabControl4.SelectedTab = tabControl4.TabPages[2];
             try
             {
-                UdpSendLiftStepperNema23MessageAsync("stepmotor readData");
+                UdpSendLiftVerticalMessageAsync("stepmotor readData");
             }
             catch (Exception e)
             {
@@ -498,13 +498,13 @@ namespace Aerolithe
         private void trkBar_Lift_MouseUp(object sender, MouseEventArgs e)
         {
             int val = trkBar_LiftVertical.Value;
-            UdpSendScissorLiftMessageAsync("lift position " + val.ToString());
+            UdpSendLiftHorizontalMessageAsync("lift position " + val.ToString());
 
         }
 
         private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
         {
-            UdpSendLiftStepperNema23MessageAsync("stepmotor readData");
+            UdpSendLiftVerticalMessageAsync("stepmotor readData");
         }
 
         private async Task encoderRotationLift(int speed)
@@ -522,7 +522,7 @@ namespace Aerolithe
             //AppendTextToConsoleNL(newSpeed.ToString());
             //AppendTextToConsoleNL($"sending {speed} (newSpeed: {newSpeed}) to stepper trackbar, Current position: {position}");
 
-            await udpSendScissorData(newSpeed);
+            await udpSendLiftHorizontalData(newSpeed);
 
         }
 
@@ -1964,7 +1964,7 @@ namespace Aerolithe
             int currentValue = trkBar_LiftHorizontal.Value * -5;
             if (currentValue != lastHorizontalValue)
             {
-                udpSendScissorData(currentValue);
+                udpSendLiftHorizontalData(currentValue);
                 lastHorizontalValue = currentValue;
             }
         }
@@ -1974,7 +1974,7 @@ namespace Aerolithe
             int currentValue = trkBar_LiftVertical.Value * 100;
             if (currentValue != lastVerticalValue)
             {
-                udpSendStepperLiftNema23MotorData(currentValue);
+                udpSendLiftVerticalMotorData(currentValue);
                 lastVerticalValue = currentValue;
             }
         }
@@ -1982,29 +1982,29 @@ namespace Aerolithe
         private void trkBar_LiftHorizontal_MouseUp(object sender, MouseEventArgs e)
         {
             trkBar_LiftHorizontal.Value = 0;
-            udpSendScissorData(0);
+            udpSendLiftHorizontalData(0);
         }
 
         private void trkBar_LiftVertical_MouseUp(object sender, MouseEventArgs e)
         {
             trkBar_LiftVertical.Value = 0;
-            udpSendStepperLiftNema23MotorData(0);
-            UdpSendLiftStepperNema23MessageAsync("stepmotor readData");
+            udpSendLiftVerticalMotorData(0);
+            UdpSendLiftVerticalMessageAsync("stepmotor readData");
         }
 
         private void btn_VerticalLiftStep_Calibration_Click(object sender, EventArgs e)
         {
-            UdpSendLiftStepperNema23MessageAsync("stepmotor calibration");
+            UdpSendLiftVerticalMessageAsync("stepmotor calibration");
         }
 
         private void btn_LiftVerticalDefault_Click(object sender, EventArgs e)
         {
-            UdpSendLiftStepperNema23MessageAsync("stepmotor setDefault");
+            UdpSendLiftVerticalMessageAsync("stepmotor setDefault");
         }
 
         private void btn_VerticalLiftGoToDefault_Click(object sender, EventArgs e)
         {
-            UdpSendLiftStepperNema23MessageAsync("stepmotor moveto " + appSettings.VerticalLiftDefaultPos.ToString());
+            UdpSendLiftVerticalMessageAsync("stepmotor moveto " + appSettings.VerticalLiftDefaultPos.ToString());
         }
 
 

@@ -161,7 +161,7 @@ namespace Aerolithe
             AppendTextToConsoleNL("- RoutineCalibrationLinearNearest terminée");
         }
 
-        private async Task RoutineAutoCentrage(int timeoutMs = 20000)
+        private async Task RoutineAutoCentrage(int timeoutMs = 5000)
         {
             //if (!offsets.hasBlackOnBorder && !cancelAutoCentrage) {
 
@@ -204,7 +204,7 @@ namespace Aerolithe
                 int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * kP, minStep, maxStep);
                 int stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
 
-                udpSendScissorData(stepX);
+                udpSendLiftHorizontalData(stepX);
 
                 Debug.WriteLine($"Move X: {stepX} (offsetX={offsetX})");
 
@@ -212,7 +212,7 @@ namespace Aerolithe
                 int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * kP, minStep, maxStep);
                 int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
 
-                udpSendStepperLiftNema23MotorData(stepY * 100);
+                udpSendLiftVerticalMotorData(stepY * 100);
 
                 Debug.WriteLine($"Move Y: {stepY} (offsetY={offsetY})");
 
@@ -222,8 +222,8 @@ namespace Aerolithe
             }
 
 
-            udpSendStepperLiftNema23MotorData(0);
-            udpSendScissorData(0);
+            udpSendLiftVerticalMotorData(0);
+            udpSendLiftHorizontalData(0);
             udpSendCameraLinearMotorData(0);
 
             AppendTextToConsoleNL("Routine Auto Centrage terminée");

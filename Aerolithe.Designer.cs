@@ -250,7 +250,7 @@
             label18 = new Label();
             lbl_IP_scissorLift = new Label();
             label20 = new Label();
-            lbl_IP_stepperNema23Lift = new Label();
+            lbl_IP_liftVertical = new Label();
             label30 = new Label();
             lbl_IP_Actuator = new Label();
             tabPage10 = new TabPage();
@@ -3621,7 +3621,7 @@
             tableLayoutPanel42.Controls.Add(label18, 0, 5);
             tableLayoutPanel42.Controls.Add(lbl_IP_scissorLift, 1, 5);
             tableLayoutPanel42.Controls.Add(label20, 0, 6);
-            tableLayoutPanel42.Controls.Add(lbl_IP_stepperNema23Lift, 1, 6);
+            tableLayoutPanel42.Controls.Add(lbl_IP_liftVertical, 1, 6);
             tableLayoutPanel42.Controls.Add(label30, 0, 7);
             tableLayoutPanel42.Controls.Add(lbl_IP_Actuator, 1, 7);
             tableLayoutPanel42.Dock = DockStyle.Fill;
@@ -3777,15 +3777,15 @@
             // 
             // lbl_IP_stepperNema23Lift
             // 
-            lbl_IP_stepperNema23Lift.AutoSize = true;
-            lbl_IP_stepperNema23Lift.Dock = DockStyle.Fill;
-            lbl_IP_stepperNema23Lift.ForeColor = Color.White;
-            lbl_IP_stepperNema23Lift.Location = new Point(461, 363);
-            lbl_IP_stepperNema23Lift.Margin = new Padding(6, 0, 6, 0);
-            lbl_IP_stepperNema23Lift.Name = "lbl_IP_stepperNema23Lift";
-            lbl_IP_stepperNema23Lift.Size = new Size(364, 64);
-            lbl_IP_stepperNema23Lift.TabIndex = 11;
-            lbl_IP_stepperNema23Lift.TextAlign = ContentAlignment.MiddleCenter;
+            lbl_IP_liftVertical.AutoSize = true;
+            lbl_IP_liftVertical.Dock = DockStyle.Fill;
+            lbl_IP_liftVertical.ForeColor = Color.White;
+            lbl_IP_liftVertical.Location = new Point(461, 363);
+            lbl_IP_liftVertical.Margin = new Padding(6, 0, 6, 0);
+            lbl_IP_liftVertical.Name = "lbl_IP_stepperNema23Lift";
+            lbl_IP_liftVertical.Size = new Size(364, 64);
+            lbl_IP_liftVertical.TabIndex = 11;
+            lbl_IP_liftVertical.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // label30
             // 
@@ -6013,7 +6013,7 @@
         private Label label18;
         private Label lbl_IP_scissorLift;
         private Label label20;
-        private Label lbl_IP_stepperNema23Lift;
+        private Label lbl_IP_liftVertical;
         private Label label30;
         private Label lbl_IP_Actuator;
         private ToolStripMenuItem troubleshootToolStripMenuItem;
