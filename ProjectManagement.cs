@@ -86,20 +86,37 @@ namespace Aerolithe
             {
                 Directory.CreateDirectory(projet.ImageFolderPath);
             }
-            var imagesFolderNameSides = Path.Combine(projectDirectory, "images", "serie_A");
+            var imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "serie_A");
+            if (!Directory.Exists(imagesFolderNameSides))
+            {
+                Directory.CreateDirectory(imagesFolderNameSides);
+            }           
+            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "serie_B");
             if (!Directory.Exists(imagesFolderNameSides))
             {
                 Directory.CreateDirectory(imagesFolderNameSides);
             }
-            //if (projet.Cote == 0) projet.ImageFolderPath = imagesFolderNameSides;
-
-            imagesFolderNameSides = Path.Combine(projectDirectory, "images", "serie_B");
+            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "noFS", "serie_A");
             if (!Directory.Exists(imagesFolderNameSides))
             {
                 Directory.CreateDirectory(imagesFolderNameSides);
             }
-            //if (projet.Cote == 1) projet.ImageFolderPath = imagesFolderNameSides;
-            var focusStackFolderName = Path.Combine(projectDirectory, "images", "focusStack");
+            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "noFS", "serie_B");
+            if (!Directory.Exists(imagesFolderNameSides))
+            {
+                Directory.CreateDirectory(imagesFolderNameSides);
+            }
+            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "mesures", "serie_A");
+            if (!Directory.Exists(imagesFolderNameSides))
+            {
+                Directory.CreateDirectory(imagesFolderNameSides);
+            }
+            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "mesures", "serie_B");
+            if (!Directory.Exists(imagesFolderNameSides))
+            {
+                Directory.CreateDirectory(imagesFolderNameSides);
+            }
+            var focusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
             projet.FocusStackFolderName = focusStackFolderName;
 
             if (!Directory.Exists(focusStackFolderName))
@@ -442,10 +459,16 @@ namespace Aerolithe
             toolTip.SetToolTip(textBox_nbrPhotosFS, "Seuil maximal de photos prises lors d'un focus stack");
             toolTip.SetToolTip(lbl_FreezeMask, "Freeze le masque ci-haut");
             toolTip.SetToolTip(btn_freezeMask, "Freeze le masque ci-haut");
-            toolTip.SetToolTip(lbl_saveMaskinFolder, "N'applique pas le masque mais le sauvegarde dans les dossiers ../images/focusstack/masques_A ou masques_B");
-            toolTip.SetToolTip(btn_maskSave, "N'applique pas le masque mais le sauvegarde dans les dossiers ../images/focusstack/masques_A ou masques_B");
+            toolTip.SetToolTip(lbl_FocusStackEnable, "Active le Focus Stacking");
+            toolTip.SetToolTip(btn_focusStack, "Active le Focus Stacking");
             toolTip.SetToolTip(lbl_applyMaskFS, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
             toolTip.SetToolTip(btn_applyMask, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
+            toolTip.SetToolTip(btn_SaveImageToDisk, "Sauvegarde des image sur disque. Essentiel");
+            toolTip.SetToolTip(lbl_saveImageTodisk, "Sauvegarde des image sur disque. Essentiel");
+            toolTip.SetToolTip(btn_saveImageForMesurements, "Sauvegarde d'une image de référence pour la mesure et le volume");
+            toolTip.SetToolTip(lbl_saveImageForMesurements, "Sauvegarde d'une image de référence pour la mesure et volume");
+            toolTip.SetToolTip(lbl_LiveViewEnable, "Active/Désactive le Live View");
+            toolTip.SetToolTip(btn_LiveViewEnable, "Active/Désactive le Live View");
         }
 
 
@@ -588,7 +611,8 @@ namespace Aerolithe
 
         public string ImageFolderPath { get; set; }         // ex: "C:\\Projet\\images"
         public string FocusStackFolderName { get; set; }    // ex: "focusStack"
-                
+                                                            // 
+        public string MesurementsFolderPath { get; set; }                                                  
         
         public int MaxPicturesAllowed { get; set; } = 30;        // Paramètre global
         public int StepSize { get; set; } = 30;                // Paramètre global
@@ -600,22 +624,39 @@ namespace Aerolithe
 
         public bool MaskSave { get; set; } = true;
 
+        public bool SaveImageToDisk { get; set; } = true;
+
         public bool ViewSharpnessOverlay { get; set; } = true;
 
         public int PictureWidth { get; set; }
         public int PictureHeight { get; set; }
 
+        public bool FocusStackEnabled   { get; set; } = true;
 
+        public bool SaveImageForMesurements { get; set; } = false;
+
+        public bool LiveViewEnabled { get; set; } = true;
 
         // --- Méthodes utilitaires ---
         public string GetImageFullPath()
         {
             return Path.Combine(GetTempImageFolderPath(), GetImageNameFull());
         }
+        public string GetImageFullPathNoFS()
+        {
+            return Path.Combine(GetImageFolderPathNoFS(), GetImageNameFull());
+        }
+
+        public string GetMesurementsFolderName()
+        {
+            return Path.Combine(GetMesurementsFolderpath(), GetImageNameFull());
+        }
+       
         public string GetImageNameFull()
         {
             // Format: Base_Rotation_Focus.jpg
-            return $"{ImageNameBase}_{RotationSerieIncrement:D2}_{FocusSerieIncrement:D2}.jpg";
+            string cote = (Cote == 0) ? "A" : "B";
+            return $"{ImageNameBase}_{cote}_{RotationSerieIncrement:D2}_{FocusSerieIncrement:D2}.jpg";
         }
 
         public string GetTempImageFolderPath()
@@ -623,6 +664,18 @@ namespace Aerolithe
             // ex: C:\Projet\images\GrosseRoche_2\49
             string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
             return Path.Combine(ImageFolderPath, coteFolder, RotationSerieIncrement.ToString("D2"));
+        }
+
+        public string GetImageFolderPathNoFS()
+        {
+            string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
+            return Path.Combine(ImageFolderPath, "noFS", coteFolder);
+        }
+
+        public string GetMesurementsFolderpath()
+        {
+            string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
+            return Path.Combine(ImageFolderPath, "mesures", coteFolder);
         }
 
         public string GetFocusStackPath()
@@ -652,7 +705,8 @@ namespace Aerolithe
         public string GetMaskImageName()
         {
             // PNG
-            return $"{ImageNameBase}_{RotationSerieIncrement:D2}_mask.png";
+            string cote = (Cote == 0) ? "A" : "B";
+            return $"{ImageNameBase}_{cote}_{RotationSerieIncrement:D2}_mask.png";
         }
 
         public string GetMaskFullImagePath()
@@ -713,6 +767,7 @@ namespace Aerolithe
         public bool MaskAuto { get; set; }
 
         public bool MaskSave { get; set; }
+       
 
         public int ThreshVal { get; set; } = 20;
 
@@ -760,39 +815,7 @@ namespace Aerolithe
 
             string json = JsonConvert.SerializeObject(this, Formatting.Indented);
             File.WriteAllText(SettingsFilePath, json);
-        }
-
-        //public void UpsertMessagingUser(string email, bool send)
-        //{
-        //    email = NormalizeEmail(email);
-        //    var existing = MessagingUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
-        //    if (existing is null)
-        //    {
-        //        MessagingUsers.Add(new MessagingUserSetting { Email = email, Send = send });
-        //    }
-        //    else
-        //    {
-        //        existing.Send = send;
-        //    }
-        //}
-
-        //public void RemoveMessagingUser(string email)
-        //{
-        //    email = NormalizeEmail(email);
-        //    MessagingUsers.RemoveAll(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
-        //}
-
-        //public bool GetSendForEmail(string email, bool defaultValue = true)
-        //{
-        //    email = NormalizeEmail(email);
-        //    var item = MessagingUsers.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
-        //    return item?.Send ?? defaultValue;
-        //}
-
-        //private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim();
-
-
-
+        }       
     }
 
 

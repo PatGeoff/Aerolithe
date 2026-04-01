@@ -1,18 +1,19 @@
-﻿using System;
+﻿using Emgu.CV.XImgproc;
+using Nikon;
+using System;
+using System.CodeDom;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing.Text;
 using System.Linq;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms.VisualStyles;
-using Emgu.CV.XImgproc;
 using System.Threading;
-using System.CodeDom;
-using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Drawing.Text;
+using System.Windows.Forms.VisualStyles;
 
 namespace Aerolithe
 {
@@ -147,7 +148,7 @@ namespace Aerolithe
                     //projet.FocusSerieIncrement = i - 1 + paddingNbr[serie];
                     projet.FocusSerieIncrement = 0;
                     PreparationNomImage();
-                    if (checkBox_SeqFocusStack.Checked)
+                    if (projet.FocusStackEnabled)
                     {
                         try
                         {
@@ -155,13 +156,12 @@ namespace Aerolithe
                             if (_stopRequested) return;
 
                             await AutomaticFocusThenCapture(delta);
-                            if (checkBox_SeqFocusStack.Checked || checkBox_StackAuto.Checked)
-                            {
-                                AppendTextToConsoleNL("Focus Stack lancé");
+                           
+                            AppendTextToConsoleNL("Focus Stack lancé");
 
-                                _ = Task.Run(() => MakeFocusStackSerie());
+                            _ = Task.Run(() => MakeFocusStackSerie());
 
-                            }
+                            
                             if (flowLayoutPanel1.InvokeRequired)
                             {
                                 flowLayoutPanel1.Invoke(new Action(() => { flowLayoutPanel1.Controls.Clear(); }));
@@ -171,13 +171,22 @@ namespace Aerolithe
                         {
                             AppendTextToConsoleNL(e.Message);
                             //throw;
-                            return;
+                            return; 
                         }
-
                     }
                     else
                     {
-                        await EssayerPrendrePhotoAsync(degres);
+                        try
+                        {                           
+                            await EssayerPrendrePhotoAsync(degres);
+                            
+                        }
+                        catch (Exception)
+                        {
+
+                            throw;
+                        }
+                        
                     }
                     AppendTextToConsoleNL("Séquence #" + i.ToString() + " terminée");
                     await IncrementImgSeq();
@@ -220,7 +229,7 @@ namespace Aerolithe
         {
             if (!_stopRequested)
             {
-                Stopwatch sw = Stopwatch.StartNew();
+                
                 int essai = 0;
                 bool focusReussi = false;
 
@@ -229,32 +238,25 @@ namespace Aerolithe
                     try
                     {
                         if (_stopRequested) return;
-                        await NikonAutofocus();
-                        await Task.Delay(1000); // laisse le temps au device.Capture de ne plus être "busy"
-                        AppendTextToConsoleNL("Focus effectué avec succès");
+                        //await NikonAutofocus();
+                        //await Task.Delay(1000); // laisse le temps au device.Capture de ne plus être "busy"
+                        //AppendTextToConsoleNL("Focus effectué avec succès");
                         focusReussi = true;
                     }
                     catch (Exception e)
                     {
                         essai++;
-                        AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
-                        //if (essai >= 3)
-                        //{
-                        //    await PhotoSuccess(projet.ImageNameFull, degres, false, "-");
-
-                        //}
+                        AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");                        
                     }
-                }
-
+                }               
+                
+                Stopwatch sw = Stopwatch.StartNew();
+                await takePictureAsync();
+                await Task.Delay(400);
                 sw.Stop();
                 string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-                AppendTextToConsoleNL("Elapsed: " + tempsMs);
-                sw.Start();
-                await takePictureAsync();
-                sw.Stop();
-                tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-                AppendTextToConsoleNL("Image sauvegardée");
-                //await PhotoSuccess(projet.ImageNameFull, degres, true, tempsMs);
+                AppendTextToConsoleNL("Image Sauvegardée - Temps écoulé: " + tempsMs);
+
             }
 
         }
@@ -279,10 +281,7 @@ namespace Aerolithe
             await PrisePhotoSequenceAsync(tokenSource.Token, serie, rotation);
             if (_stopRequested) return;
             
-
             AppendTextToConsoleNL($"Séquence { + 1} terminée");
-
-
         }
 
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken, int serieIndex, int rotation)
@@ -317,62 +316,7 @@ namespace Aerolithe
             }
         }
 
-        //private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
-        //{
-        //    _stopwatch.Start();
-        //    _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
-
-        //    await UdpSendActuatorMessageAsync("actuator 5");
-        //    if (_stopRequested) return;
-        //    await WaitForActuator(5);
-        //    if (_stopRequested) return;
-        //    await Task.Delay(1000);
-        //    await RoutineCalibration();
-        //    if (_stopRequested) return;
-        //    cancellationToken.ThrowIfCancellationRequested();
-        //    AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
-        //    currentSequence = 0;
-        //    tokenSource = new CancellationTokenSource();
-        //    if (_stopRequested) return;
-        //    await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-        //    if (_stopRequested) return;
-        //    AppendTextToConsoleNL("Séquence 1 terminée");
-        //    await Task.Delay(1000);
-        //    if (_stopRequested) return;
-
-        //    await UdpSendActuatorMessageAsync("actuator 25");
-        //    if (_stopRequested) return;
-        //    await WaitForActuator(25);
-        //    if (_stopRequested) return;
-        //    await Task.Delay(1000);
-        //    await RoutineCalibration();
-        //    cancellationToken.ThrowIfCancellationRequested();
-        //    //await WaitForActuatorPosition(25, cancellationToken);
-        //    AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
-        //    currentSequence = 1;
-        //    tokenSource = new CancellationTokenSource();
-        //    await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-        //    if (_stopRequested) return;
-        //    AppendTextToConsoleNL("Séquence 2 terminée");
-
-        //    await Task.Delay(1000);
-        //    await UdpSendActuatorMessageAsync("actuator 45");
-        //    if (_stopRequested) return;
-        //    await WaitForActuator(45);
-        //    if (_stopRequested) return;
-        //    await Task.Delay(1000);
-        //    await RoutineCalibration(); 
-        //    cancellationToken.ThrowIfCancellationRequested();
-        //    AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
-        //    currentSequence = 2;
-        //    tokenSource = new CancellationTokenSource();
-        //    await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence);
-        //    if (_stopRequested) return;
-        //    AppendTextToConsoleNL("Séquence 3 terminée");
-        //    _cts?.Cancel();
-        //    _stopwatch.Stop();
-        //}
-
+       
 
         private async Task<bool> WaitForTurntablePositionAsync(int targetPos, int tolerance = 80, int timeoutMs = 10000, int checkInterval = 100)
         {
@@ -397,9 +341,6 @@ namespace Aerolithe
             AppendTextToConsoleNL($"Timeout : position actuelle {turntablePosition}°, cible {targetPos}°");
             return false;
         }
-
-
-
 
 
         private async Task UpdateTimerAsync(CancellationToken token)

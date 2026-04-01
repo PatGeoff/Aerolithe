@@ -248,12 +248,14 @@ namespace Aerolithe
 
             if (appSettings.ProjectPath != null) CreateAllFolders(Path.GetDirectoryName(appSettings.ProjectPath));
 
-            btn_maskSave.Text = projet.MaskSave ? "" : "";
+            btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
             btn_applyMask.Text = projet.ApplyMask ? "" : "";
             txtBox_DefaultMaskThresh.Text = appSettings.ThreshVal.ToString();
             hScrollBar_liveMaskThresh.Value = appSettings.ThreshVal;
             lbl_maskAmount.Text = appSettings.ThreshVal.ToString();
-
+            btn_saveImageForMesurements.Text = projet.SaveImageForMesurements ? "" : "";
+            btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
+            btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
         }
 
 
@@ -311,14 +313,18 @@ namespace Aerolithe
 
         private async void btn_takePicture_Click(object sender, EventArgs e)
         {
+            takePictureAsyncSimple();
+            //await PhotoSuccess(projet.ImageNameFull, turntablePosition, true, tempsMs);
+        }
+
+        private async void takePictureAsyncSimple()
+        {
             Stopwatch sw = Stopwatch.StartNew();
             await takePictureAsync();  // attend que imageReadyTcs soit résolu   
             sw.Stop();
             string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-            //await PhotoSuccess(projet.ImageNameFull, turntablePosition, true, tempsMs);
+            AppendTextToConsoleNL(tempsMs);
         }
-
-
 
         #endregion
 
@@ -1019,26 +1025,6 @@ namespace Aerolithe
             SelectExistingProject();
         }
 
-
-
-        private void chkBox_liveView_CheckedChanged(object sender, EventArgs e)
-        {
-            if (chkBox_liveView.Checked)
-            {
-
-                device.LiveViewEnabled = true;
-                Task.Run(async () => Task.Delay(100));
-                liveViewTimer.Start();
-
-            }
-            else
-            {
-                device.LiveViewEnabled = false;
-                liveViewTimer.Stop();
-            }
-
-
-        }
 
         private void btn_stopAutomaticFocusCapture_Click(object sender, EventArgs e)
         {
@@ -1890,23 +1876,6 @@ namespace Aerolithe
             PreparationDossierDestTemp();
         }
 
-        private void checkBox_StackAuto_CheckedChanged(object sender, EventArgs e)
-        {
-            if (checkBox_StackAuto.Checked)
-            {
-                checkBox_SeqFocusStack.Checked = true;
-            }
-            else checkBox_SeqFocusStack.Checked = false;
-        }
-
-        private void checkBox_SeqFocusStack_CheckedChanged(object sender, EventArgs e)
-        {
-            if (checkBox_SeqFocusStack.Checked)
-            {
-                checkBox_StackAuto.Checked = true;
-            }
-            else checkBox_StackAuto.Checked = false;
-        }
 
         private void btn_clearFFMPEGConsole_Click(object sender, EventArgs e)
         {
@@ -2321,10 +2290,10 @@ namespace Aerolithe
 
         }
 
-        private void btn_maskSave_Click(object sender, EventArgs e)
+        private void btn_focusStackEnable_Click(object sender, EventArgs e)
         {
-            projet.MaskSave = !projet.MaskSave;
-            btn_maskSave.Text = projet.MaskSave ? "" : "";
+            projet.FocusStackEnabled = !projet.FocusStackEnabled;
+            btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
             projet.Save(appSettings.ProjectPath);
         }
 
@@ -2332,6 +2301,7 @@ namespace Aerolithe
         {
             projet.ViewSharpnessOverlay = !projet.ViewSharpnessOverlay;
             btn_ShowSharpnessOverlay.Text = projet.ViewSharpnessOverlay ? "" : "";
+            projet.Save(appSettings.ProjectPath);
 
         }
 
@@ -2340,6 +2310,13 @@ namespace Aerolithe
             maskFreeze = !maskFreeze;
             btn_freezeMask.Text = maskFreeze ? "" : "";
         }
+        private void btn_saveImageForMesurements_Click(object sender, EventArgs e)
+        {
+            projet.SaveImageForMesurements = !projet.SaveImageForMesurements;
+            btn_saveImageForMesurements.Text = projet.SaveImageForMesurements ? "" : "";
+            projet.Save(appSettings.ProjectPath);
+        }
+
 
         private void txtBox_DefaultMaskThresh_KeyDown(object sender, KeyEventArgs e)
         {
@@ -2360,7 +2337,34 @@ namespace Aerolithe
         private void txtBox_DefaultMaskThresh_TextChanged(object sender, EventArgs e)
         {
             txtBox_DefaultMaskThresh.ForeColor = Color.Gray;
-        }      
-      
+        }
+
+        private void btn_SaveImageToDisk_Click(object sender, EventArgs e)
+        {
+            projet.SaveImageToDisk = !projet.SaveImageToDisk;
+            btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
+            projet.Save(appSettings.ProjectPath);
+        }
+
+        private void btn_LiveViewEnable_Click(object sender, EventArgs e)
+        {          
+            projet.LiveViewEnabled = !projet.LiveViewEnabled;
+            btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
+            projet.Save(appSettings.ProjectPath);
+            if (projet.LiveViewEnabled)
+            {
+
+                device.LiveViewEnabled = true;
+                Task.Run(async () => Task.Delay(100));
+                liveViewTimer.Start();
+
+            }
+            else
+            {
+                device.LiveViewEnabled = false;
+                liveViewTimer.Stop();
+            }
+
+        }
     }
 }

@@ -181,6 +181,10 @@
   <metadata name="menuStrip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
   </metadata>
+  <data name="parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem.Text" xml:space="preserve">
+    <value>Parfois un moteur peut ne pas sembler vouloir avancer ou reculer et on le sent forcer.
+Si la limit switch n'est pas atteinte, appuyer sur le bouton reset du board de contrôle du moteur pour faire un reset</value>
+  </data>
   <data name="picBox_holdOn.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         R0lGODlhGQAZAPcAAFJr72N58f//////////////////////////////////////////////////////

@@ -184,7 +184,11 @@ namespace Aerolithe
 
             try
             {
-                if (!chkBox_liveView.Checked) chkBox_liveView.Checked = true;
+                if (!projet.LiveViewEnabled)
+                {
+                    projet.LiveViewEnabled = true;
+                    projet.Save(appSettings.ProjectPath);
+                }
 
                 imageView = device.GetLiveViewImage();
                 if (device.LiveViewEnabled && imageView != null && imageView.JpegBuffer.Length > 0)

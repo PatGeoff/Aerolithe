@@ -43,6 +43,7 @@ namespace Aerolithe
             {
                 focusReadyTcs = new TaskCompletionSource<bool>();
                 await Task.Run(() => NikonAutofocus());
+                await Task.Delay(300);
                 focusStackStepVar = 0;
                 UpdateFocusStepVarLbl(focusStackStepVar);
                 //MessageBox.Show("image capturée");
@@ -72,7 +73,7 @@ namespace Aerolithe
                     device.LiveViewEnabled = false;
                 }
 
-                await Task.Delay(100);
+                await Task.Delay(200);
             }
             catch (Exception)
             {
@@ -98,7 +99,7 @@ namespace Aerolithe
                     if (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
                     {
                         AppendTextToConsoleNL(ex.Message);
-                        await Task.Delay(100); // Wait before retrying
+                        await Task.Delay(200); // Wait before retrying
                         continue; // Retry autofocus
                     }
                     else
@@ -738,7 +739,9 @@ namespace Aerolithe
                 btn_stopAutomaticFocusCapture.Enabled = true;
             }));
 
-            if (checkBox_SeqFocusStack.Checked || checkBox_StackAuto.Checked)
+
+
+            if (projet.FocusStackEnabled)
             {
                 try
                 {

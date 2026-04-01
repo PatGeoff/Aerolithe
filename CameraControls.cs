@@ -27,26 +27,70 @@ namespace Aerolithe
         private int oldImgIncr = -1;
 
 
+
+
         public async Task takePictureAsync()
         {
-            imageReadyTcs = new TaskCompletionSource<bool>();
+            var tcs = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+            imageReadyTcs = tcs;
 
             try
             {
-                await Task.Run(() =>
+                if (InvokeRequired)
                 {
-                    device.Capture(); // Appel dans un thread séparé
-                });
+                    Invoke(new Action(() =>
+                    {
+                        device.Capture();
+                    }));
+                }
+                else
+                {
+                    device.Capture();
+                }
 
-                await imageReadyTcs.Task; // Attend que device_ImageReady signale que l'image est prête
+                AppendTextToConsoleNL("Téléchargement de l'image en cours ...");
+
+                await tcs.Task;
             }
-            catch (Exception e)
+            catch (NikonException ex)
             {
-                AppendTextToConsoleNL("takePictureAsync Error message: " + e.Message);
+                if (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
+                {
+                    AppendTextToConsoleNL(ex.Message);
+                    await Task.Delay(200); // Wait before retrying
+                }
+                throw;
             }
         }
+
+        //public async Task takePictureAsync()
+        //{
+        //    imageReadyTcs = new TaskCompletionSource<bool>();
+
+        //    try
+        //    {
+        //        //device.Capture();
+        //        await Task.Run(() =>
+        //        {
+        //            device.Capture(); // Appel dans un thread séparé
+        //        });
+        //        AppendTextToConsoleNL("Téléchargement de l'image en cours ...");
+        //        await imageReadyTcs.Task; // Attend que device_ImageReady signale que l'image est prête
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        AppendTextToConsoleNL("takePictureAsync Error message: " + e.Message);
+        //    }
+        //}
         private async void device_ImageReady(NikonDevice sender, NikonImage image)
         {
+
+
+            imageReadyTcs?.TrySetResult(true);
+            AppendTextToConsoleNL($"Task Completion = {imageReadyTcs}");
+
 
 
             try
@@ -57,21 +101,21 @@ namespace Aerolithe
                     return;
                 }
 
-
+                
+                if (projet.SaveImageToDisk
+                    || projet.ImageFolderPath == null
+                    || projet.ImageNameBase == null
+                    || projet.MesurementsFolderPath == null
+                    || projet.FocusStackFolderName == null)
+                {
+                    return; // ← quitte device_ImageReady
+                }
 
 
                 Bitmap finalBitmap = null;
 
                 try
                 {
-                    // Lecture de l'état du checkbox dans le thread UI
-                    //bool applyMask = false;
-                    //if (chkBox_applyMask.InvokeRequired)
-                    //    chkBox_applyMask.Invoke(() => applyMask = chkBox_applyMask.Checked);
-                    //else
-                    //    applyMask = chkBox_applyMask.Checked;
-
-                    // Traitement complet dans un thread séparé
                     finalBitmap = await Task.Run(() =>
                     {
                         using (var memoryStream = new MemoryStream(image.Buffer))
@@ -79,41 +123,50 @@ namespace Aerolithe
                         {
                             projet.PictureWidth = originalBitmap.Width;
                             projet.PictureHeight = originalBitmap.Height;
+                            projet.Save(appSettings.ProjectPath); // -- <
                             var processedBitmap = projet.ApplyMask ? ApplyMask(originalBitmap) : new Bitmap(originalBitmap);
 
-                            // Sauvegarde si activée
-                            bool savePicture = false;
-                            if (chkBox_savePicture.InvokeRequired)
-                                chkBox_savePicture.Invoke(() => savePicture = chkBox_savePicture.Checked);
-                            else
-                                savePicture = chkBox_savePicture.Checked;
+                            // faire un projet.SavePictures  ???
+                            // Sauvegarde si activée                          
 
-                            if (savePicture && projet.ImageFolderPath != null && projet.ImageNameBase != null)
+
+                            PreparationDossierDestTemp();
+                            PreparationNomImage();
+
+                            using (var saveStream = new MemoryStream())
                             {
-                                PreparationDossierDestTemp();
-                                PreparationNomImage();
 
-                                Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageNameFull() + " ..."));
+                                processedBitmap.Save(saveStream, ImageFormat.Jpeg);
+                                saveStream.Position = 0;
 
-                                using (var saveStream = new MemoryStream())
+                                try
                                 {
-                                    processedBitmap.Save(saveStream, ImageFormat.Jpeg);
-                                    saveStream.Position = 0;
-
-                                    SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPath());
-
-                                    Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPath(), panelSize));
+                                    if (projet.FocusStackEnabled)
+                                    {
+                                        Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageNameFull() + " ..."));
+                                        SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPath());
+                                        Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPath(), panelSize));
+                                    }
+                                    else
+                                    {
+                                        Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageFullPathNoFS() + " ..."));
+                                        SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPathNoFS());
+                                        Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPathNoFS(), panelSize));
+                                    }
                                 }
+                                catch (Exception ex)
+                                {
+                                    MessageBox.Show(ex.Message);
+                                }
+
                             }
+
 
                             return processedBitmap;
                         }
                     });
 
-                    if (imageReadyTcs != null && !imageReadyTcs.Task.IsCompleted)
-                    {
-                        imageReadyTcs.SetResult(true);
-                    }
+
                     // Mise à jour de l'UI
                     Invoke(() =>
                     {
