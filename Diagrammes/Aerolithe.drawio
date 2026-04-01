@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" pages="2">
   <diagram name="CameraControls" id="v0ZAsq5to_bTFhKyXRbZ">
-    <mxGraphModel dx="1896" dy="2173" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2476" dy="2042" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -81,7 +81,7 @@
         <mxCell id="Vl55KTeMMyaO7FQxZBOc-18" edge="1" parent="1" source="EAI9xiHRjIqINjjtgaHm-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Vl55KTeMMyaO7FQxZBOc-17">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="EAI9xiHRjIqINjjtgaHm-20" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="PréparationDossierDestTemp" vertex="1">
+        <mxCell id="EAI9xiHRjIqINjjtgaHm-20" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=#ffe6cc;strokeColor=#d79b00;" value="PréparationDossierDestTemp" vertex="1">
           <mxGeometry height="54" width="210" x="239.25" y="680" as="geometry" />
         </mxCell>
         <mxCell id="Vl55KTeMMyaO7FQxZBOc-58" edge="1" parent="1" source="EAI9xiHRjIqINjjtgaHm-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Vl55KTeMMyaO7FQxZBOc-54">
@@ -111,9 +111,6 @@
         </mxCell>
         <mxCell id="Vl55KTeMMyaO7FQxZBOc-4" parent="1" style="whiteSpace=wrap;strokeWidth=2;" value="Task Completion (true)" vertex="1">
           <mxGeometry height="54" width="232" x="234.5" y="390" as="geometry" />
-        </mxCell>
-        <mxCell id="Vl55KTeMMyaO7FQxZBOc-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="async Task" vertex="1">
-          <mxGeometry height="23" width="115" x="25" y="17" as="geometry" />
         </mxCell>
         <mxCell id="Vl55KTeMMyaO7FQxZBOc-9" edge="1" parent="1" source="Vl55KTeMMyaO7FQxZBOc-4" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;curved=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -227,9 +224,6 @@
         <mxCell id="Vl55KTeMMyaO7FQxZBOc-39" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=light-dark(#eeeeee,#1f2020);strokeColor=light-dark(#999999,#cccccc);fontColor=light-dark(#333333,#cccccc);" value="picBox_pictureTaken.Image = finalBitmap" vertex="1">
           <mxGeometry height="54" width="220" x="240" y="1282" as="geometry" />
         </mxCell>
-        <mxCell id="Vl55KTeMMyaO7FQxZBOc-51" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="non async" vertex="1">
-          <mxGeometry height="23" width="115" x="25" y="50" as="geometry" />
-        </mxCell>
         <mxCell id="Vl55KTeMMyaO7FQxZBOc-57" edge="1" parent="1" source="Vl55KTeMMyaO7FQxZBOc-54" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;curved=1;fillColor=#e1d5e7;strokeColor=#9673a6;" target="EAI9xiHRjIqINjjtgaHm-19">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
@@ -339,6 +333,66 @@
         </mxCell>
         <mxCell id="Vl55KTeMMyaO7FQxZBOc-110" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" value="3" vertex="1">
           <mxGeometry height="20" width="20" x="31.5" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-4" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="96" width="248.75" x="-40" y="-20" as="geometry" />
+        </mxCell>
+        <mxCell id="Vl55KTeMMyaO7FQxZBOc-7" parent="rk52Z_iaBNyZm7zk7EZ6-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="async Task" vertex="1">
+          <mxGeometry height="23" width="115" as="geometry" />
+        </mxCell>
+        <mxCell id="Vl55KTeMMyaO7FQxZBOc-51" parent="rk52Z_iaBNyZm7zk7EZ6-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="non async" vertex="1">
+          <mxGeometry height="23" width="115" y="37" as="geometry" />
+        </mxCell>
+        <mxCell id="tbLyF3j0CNNF5PV_0Uze-1" parent="rk52Z_iaBNyZm7zk7EZ6-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="return" vertex="1">
+          <mxGeometry height="23" width="115" y="73" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-1" parent="rk52Z_iaBNyZm7zk7EZ6-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="méthode" vertex="1">
+          <mxGeometry height="23" width="115" x="133.75" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-2" parent="rk52Z_iaBNyZm7zk7EZ6-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Nikon" vertex="1">
+          <mxGeometry height="23" width="115" x="133.75" y="37" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-3" parent="rk52Z_iaBNyZm7zk7EZ6-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="UI" vertex="1">
+          <mxGeometry height="23" width="115" x="133.75" y="73" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-17" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="349" width="300" x="1990" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-5" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="Aerolithe.cs :: btn_focusMinus_Click" vertex="1">
+          <mxGeometry height="20" width="300" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-6" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="Aerolithe.cs :: btn_focusPlus_Click" vertex="1">
+          <mxGeometry height="20" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-7" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusRoutine : 406" vertex="1">
+          <mxGeometry height="20" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-8" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusRoutine : 418" vertex="1">
+          <mxGeometry height="20" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-9" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusRoutine : 433" vertex="1">
+          <mxGeometry height="20" width="300" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-10" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusRoutine : 465" vertex="1">
+          <mxGeometry height="20" width="300" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-11" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusRoutine : 475" vertex="1">
+          <mxGeometry height="20" width="300" y="179" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-12" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusRoutine : 482" vertex="1">
+          <mxGeometry height="20" width="300" y="209" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-13" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusRoutine : 486" vertex="1">
+          <mxGeometry height="20" width="300" y="239" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-14" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusThenCapture : 800" vertex="1">
+          <mxGeometry height="20" width="300" y="269" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-15" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AutomaticFocusThenCapture&amp;nbsp;: 800" vertex="1">
+          <mxGeometry height="20" width="300" y="299" as="geometry" />
+        </mxCell>
+        <mxCell id="rk52Z_iaBNyZm7zk7EZ6-16" parent="rk52Z_iaBNyZm7zk7EZ6-17" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffff88;strokeColor=#36393d;" value="NikonFocus.cs :: AppliqueMasqueEtFocusStepAsync&amp;nbsp;" vertex="1">
+          <mxGeometry height="20" width="300" y="329" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
