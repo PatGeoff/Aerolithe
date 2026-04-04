@@ -261,9 +261,10 @@ namespace Aerolithe
             }
 
             await NikonAutofocus();
-            if (_stopRequested) return;
+            if (_stopRequested) return;           
 
-            await Task.Delay(700);
+            await Task.Delay(400);            
+
 
             // Clone du masque Live
             Mat uiClone = maskMatLive.Clone();
@@ -395,7 +396,8 @@ namespace Aerolithe
             // ====== SAUVEGARDE DU MASQUE ======
             await SaveMaskAsPngTransparentBlack(maskMatLive, projet.GetMaskFullImagePath());
 
-          
+                   
+
             var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
 
             int maxTargetDown = 0;

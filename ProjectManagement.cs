@@ -27,11 +27,13 @@ namespace Aerolithe
     {
         public AppSettings appSettings;
         public ProjectPreferences projet;
+        public tempData tmpData;
 
         private void InitClasses()
         {
             appSettings = new AppSettings();
             projet = new ProjectPreferences();
+            tmpData = new tempData();
 
         }
 

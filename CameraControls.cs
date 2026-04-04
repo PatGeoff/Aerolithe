@@ -12,6 +12,7 @@ using System.Drawing.Text;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows.Forms;
 using static Emgu.CV.DISOpticalFlow;
 
@@ -43,6 +44,9 @@ namespace Aerolithe
 
             imageReadyTcs = tcs;
 
+            // timing.StopTimer() se fera dès que ImageReady est triggeré            
+            timing.StartTimer();
+
             try
             {
                 if (InvokeRequired)
@@ -73,30 +77,14 @@ namespace Aerolithe
             }
         }
 
-        //public async Task takePictureAsync()
-        //{
-        //    imageReadyTcs = new TaskCompletionSource<bool>();
 
-        //    try
-        //    {
-        //        //device.Capture();
-        //        await Task.Run(() =>
-        //        {
-        //            device.Capture(); // Appel dans un thread séparé
-        //        });
-        //        AppendTextToConsoleNL("Téléchargement de l'image en cours ...");
-        //        await imageReadyTcs.Task; // Attend que device_ImageReady signale que l'image est prête
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        AppendTextToConsoleNL("takePictureAsync Error message: " + e.Message);
-        //    }
-        //}
         private async void device_ImageReady(NikonDevice sender, NikonImage image)
         {
 
             imageReadyTcs?.TrySetResult(true);
-            //AppendTextToConsoleNL($"Task Completion = {imageReadyTcs}");
+            timing.StopTimer();
+            AppendTextToConsoleNL($"device_ImageReady: {timing.ElapsedTime.TotalSeconds:F3} secondes");
+
 
             try
             {
@@ -106,7 +94,7 @@ namespace Aerolithe
                     return;
                 }
 
-                
+
                 if (projet.SaveImageToDisk && (
                     projet.ImageFolderPath == null
                     || projet.ImageNameBase == null
@@ -152,12 +140,12 @@ namespace Aerolithe
                                 saveStream.Position = 0;
                                 try
                                 {
-                                    // projet.SaveImageForMesurements pour prendre automatiquement une image pour mesure à chaque angle 
+                                    // projet.SaveImageForMesurements pour prendre automatiquement une image pour mesure à chaque angle. Lorsque l'image sera prise à cet effet, photoPourMesure sera true pour un instant. 
                                     // photoPourMesure pour prendre une seule photo via le bouton Prendre une photo
                                     // Dans les deux cas, au moment où la photo est prise, le focusstack et le masque sont disablés. 
                                     // On peut enregistrer l'image dans projet.GetMesurementsFullImagePath()
 
-                                    if (projet.SaveImageForMesurements || photoPourMesure)
+                                    if (photoPourMesure)
                                     {
                                         Stopwatch sw = Stopwatch.StartNew();
                                         string iMes = projet.GetMesurementsFullImagePath();
@@ -168,7 +156,7 @@ namespace Aerolithe
                                         AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
                                     }
 
-
+                                    else
 
                                     {
                                         string iName = projet.FocusStackEnabled ? projet.GetImageNameFull() : projet.GetImageFullPathNoFS();
@@ -184,7 +172,7 @@ namespace Aerolithe
 
                                         AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
                                         Invoke(() => AfficherMiniatures(projet.ImageNameBase, iPath, panelSize));
-                                    }                                     
+                                    }
 
 
                                     //if (projet.FocusStackEnabled)
@@ -443,7 +431,36 @@ namespace Aerolithe
             }
         }
 
+        public async Task SaveMesurementImage()
+        {
+            await nikonDoFocus();
+            try
+            {
+                await saveImageForMesurementEnable();
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur SaveMesurementImage :: saveImageForMesurementEnable:  {ex.Message}");
+            }
+            try
+            {
+                await takePictureAsync();
+            }
+            catch (Exception ex)
+            {
 
+                AppendTextToConsoleNL($"Erreur SaveMesurementImage :: takePictureAsync:  {ex.Message}");
+            }
+            try
+            {
+                await saveImageForMesurementRemettre();
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur SaveMesurementImage :: saveImageForMesurementRemettre:  {ex.Message}");
+            }
+            
+        }
 
         public async Task SaveMaskAsPngTransparentBlack(Mat maskSrc, string outputPathPng)
         {
@@ -593,6 +610,38 @@ namespace Aerolithe
             }
         }
 
-      
+
     }
+
+
+    public class Timing
+    {
+        private System.Timers.Timer _timer;
+        private Stopwatch _stopwatch;
+
+        public TimeSpan ElapsedTime => _stopwatch?.Elapsed ?? TimeSpan.Zero;
+
+        public void StartTimer()
+        {
+            _stopwatch = Stopwatch.StartNew();
+
+            _timer = new System.Timers.Timer(500);
+            _timer.AutoReset = true;
+            _timer.Start();
+        }
+
+        public void StopTimer()
+        {
+            _timer?.Stop();
+            _timer?.Dispose();
+            _timer = null;
+
+            _stopwatch?.Stop();
+        }
+
+       
+    }
+
+
+
 }

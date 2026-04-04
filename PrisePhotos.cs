@@ -28,7 +28,6 @@ namespace Aerolithe
         private bool working = false;
         public CancellationTokenSource cancellationTokenSource;
         private int _Elevation = 5;
-        private int _Rotation = 0;
         private int _Serie = 0;
         private int totalPhotos = 0;
         private bool calibrationInitialeLift = false;
@@ -47,23 +46,19 @@ namespace Aerolithe
             {
                 btn_freezeMask.Invoke(new Action(() =>
                 {
-                    btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+                    btn_freezeMask.Invoke(() => btn_freezeMask.Text = "");
                 }));
             }
 
             if (appSettings.ProjectPath == null)
             {
                 SavePrefsSettings();  // Demande à setter le projet
-                if (appSettings.ProjectPath == null)
-                {
-                    MessageBox.Show("Pour faire la prise de photo en séquence, il faut définir un projet");
-                    return;
-                }
+                
             }
             _stopwatch.Start();
             _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
 
-            await RoutineCalibration();
+           
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
             await Task.Delay(800);
 
@@ -89,6 +84,9 @@ namespace Aerolithe
             await ResetIncrementation();
 
             AppendTextToConsoleNL("Série " + (serie + 1).ToString() + "/" + serieId[serie].ToString());
+
+            // De 0 à 360 degrés sur la table tournante
+
             try
             {
                 for (int i = rotationDepart; i <= serieId[serie] - 1; i++)
@@ -108,14 +106,12 @@ namespace Aerolithe
                     oldImgIncr = projet.FocusSerieIncrement = 0;
                     _Serie = i;
                     projet.Serie = _Serie;
-                    projet.Save(appSettings.ProjectPath);
-
-                    if (_stopRequested) return;
+                    SavePrefsSettings();                   
 
                     PreparationDossierDestTemp();
                     int degres = i * divider;
                     ttTargetPosition = degres;
-                    _Rotation = degres;
+
                     await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
                     if (_stopRequested) return;
 
@@ -137,7 +133,7 @@ namespace Aerolithe
                         AppendTextToConsoleNL(" La table n'a pas atteint la position, on continue ou on stop ?");
                     }
                     calculerCentre = true;
-                    await Task.Delay(1000); // délai avant la routine
+                    await Task.Delay(1000); // délai avant la routine ?? 
                     try
                     {
                         await RoutineAutoCentrage();
@@ -174,6 +170,20 @@ namespace Aerolithe
                         
                     }
                    
+
+                    if (projet.SaveImageForMesurements)
+                    {
+                        try
+                        {
+                            await SaveMesurementImage();
+                        }
+                        catch (Exception ex)
+                        {
+
+                            AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: SaveMesurementImage:  {ex.Message}");
+                        }
+                        
+                    }
 
 
                     if (projet.FocusStackEnabled)
@@ -445,5 +455,17 @@ namespace Aerolithe
             }
         }
 
+    }
+
+    public class tempData
+    {
+        public bool mask { get; set; } = true;
+        public bool focusStack { get; set; } = true;
+        public bool freeze { get; set; } = false;
+
+        public tempData()
+        {
+
+        }
     }
 }

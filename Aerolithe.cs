@@ -82,6 +82,8 @@ namespace Aerolithe
         private bool MainConsoleScrollToCarret = true;
         private bool StackConsoleScrollToCarret = true;
 
+        public Timing timing = new Timing();
+
         public Aerolithe()
         {
 
@@ -256,6 +258,9 @@ namespace Aerolithe
             btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
             btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
+
+            // Timer servant à calculer le temps entre takePictureAsync et device_ImageReady
+            timing = new Timing();
         }
 
 
@@ -845,14 +850,15 @@ namespace Aerolithe
                 {
                     ResetSerieIncrement();
                     DeleteAllPicturesInFolderWith();
+                    ResetSequenceCancellation();
+                    Task.Run(async () =>
+                    {
+                        tokenSource = new CancellationTokenSource();
+                        await SequencePrisePhotoTotale(tokenSource.Token, 0, 0);
+                    });
                 }
             }
-            ResetSequenceCancellation();
-            Task.Run(async () =>
-            {
-                tokenSource = new CancellationTokenSource();
-                await SequencePrisePhotoTotale(tokenSource.Token, 0, 0);
-            });
+            
         }
 
         private void btn_cancelPhotoShootMain_Click(object sender, EventArgs e)
