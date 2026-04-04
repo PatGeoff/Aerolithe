@@ -2264,7 +2264,57 @@ namespace Aerolithe
             //Sauvegarde
             projet.Save(appSettings.ProjectPath);
         }
+        private void btn_saveImageForMesurementSequence_Click(object sender, EventArgs e)
+        {
+            projet.SaveImageForMesurements = !projet.SaveImageForMesurements;
+            btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
+        }
 
+        private async Task saveImageForMesurementEnable()
+        {
+            // sauvegarder les états actuels
+            photoPourMesure = true;
+            tmpData.mask = projet.ApplyMask;
+            tmpData.focusStack = projet.FocusStackEnabled;
+            tmpData.freeze = maskFreeze;
+
+            // mettre tout à false
+
+            Invoke(new Action(() =>
+            {
+                btn_applyMask.Text = "";                                   // false
+                btn_focusStack.Text = "";                                  // false
+                btn_freezeMask.Text = "";                                  // false
+                btn_saveImageForMesurements.Text = "";                   // true
+            }));
+            
+            projet.ApplyMask = false;
+            projet.FocusStackEnabled = false;
+            maskFreeze = false;
+
+            SavePrefsSettings();
+
+        }
+
+        private async Task saveImageForMesurementRemettre()
+        {
+            // remettre comme avant
+            photoPourMesure = false;
+            projet.ApplyMask = tmpData.mask;
+            projet.FocusStackEnabled = tmpData.focusStack;
+            maskFreeze = tmpData.freeze;
+
+            SavePrefsSettings();
+
+
+            Invoke(new Action(() =>
+            {
+                if (projet.ApplyMask) btn_applyMask.Text = "";             // true?
+                if (projet.FocusStackEnabled) btn_focusStack.Text = "";    // true?
+                if (maskFreeze) btn_freezeMask.Text = "";                  // true?
+                btn_saveImageForMesurements.Text = "";                   // false
+            }));
+        }
 
         private void txtBox_DefaultMaskThresh_KeyDown(object sender, KeyEventArgs e)
         {
@@ -2315,10 +2365,6 @@ namespace Aerolithe
 
         }
 
-        private void btn_saveImageForMesurementSequence_Click(object sender, EventArgs e)
-        {
-            projet.SaveImageForMesurements = !projet.SaveImageForMesurements;
-            btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
-        }
+      
     }
 }

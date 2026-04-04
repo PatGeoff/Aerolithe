@@ -152,6 +152,11 @@ namespace Aerolithe
                                 saveStream.Position = 0;
                                 try
                                 {
+                                    // projet.SaveImageForMesurements pour prendre automatiquement une image pour mesure à chaque angle 
+                                    // photoPourMesure pour prendre une seule photo via le bouton Prendre une photo
+                                    // Dans les deux cas, au moment où la photo est prise, le focusstack et le masque sont disablés. 
+                                    // On peut enregistrer l'image dans projet.GetMesurementsFullImagePath()
+
                                     if (projet.SaveImageForMesurements || photoPourMesure)
                                     {
                                         Stopwatch sw = Stopwatch.StartNew();
