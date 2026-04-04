@@ -27,7 +27,14 @@ namespace Aerolithe
         private int oldImgIncr = -1;
 
 
-
+        private async void takePictureAsyncSimple()
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+            await takePictureAsync();  // attend que imageReadyTcs soit résolu   
+            sw.Stop();
+            string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+            AppendTextToConsoleNL($"photo prise en {tempsMs} secondes");
+        }
 
         public async Task takePictureAsync()
         {
@@ -50,7 +57,8 @@ namespace Aerolithe
                     device.Capture();
                 }
 
-                AppendTextToConsoleNL("Téléchargement de l'image en cours ...");
+                AppendTextToConsoleNL("Capture de l'image par la Nikon ...");
+                //AppendTextToConsoleNL(projet.GetImageFullPath());
 
                 await tcs.Task;
             }
@@ -87,11 +95,8 @@ namespace Aerolithe
         private async void device_ImageReady(NikonDevice sender, NikonImage image)
         {
 
-
             imageReadyTcs?.TrySetResult(true);
-            AppendTextToConsoleNL($"Task Completion = {imageReadyTcs}");
-
-
+            //AppendTextToConsoleNL($"Task Completion = {imageReadyTcs}");
 
             try
             {
@@ -102,12 +107,19 @@ namespace Aerolithe
                 }
 
                 
-                if (projet.SaveImageToDisk
-                    || projet.ImageFolderPath == null
+                if (projet.SaveImageToDisk && (
+                    projet.ImageFolderPath == null
                     || projet.ImageNameBase == null
-                    || projet.MesurementsFolderPath == null
-                    || projet.FocusStackFolderName == null)
+                    || projet.GetMesurementsFullImagePath() == null
+                    || projet.FocusStackFolderName == null))
                 {
+                    AppendTextToConsoleNL($"Un des dossiers n'existe pas:" +
+                        $"\nprojet.ImageFolderPath = {projet.ImageFolderPath}" +
+                        $"\nprojet.ImageNameBase = {projet.ImageNameBase}" +
+                        $"\nprojet.MesurementsFolderPath = {projet.GetMesurementsFullImagePath()}" +
+                        $"\nprojet.FocusStackFolderName = {projet.FocusStackFolderName}" +
+                        $"\net Finalement projet.SaveImageToDisk = {projet.SaveImageToDisk}"
+                        );
                     return; // ← quitte device_ImageReady
                 }
 
@@ -138,29 +150,64 @@ namespace Aerolithe
 
                                 processedBitmap.Save(saveStream, ImageFormat.Jpeg);
                                 saveStream.Position = 0;
-
                                 try
                                 {
-                                    if (projet.FocusStackEnabled)
+                                    if (projet.SaveImageForMesurements || photoPourMesure)
                                     {
-                                        Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageNameFull() + " ..."));
-                                        SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPath());
-                                        Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPath(), panelSize));
+                                        Stopwatch sw = Stopwatch.StartNew();
+                                        string iMes = projet.GetMesurementsFullImagePath();
+                                        Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo pour mesure " + iMes + " ..."));
+                                        SaveStreamAsJpegWithProgress(saveStream, iMes);
+                                        sw.Stop();
+                                        string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+                                        AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
                                     }
-                                    else
+
+
+
                                     {
-                                        Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageFullPathNoFS() + " ..."));
-                                        SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPathNoFS());
-                                        Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPathNoFS(), panelSize));
-                                    }
+                                        string iName = projet.FocusStackEnabled ? projet.GetImageNameFull() : projet.GetImageFullPathNoFS();
+                                        string iPath = projet.FocusStackEnabled ? projet.GetImageFullPath() : projet.GetImageFullPathNoFS();
+
+                                        Stopwatch sw = Stopwatch.StartNew();
+                                        Invoke(() => AppendTextToConsoleNL("Sauvegarde de " + iName + " ..."));
+
+                                        SaveStreamAsJpegWithProgress(saveStream, iPath);
+
+                                        sw.Stop();
+                                        string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+
+                                        AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
+                                        Invoke(() => AfficherMiniatures(projet.ImageNameBase, iPath, panelSize));
+                                    }                                     
+
+
+                                    //if (projet.FocusStackEnabled)
+                                    //{
+                                    //    Stopwatch sw = Stopwatch.StartNew();                               
+                                    //    Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageNameFull() + " ..."));
+                                    //    SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPath());
+                                    //    sw.Stop();
+                                    //    string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+                                    //    AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
+                                    //    Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPath(), panelSize));
+                                    //}
+                                    //else
+                                    //{
+                                    //    Stopwatch sw = Stopwatch.StartNew();
+                                    //    Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageFullPathNoFS() + " ..."));
+                                    //    SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPathNoFS());
+                                    //    sw.Stop();
+                                    //    string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+                                    //    AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
+                                    //    Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPathNoFS(), panelSize));
+                                    //}
                                 }
                                 catch (Exception ex)
                                 {
                                     MessageBox.Show(ex.Message);
                                 }
-
                             }
-
 
                             return processedBitmap;
                         }
@@ -392,82 +439,6 @@ namespace Aerolithe
         }
 
 
-        public async Task SaveBitmapAsJpeg(Bitmap img, string outputPath)
-        {
-            try
-            {
-                using (var maskGray = img.ToImage<Gray, byte>())
-                using (var resizedMask = maskGray.Resize(projet.PictureWidth, projet.PictureHeight, Emgu.CV.CvEnum.Inter.Nearest)) // (option: Inter.Nearest pour masque binaire)
-                {
-                    resizedMask.Save(outputPath);
-                    AppendTextToConsoleNL($"Masque Sauvegardé: {outputPath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleNL("ERREUR:");
-                AppendTextToConsoleNL(ex.Message);
-            }
-
-        }
-
-        public async Task SaveMaskAsPngTransparentBlack(Bitmap img, string outputPathPng)
-        {
-            try
-            {
-                // S'assurer que le dossier existe
-                var dir = Path.GetDirectoryName(outputPathPng);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-
-                await Task.Run(() =>
-                {
-                    // 1) Convertit en Gray et redimensionne en "Nearest" (préserve 0/255 du masque)
-                    using var maskGray = img.ToImage<Gray, byte>();
-                    using var resizedMask = maskGray.Resize(
-                        projet.PictureWidth,
-                        projet.PictureHeight,
-                        Emgu.CV.CvEnum.Inter.Nearest
-                    );
-
-                    // 2) Construire l'image BGRA :
-                    //    - RGB = 255 (blanc) pour les pixels opaques
-                    //    - A   = masque (0 = transparent, 255 = opaque)
-                    using var whiteBgr = new Image<Bgr, byte>(
-                        resizedMask.Width, resizedMask.Height,
-                        new Bgr(255, 255, 255)
-                    );
-
-                    using var alpha = resizedMask.Mat; // 8UC1 (0 ou 255)
-                    using var bgrMat = whiteBgr.Mat;
-
-                    // Split BGR
-                    var bgrChannels = bgrMat.Split(); // [0]=B, [1]=G, [2]=R
-
-                    try
-                    {
-                        // Merge en BGRA (4 canaux)
-                        using var bgra = new Mat();
-                        CvInvoke.Merge(new VectorOfMat(bgrChannels[0], bgrChannels[1], bgrChannels[2], alpha), bgra);
-
-                        // 3) Sauvegarde en .png (préserve l'alpha)
-                        CvInvoke.Imwrite(outputPathPng, bgra);
-                    }
-                    finally
-                    {
-                        foreach (var ch in bgrChannels) ch.Dispose();
-                    }
-                });
-
-                AppendTextToConsoleNL($"Masque PNG sauvegardé (noir transparent): {outputPathPng}");
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleNL("ERREUR (PNG transparent):");
-                AppendTextToConsoleNL(ex.Message);
-            }
-        }
-
 
         public async Task SaveMaskAsPngTransparentBlack(Mat maskSrc, string outputPathPng)
         {
@@ -617,9 +588,6 @@ namespace Aerolithe
             }
         }
 
-        private async Task DrawHistogram()
-        {
-
-        }
+      
     }
 }

@@ -175,7 +175,7 @@ namespace Aerolithe
             const double tolerance = 5.0;
             const int minStep = 2;
             const int maxStep = 50;
-            const int delayMs = 300; // petit délai pour laisser le mouvement se faire
+            const int delayMs = 150; // petit délai pour laisser le mouvement se faire
 
             var startTime = DateTime.Now;
 

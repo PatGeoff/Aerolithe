@@ -33,10 +33,11 @@ namespace Aerolithe
         private int totalPhotos = 0;
         private bool calibrationInitialeLift = false;
         private string[] angleStr = { "5", "25", "45" };
-        private int[] angleIndexes = [ 5, 25, 45 ];
+        private int[] angleIndexes = [5, 25, 45];
 
         private Stopwatch _stopwatch = new Stopwatch();
         private CancellationTokenSource _cts;
+        private bool photoPourMesure = false;
 
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie, int rotationDepart)
@@ -61,7 +62,7 @@ namespace Aerolithe
             }
             _stopwatch.Start();
             _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
-            
+
             await RoutineCalibration();
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
             await Task.Delay(800);
@@ -90,7 +91,7 @@ namespace Aerolithe
             AppendTextToConsoleNL("Série " + (serie + 1).ToString() + "/" + serieId[serie].ToString());
             try
             {
-                for (int i = rotationDepart; i <= serieId[serie]-1; i++)
+                for (int i = rotationDepart; i <= serieId[serie] - 1; i++)
                 {
                     if (_stopRequested) return;
 
@@ -108,7 +109,7 @@ namespace Aerolithe
                     _Serie = i;
                     projet.Serie = _Serie;
                     projet.Save(appSettings.ProjectPath);
-                    
+
                     if (_stopRequested) return;
 
                     PreparationDossierDestTemp();
@@ -120,7 +121,15 @@ namespace Aerolithe
 
                     bool positionOk = await WaitForTurntablePositionAsync(degres);
 
-                    await nikonDoFocus();
+                    try
+                    {
+                        await nikonDoFocus();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: NikonDoFocus: {ex.Message}");
+                    }
+                   
 
                     if (!positionOk)
                     {
@@ -129,10 +138,18 @@ namespace Aerolithe
                     }
                     calculerCentre = true;
                     await Task.Delay(1000); // délai avant la routine
-                    await RoutineAutoCentrage();
+                    try
+                    {
+                        await RoutineAutoCentrage();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: RoutineAutoCentrage: {ex.Message}");
+                    }
+                    
 
                     if (_stopRequested) return;
-                    AppendTextToConsoleNL($"photo {i}/{serieId[serie]} à {degres}°");
+                    AppendTextToConsoleNL($"photo {(i + 1)}/{serieId[serie]} à {degres}°");
 
                     if (lbl_CoteSerie.InvokeRequired)
                     {
@@ -141,13 +158,24 @@ namespace Aerolithe
                             string cote = (projet.Cote == 0) ? "A" : "B";
                             lbl_CoteSerie.Text = cote;
                             lbl_ElevSerie.Text = $"{angleStr[serie]}°";
-                            lbl_RotSerie.Text = $"{i+1}/{serieId[serie]}";
+                            lbl_RotSerie.Text = $"{i + 1}/{serieId[serie]}";
                         }));
                     }
 
                     //projet.FocusSerieIncrement = i - 1 + paddingNbr[serie];
                     projet.FocusSerieIncrement = 0;
-                    PreparationNomImage();
+                    try
+                    {
+                        PreparationNomImage();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: PreparationNomImage: {ex.Message}");
+                        
+                    }
+                   
+
+
                     if (projet.FocusStackEnabled)
                     {
                         try
@@ -156,12 +184,12 @@ namespace Aerolithe
                             if (_stopRequested) return;
 
                             await AutomaticFocusThenCapture(delta);
-                           
+
                             AppendTextToConsoleNL("Focus Stack lancé");
 
                             _ = Task.Run(() => MakeFocusStackSerie());
 
-                            
+
                             if (flowLayoutPanel1.InvokeRequired)
                             {
                                 flowLayoutPanel1.Invoke(new Action(() => { flowLayoutPanel1.Controls.Clear(); }));
@@ -169,27 +197,33 @@ namespace Aerolithe
                         }
                         catch (Exception e)
                         {
-                            AppendTextToConsoleNL(e.Message);
-                            //throw;
-                            return; 
+                            AppendTextToConsoleNL(e.Message);                           
+                            
                         }
                     }
                     else
                     {
                         try
-                        {                           
-                            await EssayerPrendrePhotoAsync(degres);
-                            
-                        }
-                        catch (Exception)
                         {
+                            await EssayerPrendrePhotoAsync(degres);
 
-                            throw;
                         }
-                        
+                        catch (Exception ex)
+                        {
+                            AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: EssayerPrendrePhotoAsync: {ex.Message}");
+                        }
+
                     }
-                    AppendTextToConsoleNL("Séquence #" + i.ToString() + " terminée");
-                    await IncrementImgSeq();
+                    //AppendTextToConsoleNL("Séquence #" + (i+1).ToString() + " terminée");
+                    try
+                    {
+                        await IncrementImgSeq();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: IncrementImgSeq: {ex.Message}");
+                    }
+                   
                 }
             }
             catch (Exception ex)
@@ -227,37 +261,51 @@ namespace Aerolithe
 
         private async Task EssayerPrendrePhotoAsync(int degres)
         {
-            if (!_stopRequested)
+            if (_stopRequested) return;
+
+            int essai = 0;
+            bool focusReussi = false;
+
+            while (essai < 3 && !focusReussi)
             {
-                
-                int essai = 0;
-                bool focusReussi = false;
-
-                while (essai < 3 && !focusReussi)
+                try
                 {
-                    try
-                    {
-                        if (_stopRequested) return;
-                        //await NikonAutofocus();
-                        //await Task.Delay(1000); // laisse le temps au device.Capture de ne plus être "busy"
-                        //AppendTextToConsoleNL("Focus effectué avec succès");
-                        focusReussi = true;
-                    }
-                    catch (Exception e)
-                    {
-                        essai++;
-                        AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");                        
-                    }
-                }               
-                
-                Stopwatch sw = Stopwatch.StartNew();
-                await takePictureAsync();
-                await Task.Delay(400);
-                sw.Stop();
-                string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-                AppendTextToConsoleNL("Image Sauvegardée - Temps écoulé: " + tempsMs);
-
+                    if (_stopRequested) return;
+                    //await NikonAutofocus();
+                    //await Task.Delay(1000); // laisse le temps au device.Capture de ne plus être "busy"
+                    //AppendTextToConsoleNL("Focus effectué avec succès");
+                    focusReussi = true;
+                }
+                catch (Exception e)
+                {
+                    essai++;
+                    AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
+                }
             }
+            
+            Stopwatch sw = Stopwatch.StartNew();
+            try
+            {
+                await takePictureAsync();
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur dans EssayerPrendrePhotoAsync :: takePictureAsync avec {ex.Message}");
+            }
+            
+            await Task.Delay(400);
+            try
+            {
+                ManualFocus(1, 1); // Sert seulement pour rendre takePictureAsync plus rapide. Débloque la Nikon et la photo se télécharge en 1.5s au de 15 secondes ??
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur dans EssayerPrendrePhotoAsync :: ManualFocus (1, 1)  avec  {ex.Message}");
+            }
+           
+            sw.Stop();
+            string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+            AppendTextToConsoleNL("La Capture de l'image a pris à la Nikon" + tempsMs + " secondes");
 
         }
 
@@ -280,8 +328,8 @@ namespace Aerolithe
             tokenSource = new CancellationTokenSource();
             await PrisePhotoSequenceAsync(tokenSource.Token, serie, rotation);
             if (_stopRequested) return;
-            
-            AppendTextToConsoleNL($"Séquence { + 1} terminée");
+
+            AppendTextToConsoleNL($"Séquence {+1} terminée");
         }
 
         private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken, int serieIndex, int rotation)
@@ -305,7 +353,7 @@ namespace Aerolithe
                 AppendTextToConsoleNL($"i = {i} et angleIndexes.Length = {angleIndexes.Length}");
                 try
                 {
-                    await SequencePrisePhotoIndividuelleAsync(cancellationToken, i,  angleIndexes[i], rotation);
+                    await SequencePrisePhotoIndividuelleAsync(cancellationToken, i, angleIndexes[i], rotation);
                     projet.Serie = i;
                     projet.Save(appSettings.ProjectPath);
                 }
@@ -316,7 +364,7 @@ namespace Aerolithe
             }
         }
 
-       
+
 
         private async Task<bool> WaitForTurntablePositionAsync(int targetPos, int tolerance = 80, int timeoutMs = 10000, int checkInterval = 100)
         {

@@ -92,7 +92,6 @@ namespace Aerolithe
                 device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_SaveMedia, (uint)eNkMAIDSaveMedia.kNkMAIDSaveMedia_SDRAM);
 
                 device.ImageReady += new ImageReadyDelegate(device_ImageReady);
-                device.CaptureComplete += new CaptureCompleteDelegate(device_CaptureComplete);
                 device.Progress += new ProgressDelegate(OnNikonProgress);
                 AppendTextToConsoleNL("Nikon delegates initialisés");
                 deviceLoaded();

@@ -731,6 +731,7 @@ namespace Aerolithe
 
         public async Task AutomaticFocusThenCapture(int focusIterations)
         {
+            if (_stopRequested) return;
 
             int newStepSize = stepSize;
             Invoke(new Action(() =>
@@ -738,8 +739,6 @@ namespace Aerolithe
                 btn_stopAutomaticFocusCapture.Visible = true;
                 btn_stopAutomaticFocusCapture.Enabled = true;
             }));
-
-
 
             if (projet.FocusStackEnabled)
             {
@@ -782,6 +781,7 @@ namespace Aerolithe
             int iterationsCompletees = 0;
             for (int i = 0; i < focusIterations; i++)
             {
+                if (!_stopRequested) return;
                 if (lbl_StackSerie.InvokeRequired)
                 {
 
@@ -793,6 +793,7 @@ namespace Aerolithe
                 ////AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
                 for (int j = 0; j <= 3; j++)
                 {
+                    if (!_stopRequested) return;
                     if (i == 0 && blurredBlocks < minDetect)
                     {
                         // Reculer de 1 pour revenir au point net

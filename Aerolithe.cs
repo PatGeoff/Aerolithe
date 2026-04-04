@@ -253,38 +253,17 @@ namespace Aerolithe
             txtBox_DefaultMaskThresh.Text = appSettings.ThreshVal.ToString();
             hScrollBar_liveMaskThresh.Value = appSettings.ThreshVal;
             lbl_maskAmount.Text = appSettings.ThreshVal.ToString();
-            btn_saveImageForMesurements.Text = projet.SaveImageForMesurements ? "" : "";
+            btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
             btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
         }
 
 
 
-
-        private async void Aerolithe_ShownAsync(object? sender, EventArgs e)
-        {
-            // Appel asynchrone avec cancellation optionnelle
-            var (ok, info) = await NetworkChecks.IsOnAerolitheWifiAsync(AppLifecycle.GlobalToken);
-
-            if (!ok)
-            {
-                MessageBox.Show(
-                    "L'application ne fonctionnera pas comme il faut.\n\n" +
-                    "Veuillez vérifier que vous êtes connectés au réseau wifi \"Aerolithe\" et que l'adresse IP de l'ordinateur est 192.168.2.4\n\n" +
-                    info, // <-- détail utile (SSID actuel, interface, IP)
-                    "Réseau Aérolithe non détecté",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-            }
-        }
-
         private void SetTooltips()
         {
             System.Windows.Forms.ToolTip toolTipMask = new System.Windows.Forms.ToolTip();
             System.Windows.Forms.ToolTip toolTipCutoff = new System.Windows.Forms.ToolTip();
-
-
         }
 
 
@@ -315,16 +294,10 @@ namespace Aerolithe
         {
             takePictureAsyncSimple();
             //await PhotoSuccess(projet.ImageNameFull, turntablePosition, true, tempsMs);
+            // EssayerPrendrePhotoAsync(5);
         }
 
-        private async void takePictureAsyncSimple()
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            await takePictureAsync();  // attend que imageReadyTcs soit résolu   
-            sw.Stop();
-            string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-            AppendTextToConsoleNL(tempsMs);
-        }
+
 
         #endregion
 
@@ -339,27 +312,7 @@ namespace Aerolithe
             UdpSendCameraLinearMessageAsync("stepmotor setMaxPos");
         }
 
-        private void stepperMotor_trkbar_MouseUp(object sender, MouseEventArgs e)
-        {
-            if (calibrationDone)
-            {
-                int position = stepperCameraMotor_trkbar.Value;
-                int speed = 4000;
-                lbl_position.Text = position.ToString();
-                udpSendCameraLinearMotorData(speed, position);  // Speed, acceleration, position
-            }
 
-        }
-        private void stepperCalibration_btn_Click(object sender, EventArgs e)
-        {
-            AppendTextToConsoleNL("Calibrating" + Environment.NewLine);
-            UdpSendCameraLinearMessageAsync("stepmotor calibration");
-            stepperCameraMotor_trkbar.Enabled = true;
-            stepperCameraMotor_trkbar.Value = 30000;
-            UdpSendCameraLinearMessageAsync("stepmotor calibration");
-            calibrationDone = true;
-
-        }
         private void btn_stepperGetPosition_Click(object sender, EventArgs e)
         {
             UdpSendCameraLinearMessageAsync("stepmotor getstepperposition");
@@ -369,27 +322,6 @@ namespace Aerolithe
             udpSendCameraLinearMotorData(0);
         }
 
-        public void encoderRotationStepper(int speed)
-        {
-            if (calibrationDone)
-            {
-
-                int position = 0;
-                int newSpeed = speed * 400;
-
-
-                // Use Invoke to safely access the stepperMotor_trkbar.Value
-                stepperCameraMotor_trkbar.Invoke(new Action(() =>
-                {
-                    position = stepperCameraMotor_trkbar.Value;
-                }));
-
-                //AppendTextToConsoleNL(position.ToString());
-                //AppendTextToConsoleNL($"sending {speed} (newSpeed: {newSpeed}) to stepper trackbar, Current position: {position}");
-
-                udpSendCameraLinearMotorData(newSpeed);
-            }
-        }
 
 
         #endregion
@@ -397,12 +329,7 @@ namespace Aerolithe
         #region TABLE TOURNANTE TAB
 
 
-        private void encoderRotationTurnTable(int position)
-        {
-            turntablePosition += position * 8;
-            turntablePosition = Math.Clamp(turntablePosition, 0, 4096);
-            TurnTableRotation(turntablePosition);
-        }
+
 
         private void TurnTableRotation(int position) // Envoie la valeur au ESP32
         {
@@ -491,26 +418,76 @@ namespace Aerolithe
 
         #region ÉLÉVATEUR TAB
 
-        private void btn_liftMaxDown_Click(object sender, EventArgs e)
-        {
-            UdpSendCameraLinearMessageAsync("lift setZero");
-            trkBar_LiftVertical.Value = 500;
-        }
-        private void btn_liftMaxUp_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void trkBar_Lift_MouseUp(object sender, MouseEventArgs e)
-        {
-            int val = trkBar_LiftVertical.Value;
-            UdpSendLiftHorizontalMessageAsync("lift position " + val.ToString());
-
-        }
 
         private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
         {
             UdpSendLiftVerticalMessageAsync("stepmotor readData");
+        }
+
+        private void trkBar_LiftHorizontal_Scroll(object sender, EventArgs e)
+        {
+            int currentValue = trkBar_LiftHorizontal.Value * -5;
+            if (currentValue != lastHorizontalValue)
+            {
+                udpSendLiftHorizontalData(currentValue);
+                lastHorizontalValue = currentValue;
+            }
+        }
+
+        private void trkBar_LiftVertical_Scroll(object sender, EventArgs e)
+        {
+            int currentValue = trkBar_LiftVertical.Value * 100;
+            if (currentValue != lastVerticalValue)
+            {
+                udpSendLiftVerticalMotorData(currentValue);
+                lastVerticalValue = currentValue;
+            }
+        }
+
+        private void trkBar_LiftHorizontal_MouseUp(object sender, MouseEventArgs e)
+        {
+            trkBar_LiftHorizontal.Value = 0;
+            udpSendLiftHorizontalData(0);
+        }
+
+        private void trkBar_LiftVertical_MouseUp(object sender, MouseEventArgs e)
+        {
+            trkBar_LiftVertical.Value = 0;
+            udpSendLiftVerticalMotorData(0);
+            UdpSendLiftVerticalMessageAsync("stepmotor readData");
+        }
+
+        private void btn_VerticalLiftStep_Calibration_Click(object sender, EventArgs e)
+        {
+            UdpSendLiftVerticalMessageAsync("stepmotor calibration");
+        }
+
+        private void btn_LiftVerticalDefault_Click(object sender, EventArgs e)
+        {
+            UdpSendLiftVerticalMessageAsync("stepmotor setDefault");
+        }
+
+        private void btn_VerticalLiftGoToDefault_Click(object sender, EventArgs e)
+        {
+            UdpSendLiftVerticalMessageAsync("stepmotor moveto " + appSettings.VerticalLiftDefaultPos.ToString());
+        }
+
+
+
+        private void btn_LiftAutoCenterRoutine_Click(object sender, EventArgs e)
+        {
+            calculerCentre = true;
+            Task.Run(async () =>
+            {
+                await Task.Delay(400); // délai avant la routine
+                await RoutineAutoCentrage();
+            });
+        }
+
+        private void btn_CancelAutoCentrage_Click(object sender, EventArgs e)
+        {
+            cancelAutoCentrage = true;
+
         }
 
         private async Task encoderRotationLift(int speed)
@@ -734,10 +711,11 @@ namespace Aerolithe
             if (MainConsoleScrollToCarret)
             {
                 textbox.ScrollToCaret();
+                textbox.Select(); // Active le caret sans voler le focus
+                textbox.SelectionLength = 0;
             }
 
-            textbox.Select(); // Active le caret sans voler le focus
-            textbox.SelectionLength = 0;
+
 
             textbox.SelectionColor = color;
             textbox.AppendText(text);
@@ -1921,78 +1899,14 @@ namespace Aerolithe
         private void btn_consoleScrollToCaret_Click(object sender, EventArgs e)
         {
             MainConsoleScrollToCarret = !MainConsoleScrollToCarret;
-            btn_consoleScrollToCaret.BackColor = MainConsoleScrollToCarret ? Color.FromArgb(60, 60, 60) : Color.FromArgb(25, 25, 25);
+            btn_consoleScrollToCaret.BackColor = MainConsoleScrollToCarret ? Color.FromArgb(25, 25, 25) : Color.FromArgb(100, 100, 100);
 
         }
 
         private int lastHorizontalValue = -1;
         private int lastVerticalValue = -1;
 
-        private void trkBar_LiftHorizontal_Scroll(object sender, EventArgs e)
-        {
-            int currentValue = trkBar_LiftHorizontal.Value * -5;
-            if (currentValue != lastHorizontalValue)
-            {
-                udpSendLiftHorizontalData(currentValue);
-                lastHorizontalValue = currentValue;
-            }
-        }
 
-        private void trkBar_LiftVertical_Scroll(object sender, EventArgs e)
-        {
-            int currentValue = trkBar_LiftVertical.Value * 100;
-            if (currentValue != lastVerticalValue)
-            {
-                udpSendLiftVerticalMotorData(currentValue);
-                lastVerticalValue = currentValue;
-            }
-        }
-
-        private void trkBar_LiftHorizontal_MouseUp(object sender, MouseEventArgs e)
-        {
-            trkBar_LiftHorizontal.Value = 0;
-            udpSendLiftHorizontalData(0);
-        }
-
-        private void trkBar_LiftVertical_MouseUp(object sender, MouseEventArgs e)
-        {
-            trkBar_LiftVertical.Value = 0;
-            udpSendLiftVerticalMotorData(0);
-            UdpSendLiftVerticalMessageAsync("stepmotor readData");
-        }
-
-        private void btn_VerticalLiftStep_Calibration_Click(object sender, EventArgs e)
-        {
-            UdpSendLiftVerticalMessageAsync("stepmotor calibration");
-        }
-
-        private void btn_LiftVerticalDefault_Click(object sender, EventArgs e)
-        {
-            UdpSendLiftVerticalMessageAsync("stepmotor setDefault");
-        }
-
-        private void btn_VerticalLiftGoToDefault_Click(object sender, EventArgs e)
-        {
-            UdpSendLiftVerticalMessageAsync("stepmotor moveto " + appSettings.VerticalLiftDefaultPos.ToString());
-        }
-
-
-
-        private void btn_LiftAutoCenterRoutine_Click(object sender, EventArgs e)
-        {
-            calculerCentre = true;
-            Task.Run(async () =>
-            {
-                await Task.Delay(400); // délai avant la routine
-                await RoutineAutoCentrage();
-            });
-        }
-
-        private void btn_CancelAutoCentrage_Click(object sender, EventArgs e)
-        {
-            cancelAutoCentrage = true;
-
-        }
 
         private void stepperCameraMotor_trkbar_Scroll(object sender, EventArgs e)
         {
@@ -2281,21 +2195,7 @@ namespace Aerolithe
             //    });
         }
 
-        private void btn_maskAuto_Click(object sender, EventArgs e)
-        {
-            // Sauvegarder ou Appliquer le masque
-            projet.ApplyMask = !projet.ApplyMask;
-            btn_applyMask.Text = projet.ApplyMask ? "" : "";
-            projet.Save(appSettings.ProjectPath);
 
-        }
-
-        private void btn_focusStackEnable_Click(object sender, EventArgs e)
-        {
-            projet.FocusStackEnabled = !projet.FocusStackEnabled;
-            btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
-            projet.Save(appSettings.ProjectPath);
-        }
 
         private void btn_ShowSharpnessOverlay_Click(object sender, EventArgs e)
         {
@@ -2305,15 +2205,63 @@ namespace Aerolithe
 
         }
 
+        private void btn_maskAuto_Click(object sender, EventArgs e)
+        {
+            // Sauvegarder ou Appliquer le masque
+            projet.ApplyMask = !projet.ApplyMask;
+            btn_applyMask.Text = projet.ApplyMask ? "" : "";
+
+
+            // disable la sauvegarde de l'image pour la mesure du volume dans Mestashape
+            photoPourMesure = false;
+            btn_saveImageForMesurements.Text = "";
+
+            projet.Save(appSettings.ProjectPath);
+
+        }
+
+        private void btn_focusStackEnable_Click(object sender, EventArgs e)
+        {
+            projet.FocusStackEnabled = !projet.FocusStackEnabled;
+            btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
+
+
+            // disable la sauvegarde de l'image pour la mesure du volume dans Mestashape
+            photoPourMesure = false;
+            btn_saveImageForMesurements.Text = "";
+
+            projet.Save(appSettings.ProjectPath);
+        }
+
         private void btn_freezeMask_Click(object sender, EventArgs e)
         {
             maskFreeze = !maskFreeze;
             btn_freezeMask.Text = maskFreeze ? "" : "";
+
+            // disable la sauvegarde de l'image pour la mesure du volume dans Mestashape
+            photoPourMesure = false;
+            btn_saveImageForMesurements.Text = "";
+
         }
         private void btn_saveImageForMesurements_Click(object sender, EventArgs e)
         {
-            projet.SaveImageForMesurements = !projet.SaveImageForMesurements;
+
+            photoPourMesure = !photoPourMesure;
             btn_saveImageForMesurements.Text = projet.SaveImageForMesurements ? "" : "";
+
+            // disable le masque
+            btn_applyMask.Text = "";
+            projet.ApplyMask = false;
+
+            // disable le focusStack
+            btn_focusStack.Text = "";
+            projet.FocusStackEnabled = false;
+
+            // défreeze l'image
+            btn_freezeMask.Text = "";
+            maskFreeze = false;
+
+            //Sauvegarde
             projet.Save(appSettings.ProjectPath);
         }
 
@@ -2347,7 +2295,7 @@ namespace Aerolithe
         }
 
         private void btn_LiveViewEnable_Click(object sender, EventArgs e)
-        {          
+        {
             projet.LiveViewEnabled = !projet.LiveViewEnabled;
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
             projet.Save(appSettings.ProjectPath);
@@ -2365,6 +2313,12 @@ namespace Aerolithe
                 liveViewTimer.Stop();
             }
 
+        }
+
+        private void btn_saveImageForMesurementSequence_Click(object sender, EventArgs e)
+        {
+            projet.SaveImageForMesurements = !projet.SaveImageForMesurements;
+            btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
         }
     }
 }

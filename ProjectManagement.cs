@@ -115,7 +115,8 @@ namespace Aerolithe
             if (!Directory.Exists(imagesFolderNameSides))
             {
                 Directory.CreateDirectory(imagesFolderNameSides);
-            }
+            }   
+            
             var focusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
             projet.FocusStackFolderName = focusStackFolderName;
 
@@ -271,7 +272,7 @@ namespace Aerolithe
 
         private void PreparationDossierDestTemp()
         {
-            AppendTextToConsoleNL("- PreparationDossierDestTemp");
+            AppendTextToConsoleNL("PreparationDossierDestTemp");
             //projet.TempImageFolderPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameBase.Split("-")[0], projet.RotationSerieIncrement.ToString("D2"));
             if (!Directory.Exists(projet.GetTempImageFolderPath()))
             {
@@ -286,7 +287,7 @@ namespace Aerolithe
 
         private void PreparationNomImage()
         {
-            AppendTextToConsoleNL("* PreparationNomImage");
+            AppendTextToConsoleNL("PreparationNomImage");
             //MessageBox.Show(projet.RotationSerieIncrement.ToString());
             oldImgIncr = projet.FocusSerieIncrement;
 
@@ -392,7 +393,7 @@ namespace Aerolithe
 
         public void DeleteAllPicturesInFolderWithPrompt()
         {
-            flowLayoutPanel1.Controls.Clear();
+            
             var result = MessageBox.Show(
                                                "Voulez-vous aussi supprimer toutes les images sur le disque?",
                                                "Suppression de l'image",
@@ -404,6 +405,7 @@ namespace Aerolithe
             {
                 try
                 {
+                    flowLayoutPanel1.Controls.Clear();
                     string[] imageFiles = Directory.GetFiles(projet.ImageFolderPath, "*.jpg"); // ou *.png, *.jpeg, etc.
                     foreach (string file in imageFiles)
                     {
@@ -465,10 +467,13 @@ namespace Aerolithe
             toolTip.SetToolTip(btn_applyMask, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
             toolTip.SetToolTip(btn_SaveImageToDisk, "Sauvegarde des image sur disque. Essentiel");
             toolTip.SetToolTip(lbl_saveImageTodisk, "Sauvegarde des image sur disque. Essentiel");
-            toolTip.SetToolTip(btn_saveImageForMesurements, "Sauvegarde d'une image de référence pour la mesure et le volume");
-            toolTip.SetToolTip(lbl_saveImageForMesurements, "Sauvegarde d'une image de référence pour la mesure et volume");
+            toolTip.SetToolTip(btn_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\n ATTENTION: Différent du bouton dans l'onglet Caméra\nL'image se retrouvera dans {projet.GetMesurementsFolderpath()}\" ");
+            toolTip.SetToolTip(lbl_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\n ATTENTION: Différent du bouton dans l'onglet Caméra\nL'image se retrouvera dans {projet.GetMesurementsFolderpath()}\" ");
             toolTip.SetToolTip(lbl_LiveViewEnable, "Active/Désactive le Live View");
             toolTip.SetToolTip(btn_LiveViewEnable, "Active/Désactive le Live View");
+            toolTip.SetToolTip(lbl_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure.\n ATTENTION: Différent du bouton sous le masque\nLes images se retrouveront dans {projet.GetMesurementsFolderpath()}");
+            toolTip.SetToolTip(btn_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure.\n ATTENTION: Différent du bouton sous le masque\nLes images se retrouveront dans {projet.GetMesurementsFolderpath()}");
+
         }
 
 
@@ -612,8 +617,7 @@ namespace Aerolithe
         public string ImageFolderPath { get; set; }         // ex: "C:\\Projet\\images"
         public string FocusStackFolderName { get; set; }    // ex: "focusStack"
                                                             // 
-        public string MesurementsFolderPath { get; set; }                                                  
-        
+        public string MeasurementsFolderPath { get; set; }     
         public int MaxPicturesAllowed { get; set; } = 30;        // Paramètre global
         public int StepSize { get; set; } = 30;                // Paramètre global
         public int Cote { get; set; } = 0;                      // 0 = B, 1 = A
@@ -647,10 +651,7 @@ namespace Aerolithe
             return Path.Combine(GetImageFolderPathNoFS(), GetImageNameFull());
         }
 
-        public string GetMesurementsFolderName()
-        {
-            return Path.Combine(GetMesurementsFolderpath(), GetImageNameFull());
-        }
+       
        
         public string GetImageNameFull()
         {
@@ -672,6 +673,10 @@ namespace Aerolithe
             return Path.Combine(ImageFolderPath, "noFS", coteFolder);
         }
 
+        public string GetMesurementsFullImagePath()
+        {
+            return Path.Combine(GetMesurementsFolderpath(), GetImageNameFull());
+        }
         public string GetMesurementsFolderpath()
         {
             string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
