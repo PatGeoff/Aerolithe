@@ -255,20 +255,89 @@ namespace Aerolithe
             }
         }
 
+        //private void UpdateSequencePadding()
+        //{
+        //    int pad1, pad2, pad3, qte1, qte2, qte3;
+        //    qte1 = appSettings.NbrImg5Deg;
+        //    qte2 = appSettings.NbrImg25Deg;
+        //    qte3 = appSettings.NbrImg45Deg;
+        //    pad1 = appSettings.Padding5Deg;
+        //    pad2 = qte1 + pad1;
+        //    pad3 = qte2 + pad2;            
+        //    txtBox_seqPad2.Text = pad2.ToString();
+        //    txtBox_seqPad3.Text = pad3.ToString();
+        //    txtBox_seqPad1.ForeColor = Color.White;
+        //    txtBox_seqPad2.ForeColor = Color.White;
+        //    txtBox_seqPad3.ForeColor = Color.White;
+        //}
         private void UpdateSequencePadding()
         {
-            int pad1, pad2, pad3, qte1, qte2, qte3;
-            qte1 = int.Parse(txtBox_nbrImg5deg.Text);
-            qte2 = int.Parse(txtBox_nbrImg25deg.Text);
-            qte3 = int.Parse(txtBox_nbrImg45deg.Text);
-            pad1 = int.Parse(txtBox_seqPad1.Text);
-            pad2 = qte1 + pad1;
-            pad3 = qte2 + pad2;
-            txtBox_seqPad2.Text = pad2.ToString();
-            txtBox_seqPad3.Text = pad3.ToString();
+            listBox_paddingView.Items.Clear();
+
+            int nbr5 = appSettings.NbrImg5Deg;
+            int nbr25 = appSettings.NbrImg25Deg;
+            int nbr45 = appSettings.NbrImg45Deg;
+
+            int pad5 = int.Parse(txtBox_seqPad1.Text);
+            int pad25 = int.Parse(txtBox_seqPad2.Text);
+            int pad45 = int.Parse(txtBox_seqPad3.Text);
+
+            int pad5_final = pad5 + nbr5 - 1;  // genre 20 images de 0 à 19
+
+            int pad25_initial;
+            if (pad25 == appSettings.Padding25Deg && pad5 != appSettings.Padding5Deg)
+            {
+                 pad25_initial = pad5_final + 1; // 20
+            }
+            else
+            {
+                 pad25_initial = Math.Max(pad25, pad5_final + 1);
+            }
+
+
+            int pad25_final = nbr25 + pad25_initial; // genre 20 images de 20 à 39
+
+            int pad45_initial;
+            if (pad45 == appSettings.Padding45Deg && (pad5 != appSettings.Padding5Deg || pad25 != appSettings.Padding25Deg)) 
+            {
+                pad45_initial = pad25_final + 1;
+                
+            }
+            else
+            {
+                pad45_initial = Math.Max(pad45, pad25_final + 1);
+            }
+
+            int pad45_final = nbr45 + pad45_initial;
+
+                        
+            // === UI ===
+            txtBox_seqPad1.Text = pad5.ToString();
+            txtBox_seqPad2.Text = pad25_initial.ToString();
+            txtBox_seqPad3.Text = pad45_initial.ToString();
+
+
             txtBox_seqPad1.ForeColor = Color.White;
             txtBox_seqPad2.ForeColor = Color.White;
             txtBox_seqPad3.ForeColor = Color.White;
+
+            // === Sauvegarde autoritaire ===
+            appSettings.Padding5Deg = pad5;
+            appSettings.Padding25Deg = pad25_initial;
+            appSettings.Padding45Deg = pad45_initial;
+
+
+
+            SavePrefsSettings();
+
+            string str = $"Angle 5° :     image_{pad5}.jpg  à image_{pad5_final}.jpg";
+            listBox_paddingView.Items.Add(str);
+            listBox_paddingView.Items.Add("");
+            str = $"Angle 25° :   image_{pad25_initial}.jpg à image_{pad25_final}.jpg";
+            listBox_paddingView.Items.Add(str);
+            listBox_paddingView.Items.Add("");
+            str = $"Angle 45° :   image_{pad45_initial}.jpg à image_{pad45_final}.jpg";
+            listBox_paddingView.Items.Add(str);
 
         }
 
@@ -764,6 +833,12 @@ namespace Aerolithe
         public int NbrImg25Deg { get; set; }
 
         public int NbrImg45Deg { get; set; }
+
+        public int Padding5Deg { get; set; }
+
+        public int Padding25Deg { get; set; }
+        
+        public int Padding45Deg {  get; set; }
 
         public int VerticalLiftCurrentPos { get; set; }
 

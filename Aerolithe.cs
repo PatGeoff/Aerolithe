@@ -156,6 +156,10 @@ namespace Aerolithe
                         txtBox_nbrImg5deg.Text = appSettings.NbrImg5Deg.ToString();
                         txtBox_nbrImg25deg.Text = appSettings.NbrImg25Deg.ToString();
                         txtBox_nbrImg45deg.Text = appSettings.NbrImg45Deg.ToString();
+                        txtBox_seqPad1.Text = appSettings.Padding5Deg.ToString();
+                        txtBox_seqPad2.Text = appSettings.Padding25Deg.ToString();
+                        txtBox_seqPad3.Text = appSettings.Padding45Deg.ToString();
+                        UpdateSequencePadding();
 
                         OpenProject(appSettings.ProjectPath);
                         if (!string.IsNullOrWhiteSpace(projet.ImageFolderPath))
@@ -1032,7 +1036,6 @@ namespace Aerolithe
             //tokenSource.Cancel();
             _cts?.Cancel();
             _stopRequested = true;
-            StopTimer();
             if (btn_cancelPhotoShoot.InvokeRequired)
             {
                 btn_cancelPhotoShoot.Invoke(new Action(() =>
@@ -1630,6 +1633,7 @@ namespace Aerolithe
                     lbl_Serie5Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
                     appSettings.NbrImg5Deg = valeur;
                     appSettings.Save();
+                    UpdateSequencePadding();
                 }
                 else
                 {
@@ -1637,7 +1641,7 @@ namespace Aerolithe
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
-                UpdateSequencePadding();
+                
             }
         }
 
@@ -1657,6 +1661,7 @@ namespace Aerolithe
                     lbl_Serie25Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
                     appSettings.NbrImg25Deg = valeur;
                     appSettings.Save();
+                    UpdateSequencePadding();
                 }
                 else
                 {
@@ -1664,7 +1669,7 @@ namespace Aerolithe
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
-                UpdateSequencePadding();
+                
             }
         }
         private void txtBox_nbrImg45deg_TextChanged(object sender, EventArgs e)
@@ -1681,6 +1686,7 @@ namespace Aerolithe
                     lbl_Serie45Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
                     appSettings.NbrImg45Deg = valeur;
                     appSettings.Save();
+                    UpdateSequencePadding();
                 }
                 else
                 {
@@ -1688,9 +1694,11 @@ namespace Aerolithe
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
-                UpdateSequencePadding();
+                
             }
         }
+
+
 
         private void txtBox_nomImages_KeyDown(object sender, KeyEventArgs e)
         {
@@ -1704,12 +1712,13 @@ namespace Aerolithe
         }
 
         private void txtBox_seqPad1_KeyDown(object sender, KeyEventArgs e)
-        {
+        {           
             if (e.KeyCode == Keys.Enter)
             {
                 if (int.TryParse(txtBox_seqPad1.Text, out int valeur))
                 {
                     txtBox_seqPad1.ForeColor = Color.White;
+                    UpdateSequencePadding();
                 }
                 else
                 {
@@ -1732,6 +1741,7 @@ namespace Aerolithe
                 if (int.TryParse(txtBox_seqPad2.Text, out int valeur))
                 {
                     txtBox_seqPad2.ForeColor = Color.White;
+                    UpdateSequencePadding();
                 }
                 else
                 {
@@ -1754,6 +1764,7 @@ namespace Aerolithe
                 if (int.TryParse(txtBox_seqPad3.Text, out int valeur))
                 {
                     txtBox_seqPad3.ForeColor = Color.White;
+                    UpdateSequencePadding();
                 }
                 else
                 {
@@ -2118,6 +2129,7 @@ namespace Aerolithe
                 Task.Run(async () =>
                 {
                     tokenSource = new CancellationTokenSource();
+                    // projet.Serie = 0, 1 ou 2
                     await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
                 });
             }
@@ -2249,31 +2261,24 @@ namespace Aerolithe
             btn_saveImageForMesurements.Text = "";
 
         }
+
+        // Bouton sous le masque
         private void btn_saveImageForMesurements_Click(object sender, EventArgs e)
         {
 
             photoPourMesure = !photoPourMesure;
-            btn_saveImageForMesurements.Text = projet.SaveImageForMesurements ? "" : "";
-
-            // disable le masque
-            btn_applyMask.Text = "";
-            projet.ApplyMask = false;
-
-            // disable le focusStack
-            btn_focusStack.Text = "";
-            projet.FocusStackEnabled = false;
-
-            // défreeze l'image
-            btn_freezeMask.Text = "";
-            maskFreeze = false;
-
-            //Sauvegarde
-            projet.Save(appSettings.ProjectPath);
+            btn_saveImageForMesurementSequence.Text = photoPourMesure ? "" : "";
+            if (photoPourMesure) saveImageForMesurementEnable();
+            else saveImageForMesurementRemettre();
         }
+
+
+        //Bouton dans l'onlet Camera
         private void btn_saveImageForMesurementSequence_Click(object sender, EventArgs e)
         {
             projet.SaveImageForMesurements = !projet.SaveImageForMesurements;
             btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
+            SavePrefsSettings();
         }
 
         private async Task saveImageForMesurementEnable()

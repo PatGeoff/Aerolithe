@@ -26,7 +26,6 @@ namespace Aerolithe
         private int actuatorDelay2 = 9000; // secondes
         public int delayTimePhotoShoot = 1000;
         private bool working = false;
-        public CancellationTokenSource cancellationTokenSource;
         private int _Elevation = 5;
         private int _Serie = 0;
         private int totalPhotos = 0;
@@ -39,8 +38,12 @@ namespace Aerolithe
         private bool photoPourMesure = false;
 
 
-        private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie, int rotationDepart)
+        private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie, int rotationSerieIncrementDepart)
         {
+            if (_stopRequested)            {
+                
+                return;
+            }
             maskFreeze = false;
             if (btn_freezeMask.InvokeRequired)
             {
@@ -65,6 +68,7 @@ namespace Aerolithe
 
             int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad2.Text), int.Parse(txtBox_seqPad3.Text) };
             serieId = [appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg];
+            
 
             await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
             cancellationToken.ThrowIfCancellationRequested();
@@ -89,7 +93,7 @@ namespace Aerolithe
 
             try
             {
-                for (int i = rotationDepart; i <= serieId[serie] - 1; i++)
+                for (int i = rotationSerieIncrementDepart; i <= serieId[serie] - 1; i++)
                 {
                     if (_stopRequested) return;
 
@@ -281,7 +285,7 @@ namespace Aerolithe
                 try
                 {
                     if (_stopRequested) return;
-                    //await NikonAutofocus();
+                    await NikonAutofocus();
                     //await Task.Delay(1000); // laisse le temps au device.Capture de ne plus être "busy"
                     //AppendTextToConsoleNL("Focus effectué avec succès");
                     focusReussi = true;
@@ -292,8 +296,8 @@ namespace Aerolithe
                     AppendTextToConsoleNL($"Essai {essai} échoué : {e.Message}");
                 }
             }
-            
-            Stopwatch sw = Stopwatch.StartNew();
+
+            //Stopwatch sw = Stopwatch.StartNew();
             try
             {
                 await takePictureAsync();
@@ -313,14 +317,53 @@ namespace Aerolithe
                 AppendTextToConsoleNL($"Erreur dans EssayerPrendrePhotoAsync :: ManualFocus (1, 1)  avec  {ex.Message}");
             }
            
-            sw.Stop();
-            string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-            AppendTextToConsoleNL("La Capture de l'image a pris à la Nikon" + tempsMs + " secondes");
+            //sw.Stop();
+            //string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+
+            //AppendTextToConsoleNL("La Capture de l'image a pris à la Nikon" + tempsMs + " secondes");
 
         }
 
-        private async Task SequencePrisePhotoIndividuelleAsync(CancellationToken ct, int serie, int angle, int rotation)
+        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken, int serieIndex, int rotationSerieIncrementDepart)
         {
+            _stopwatch.Start();
+            _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
+
+            // serieIndex = projet.Serie = 0, 1 ou 2
+            for (int i = serieIndex; i < angleIndexes.Length; i++)
+            {
+                // Au début de chaque loop on s'assure que le maskFreeze soit false
+                maskFreeze = false;
+                if (btn_freezeMask.InvokeRequired)
+                {
+                    btn_freezeMask.Invoke(new Action(() =>
+                    {
+                        btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+                    }));
+                }
+
+                if (_stopRequested) return;
+
+                AppendTextToConsoleNL($"i = {i + 1} et angleIndexes.Length = {angleIndexes.Length}");
+
+                try
+                {
+                    projet.Serie = i;
+                    SavePrefsSettings();
+                    // i = (0-2), angle = (5, 25, 45), rotation = (0 à x) mais pas 0-360, plutôt 0 à 4096/nombre de photos
+                    await SequencePrisePhotoIndividuelleActuateurAsync(cancellationToken, i, angleIndexes[i], rotationSerieIncrementDepart);
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL($"Erreur à * SequencePrisePhotoTotale:  {ex.Message}");
+                }
+            }
+        }
+
+        private async Task SequencePrisePhotoIndividuelleActuateurAsync(CancellationToken ct, int serie, int angle, int rotationSerieIncrementDepart)
+        {
+            // serie = projet.Serie = 0, 1 ou 2
+
             AppendTextToConsoleNL($"actuator {angle}");
             await UdpSendActuatorMessageAsync($"actuator {angle}");
             if (_stopRequested) return;
@@ -336,45 +379,11 @@ namespace Aerolithe
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
 
             tokenSource = new CancellationTokenSource();
-            await PrisePhotoSequenceAsync(tokenSource.Token, serie, rotation);
+            await PrisePhotoSequenceAsync(tokenSource.Token, serie, rotationSerieIncrementDepart);
             if (_stopRequested) return;
 
             AppendTextToConsoleNL($"Séquence {+1} terminée");
         }
-
-        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken, int serieIndex, int rotation)
-        {
-            _stopwatch.Start();
-            _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
-
-
-            for (int i = serieIndex; i < angleIndexes.Length; i++)
-            {
-                maskFreeze = false;
-                if (btn_freezeMask.InvokeRequired)
-                {
-                    btn_freezeMask.Invoke(new Action(() =>
-                    {
-                        btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
-                    }));
-                }
-
-                if (_stopRequested) return;
-                AppendTextToConsoleNL($"i = {i} et angleIndexes.Length = {angleIndexes.Length}");
-                try
-                {
-                    await SequencePrisePhotoIndividuelleAsync(cancellationToken, i, angleIndexes[i], rotation);
-                    projet.Serie = i;
-                    projet.Save(appSettings.ProjectPath);
-                }
-                catch (Exception ex)
-                {
-                    AppendTextToConsoleNL($"Erreur à * SequencePrisePhotoTotale:  {ex.Message}");
-                }
-            }
-        }
-
-
 
         private async Task<bool> WaitForTurntablePositionAsync(int targetPos, int tolerance = 80, int timeoutMs = 10000, int checkInterval = 100)
         {
@@ -400,7 +409,6 @@ namespace Aerolithe
             return false;
         }
 
-
         private async Task UpdateTimerAsync(CancellationToken token)
         {
             while (!token.IsCancellationRequested)
@@ -417,7 +425,7 @@ namespace Aerolithe
                     }
                 }
 
-                await Task.Delay(1000, token); // rafraîchit chaque seconde
+                await Task.Delay(500, token); // rafraîchit chaque seconde
             }
         }
 

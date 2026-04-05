@@ -61,6 +61,9 @@
             tableLayoutPanel54 = new TableLayoutPanel();
             btn_LiveViewEnable = new Button();
             lbl_LiveViewEnable = new Label();
+            tableLayoutPanel55 = new TableLayoutPanel();
+            btn_saveImageForMesurementSequence = new Button();
+            lbl_saveImageForMesurementSequence = new Label();
             tableLayoutPanel69 = new TableLayoutPanel();
             tableLayoutPanel53 = new TableLayoutPanel();
             btn_SaveImageToDisk = new Button();
@@ -135,6 +138,7 @@
             tableLayoutPanel20 = new TableLayoutPanel();
             btn_cancelPhotoShoot = new Button();
             btn_PrisePhotoSeqTotale = new Button();
+            listBox_paddingView = new ListBox();
             tabPage4 = new TabPage();
             tableLayoutPanel34 = new TableLayoutPanel();
             tableLayoutPanel29 = new TableLayoutPanel();
@@ -391,9 +395,6 @@
             btn_consoleScrollToCaret = new Button();
             tableLayoutPanel5 = new TableLayoutPanel();
             folderBrowserDialog1 = new FolderBrowserDialog();
-            tableLayoutPanel55 = new TableLayoutPanel();
-            btn_saveImageForMesurementSequence = new Button();
-            lbl_saveImageForMesurementSequence = new Label();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
@@ -408,6 +409,7 @@
             tableLayoutPanel36.SuspendLayout();
             tableLayoutPanel37.SuspendLayout();
             tableLayoutPanel54.SuspendLayout();
+            tableLayoutPanel55.SuspendLayout();
             tableLayoutPanel69.SuspendLayout();
             tableLayoutPanel53.SuspendLayout();
             tableLayoutPanel68.SuspendLayout();
@@ -517,7 +519,6 @@
             tableLayoutPanel15.SuspendLayout();
             tableLayoutPanel87.SuspendLayout();
             tableLayoutPanel5.SuspendLayout();
-            tableLayoutPanel55.SuspendLayout();
             SuspendLayout();
             // 
             // panel1
@@ -1010,6 +1011,52 @@
             lbl_LiveViewEnable.TabIndex = 10;
             lbl_LiveViewEnable.Text = "";
             lbl_LiveViewEnable.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // tableLayoutPanel55
+            // 
+            tableLayoutPanel55.BackColor = Color.FromArgb(30, 30, 30);
+            tableLayoutPanel55.ColumnCount = 2;
+            tableLayoutPanel55.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
+            tableLayoutPanel55.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50F));
+            tableLayoutPanel55.Controls.Add(btn_saveImageForMesurementSequence, 1, 0);
+            tableLayoutPanel55.Controls.Add(lbl_saveImageForMesurementSequence, 0, 0);
+            tableLayoutPanel55.Dock = DockStyle.Fill;
+            tableLayoutPanel55.Location = new Point(371, 3);
+            tableLayoutPanel55.Name = "tableLayoutPanel55";
+            tableLayoutPanel55.RowCount = 1;
+            tableLayoutPanel55.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel55.Size = new Size(134, 52);
+            tableLayoutPanel55.TabIndex = 87;
+            // 
+            // btn_saveImageForMesurementSequence
+            // 
+            btn_saveImageForMesurementSequence.BackColor = Color.FromArgb(30, 30, 30);
+            btn_saveImageForMesurementSequence.Dock = DockStyle.Fill;
+            btn_saveImageForMesurementSequence.FlatAppearance.BorderSize = 0;
+            btn_saveImageForMesurementSequence.FlatStyle = FlatStyle.Flat;
+            btn_saveImageForMesurementSequence.Font = new Font("Phosphor", 13F);
+            btn_saveImageForMesurementSequence.ForeColor = Color.White;
+            btn_saveImageForMesurementSequence.Location = new Point(83, 3);
+            btn_saveImageForMesurementSequence.Name = "btn_saveImageForMesurementSequence";
+            btn_saveImageForMesurementSequence.Size = new Size(48, 46);
+            btn_saveImageForMesurementSequence.TabIndex = 13;
+            btn_saveImageForMesurementSequence.Text = "";
+            btn_saveImageForMesurementSequence.UseVisualStyleBackColor = false;
+            btn_saveImageForMesurementSequence.Click += btn_saveImageForMesurementSequence_Click;
+            // 
+            // lbl_saveImageForMesurementSequence
+            // 
+            lbl_saveImageForMesurementSequence.BackColor = Color.FromArgb(30, 30, 30);
+            lbl_saveImageForMesurementSequence.Dock = DockStyle.Fill;
+            lbl_saveImageForMesurementSequence.Font = new Font("Phosphor", 14F);
+            lbl_saveImageForMesurementSequence.ForeColor = Color.White;
+            lbl_saveImageForMesurementSequence.Location = new Point(6, 0);
+            lbl_saveImageForMesurementSequence.Margin = new Padding(6, 0, 6, 0);
+            lbl_saveImageForMesurementSequence.Name = "lbl_saveImageForMesurementSequence";
+            lbl_saveImageForMesurementSequence.Size = new Size(68, 52);
+            lbl_saveImageForMesurementSequence.TabIndex = 10;
+            lbl_saveImageForMesurementSequence.Text = "";
+            lbl_saveImageForMesurementSequence.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // tableLayoutPanel69
             // 
@@ -1755,6 +1802,7 @@
             tableLayoutPanel19.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel19.Controls.Add(tableLayoutPanel18, 0, 1);
             tableLayoutPanel19.Controls.Add(tableLayoutPanel20, 0, 2);
+            tableLayoutPanel19.Controls.Add(listBox_paddingView, 0, 3);
             tableLayoutPanel19.Dock = DockStyle.Fill;
             tableLayoutPanel19.Location = new Point(6, 6);
             tableLayoutPanel19.Margin = new Padding(6);
@@ -2133,6 +2181,19 @@
             btn_PrisePhotoSeqTotale.UseVisualStyleBackColor = false;
             btn_PrisePhotoSeqTotale.Visible = false;
             btn_PrisePhotoSeqTotale.Click += btn_PrisePhotoSeqTotale_Click;
+            // 
+            // listBox_paddingView
+            // 
+            listBox_paddingView.BackColor = Color.FromArgb(40, 40, 40);
+            listBox_paddingView.BorderStyle = BorderStyle.None;
+            listBox_paddingView.Dock = DockStyle.Fill;
+            listBox_paddingView.ForeColor = Color.White;
+            listBox_paddingView.FormattingEnabled = true;
+            listBox_paddingView.Location = new Point(122, 398);
+            listBox_paddingView.Margin = new Padding(122, 3, 3, 3);
+            listBox_paddingView.Name = "listBox_paddingView";
+            listBox_paddingView.Size = new Size(706, 359);
+            listBox_paddingView.TabIndex = 52;
             // 
             // tabPage4
             // 
@@ -5690,52 +5751,6 @@
             tableLayoutPanel5.Size = new Size(3313, 2437);
             tableLayoutPanel5.TabIndex = 30;
             // 
-            // tableLayoutPanel55
-            // 
-            tableLayoutPanel55.BackColor = Color.FromArgb(30, 30, 30);
-            tableLayoutPanel55.ColumnCount = 2;
-            tableLayoutPanel55.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
-            tableLayoutPanel55.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50F));
-            tableLayoutPanel55.Controls.Add(btn_saveImageForMesurementSequence, 1, 0);
-            tableLayoutPanel55.Controls.Add(lbl_saveImageForMesurementSequence, 0, 0);
-            tableLayoutPanel55.Dock = DockStyle.Fill;
-            tableLayoutPanel55.Location = new Point(371, 3);
-            tableLayoutPanel55.Name = "tableLayoutPanel55";
-            tableLayoutPanel55.RowCount = 1;
-            tableLayoutPanel55.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel55.Size = new Size(134, 52);
-            tableLayoutPanel55.TabIndex = 87;
-            // 
-            // btn_saveImageForMesurementSequence
-            // 
-            btn_saveImageForMesurementSequence.BackColor = Color.FromArgb(30, 30, 30);
-            btn_saveImageForMesurementSequence.Dock = DockStyle.Fill;
-            btn_saveImageForMesurementSequence.FlatAppearance.BorderSize = 0;
-            btn_saveImageForMesurementSequence.FlatStyle = FlatStyle.Flat;
-            btn_saveImageForMesurementSequence.Font = new Font("Phosphor", 13F);
-            btn_saveImageForMesurementSequence.ForeColor = Color.White;
-            btn_saveImageForMesurementSequence.Location = new Point(83, 3);
-            btn_saveImageForMesurementSequence.Name = "btn_saveImageForMesurementSequence";
-            btn_saveImageForMesurementSequence.Size = new Size(48, 46);
-            btn_saveImageForMesurementSequence.TabIndex = 13;
-            btn_saveImageForMesurementSequence.Text = "";
-            btn_saveImageForMesurementSequence.UseVisualStyleBackColor = false;
-            btn_saveImageForMesurementSequence.Click += btn_saveImageForMesurementSequence_Click;
-            // 
-            // lbl_saveImageForMesurementSequence
-            // 
-            lbl_saveImageForMesurementSequence.BackColor = Color.FromArgb(30, 30, 30);
-            lbl_saveImageForMesurementSequence.Dock = DockStyle.Fill;
-            lbl_saveImageForMesurementSequence.Font = new Font("Phosphor", 14F);
-            lbl_saveImageForMesurementSequence.ForeColor = Color.White;
-            lbl_saveImageForMesurementSequence.Location = new Point(6, 0);
-            lbl_saveImageForMesurementSequence.Margin = new Padding(6, 0, 6, 0);
-            lbl_saveImageForMesurementSequence.Name = "lbl_saveImageForMesurementSequence";
-            lbl_saveImageForMesurementSequence.Size = new Size(68, 52);
-            lbl_saveImageForMesurementSequence.TabIndex = 10;
-            lbl_saveImageForMesurementSequence.Text = "";
-            lbl_saveImageForMesurementSequence.TextAlign = ContentAlignment.MiddleCenter;
-            // 
             // Aerolithe
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -5772,6 +5787,7 @@
             tableLayoutPanel36.PerformLayout();
             tableLayoutPanel37.ResumeLayout(false);
             tableLayoutPanel54.ResumeLayout(false);
+            tableLayoutPanel55.ResumeLayout(false);
             tableLayoutPanel69.ResumeLayout(false);
             tableLayoutPanel53.ResumeLayout(false);
             tableLayoutPanel68.ResumeLayout(false);
@@ -5915,7 +5931,6 @@
             tableLayoutPanel15.ResumeLayout(false);
             tableLayoutPanel87.ResumeLayout(false);
             tableLayoutPanel5.ResumeLayout(false);
-            tableLayoutPanel55.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -6296,5 +6311,6 @@
         public TableLayoutPanel tableLayoutPanel55;
         public Button btn_saveImageForMesurementSequence;
         private Label lbl_saveImageForMesurementSequence;
+        private ListBox listBox_paddingView;
     }
 }
