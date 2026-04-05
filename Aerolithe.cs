@@ -170,7 +170,7 @@ namespace Aerolithe
 
                         if (!string.IsNullOrWhiteSpace(projet.ImageNameBase))
                         {
-                            AssembleImageName();
+                            DisplayPathsInUI();
                         }
 
 
@@ -852,15 +852,35 @@ namespace Aerolithe
 
                 if (result == DialogResult.Yes)
                 {
-                    ResetSerieIncrement();
-                    DeleteAllPicturesInFolderWith();
-                    ResetSequenceCancellation();
+                    ResetSerieIncrementAndName();
+                    ResetRotationIncrementAndName();
+                    ResetFocusIncrementationAndName();
+                    try
+                    {
+                        DeleteAllPicturesInFolderWith();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur  btn_PrisePhotoSeqTotaleMain_Click :: DeleteAllPicturesInFolderWith  {ex.Message}");
+                    }
+                    
+                    ResetSequenceCancellationButton();
                     Task.Run(async () =>
                     {
                         tokenSource = new CancellationTokenSource();
-                        await SequencePrisePhotoTotale(tokenSource.Token, 0, 0);
+                        await SequencePrisePhotoTotale(tokenSource.Token);
                     });
                 }
+            }
+            else
+            {
+                ResetSequenceCancellationButton();
+
+                Task.Run(async () =>
+                {
+                    tokenSource = new CancellationTokenSource();
+                    await SequencePrisePhotoTotale(tokenSource.Token);
+                });
             }
             
         }
@@ -884,15 +904,19 @@ namespace Aerolithe
 
                 if (result == DialogResult.Yes)
                 {
-                    ResetSerieIncrement();
+                    ResetSerieIncrementAndName();
+                    ResetFocusIncrementationAndName();
+                    ResetRotationIncrementAndName();
                     DeleteAllPicturesInFolderWith();
                 }
             }
-            ResetSequenceCancellation();
+            ResetSequenceCancellationButton();
+            
+
             Task.Run(async () =>
             {
                 tokenSource = new CancellationTokenSource();
-                await SequencePrisePhotoTotale(tokenSource.Token, 0, 0);
+                await SequencePrisePhotoTotale(tokenSource.Token);
             });
         }
 
@@ -912,11 +936,14 @@ namespace Aerolithe
             }
 
             // Si l'utilisateur accepte, on continue
-            projet.RotationSerieIncrement = int.Parse(txtBox_seqPad1.Text);
-            AssembleImageName();
+            //projet.RotationSerieIncrement = int.Parse(txtBox_seqPad1.Text);
 
-            ResetSequenceCancellation();
-            currentSequence = 0;
+            DisplayPathsInUI();
+
+            ResetSequenceCancellationButton();
+            projet.Serie = 0;
+            projet.RotationSerieIncrement = 0;
+            SavePrefsSettings();
 
 
             Task.Run(async () =>
@@ -925,7 +952,8 @@ namespace Aerolithe
                 if (_stopRequested) return;
                 await WaitForActuator(5);
                 tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence, 0);
+                projet.Serie = 0;
+                await PrisePhotoSequenceAsync(tokenSource.Token);
             });
         }
 
@@ -942,11 +970,14 @@ namespace Aerolithe
             {
                 return; // Si l'utilisateur refuse, on sort de la méthode
             }
-            projet.RotationSerieIncrement = int.Parse(txtBox_seqPad2.Text);
-            AssembleImageName();
+            //projet.RotationSerieIncrement = int.Parse(txtBox_seqPad2.Text);
 
-            ResetSequenceCancellation();
-            currentSequence = 1;
+            DisplayPathsInUI();
+
+            ResetSequenceCancellationButton();
+            projet.Serie = 1;
+            projet.RotationSerieIncrement = 0;
+            SavePrefsSettings();
 
             Task.Run(async () =>
             {
@@ -954,7 +985,7 @@ namespace Aerolithe
                 if (_stopRequested) return;
                 await WaitForActuator(25);
                 tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence, 0);
+                await PrisePhotoSequenceAsync(tokenSource.Token);
             });
 
         }
@@ -973,19 +1004,23 @@ namespace Aerolithe
                 return; // Si l'utilisateur refuse, on sort de la méthode
             }
 
-            projet.RotationSerieIncrement = int.Parse(txtBox_seqPad3.Text);
-            AssembleImageName();
+            //projet.RotationSerieIncrement = int.Parse(txtBox_seqPad3.Text);
+
+            DisplayPathsInUI();
 
 
-            ResetSequenceCancellation();
-            currentSequence = 2;
+            ResetSequenceCancellationButton();
+            projet.Serie = 2;
+            projet.RotationSerieIncrement = 0;
+            SavePrefsSettings();
+
             Task.Run(async () =>
             {
                 await UdpSendActuatorMessageAsync("actuator 45");
                 if (_stopRequested) return;
                 await WaitForActuator(45);
                 tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token, currentSequence, 0);
+                await PrisePhotoSequenceAsync(tokenSource.Token);
             });
         }
 
@@ -1056,11 +1091,11 @@ namespace Aerolithe
 
             await Task.Delay(5000);
 
-            ResetSequenceCancellation();
+            ResetSequenceCancellationButton();
 
         }
 
-        private void ResetSequenceCancellation()
+        private void ResetSequenceCancellationButton()
         {
             _stopRequested = false;
             if (btn_stopAutomaticFocusCapture.InvokeRequired)
@@ -1591,7 +1626,7 @@ namespace Aerolithe
 
         private void btn_ResetIncr_Click(object sender, EventArgs e)
         {
-            ResetSerieIncrement();
+            ResetSerieIncrementAndName();
 
         }
 
@@ -1975,7 +2010,7 @@ namespace Aerolithe
             {
                 projet.ImageNameBase = input;
                 projet.Save(appSettings.ProjectPath);
-                AssembleImageName();
+                DisplayPathsInUI();
             }
         }
 
@@ -1986,7 +2021,7 @@ namespace Aerolithe
             string coteFolder = (projet.Cote == 0) ? "A" : "B";
             lbl_CoteSerie.Text = coteFolder;
             projet.Save(appSettings.ProjectPath);
-            AssembleImageName();
+            DisplayPathsInUI();
         }
 
         private void btn_coteB_Click(object sender, EventArgs e)
@@ -1996,7 +2031,7 @@ namespace Aerolithe
             string coteFolder = (projet.Cote == 0) ? "A" : "B";
             lbl_CoteSerie.Text = coteFolder;
             projet.Save(appSettings.ProjectPath);
-            AssembleImageName();
+            DisplayPathsInUI();
         }
 
 
@@ -2130,7 +2165,8 @@ namespace Aerolithe
                 {
                     tokenSource = new CancellationTokenSource();
                     // projet.Serie = 0, 1 ou 2
-                    await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
+                    //await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
+                    await SequencePrisePhotoTotale(tokenSource.Token);
                 });
             }
 
@@ -2298,7 +2334,7 @@ namespace Aerolithe
                 btn_freezeMask.Text = "";                                  // false
                 btn_saveImageForMesurements.Text = "";                   // true
             }));
-            
+            await Task.Delay(200);
             projet.ApplyMask = false;
             projet.FocusStackEnabled = false;
             maskFreeze = false;
@@ -2316,7 +2352,7 @@ namespace Aerolithe
             maskFreeze = tmpData.freeze;
 
             SavePrefsSettings();
-
+            await Task.Delay(200);
 
             Invoke(new Action(() =>
             {

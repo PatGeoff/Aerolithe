@@ -38,7 +38,7 @@ namespace Aerolithe
 
         public async Task nikonDoFocus()
         {
-            AppendTextToConsoleNL("- nikonDoFocus");
+            //AppendTextToConsoleNL("- nikonDoFocus");
             try
             {
                 focusReadyTcs = new TaskCompletionSource<bool>();
@@ -63,7 +63,7 @@ namespace Aerolithe
 
         public async Task NikonAutofocus()
         {
-            AppendTextToConsoleNL("- NikonAutofocus");
+            //AppendTextToConsoleNL("- NikonAutofocus");
             //var sw = Stopwatch.StartNew();
             //Debug.WriteLine($"[NikonAutoFocus()] lancement à : {sw.ElapsedMilliseconds} ms");
             try
@@ -827,7 +827,9 @@ namespace Aerolithe
                     }
                     try
                     {
+                        miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                         await takePictureAsync();
+                        await miniaturesTcs.Task;
                         await Task.Delay(400);
                         ManualFocus(0, newStepSize);
                         await Task.Delay(delayTime);
@@ -836,6 +838,7 @@ namespace Aerolithe
                     }
                     catch (Exception e)
                     {
+                        MessageBox.Show(e.Message);
                         AppendTextToConsoleNL(e.Message);
                     }
                     Debug.WriteLine("itération " + i.ToString() + " blurredBLocks: " + blurredBlocks.ToString());

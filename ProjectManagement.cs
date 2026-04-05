@@ -74,7 +74,7 @@ namespace Aerolithe
                     this.Text = name;
 
                     SavePrefsSettings();
-                    AssembleImageName();
+                    DisplayPathsInUI();
 
                 }
             }
@@ -230,7 +230,7 @@ namespace Aerolithe
                     projet.ImageFolderPath = folderDialog.SelectedPath;
                     SavePrefsSettings();
                     CreateAllFolders(projet.ImageFolderPath);
-                    AssembleImageName();
+                    DisplayPathsInUI();
                 }
             }
         }
@@ -344,38 +344,17 @@ namespace Aerolithe
         private void PreparationDossierDestTemp()
         {
             AppendTextToConsoleNL("PreparationDossierDestTemp");
-            //projet.TempImageFolderPath = Path.Combine(projet.ImageFolderPath, projet.ImageNameBase.Split("-")[0], projet.RotationSerieIncrement.ToString("D2"));
             if (!Directory.Exists(projet.GetTempImageFolderPath()))
             {
                 Directory.CreateDirectory(projet.GetTempImageFolderPath());
             }
-
         }
 
-        // projet.RotationSerieIncrement "-**"  -> pour chaque rotation de la table tournante
-        // projet.FocusSerieIncrement "_**"  -> pour chaque photo du focusStack
 
+       
 
-        private void PreparationNomImage()
-        {
-            AppendTextToConsoleNL("PreparationNomImage");
-            //MessageBox.Show(projet.RotationSerieIncrement.ToString());
-            oldImgIncr = projet.FocusSerieIncrement;
-
-
-            //projet.ImageNameBase = txtBox_nomImages.Text + "-" + projet.RotationSerieIncrement.ToString("D2");
-            //projet.ImageNameFull = projet.ImageNameBase + "_" + projet.FocusSerieIncrement.ToString("D2") + ".jpg";
-            //projet.ImageFullPath = Path.Combine(projet.TempImageFolderPath, projet.ImageNameFull);
-
-
-            projet.Save(appSettings.ProjectPath);
-            projet.FocusSerieIncrement++;
-           
-        }
-
-        private void AssembleImageName()
-        {
-            AppendTextToConsoleNL(" - AssembleImageName()");
+        private void DisplayPathsInUI()
+        {            
             try
             {
                 if (lbl_ImgFullPath.InvokeRequired)
@@ -406,16 +385,31 @@ namespace Aerolithe
 
         }
 
-        private async Task ResetIncrementation()
-        {            
-            AppendTextToConsoleNL(" * ResetIncrementation()");
+        private async Task ResetRotationIncrementAndName()
+        {
+            AppendTextToConsoleNL("ResetRotationIncrementAndName");
 
             try
             {
-                oldImgIncr = 0;
+                projet.RotationSerieIncrement = 0;
+                DisplayPathsInUI();
+                SavePrefsSettings();
+            }
+            catch (Exception e)
+            {
+                AppendTextToConsoleNL(e.Message);
+            }
+        }
+
+        private async Task ResetFocusIncrementationAndName()
+        {            
+            AppendTextToConsoleNL("ResetFocusIncrementationName");
+
+            try
+            {
                 projet.FocusSerieIncrement = 0;
-                AssembleImageName();
-                projet.Save(appSettings.ProjectPath);
+                DisplayPathsInUI();
+                SavePrefsSettings();
             }
             catch (Exception e)
             {
@@ -424,15 +418,15 @@ namespace Aerolithe
 
         }
 
-        private void ResetSerieIncrement()
+        private void ResetSerieIncrementAndName()
         {
-            AppendTextToConsoleNL(" * ResetIncrementation()");
+            AppendTextToConsoleNL("ResetSerieIncrementAndName");
             try
             {
-                projet.RotationSerieIncrement = 0;
-                projet.FocusSerieIncrement = 0;
-                AssembleImageName();
-                projet.Save(appSettings.ProjectPath);
+               
+                projet.Serie = 0;
+                DisplayPathsInUI();
+                SavePrefsSettings();
             }
             catch (Exception e)
             {
@@ -443,7 +437,7 @@ namespace Aerolithe
         public async Task IncrementImgSeq()
         {
             projet.RotationSerieIncrement += 1;
-            AssembleImageName();
+            DisplayPathsInUI();
             await Task.Delay(50);
             projet.Save(appSettings.ProjectPath);
             await Task.Delay(100);
@@ -455,7 +449,7 @@ namespace Aerolithe
             if (projet.RotationSerieIncrement > 0)
             {
                 projet.RotationSerieIncrement -= 1;
-                AssembleImageName();
+                DisplayPathsInUI();
                 await Task.Delay(50);
                 projet.Save(appSettings.ProjectPath);
                 await Task.Delay(100);
@@ -688,7 +682,6 @@ namespace Aerolithe
         public string ImageFolderPath { get; set; }         // ex: "C:\\Projet\\images"
         public string FocusStackFolderName { get; set; }    // ex: "focusStack"
                                                             // 
-        public string MeasurementsFolderPath { get; set; }     
         public int MaxPicturesAllowed { get; set; } = 30;        // Paramètre global
         public int StepSize { get; set; } = 30;                // Paramètre global
         public int Cote { get; set; } = 0;                      // 0 = B, 1 = A
@@ -708,7 +701,7 @@ namespace Aerolithe
 
         public bool FocusStackEnabled   { get; set; } = true;
 
-        public bool SaveImageForMesurements { get; set; } = false;
+        public bool SaveImageForMesurements { get; set; } = true;
 
         public bool LiveViewEnabled { get; set; } = true;
 
@@ -719,10 +712,15 @@ namespace Aerolithe
         }
         public string GetImageFullPathNoFS()
         {
-            return Path.Combine(GetImageFolderPathNoFS(), GetImageNameFull());
+            return Path.Combine(GetImageFolderPathNoFS(), GetImageNameFullNoFS());
         }
 
-       
+       public string GetImageNameFullNoFS()
+        {
+            // Format: Base_Rotation_Focus.jpg
+            string cote = (Cote == 0) ? "A" : "B";
+            return $"{ImageNameBase}_{cote}_{RotationSerieIncrement:D2}.jpg";
+        }
        
         public string GetImageNameFull()
         {
@@ -746,8 +744,11 @@ namespace Aerolithe
 
         public string GetMesurementsFullImagePath()
         {
-            return Path.Combine(GetMesurementsFolderpath(), GetImageNameFull());
+            return Path.Combine(GetMesurementsFolderpath(), GetImageNameFullNoFS());
         }
+
+
+
         public string GetMesurementsFolderpath()
         {
             string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
@@ -1073,7 +1074,13 @@ namespace Aerolithe
             }
             catch { }
         }
+
+        
     }
 
-
+    public static class TokenManager
+    {
+        private static CancellationTokenSource afficherMiniatures = new();
+        private static CancellationTokenSource deviceImageReady = new();
+    }
 }

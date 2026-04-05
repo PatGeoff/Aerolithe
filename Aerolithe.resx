@@ -181,6 +181,9 @@
   <metadata name="menuStrip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
   </metadata>
+  <data name="lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem.Text" xml:space="preserve">
+    <value>Lorsque la prise de photo en séquence est lancée, il faut appuyer pluseurs fois sur Canceller pour réellement canceller le tout.Le UI étant gelé souvent, si on voit pas le bouton devenir gris, ça aura pas marché. Il faut recommencer</value>
+  </data>
   <data name="parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem.Text" xml:space="preserve">
     <value>Parfois un moteur peut ne pas sembler vouloir avancer ou reculer et on le sent forcer.
 Si la limit switch n'est pas atteinte, appuyer sur le bouton reset du board de contrôle du moteur pour faire un reset</value>

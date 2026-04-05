@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
+using static Emgu.CV.DISOpticalFlow;
 
 namespace Aerolithe
 {
@@ -37,242 +38,10 @@ namespace Aerolithe
         private CancellationTokenSource _cts;
         private bool photoPourMesure = false;
 
+          
 
-        private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken, int serie, int rotationSerieIncrementDepart)
-        {
-            if (_stopRequested)            {
-                
-                return;
-            }
-            maskFreeze = false;
-            if (btn_freezeMask.InvokeRequired)
-            {
-                btn_freezeMask.Invoke(new Action(() =>
-                {
-                    btn_freezeMask.Invoke(() => btn_freezeMask.Text = "");
-                }));
-            }
-
-            if (appSettings.ProjectPath == null)
-            {
-                SavePrefsSettings();  // Demande à setter le projet
-                
-            }
-            _stopwatch.Start();
-            _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
-
-           
-            await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
-            await Task.Delay(800);
-
-
-            int[] paddingNbr = { int.Parse(txtBox_seqPad1.Text), int.Parse(txtBox_seqPad2.Text), int.Parse(txtBox_seqPad3.Text) };
-            serieId = [appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg];
-            
-
-            await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
-            cancellationToken.ThrowIfCancellationRequested();
-            await WaitForTurntablePositionAsync(0);
-            await Task.Delay(800);
-            int divider = 0;
-            try
-            {
-                divider = 4096 / serieId[serie];
-            }
-            catch (Exception e)
-            {
-                AppendTextToConsoleNL(e.Message);
-                AppendTextToConsoleNL("S'assurer qu'il y a bien un nombre d'image valide aux séquences 1, 2 et 3 dans l'onglet Caméra/Automation");
-            }
-
-            await ResetIncrementation();
-
-            AppendTextToConsoleNL("Série " + (serie + 1).ToString() + "/" + serieId[serie].ToString());
-
-            // De 0 à 360 degrés sur la table tournante
-
-            try
-            {
-                for (int i = rotationSerieIncrementDepart; i <= serieId[serie] - 1; i++)
-                {
-                    if (_stopRequested) return;
-
-                    maskFreeze = false;
-                    if (btn_freezeMask.InvokeRequired)
-                    {
-                        btn_freezeMask.Invoke(new Action(() =>
-                        {
-                            btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
-                        }));
-                    }
-
-
-                    oldImgIncr = projet.FocusSerieIncrement = 0;
-                    _Serie = i;
-                    projet.Serie = _Serie;
-                    SavePrefsSettings();                   
-
-                    PreparationDossierDestTemp();
-                    int degres = i * divider;
-                    ttTargetPosition = degres;
-
-                    await UdpSendTurnTableMessageAsync($"turntable,{degres},{turntableSpeed}");
-                    if (_stopRequested) return;
-
-                    bool positionOk = await WaitForTurntablePositionAsync(degres);
-
-                    try
-                    {
-                        await nikonDoFocus();
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: NikonDoFocus: {ex.Message}");
-                    }
-                   
-
-                    if (!positionOk)
-                    {
-                        // Gérer le cas où la position n'est pas atteinte
-                        AppendTextToConsoleNL(" La table n'a pas atteint la position, on continue ou on stop ?");
-                    }
-                    calculerCentre = true;
-                    await Task.Delay(1000); // délai avant la routine ?? 
-                    try
-                    {
-                        await RoutineAutoCentrage();
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: RoutineAutoCentrage: {ex.Message}");
-                    }
-                    
-
-                    if (_stopRequested) return;
-                    AppendTextToConsoleNL($"photo {(i + 1)}/{serieId[serie]} à {degres}°");
-
-                    if (lbl_CoteSerie.InvokeRequired)
-                    {
-                        lbl_CoteSerie.Invoke(new Action(() =>
-                        {
-                            string cote = (projet.Cote == 0) ? "A" : "B";
-                            lbl_CoteSerie.Text = cote;
-                            lbl_ElevSerie.Text = $"{angleStr[serie]}°";
-                            lbl_RotSerie.Text = $"{i + 1}/{serieId[serie]}";
-                        }));
-                    }
-
-                    //projet.FocusSerieIncrement = i - 1 + paddingNbr[serie];
-                    projet.FocusSerieIncrement = 0;
-                    try
-                    {
-                        PreparationNomImage();
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: PreparationNomImage: {ex.Message}");
-                        
-                    }
-                   
-
-                    if (projet.SaveImageForMesurements)
-                    {
-                        try
-                        {
-                            await SaveMesurementImage();
-                        }
-                        catch (Exception ex)
-                        {
-
-                            AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: SaveMesurementImage:  {ex.Message}");
-                        }
-                        
-                    }
-
-
-                    if (projet.FocusStackEnabled)
-                    {
-                        try
-                        {
-                            await AutomaticFocusRoutine();
-                            if (_stopRequested) return;
-
-                            await AutomaticFocusThenCapture(delta);
-
-                            AppendTextToConsoleNL("Focus Stack lancé");
-
-                            _ = Task.Run(() => MakeFocusStackSerie());
-
-
-                            if (flowLayoutPanel1.InvokeRequired)
-                            {
-                                flowLayoutPanel1.Invoke(new Action(() => { flowLayoutPanel1.Controls.Clear(); }));
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            AppendTextToConsoleNL(e.Message);                           
-                            
-                        }
-                    }
-                    else
-                    {
-                        try
-                        {
-                            await EssayerPrendrePhotoAsync(degres);
-
-                        }
-                        catch (Exception ex)
-                        {
-                            AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: EssayerPrendrePhotoAsync: {ex.Message}");
-                        }
-
-                    }
-                    //AppendTextToConsoleNL("Séquence #" + (i+1).ToString() + " terminée");
-                    try
-                    {
-                        await IncrementImgSeq();
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: IncrementImgSeq: {ex.Message}");
-                    }
-                   
-                }
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleNL($" Erreur dans la séquence : {ex.Message}");
-            }
-            _stopwatch.Stop();
-        }
-
-        private async Task AppliquerMasqueEtFocusStepAsync()
-        {
-            btn_stopAutomaticFocusCapture.Visible = false;
-            btn_stopAutomaticFocusCapture.Enabled = false;
-
-            if (int.TryParse(textBox_nbrFocusSteps.Text, out int stepBack))
-            {
-                stepBack = stepBack / 2;
-                for (int i = 0; i <= stepBack; i++)
-                {
-                    if (_stopRequested) return;
-                    ManualFocus(1, stepSize);
-                    lbl_focusStepsVar.Invoke(new Action(() =>
-                    {
-                        lbl_focusStepsVar.Text = i.ToString();
-                    }));
-                    await Task.Delay(100);
-                }
-            }
-
-            if (checkBox_ApplyMaskStackedImage.Checked)
-            {
-                PostFocusStackMask();
-            }
-        }
-
+       
+      
         private async Task EssayerPrendrePhotoAsync(int degres)
         {
             if (_stopRequested) return;
@@ -300,37 +69,35 @@ namespace Aerolithe
             //Stopwatch sw = Stopwatch.StartNew();
             try
             {
+                ManualFocus(1, 1); // Sert seulement pour rendre takePictureAsync plus rapide. Débloque la Nikon et la photo se télécharge en 1.5s au de 15 secondes ??
+                await Task.Delay(200);
                 await takePictureAsync();
+                await Task.Delay(200);
+                ManualFocus(1, 1); // Sert seulement pour rendre takePictureAsync plus rapide. Débloque la Nikon et la photo se télécharge en 1.5s au de 15 secondes ??
             }
             catch (Exception ex)
             {
                 AppendTextToConsoleNL($"Erreur dans EssayerPrendrePhotoAsync :: takePictureAsync avec {ex.Message}");
             }
             
-            await Task.Delay(400);
-            try
-            {
-                ManualFocus(1, 1); // Sert seulement pour rendre takePictureAsync plus rapide. Débloque la Nikon et la photo se télécharge en 1.5s au de 15 secondes ??
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleNL($"Erreur dans EssayerPrendrePhotoAsync :: ManualFocus (1, 1)  avec  {ex.Message}");
-            }
-           
+            
             //sw.Stop();
             //string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
 
             //AppendTextToConsoleNL("La Capture de l'image a pris à la Nikon" + tempsMs + " secondes");
 
         }
-
-        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken, int serieIndex, int rotationSerieIncrementDepart)
+ 
+        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
         {
+            AppendTextToConsoleNL("SequencePrisePhotoTotale");
+            AppendTextToConsoleNL($"projet.Serie = {projet.Serie}, projet.RotationSerieIncrement = {projet.RotationSerieIncrement}, projet.Cote = {projet.Cote}");
+
             _stopwatch.Start();
             _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
 
-            // serieIndex = projet.Serie = 0, 1 ou 2
-            for (int i = serieIndex; i < angleIndexes.Length; i++)
+            // projet.Serie = 0, 1 ou 2 ---> (5,25,45)
+            for (int i = projet.Serie; i < angleIndexes.Length; i++)
             {
                 // Au début de chaque loop on s'assure que le maskFreeze soit false
                 maskFreeze = false;
@@ -351,7 +118,7 @@ namespace Aerolithe
                     projet.Serie = i;
                     SavePrefsSettings();
                     // i = (0-2), angle = (5, 25, 45), rotation = (0 à x) mais pas 0-360, plutôt 0 à 4096/nombre de photos
-                    await SequencePrisePhotoIndividuelleActuateurAsync(cancellationToken, i, angleIndexes[i], rotationSerieIncrementDepart);
+                    await SequencePrisePhotoIndividuelleActuateurAsync(cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -360,10 +127,10 @@ namespace Aerolithe
             }
         }
 
-        private async Task SequencePrisePhotoIndividuelleActuateurAsync(CancellationToken ct, int serie, int angle, int rotationSerieIncrementDepart)
+        private async Task SequencePrisePhotoIndividuelleActuateurAsync(CancellationToken ct)
         {
             // serie = projet.Serie = 0, 1 ou 2
-
+            int angle = angleIndexes[projet.Serie];
             AppendTextToConsoleNL($"actuator {angle}");
             await UdpSendActuatorMessageAsync($"actuator {angle}");
             if (_stopRequested) return;
@@ -379,10 +146,258 @@ namespace Aerolithe
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
 
             tokenSource = new CancellationTokenSource();
-            await PrisePhotoSequenceAsync(tokenSource.Token, serie, rotationSerieIncrementDepart);
+            await PrisePhotoSequenceAsync(tokenSource.Token);
             if (_stopRequested) return;
 
             AppendTextToConsoleNL($"Séquence {+1} terminée");
+        }
+
+        private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken)
+        {
+            if (_stopRequested)
+            {
+
+                return;
+            }
+            maskFreeze = false;
+            if (btn_freezeMask.InvokeRequired)
+            {
+                btn_freezeMask.Invoke(new Action(() =>
+                {
+                    btn_freezeMask.Invoke(() => btn_freezeMask.Text = "");
+                }));
+            }
+
+            //if (appSettings.ProjectPath == null)
+            //{
+            //    SavePrefsSettings();  // Demande à setter le projet
+
+            //}
+            _stopwatch.Start();
+            _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
+
+
+            await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
+            await Task.Delay(800);
+
+            await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
+            cancellationToken.ThrowIfCancellationRequested();
+            await WaitForTurntablePositionAsync(0);
+            await Task.Delay(800);
+
+            int[] paddingNbr = { appSettings.Padding5Deg, appSettings.Padding25Deg, appSettings.Padding45Deg };
+            serieId = [appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg];
+
+
+            int divider = 0;
+            try
+            {
+                divider = 4096 / serieId[projet.Serie];
+
+            }
+            catch (Exception e)
+            {
+                AppendTextToConsoleNL(e.Message);
+                //AppendTextToConsoleNL("S'assurer qu'il y a bien un nombre d'image valide aux séquences 1, 2 et 3 dans l'onglet Caméra/Automation");
+            }
+
+            await ResetFocusIncrementationAndName();
+
+
+            AppendTextToConsoleNL("Série " + (projet.Serie + 1).ToString() + "/" + serieId[projet.Serie].ToString());
+
+            // serie = 0,1,2
+            // serieId[serie] = 20,14,14 (exemple)
+            // rotationSerieIncrementDepart = entre 0 et 20 (par exemple) 
+
+            try
+            {
+                // de 0 à 13 si on a 14 images dans serieId[2] (par exemple) 
+                for (int i = projet.RotationSerieIncrement; i <= serieId[projet.Serie] - 1; i++)
+                {
+
+                    // On a commencé avec i = projet.RotationSerieIncrement mais à chaque tour i +=1 donc on devra sauvegarder i dans projet.RotationSerieIncrement
+                    projet.RotationSerieIncrement = i;
+                    SavePrefsSettings();
+
+
+                    PreparationDossierDestTemp();
+
+                    if (_stopRequested) return;
+
+                    maskFreeze = false;
+                    if (btn_freezeMask.InvokeRequired)
+                    {
+                        btn_freezeMask.Invoke(new Action(() =>
+                        {
+                            btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
+                        }));
+                    }
+
+
+                    int degresActuelTableTournante = i * divider;
+                    ttTargetPosition = degresActuelTableTournante;
+
+                    await UdpSendTurnTableMessageAsync($"turntable,{degresActuelTableTournante},{turntableSpeed}");
+
+                    if (_stopRequested) return;
+
+                    bool positionOk = await WaitForTurntablePositionAsync(degresActuelTableTournante);
+
+                    try
+                    {
+                        await nikonDoFocus();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: NikonDoFocus: {ex.Message}");
+                    }
+
+
+                    calculerCentre = true;
+                    await Task.Delay(200); // délai avant la routine ?? 
+
+                    try
+                    {
+                        await RoutineAutoCentrage();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: RoutineAutoCentrage: {ex.Message}");
+                    }
+
+                    // Autocentrage terminé.
+                    // Table tournante en postion
+                    // Actuateur en position
+
+                    if (_stopRequested) return;
+                    AppendTextToConsoleNL($"photo {(i + 1)}/{serieId[projet.Serie]} à {degresActuelTableTournante}°");
+
+
+
+                    if (lbl_CoteSerie.InvokeRequired)
+                    {
+                        lbl_CoteSerie.Invoke(new Action(() =>
+                        {
+                            string cote = (projet.Cote == 0) ? "A" : "B";
+                            lbl_CoteSerie.Text = cote;
+                            lbl_ElevSerie.Text = $"{actuatorAngle}°";
+                            lbl_RotSerie.Text = $"{i + 1}/{serieId[projet.Serie]}";
+                        }));
+                    }
+
+                    // Prise de la photo pour la mesure du volume au besoin
+
+                    if (projet.SaveImageForMesurements)
+                    {
+                        try
+                        {
+                            miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                            await SaveMesurementImage();
+                            await miniaturesTcs.Task;
+                        }
+                        catch (Exception ex)
+                        {
+
+                            AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: SaveMesurementImage:  {ex.Message}");
+                        }
+
+                    }
+
+                    // En haut d'ici, projet.FocusSerieIncrement devrait toujours être zéro. 
+                    // À partir d'ici on va incrémenter projet.FocusSerieIncrement avec AutomaticFocusThenCapture
+
+                    if (projet.FocusStackEnabled)
+                    {
+                        try
+                        {
+                            await AutomaticFocusRoutine();
+                            if (_stopRequested) return;
+
+                            await AutomaticFocusThenCapture(delta);
+
+                            AppendTextToConsoleNL("Focus Stack lancé");
+
+                            _ = Task.Run(() => MakeFocusStackSerie());
+
+
+                            if (flowLayoutPanel1.InvokeRequired)
+                            {
+                                flowLayoutPanel1.Invoke(new Action(() => { flowLayoutPanel1.Controls.Clear(); }));
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            MessageBox.Show(e.Message);
+                            AppendTextToConsoleNL(e.Message);
+
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+
+                            this.BeginInvoke(new Action(async () =>
+                            {
+                                try
+                                {
+                                    await EssayerPrendrePhotoAsync(degresActuelTableTournante);
+                                }
+                                catch (Exception ex)
+                                {
+                                }
+                            }));
+
+
+                        }
+                        catch (Exception ex)
+                        {
+
+                            AppendTextToConsoleNL($"Erreur SaveMesurementImage :: takePictureAsync:  {ex.Message}");
+                        }
+
+
+                        //if (btn_takePicture.InvokeRequired)
+                        //{
+                        //    btn_takePicture.Invoke(new Action(() =>
+                        //    {
+                        //        btn_takePicture.PerformClick();
+                        //    }));
+                        //}
+                        //else
+                        //{
+                        //    btn_takePicture.PerformClick();
+                        //}
+
+                        //try
+                        //{
+                        //    await EssayerPrendrePhotoAsync(degresActuelTableTournante);
+
+                        //}
+                        //catch (Exception ex)
+                        //{
+                        //    AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: EssayerPrendrePhotoAsync: {ex.Message}");
+                        //}
+
+                    }
+                    //AppendTextToConsoleNL("Séquence #" + (i+1).ToString() + " terminée");
+                    try
+                    {
+                        await IncrementImgSeq();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: IncrementImgSeq: {ex.Message}");
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($" Erreur dans la séquence : {ex.Message}");
+            }
+            _stopwatch.Stop();
         }
 
         private async Task<bool> WaitForTurntablePositionAsync(int targetPos, int tolerance = 80, int timeoutMs = 10000, int checkInterval = 100)
@@ -445,7 +460,6 @@ namespace Aerolithe
                 _stopwatch.Start();
 
         }
-
 
         private async Task StopTimer()
         {

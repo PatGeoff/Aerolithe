@@ -827,7 +827,7 @@
             tabPage3.Margin = new Padding(2);
             tabPage3.Name = "tabPage3";
             tabPage3.Padding = new Padding(2);
-            tabPage3.Size = new Size(855, 1306);
+            tabPage3.Size = new Size(855, 1305);
             tabPage3.TabIndex = 2;
             tabPage3.Text = "Caméra";
             // 
@@ -843,7 +843,7 @@
             tabControl4.Margin = new Padding(6);
             tabControl4.Name = "tabControl4";
             tabControl4.SelectedIndex = 0;
-            tabControl4.Size = new Size(851, 1302);
+            tabControl4.Size = new Size(851, 1301);
             tabControl4.SizeMode = TabSizeMode.Fixed;
             tabControl4.TabIndex = 39;
             // 
@@ -855,7 +855,7 @@
             tabPage16.Margin = new Padding(6);
             tabPage16.Name = "tabPage16";
             tabPage16.Padding = new Padding(6);
-            tabPage16.Size = new Size(843, 1254);
+            tabPage16.Size = new Size(843, 1253);
             tabPage16.TabIndex = 0;
             tabPage16.Text = "Image";
             // 
@@ -874,7 +874,7 @@
             tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Absolute, 282F));
             tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Absolute, 256F));
-            tableLayoutPanel3.Size = new Size(831, 1242);
+            tableLayoutPanel3.Size = new Size(831, 1241);
             tableLayoutPanel3.TabIndex = 39;
             // 
             // panel15
@@ -1094,6 +1094,7 @@
             // 
             btn_SaveImageToDisk.BackColor = Color.FromArgb(30, 30, 30);
             btn_SaveImageToDisk.Dock = DockStyle.Fill;
+            btn_SaveImageToDisk.Enabled = false;
             btn_SaveImageToDisk.FlatAppearance.BorderSize = 0;
             btn_SaveImageToDisk.FlatStyle = FlatStyle.Flat;
             btn_SaveImageToDisk.Font = new Font("Phosphor", 13F);
@@ -1187,7 +1188,7 @@
             panel4.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             panel4.AutoSize = true;
             panel4.Controls.Add(tableLayoutPanel10);
-            panel4.Location = new Point(2, 988);
+            panel4.Location = new Point(2, 987);
             panel4.Margin = new Padding(2);
             panel4.Name = "panel4";
             panel4.Size = new Size(827, 252);
@@ -1552,7 +1553,7 @@
             tabControl3.Name = "tabControl3";
             tabControl3.Padding = new Point(50, 3);
             tabControl3.SelectedIndex = 0;
-            tabControl3.Size = new Size(819, 692);
+            tabControl3.Size = new Size(819, 691);
             tabControl3.TabIndex = 22;
             // 
             // tabPage14
@@ -1563,7 +1564,7 @@
             tabPage14.Margin = new Padding(6);
             tabPage14.Name = "tabPage14";
             tabPage14.Padding = new Padding(6);
-            tabPage14.Size = new Size(811, 654);
+            tabPage14.Size = new Size(811, 653);
             tabPage14.TabIndex = 0;
             tabPage14.Text = "Image";
             // 
@@ -1573,7 +1574,7 @@
             picBox_pictureTaken.Location = new Point(6, 6);
             picBox_pictureTaken.Margin = new Padding(2);
             picBox_pictureTaken.Name = "picBox_pictureTaken";
-            picBox_pictureTaken.Size = new Size(799, 642);
+            picBox_pictureTaken.Size = new Size(799, 641);
             picBox_pictureTaken.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_pictureTaken.TabIndex = 23;
             picBox_pictureTaken.TabStop = false;
@@ -1586,7 +1587,7 @@
             tabPage15.Margin = new Padding(6);
             tabPage15.Name = "tabPage15";
             tabPage15.Padding = new Padding(6);
-            tabPage15.Size = new Size(811, 654);
+            tabPage15.Size = new Size(811, 653);
             tabPage15.TabIndex = 1;
             tabPage15.Text = "Graphique";
             // 
@@ -1598,7 +1599,7 @@
             tabPage17.Margin = new Padding(6);
             tabPage17.Name = "tabPage17";
             tabPage17.Padding = new Padding(6);
-            tabPage17.Size = new Size(843, 1254);
+            tabPage17.Size = new Size(843, 1253);
             tabPage17.TabIndex = 1;
             tabPage17.Text = "Focus Stack";
             // 
@@ -1622,7 +1623,7 @@
             tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Percent, 80.5383F));
             tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Absolute, 91F));
             tableLayoutPanel43.RowStyles.Add(new RowStyle(SizeType.Absolute, 87F));
-            tableLayoutPanel43.Size = new Size(831, 1242);
+            tableLayoutPanel43.Size = new Size(831, 1241);
             tableLayoutPanel43.TabIndex = 0;
             // 
             // tableLayoutPanel44
@@ -1678,7 +1679,7 @@
             picBox_FocusStackedImage.Location = new Point(6, 212);
             picBox_FocusStackedImage.Margin = new Padding(6);
             picBox_FocusStackedImage.Name = "picBox_FocusStackedImage";
-            picBox_FocusStackedImage.Size = new Size(819, 844);
+            picBox_FocusStackedImage.Size = new Size(819, 843);
             picBox_FocusStackedImage.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_FocusStackedImage.TabIndex = 0;
             picBox_FocusStackedImage.TabStop = false;
@@ -1734,7 +1735,7 @@
             tableLayoutPanel74.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58.76993F));
             tableLayoutPanel74.Controls.Add(btn_PostFocusStackMask, 0, 0);
             tableLayoutPanel74.Dock = DockStyle.Fill;
-            tableLayoutPanel74.Location = new Point(6, 1068);
+            tableLayoutPanel74.Location = new Point(6, 1067);
             tableLayoutPanel74.Margin = new Padding(6);
             tableLayoutPanel74.Name = "tableLayoutPanel74";
             tableLayoutPanel74.RowCount = 1;
@@ -1762,7 +1763,7 @@
             tableLayoutPanel77.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58.76993F));
             tableLayoutPanel77.Controls.Add(btn_nextAutoFocustackCapture, 0, 0);
             tableLayoutPanel77.Dock = DockStyle.Fill;
-            tableLayoutPanel77.Location = new Point(6, 1159);
+            tableLayoutPanel77.Location = new Point(6, 1158);
             tableLayoutPanel77.Margin = new Padding(6);
             tableLayoutPanel77.Name = "tableLayoutPanel77";
             tableLayoutPanel77.RowCount = 1;
@@ -1792,7 +1793,7 @@
             tabPage18.Margin = new Padding(6);
             tabPage18.Name = "tabPage18";
             tabPage18.Padding = new Padding(6);
-            tabPage18.Size = new Size(843, 1254);
+            tabPage18.Size = new Size(843, 1253);
             tabPage18.TabIndex = 2;
             tabPage18.Text = "Automation";
             // 
@@ -1815,7 +1816,7 @@
             tableLayoutPanel19.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel19.RowStyles.Add(new RowStyle(SizeType.Absolute, 68F));
             tableLayoutPanel19.RowStyles.Add(new RowStyle(SizeType.Absolute, 43F));
-            tableLayoutPanel19.Size = new Size(831, 1242);
+            tableLayoutPanel19.Size = new Size(831, 1241);
             tableLayoutPanel19.TabIndex = 51;
             // 
             // tableLayoutPanel18
@@ -2203,7 +2204,7 @@
             tabPage4.Margin = new Padding(2);
             tabPage4.Name = "tabPage4";
             tabPage4.Padding = new Padding(2);
-            tabPage4.Size = new Size(855, 1306);
+            tabPage4.Size = new Size(855, 1305);
             tabPage4.TabIndex = 3;
             tabPage4.Text = "Linéaire";
             // 
@@ -2219,7 +2220,7 @@
             tableLayoutPanel34.RowCount = 2;
             tableLayoutPanel34.RowStyles.Add(new RowStyle(SizeType.Absolute, 555F));
             tableLayoutPanel34.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel34.Size = new Size(851, 1302);
+            tableLayoutPanel34.Size = new Size(851, 1301);
             tableLayoutPanel34.TabIndex = 27;
             // 
             // tableLayoutPanel29
@@ -2486,7 +2487,7 @@
             tabPage5.Margin = new Padding(2);
             tabPage5.Name = "tabPage5";
             tabPage5.Padding = new Padding(2);
-            tabPage5.Size = new Size(855, 1306);
+            tabPage5.Size = new Size(855, 1305);
             tabPage5.TabIndex = 4;
             tabPage5.Text = "Table Tournante";
             // 
@@ -2510,7 +2511,7 @@
             tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 73F));
             tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel47.Size = new Size(851, 1302);
+            tableLayoutPanel47.Size = new Size(851, 1301);
             tableLayoutPanel47.TabIndex = 40;
             // 
             // trkBar_turntable
@@ -2701,7 +2702,7 @@
             tabPage2.Margin = new Padding(2);
             tabPage2.Name = "tabPage2";
             tabPage2.Padding = new Padding(2);
-            tabPage2.Size = new Size(855, 1306);
+            tabPage2.Size = new Size(855, 1305);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "Élévateur";
             // 
@@ -2720,7 +2721,7 @@
             tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
             tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
             tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 10F));
-            tableLayoutPanel40.Size = new Size(851, 1302);
+            tableLayoutPanel40.Size = new Size(851, 1301);
             tableLayoutPanel40.TabIndex = 29;
             // 
             // tableLayoutPanel39
@@ -3007,7 +3008,7 @@
             tableLayoutPanel90.RowCount = 2;
             tableLayoutPanel90.RowStyles.Add(new RowStyle(SizeType.Absolute, 77F));
             tableLayoutPanel90.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel90.Size = new Size(839, 120);
+            tableLayoutPanel90.Size = new Size(839, 119);
             tableLayoutPanel90.TabIndex = 31;
             // 
             // tableLayoutPanel95
@@ -3064,7 +3065,7 @@
             tabPage6.Margin = new Padding(2);
             tabPage6.Name = "tabPage6";
             tabPage6.Padding = new Padding(2);
-            tabPage6.Size = new Size(855, 1306);
+            tabPage6.Size = new Size(855, 1305);
             tabPage6.TabIndex = 5;
             tabPage6.Text = "Actuateur";
             // 
@@ -3080,7 +3081,7 @@
             tableLayoutPanel27.RowCount = 2;
             tableLayoutPanel27.RowStyles.Add(new RowStyle(SizeType.Percent, 27.0764122F));
             tableLayoutPanel27.RowStyles.Add(new RowStyle(SizeType.Percent, 72.92359F));
-            tableLayoutPanel27.Size = new Size(851, 1302);
+            tableLayoutPanel27.Size = new Size(851, 1301);
             tableLayoutPanel27.TabIndex = 14;
             // 
             // tableLayoutPanel21
@@ -3342,7 +3343,7 @@
             tabPage7.Margin = new Padding(2);
             tabPage7.Name = "tabPage7";
             tabPage7.Padding = new Padding(2);
-            tabPage7.Size = new Size(855, 1306);
+            tabPage7.Size = new Size(855, 1305);
             tabPage7.TabIndex = 6;
             tabPage7.Text = "Settings";
             // 
@@ -3357,7 +3358,7 @@
             tabControl2.Margin = new Padding(2);
             tabControl2.Name = "tabControl2";
             tabControl2.SelectedIndex = 0;
-            tabControl2.Size = new Size(851, 1302);
+            tabControl2.Size = new Size(851, 1301);
             tabControl2.TabIndex = 49;
             // 
             // tabPage9
@@ -3368,7 +3369,7 @@
             tabPage9.Margin = new Padding(2);
             tabPage9.Name = "tabPage9";
             tabPage9.Padding = new Padding(2);
-            tabPage9.Size = new Size(835, 1248);
+            tabPage9.Size = new Size(835, 1247);
             tabPage9.TabIndex = 1;
             tabPage9.Text = "Caméra";
             // 
@@ -3418,7 +3419,7 @@
             tableLayoutPanel28.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel28.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel28.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel28.Size = new Size(831, 1244);
+            tableLayoutPanel28.Size = new Size(831, 1243);
             tableLayoutPanel28.TabIndex = 89;
             // 
             // label22
@@ -3704,7 +3705,7 @@
             tabPage12.Margin = new Padding(2);
             tabPage12.Name = "tabPage12";
             tabPage12.Padding = new Padding(2);
-            tabPage12.Size = new Size(835, 1248);
+            tabPage12.Size = new Size(835, 1247);
             tabPage12.TabIndex = 5;
             tabPage12.Text = "Application";
             // 
@@ -3743,7 +3744,7 @@
             tableLayoutPanel42.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel42.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel42.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel42.Size = new Size(831, 1244);
+            tableLayoutPanel42.Size = new Size(831, 1243);
             tableLayoutPanel42.TabIndex = 2;
             // 
             // btn_PingAll
@@ -3923,7 +3924,7 @@
             tabPage10.Margin = new Padding(6);
             tabPage10.Name = "tabPage10";
             tabPage10.Padding = new Padding(6);
-            tabPage10.Size = new Size(835, 1248);
+            tabPage10.Size = new Size(835, 1247);
             tabPage10.TabIndex = 6;
             tabPage10.Text = "Détection Flou";
             // 
@@ -3951,7 +3952,7 @@
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 70F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel79.Size = new Size(823, 1236);
+            tableLayoutPanel79.Size = new Size(823, 1235);
             tableLayoutPanel79.TabIndex = 0;
             // 
             // tableLayoutPanel52
@@ -4325,7 +4326,7 @@
             tabPage8.Margin = new Padding(6);
             tabPage8.Name = "tabPage8";
             tabPage8.Padding = new Padding(6);
-            tabPage8.Size = new Size(835, 1248);
+            tabPage8.Size = new Size(835, 1247);
             tabPage8.TabIndex = 7;
             tabPage8.Text = "Messagerie";
             // 
@@ -4342,7 +4343,7 @@
             tableLayoutPanel9.RowCount = 2;
             tableLayoutPanel9.RowStyles.Add(new RowStyle(SizeType.Percent, 3.169014F));
             tableLayoutPanel9.RowStyles.Add(new RowStyle(SizeType.Percent, 96.830986F));
-            tableLayoutPanel9.Size = new Size(823, 1236);
+            tableLayoutPanel9.Size = new Size(823, 1235);
             tableLayoutPanel9.TabIndex = 1;
             // 
             // btn_AjoutUser
@@ -4370,7 +4371,7 @@
             flowlayoutPanel_Messagerie.Location = new Point(6, 45);
             flowlayoutPanel_Messagerie.Margin = new Padding(6);
             flowlayoutPanel_Messagerie.Name = "flowlayoutPanel_Messagerie";
-            flowlayoutPanel_Messagerie.Size = new Size(811, 1185);
+            flowlayoutPanel_Messagerie.Size = new Size(811, 1184);
             flowlayoutPanel_Messagerie.TabIndex = 0;
             // 
             // picBox_LiveView_Main
@@ -4403,7 +4404,7 @@
             // 
             fichierToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { ouvrirToolStripMenuItem, nouveauToolStripMenuItem, allerAuDossierToolStripMenuItem, effacerToutesLesImagesEtFocusStackToolStripMenuItem });
             fichierToolStripMenuItem.Name = "fichierToolStripMenuItem";
-            fichierToolStripMenuItem.Size = new Size(104, 36);
+            fichierToolStripMenuItem.Size = new Size(104, 38);
             fichierToolStripMenuItem.Text = "Fichier";
             // 
             // ouvrirToolStripMenuItem
@@ -4438,7 +4439,7 @@
             // 
             imagesToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { choisirToolStripMenuItem, ouvrirToolStripMenuItem1, modifierLeNomDesImagesToolStripMenuItem });
             imagesToolStripMenuItem.Name = "imagesToolStripMenuItem";
-            imagesToolStripMenuItem.Size = new Size(110, 36);
+            imagesToolStripMenuItem.Size = new Size(110, 38);
             imagesToolStripMenuItem.Text = "Images";
             // 
             // choisirToolStripMenuItem
@@ -4466,7 +4467,7 @@
             // 
             focusStackToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { choisirUnDossierToolStripMenuItem, ouvrirLeDossierToolStripMenuItem });
             focusStackToolStripMenuItem.Name = "focusStackToolStripMenuItem";
-            focusStackToolStripMenuItem.Size = new Size(157, 36);
+            focusStackToolStripMenuItem.Size = new Size(157, 38);
             focusStackToolStripMenuItem.Text = "Focus Stack";
             // 
             // choisirUnDossierToolStripMenuItem
@@ -4487,7 +4488,7 @@
             // 
             troubleshootToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { repriseDerniereSequence, RepriseSpecifiqueToolStripMenuItem, voirSiLesMicrocontrolleursSontConnectésToolStripMenuItem, bugsConnusToolStripMenuItem });
             troubleshootToolStripMenuItem.Name = "troubleshootToolStripMenuItem";
-            troubleshootToolStripMenuItem.Size = new Size(174, 36);
+            troubleshootToolStripMenuItem.Size = new Size(174, 38);
             troubleshootToolStripMenuItem.Text = "Troubleshoot";
             // 
             // repriseDerniereSequence
@@ -4520,20 +4521,20 @@
             // lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem
             // 
             lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem.Name = "lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem";
-            lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem.Size = new Size(1490, 72);
-            lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem.Text = "Lorsque la prise de photo en séquence est lancée, il faut appuyer pluseurs fois sur Canceller pour réellement canceller le tout.";
+            lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem.Size = new Size(2590, 72);
+            lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem.Text = resources.GetString("lorsqueLaPriseDePhotoEnSéquenceEstLancéeIlFautAppuyerPluseursFoisSurCancellerPourRéellementCancellerLeToutToolStripMenuItem.Text");
             // 
             // parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem
             // 
             parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem.Name = "parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem";
-            parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem.Size = new Size(1490, 72);
+            parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem.Size = new Size(2590, 72);
             parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem.Text = resources.GetString("parfoisLesMoteursNeVeulentPasAvancerOuReculerAppuyerSurLeBoutonResetDuBoardDeContrôleDuMoteurPourFaireUnResetToolStripMenuItem.Text");
             // 
             // workflowToolStripMenuItem
             // 
             workflowToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { créerOuOuvrirUnProjetToolStripMenuItem, allumerLesDELToolStripMenuItem, mettreLaFeuilleDeMesureToolStripMenuItem, placerLaMétéoriteToolStripMenuItem, faireTournerLaMétéoritePourVoirLesRéflectionsEtAjusterLeFiltrePolarisantToolStripMenuItem, enleverToolStripMenuItem, définirSiOnAppliqueLeMasqueToolStripMenuItem, validerSiOnFaitDuFocusStackingToolStripMenuItem, lancerLaPriseDePhotoToolStripMenuItem });
             workflowToolStripMenuItem.Name = "workflowToolStripMenuItem";
-            workflowToolStripMenuItem.Size = new Size(134, 36);
+            workflowToolStripMenuItem.Size = new Size(134, 38);
             workflowToolStripMenuItem.Text = "Workflow";
             // 
             // créerOuOuvrirUnProjetToolStripMenuItem

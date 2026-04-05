@@ -23,6 +23,7 @@ namespace Aerolithe
         private FlowLayoutPanel currentSequenceFlowLayoutPanel;
         private int currentSequence = 0;
         private TaskCompletionSource<bool> imageReadyTcs;
+        private TaskCompletionSource<bool> miniaturesTcs;
         private int lastPercent = -1;
         private Size panelSize = new Size(250, 200);
         private int oldImgIncr = -1;
@@ -44,7 +45,8 @@ namespace Aerolithe
 
             imageReadyTcs = tcs;
 
-            // timing.StopTimer() se fera dès que ImageReady est triggeré            
+    
+
             timing.StartTimer();
 
             try
@@ -80,10 +82,11 @@ namespace Aerolithe
 
         private async void device_ImageReady(NikonDevice sender, NikonImage image)
         {
+            
 
-            imageReadyTcs?.TrySetResult(true);
             timing.StopTimer();
             AppendTextToConsoleNL($"device_ImageReady: {timing.ElapsedTime.TotalSeconds:F3} secondes");
+
 
 
             try
@@ -124,6 +127,8 @@ namespace Aerolithe
                             projet.PictureWidth = originalBitmap.Width;
                             projet.PictureHeight = originalBitmap.Height;
                             projet.Save(appSettings.ProjectPath); // -- <
+
+
                             var processedBitmap = projet.ApplyMask ? ApplyMask(originalBitmap) : new Bitmap(originalBitmap);
 
                             // faire un projet.SavePictures  ???
@@ -131,7 +136,6 @@ namespace Aerolithe
 
 
                             PreparationDossierDestTemp();
-                            PreparationNomImage();
 
                             using (var saveStream = new MemoryStream())
                             {
@@ -149,17 +153,20 @@ namespace Aerolithe
                                     {
                                         Stopwatch sw = Stopwatch.StartNew();
                                         string iMes = projet.GetMesurementsFullImagePath();
-                                        Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo pour mesure " + iMes + " ..."));
+                                        string iName = projet.GetImageNameFullNoFS();
+                                        Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo pour mesure " + iName + " ..."));
                                         SaveStreamAsJpegWithProgress(saveStream, iMes);
                                         sw.Stop();
                                         string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
                                         AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
+                                        Invoke(() => AfficherMiniatures(projet.ImageNameBase, iMes, panelSize));
+                                        saveImageForMesurementRemettre();
                                     }
 
                                     else
 
                                     {
-                                        string iName = projet.FocusStackEnabled ? projet.GetImageNameFull() : projet.GetImageFullPathNoFS();
+                                        string iName = projet.FocusStackEnabled ? projet.GetImageNameFull() : projet.GetImageNameFullNoFS();
                                         string iPath = projet.FocusStackEnabled ? projet.GetImageFullPath() : projet.GetImageFullPathNoFS();
 
                                         Stopwatch sw = Stopwatch.StartNew();
@@ -173,28 +180,8 @@ namespace Aerolithe
                                         AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
                                         Invoke(() => AfficherMiniatures(projet.ImageNameBase, iPath, panelSize));
                                     }
+                                    
 
-
-                                    //if (projet.FocusStackEnabled)
-                                    //{
-                                    //    Stopwatch sw = Stopwatch.StartNew();                               
-                                    //    Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageNameFull() + " ..."));
-                                    //    SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPath());
-                                    //    sw.Stop();
-                                    //    string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-                                    //    AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
-                                    //    Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPath(), panelSize));
-                                    //}
-                                    //else
-                                    //{
-                                    //    Stopwatch sw = Stopwatch.StartNew();
-                                    //    Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo " + projet.GetImageFullPathNoFS() + " ..."));
-                                    //    SaveStreamAsJpegWithProgress(saveStream, projet.GetImageFullPathNoFS());
-                                    //    sw.Stop();
-                                    //    string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-                                    //    AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
-                                    //    Invoke(() => AfficherMiniatures(projet.ImageNameBase, projet.GetImageFullPathNoFS(), panelSize));
-                                    //}
                                 }
                                 catch (Exception ex)
                                 {
@@ -202,6 +189,7 @@ namespace Aerolithe
                                 }
                             }
 
+                            
                             return processedBitmap;
                         }
                     });
@@ -224,35 +212,16 @@ namespace Aerolithe
                 Invoke(() => MessageBox.Show("device_ImageReady exception: " + ex.Message));
                 imageReadyTcs?.TrySetException(ex);
             }
+
+           
         }
 
 
-        private Bitmap ApplyMask(Bitmap originalBitmap)
-        {
-            var sourceImage = originalBitmap.ToImage<Bgr, byte>();
-            //var maskGray = maskBitmapLive.ToImage<Gray, byte>();
-            var maskGray = maskMatLive.ToImage<Gray, byte>();
-            var resizedMask = maskGray.Resize(projet.PictureWidth, projet.PictureHeight, Emgu.CV.CvEnum.Inter.Linear);
-
-            //var invertedMask = resizedMask.Not();
-            var invertedMask = resizedMask;
-            var maskBgr = invertedMask.Convert<Bgr, byte>();
-
-            sourceImage._And(maskBgr);
-            var finalBitmap = sourceImage.ToBitmap();
-
-            // Libération
-            maskGray.Dispose();
-            resizedMask.Dispose();
-            invertedMask.Dispose();
-            maskBgr.Dispose();
-            sourceImage.Dispose();
-
-            return finalBitmap;
-        }
+    
 
         private void AfficherMiniatures(string nomImage, string imagePath, Size panelSize)
         {
+            miniaturesTcs?.TrySetResult(true);
             string nomImageModifie = Path.GetFileName(imagePath).Split(".")[0];
             try
             {
@@ -334,6 +303,14 @@ namespace Aerolithe
                         Font = new Font(FontFamily.GenericSansSerif, 7)
                     };
 
+                    if (photoPourMesure)
+                    {
+                        label.ForeColor = Color.Orange;
+                    }
+                    else
+                    {
+                        label.ForeColor = Color.White;
+                    }
 
                     PictureBox pictureBox = new PictureBox
                     {
@@ -374,6 +351,8 @@ namespace Aerolithe
             {
                 AppendTextToConsoleNL($"Erreur lors de l'affichage miniature : {ex.Message}");
             }
+
+
         }
 
         private Image ResizeImage(Image image, int width, int height)
@@ -400,7 +379,29 @@ namespace Aerolithe
 
             return destImage;
         }
+        private Bitmap ApplyMask(Bitmap originalBitmap)
+        {
+            var sourceImage = originalBitmap.ToImage<Bgr, byte>();
+            //var maskGray = maskBitmapLive.ToImage<Gray, byte>();
+            var maskGray = maskMatLive.ToImage<Gray, byte>();
+            var resizedMask = maskGray.Resize(projet.PictureWidth, projet.PictureHeight, Emgu.CV.CvEnum.Inter.Linear);
 
+            //var invertedMask = resizedMask.Not();
+            var invertedMask = resizedMask;
+            var maskBgr = invertedMask.Convert<Bgr, byte>();
+
+            sourceImage._And(maskBgr);
+            var finalBitmap = sourceImage.ToBitmap();
+
+            // Libération
+            maskGray.Dispose();
+            resizedMask.Dispose();
+            invertedMask.Dispose();
+            maskBgr.Dispose();
+            sourceImage.Dispose();
+
+            return finalBitmap;
+        }
 
         public async Task SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath)
         {
@@ -433,33 +434,39 @@ namespace Aerolithe
 
         public async Task SaveMesurementImage()
         {
+            AppendTextToConsoleNL("SaveMesurementImage");
+
             await nikonDoFocus();
+            await Task.Delay(200);
+            await saveImageForMesurementEnable();
+            await Task.Delay(200);
+
             try
-            {
-                await saveImageForMesurementEnable();
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleNL($"Erreur SaveMesurementImage :: saveImageForMesurementEnable:  {ex.Message}");
-            }
-            try
-            {
-                await takePictureAsync();
-            }
-            catch (Exception ex)
             {
 
-                AppendTextToConsoleNL($"Erreur SaveMesurementImage :: takePictureAsync:  {ex.Message}");
-            }
-            try
-            {
-                await saveImageForMesurementRemettre();
+                this.BeginInvoke(new Action(async () =>
+                {
+                    try
+                    {
+                        await takePictureAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                    }
+                }));
+
+
             }
             catch (Exception ex)
             {
-                AppendTextToConsoleNL($"Erreur SaveMesurementImage :: saveImageForMesurementRemettre:  {ex.Message}");
+                Debug.Write(ex.Message);
+                AppendTextToConsoleNL($"Erreur SaveMesurementImage :: takePictureAsync:  {ex.Message}");
             }
-            
+
+            AppendTextToConsoleNL(timing.ElapsedTime.TotalSeconds.ToString("F2"));
+
+            //  await saveImageForMesurementRemettre(); est effectué dans affichierMiniatures
+
         }
 
         public async Task SaveMaskAsPngTransparentBlack(Mat maskSrc, string outputPathPng)
@@ -639,7 +646,7 @@ namespace Aerolithe
             _stopwatch?.Stop();
         }
 
-       
+
     }
 
 
