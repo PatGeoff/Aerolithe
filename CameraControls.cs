@@ -77,6 +77,7 @@ namespace Aerolithe
                 }
                 throw;
             }
+           
         }
 
 
@@ -179,6 +180,7 @@ namespace Aerolithe
 
                                         AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
                                         Invoke(() => AfficherMiniatures(projet.ImageNameBase, iPath, panelSize));
+                                        
                                     }
                                     
 
@@ -201,6 +203,11 @@ namespace Aerolithe
                         picBox_pictureTaken.Image?.Dispose();
                         picBox_pictureTaken.Image = finalBitmap;
                     });
+
+                    // Signale que TakePictureAsync est terminée, le await dans les autres méthodes devrait s'exécuter
+                    imageReadyTcs.TrySetResult(true);
+
+
                 }
                 catch (Exception ex)
                 {
@@ -221,7 +228,10 @@ namespace Aerolithe
 
         private void AfficherMiniatures(string nomImage, string imagePath, Size panelSize)
         {
-            miniaturesTcs?.TrySetResult(true);
+
+            bool success = miniaturesTcs.TrySetResult(true);
+            AppendTextToConsoleNL($"miniaturesTcs? {success}");
+
             string nomImageModifie = Path.GetFileName(imagePath).Split(".")[0];
             try
             {
@@ -351,7 +361,7 @@ namespace Aerolithe
             {
                 AppendTextToConsoleNL($"Erreur lors de l'affichage miniature : {ex.Message}");
             }
-
+           
 
         }
 
@@ -452,6 +462,7 @@ namespace Aerolithe
                     }
                     catch (Exception ex)
                     {
+                        AppendTextToConsoleNL(ex.Message);
                     }
                 }));
 
@@ -613,7 +624,7 @@ namespace Aerolithe
             }
             catch (Exception ex)
             {
-                // if (ex.Message Z= eNkMAIDResult.kNkMAIDResult_DeviceBusy) 
+                AppendTextToConsoleNL(ex.Message);
             }
         }
 

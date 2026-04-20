@@ -38,7 +38,7 @@ namespace Aerolithe
 
         private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, string maskPath, bool applyMask, int elevation, int rotation, int serie, string status = "En attente")
         {
-            AppendTextToConsoleNL("- EnqueueFocusStackTask");
+            AppendTextToConsoleNL("EnqueueFocusStackTask");
             var task = new FocusStackTask
             {
                 Serie = serie - 1,
@@ -121,24 +121,24 @@ namespace Aerolithe
 
         public Task MakeFocusStackSerie()
         {
+            this.BeginInvoke((Action)(() => AppendTextToConsoleNL($"_stopRequested = {_stopRequested}")));
             if (_stopRequested) return Task.CompletedTask;
 
-            this.BeginInvoke((Action)(() => AppendTextToConsoleNL("on se rend ici?????")));
+            //this.BeginInvoke((Action)(() => AppendTextToConsoleNL("on se rend ici?????")));
 
             if (!Directory.Exists(projet.GetFocusStackPath()))
             {
                 Directory.CreateDirectory(projet.GetFocusStackPath());
-                this.BeginInvoke((Action)(() => MessageBox.Show("Dossier " + projet.GetFocusStackPath() + " créé")));
             }
+            this.BeginInvoke((Action)(() => AppendTextToConsoleNL($"projet.GetFocusStackPath:  {projet.GetFocusStackPath()}")));
 
-            if (projet.MaskSave)
+            if (!Directory.Exists(projet.GetMaskFolderPath()))
             {
-                if (!Directory.Exists(projet.GetMaskFolderPath()))
-                {
-                    Directory.CreateDirectory(projet.GetMaskFolderPath());
-                    this.BeginInvoke((Action)(() => MessageBox.Show("Dossier " + projet.GetMaskFolderPath() + " créé")));
-                }
+                Directory.CreateDirectory(projet.GetMaskFolderPath());
+                this.BeginInvoke((Action)(() => MessageBox.Show("Dossier " + projet.GetMaskFolderPath() + " créé")));
             }
+            this.BeginInvoke((Action)(() => AppendTextToConsoleNL($"projet.GetMaskFolderPath: {projet.GetMaskFolderPath()}")));
+
 
             string folderPath = projet.GetTempImageFolderPath();
             string[] extensions = { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
@@ -157,17 +157,20 @@ namespace Aerolithe
             string outputPath = projet.GetFocusStackImageFullPath();
             string maskPath = projet.GetMaskFullImagePath();
 
+            this.BeginInvoke((Action)(() => AppendTextToConsoleNL($"projet.GetFocusStackImageFullPath: {projet.GetFocusStackImageFullPath()}")));
+            this.BeginInvoke((Action)(() => AppendTextToConsoleNL($"projet.GetMaskFullImagePath: {projet.GetMaskFullImagePath()}")));
+
             this.BeginInvoke((Action)(() =>
             {
                 if (imageFiles.Length > 0)
                 {
-                    AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0]);
+                    this.BeginInvoke((Action)(() => AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0])));
                     EnqueueFocusStackTask(imageFiles, outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, _Serie);
                 }
                 else
                 {
                     EnqueueFocusStackTask(Array.Empty<string>(), outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
-                    AppendTextToConsoleNL("Aucune image trouvée dans le dossier.");
+                    this.BeginInvoke((Action)(() => AppendTextToConsoleNL("Aucune image trouvée dans le dossier.")));
                 }
             }));
 

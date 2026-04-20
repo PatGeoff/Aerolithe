@@ -307,6 +307,7 @@ namespace Aerolithe
                     // En haut d'ici, projet.FocusSerieIncrement devrait toujours être zéro. 
                     // À partir d'ici on va incrémenter projet.FocusSerieIncrement avec AutomaticFocusThenCapture
 
+                    AppendTextToConsoleNL($"projet.FocusStackEnabled?: {projet.FocusStackEnabled}");
                     if (projet.FocusStackEnabled)
                     {
                         try
@@ -328,8 +329,8 @@ namespace Aerolithe
                         }
                         catch (Exception e)
                         {
-                            MessageBox.Show(e.Message);
-                            AppendTextToConsoleNL(e.Message);
+                            //MessageBox.Show(e.Message);
+                            AppendTextToConsoleNL("Erreur: " + e.Message);
 
                         }
                     }
@@ -337,7 +338,7 @@ namespace Aerolithe
                     {
                         try
                         {
-
+                            AppendTextToConsoleNL("Prise de photo sans focus stack (EssayerPrendrePhotoAsync()");
                             this.BeginInvoke(new Action(async () =>
                             {
                                 try

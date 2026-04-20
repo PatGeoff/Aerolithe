@@ -273,7 +273,6 @@ namespace Aerolithe
             // 1) TEST DU MASQUE NOIR
             // ===============================
 
-          
 
             if (IsMatAllBlack(uiClone))
             {
@@ -381,10 +380,8 @@ namespace Aerolithe
                 }));
             }
 
-
             else
             {
-                
                 maskFreeze = true;
                 Invoke(new Action(() =>
                 {
@@ -491,6 +488,8 @@ namespace Aerolithe
             await Task.Delay(delayTime);
 
             await DisplayBlurGraph(blurDataDict);
+
+            AppendTextToConsoleNL($"AutomaticFocusRoutine terninée");
         }
 
         //public async Task AutomaticFocusRoutine()
@@ -742,6 +741,7 @@ namespace Aerolithe
                 btn_stopAutomaticFocusCapture.Enabled = true;
             }));
 
+            
             if (projet.FocusStackEnabled)
             {
                 try
@@ -770,6 +770,7 @@ namespace Aerolithe
                 }
 
             }
+           
 
             if (focusIterations > maxNbrPicturesAllowed)
             {
@@ -781,9 +782,10 @@ namespace Aerolithe
             AppendTextToConsoleNL(focusIterations.ToString() + " photos seront prises à " + newStepSize.ToString() + " steps  (Settings / Détection flou / Nbr de photo max)");
 
             int iterationsCompletees = 0;
+
             for (int i = 0; i < focusIterations; i++)
             {
-                if (!_stopRequested) return;
+                if (_stopRequested) return;
                 if (lbl_StackSerie.InvokeRequired)
                 {
 
@@ -792,10 +794,12 @@ namespace Aerolithe
                         lbl_StackSerie.Text = $"{i}/{focusIterations}";
                     }));
                 }
-                ////AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
+                AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
+
+                // essayer de faire l'autofocus jusqu'à 3 fois, sinon on quitte
                 for (int j = 0; j <= 3; j++)
                 {
-                    if (!_stopRequested) return;
+                    if (_stopRequested) return;
                     if (i == 0 && blurredBlocks < minDetect)
                     {
                         // Reculer de 1 pour revenir au point net
@@ -829,12 +833,15 @@ namespace Aerolithe
                     {
                         miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                         await takePictureAsync();
-                        await miniaturesTcs.Task;
+                        AppendTextToConsoleNL("photo prise... onto the next :)");
+                        //await miniaturesTcs.Task;
                         await Task.Delay(400);
                         ManualFocus(0, newStepSize);
                         await Task.Delay(delayTime);
                         focusStackStepVar += 1;
                         UpdateFocusStepVarLbl(focusStackStepVar);
+                        projet.FocusSerieIncrement += 1;
+                        SavePrefsSettings();
                     }
                     catch (Exception e)
                     {
@@ -850,9 +857,10 @@ namespace Aerolithe
 
 
                 iterationsCompletees += 1;
-
-
             }
+
+            projet.FocusSerieIncrement = 0;
+            SavePrefsSettings();
 
             if (!_stopRequested)
             {
