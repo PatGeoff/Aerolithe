@@ -15,14 +15,12 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using static Emgu.CV.DISOpticalFlow;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        private int nombreImages5Degres = 20;
-        private int nombreImages25Degres = 14;
-        private int nombreImages45Degres = 14;
         private int actuatorDelay1 = 5000; // secondes
         private int actuatorDelay2 = 9000; // secondes
         public int delayTimePhotoShoot = 1000;
@@ -30,13 +28,14 @@ namespace Aerolithe
         private int _Elevation = 5;
         private int _Serie = 0;
         private int totalPhotos = 0;
-        private bool calibrationInitialeLift = false;
         private string[] angleStr = { "5", "25", "45" };
         private int[] angleIndexes = [5, 25, 45];
 
         private Stopwatch _stopwatch = new Stopwatch();
         private CancellationTokenSource _cts;
         private bool photoPourMesure = false;
+        private TaskCompletionSource<bool>? _pendingMiniatureTcs;
+
 
           
 
@@ -242,7 +241,8 @@ namespace Aerolithe
 
                     if (_stopRequested) return;
 
-                    bool positionOk = await WaitForTurntablePositionAsync(degresActuelTableTournante);
+                    await WaitForTurntablePositionAsync(degresActuelTableTournante);
+                   
 
                     try
                     {
@@ -293,6 +293,8 @@ namespace Aerolithe
                         try
                         {
                             miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                            AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: SaveMesurementImage] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
+
                             await SaveMesurementImage();
                             await miniaturesTcs.Task;
                         }
@@ -336,27 +338,36 @@ namespace Aerolithe
                     }
                     else
                     {
-                        try
-                        {
-                            AppendTextToConsoleNL("Prise de photo sans focus stack (EssayerPrendrePhotoAsync()");
-                            this.BeginInvoke(new Action(async () =>
-                            {
-                                try
-                                {
-                                    await EssayerPrendrePhotoAsync(degresActuelTableTournante);
-                                }
-                                catch (Exception ex)
-                                {
-                                }
-                            }));
+                       
+                           AppendTextToConsoleNL("Prise de photo sans focus stack (EssayerPrendrePhotoAsync()");
+                           this.BeginInvoke(new Action(async () =>
+                           {
+                               if (_pendingMiniatureTcs != null)
+                                   throw new InvalidOperationException("Une capture est déjà en cours.");
+
+                               _pendingMiniatureTcs =
+                                   new TaskCompletionSource<bool>(
+                                       TaskCreationOptions.RunContinuationsAsynchronously);
+                               
+
+                               AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: creation de _pendingMiniatureTcs sur le thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
+
+                               await takePictureAsync();
+                               
+                               await Task.Delay(400);
 
 
-                        }
-                        catch (Exception ex)
-                        {
+                               await _pendingMiniatureTcs.Task;
+                               AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: await _pendingMiniatureTcs.Task] a été setté à True par AfficherMiniatures sur le thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
 
-                            AppendTextToConsoleNL($"Erreur SaveMesurementImage :: takePictureAsync:  {ex.Message}");
-                        }
+
+                               AppendTextToConsoleNL("Ici");
+                               projet.FocusSerieIncrement += 1;
+                               SavePrefsSettings();                               
+                              
+                           }));
+
+
 
 
                         //if (btn_takePicture.InvokeRequired)
@@ -403,7 +414,7 @@ namespace Aerolithe
 
         private async Task<bool> WaitForTurntablePositionAsync(int targetPos, int tolerance = 80, int timeoutMs = 10000, int checkInterval = 100)
         {
-            AppendTextToConsoleNL("- WaitForTurntablePositionAsync");
+            AppendTextToConsoleNL("WaitForTurntablePositionAsync");
 
             var startTime = DateTime.UtcNow;
 

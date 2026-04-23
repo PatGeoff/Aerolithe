@@ -27,8 +27,6 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        private System.Timers.Timer checkTimer;
-        private bool esp32Alive = false;
         private bool waveshareAlive = false;
         public bool actuatorPositionReached = false;
         public int rotaryEncoderStepperMotorValue = 0;
@@ -58,7 +56,7 @@ namespace Aerolithe
 
         public async Task UdpSendActuatorMessageAsync(string message)
         {
-            AppendTextToConsoleNL("* UdpSendActuatorMessageAsync");
+            AppendTextToConsoleNL("UdpSendActuatorMessageAsync");
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -75,6 +73,7 @@ namespace Aerolithe
 
         private async Task UdpSendTurnTableMessageAsync(string message)
         {
+            AppendTextToConsoleNL("UdpSendTurnTableMessageAsync");
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);

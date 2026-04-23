@@ -8,7 +8,6 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        private Tuple<Button, Label>[] buttonLabelPairs;
 
         //private void ButtonSetup()
         //{

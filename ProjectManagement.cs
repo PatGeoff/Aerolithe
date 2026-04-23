@@ -343,7 +343,6 @@ namespace Aerolithe
 
         private void PreparationDossierDestTemp()
         {
-            AppendTextToConsoleNL("PreparationDossierDestTemp");
             if (!Directory.Exists(projet.GetTempImageFolderPath()))
             {
                 Directory.CreateDirectory(projet.GetTempImageFolderPath());
@@ -532,13 +531,14 @@ namespace Aerolithe
             toolTip.SetToolTip(btn_applyMask, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
             toolTip.SetToolTip(btn_SaveImageToDisk, "Sauvegarde des image sur disque. Essentiel");
             toolTip.SetToolTip(lbl_saveImageTodisk, "Sauvegarde des image sur disque. Essentiel");
-            toolTip.SetToolTip(btn_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\n ATTENTION: Différent du bouton dans l'onglet Caméra\nL'image se retrouvera dans {projet.GetMesurementsFolderpath()}\" ");
-            toolTip.SetToolTip(lbl_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\n ATTENTION: Différent du bouton dans l'onglet Caméra\nL'image se retrouvera dans {projet.GetMesurementsFolderpath()}\" ");
+            toolTip.SetToolTip(btn_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {projet.GetMesurementsFolderpath()}\" ");
+            toolTip.SetToolTip(lbl_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {projet.GetMesurementsFolderpath()}\" ");
             toolTip.SetToolTip(lbl_LiveViewEnable, "Active/Désactive le Live View");
             toolTip.SetToolTip(btn_LiveViewEnable, "Active/Désactive le Live View");
-            toolTip.SetToolTip(lbl_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure.\n ATTENTION: Différent du bouton sous le masque\nLes images se retrouveront dans {projet.GetMesurementsFolderpath()}");
-            toolTip.SetToolTip(btn_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure.\n ATTENTION: Différent du bouton sous le masque\nLes images se retrouveront dans {projet.GetMesurementsFolderpath()}");
-
+            toolTip.SetToolTip(lbl_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure durant la séquence.\nLes images se retrouveront dans {projet.GetMesurementsFolderpath()}");
+            toolTip.SetToolTip(btn_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure durant la séquence.\nLes images se retrouveront dans {projet.GetMesurementsFolderpath()}");
+            toolTip.SetToolTip(btn_AutoCentrageAuto, "Centrage Automatique de l'objet");
+            toolTip.SetToolTip(lbl_AutoCentrageAuto, "Centrage Automatique de l'objet");
         }
 
 
@@ -557,11 +557,11 @@ namespace Aerolithe
                 if (h == IntPtr.Zero)
                 {
                     int err = Marshal.GetLastWin32Error();
-                    AppendTextToConsoleNL($"{f} LoadLibrary FAILED (Win32 {err})\nPath: {p}");
+                    AppendTextToConsoleNL($"{f} LoadLibrary FAILED (Win32 {err}): {p}");
                 }
                 else
                 {
-                    AppendTextToConsoleNL($"{f} LoadLibrary OK\nPath: {p}");
+                    AppendTextToConsoleNL($"{f} LoadLibrary OK: {p}");
                 }
             }
         }
@@ -705,6 +705,8 @@ namespace Aerolithe
 
         public bool LiveViewEnabled { get; set; } = true;
 
+        public bool AutoCentrage { get; set; } = true;
+
         // --- Méthodes utilitaires ---
         public string GetImageFullPath()
         {
@@ -721,6 +723,12 @@ namespace Aerolithe
             string cote = (Cote == 0) ? "A" : "B";
             return $"{ImageNameBase}_{cote}_{RotationSerieIncrement:D2}.jpg";
         }
+
+        public string GetMesurementImageNameFull(){
+            string cote = (Cote == 0) ? "A" : "B";
+            return $"{ImageNameBase}_{cote}_M_{RotationSerieIncrement:D2}.jpg";
+        }
+
        
         public string GetImageNameFull()
         {
@@ -742,18 +750,16 @@ namespace Aerolithe
             return Path.Combine(ImageFolderPath, "noFS", coteFolder);
         }
 
-        public string GetMesurementsFullImagePath()
-        {
-            return Path.Combine(GetMesurementsFolderpath(), GetImageNameFullNoFS());
-        }
-
-
-
         public string GetMesurementsFolderpath()
         {
             string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
             return Path.Combine(ImageFolderPath, "mesures", coteFolder);
         }
+
+        public string GetMesurementsFullImagePath()
+        {
+            return Path.Combine(GetMesurementsFolderpath(), GetMesurementImageNameFull());
+        }     
 
         public string GetFocusStackPath()
         {
@@ -854,7 +860,7 @@ namespace Aerolithe
 
         public int ThreshVal { get; set; } = 20;
 
-
+        public bool AutoCentrage { get; set; } = true;
 
         public List<MessagingUserSetting> MessagingUsers { get; set; } = new();
 

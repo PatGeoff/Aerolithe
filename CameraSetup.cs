@@ -33,17 +33,13 @@ namespace Aerolithe
         public Image capturedImage;
         public NikonPreview preview;
         private NikonLiveViewImage imageView = null;
-        private Mat foreground, background, substractionResult, mask = null;
         public double oldFocusValue;
         public double blurrynessAmount = 0;
         public double blurrynessAmountMask = 0;
-        private bool liveViewStatus = false;
-        private Image liveViewCompositedImage;
         private readonly object imageLock = new object();
         public Bitmap maskBitmapLive;
         public bool maskFreeze = false;
-        private int blackMaskAttempts = 0;
-
+        public bool liveViewStatus = false;
 
         private Mat? maskMatLive;       // remplace maskBitmapLive
         private readonly object _maskLock = new object(); // si tu veux un lock simple
@@ -263,7 +259,7 @@ namespace Aerolithe
                         ;
 
                         // 5) Centrage en tâche de fond — on clone le Mat pour éviter Dispose concurrent
-                        if (maskMatLive != null && !maskMatLive.IsEmpty)
+                        if (maskMatLive != null && !maskMatLive.IsEmpty && projet.AutoCentrage)
                         {
                             var localMaskMat = maskMatLive.Clone();
                             _ = Task.Run(async () =>

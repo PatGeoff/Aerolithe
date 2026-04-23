@@ -242,7 +242,7 @@ namespace Aerolithe
                 lbl_maskAmount.Text = appSettings.ThreshVal.ToString();
             }));
            
-                AppendTextToConsoleNL("- AutomaticFocusRoutine");
+                AppendTextToConsoleNL("AutomaticFocusRoutine");
             if (_stopRequested) return;
 
             // Bouton STOP visible
@@ -770,7 +770,7 @@ namespace Aerolithe
                 }
 
             }
-           
+                       
 
             if (focusIterations > maxNbrPicturesAllowed)
             {

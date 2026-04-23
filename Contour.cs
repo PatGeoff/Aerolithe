@@ -23,7 +23,6 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        private bool applyMaskToLiveView = false;
 
         //private Bitmap BrightnessMaskFromStream(MemoryStream stream, int threshold = 100)
         //{

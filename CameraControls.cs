@@ -21,16 +21,45 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         private FlowLayoutPanel currentSequenceFlowLayoutPanel;
-        private int currentSequence = 0;
         private TaskCompletionSource<bool> imageReadyTcs;
         private TaskCompletionSource<bool> miniaturesTcs;
-        private int lastPercent = -1;
         private Size panelSize = new Size(250, 200);
-        private int oldImgIncr = -1;
+
+
+
+        public static Task InvokeOnUIAsync(Control control, Func<Task> action)
+        {
+            if (control.InvokeRequired)
+            {
+                var tcs = new TaskCompletionSource();
+
+                control.BeginInvoke(new Action(async () =>
+                {
+                    try
+                    {
+                        await action();
+                        tcs.SetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.SetException(ex);
+                    }
+                }));
+
+                return tcs.Task;
+            }
+            else
+            {
+                return action();
+            }
+        }
 
 
         private async void takePictureAsyncSimple()
         {
+            miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            AppendTextToConsoleNL($"[Thread takePictureAsyncSimple] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
+
             Stopwatch sw = Stopwatch.StartNew();
             await takePictureAsync();  // attend que imageReadyTcs soit résolu   
             sw.Stop();
@@ -40,12 +69,6 @@ namespace Aerolithe
 
         public async Task takePictureAsync()
         {
-            var tcs = new TaskCompletionSource<bool>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-
-            imageReadyTcs = tcs;
-
-    
 
             timing.StartTimer();
 
@@ -55,18 +78,36 @@ namespace Aerolithe
                 {
                     Invoke(new Action(() =>
                     {
-                        device.Capture();
+                        AppendTextToConsoleNL($"[Thread takePictureAsync] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
+                        try
+                        {
+                            device.Capture();
+                        }
+                        catch (Exception)
+                        {
+                            AppendTextToConsoleNL("La Nikon n'est pas active");
+                        }
+                        
                     }));
                 }
                 else
                 {
-                    device.Capture();
+                    try
+                    {
+                        device.Capture();
+                        AppendTextToConsoleNL($"[Thread takePictureAsync] no Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
+
+                    }
+                    catch (Exception)
+                    {
+                        AppendTextToConsoleNL("La Nikon n'est pas active");
+                    }
                 }
 
+;
                 AppendTextToConsoleNL("Capture de l'image par la Nikon ...");
                 //AppendTextToConsoleNL(projet.GetImageFullPath());
-
-                await tcs.Task;
+                
             }
             catch (NikonException ex)
             {
@@ -77,7 +118,7 @@ namespace Aerolithe
                 }
                 throw;
             }
-           
+
         }
 
 
@@ -135,6 +176,7 @@ namespace Aerolithe
                             // faire un projet.SavePictures  ???
                             // Sauvegarde si activée                          
 
+                            AppendTextToConsoleNL("device_ImageReady :: PreparationDossierDestTemp");
 
                             PreparationDossierDestTemp();
 
@@ -153,9 +195,10 @@ namespace Aerolithe
                                     if (photoPourMesure)
                                     {
                                         Stopwatch sw = Stopwatch.StartNew();
-                                        string iMes = projet.GetMesurementsFullImagePath();
-                                        string iName = projet.GetImageNameFullNoFS();
+                                        string iMes = projet.GetMesurementsFullImagePath();                                        
+                                        string iName = projet.GetMesurementImageNameFull();
                                         Invoke(() => AppendTextToConsoleNL("Sauvegarde de la photo pour mesure " + iName + " ..."));
+                                        AppendTextToConsoleNL("device_ImageReady :: SaveStreamAsJpegWithProgress");
                                         SaveStreamAsJpegWithProgress(saveStream, iMes);
                                         sw.Stop();
                                         string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
@@ -173,12 +216,15 @@ namespace Aerolithe
                                         Stopwatch sw = Stopwatch.StartNew();
                                         Invoke(() => AppendTextToConsoleNL("Sauvegarde de " + iName + " ..."));
 
+                                        AppendTextToConsoleNL("device_ImageReady :: SaveStreamAsJpegWithProgress");
                                         SaveStreamAsJpegWithProgress(saveStream, iPath);
 
                                         sw.Stop();
                                         string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
 
                                         AppendTextToConsoleNL($"téléchargée en {tempsMs} secondes");
+
+                                        AppendTextToConsoleNL("device_ImageReady :: AfficherMiniatures");
                                         Invoke(() => AfficherMiniatures(projet.ImageNameBase, iPath, panelSize));
                                         
                                     }
@@ -205,7 +251,11 @@ namespace Aerolithe
                     });
 
                     // Signale que TakePictureAsync est terminée, le await dans les autres méthodes devrait s'exécuter
-                    imageReadyTcs.TrySetResult(true);
+                    if (imageReadyTcs != null)
+                    {
+                        AppendTextToConsoleNL("device_ImageReady :: imageReadyTcs.TrySetResult(true)");                        
+                        imageReadyTcs.TrySetResult(true);
+                    }
 
 
                 }
@@ -228,10 +278,7 @@ namespace Aerolithe
 
         private void AfficherMiniatures(string nomImage, string imagePath, Size panelSize)
         {
-
-            bool success = miniaturesTcs.TrySetResult(true);
-            AppendTextToConsoleNL($"miniaturesTcs? {success}");
-
+            AppendTextToConsoleNL("AfficherMiniatures");
             string nomImageModifie = Path.GetFileName(imagePath).Split(".")[0];
             try
             {
@@ -355,14 +402,25 @@ namespace Aerolithe
 
                     flowLayoutPanel1.Controls.Add(borderPanel);
                     flowLayoutPanel1.ScrollControlIntoView(borderPanel);
+
+                    //AppendTextToConsoleNL($"[Thread AfficherMiniatures ::  miniaturesTcs.TrySetResult(true)]  sur le thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
+
+                    //bool success = miniaturesTcs.TrySetResult(true);
+                    //AppendTextToConsoleNL($"miniaturesTcs? {success}");
+
+                    AppendTextToConsoleNL($"[Thread AfficherMiniatures :: _pendingMiniatureTcs?.TrySetResult(true)] sur le thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
+
+                    _pendingMiniatureTcs?.TrySetResult(true);
+                    _pendingMiniatureTcs = null;
+
                 }
             }
             catch (Exception ex)
             {
                 AppendTextToConsoleNL($"Erreur lors de l'affichage miniature : {ex.Message}");
             }
-           
 
+          
         }
 
         private Image ResizeImage(Image image, int width, int height)
@@ -445,6 +503,7 @@ namespace Aerolithe
         public async Task SaveMesurementImage()
         {
             AppendTextToConsoleNL("SaveMesurementImage");
+            AppendTextToConsoleNL($"[Thread SaveMesurementImage] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
 
             await nikonDoFocus();
             await Task.Delay(200);
@@ -453,18 +512,20 @@ namespace Aerolithe
 
             try
             {
+                await InvokeOnUIAsync(this, takePictureAsync);
 
-                this.BeginInvoke(new Action(async () =>
-                {
-                    try
-                    {
-                        await takePictureAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendTextToConsoleNL(ex.Message);
-                    }
-                }));
+                //this.BeginInvoke(new Action(async () =>
+                //{
+                //    try
+                //    {
+
+                //        await takePictureAsync();
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        AppendTextToConsoleNL(ex.Message);
+                //    }
+                //}));
 
 
             }

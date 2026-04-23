@@ -129,7 +129,7 @@ namespace Aerolithe
         }
         private async Task RoutineCalibrationLineareNearest()
         {
-            AppendTextToConsoleNL("- RoutineCalibrationLinearNearest");
+            AppendTextToConsoleNL("RoutineCalibrationLinearNearest");
             AppendTextToConsoleNL($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}, offsets.hasBlackOnBorder = {offsets.hasBlackOnBorder}");
             bool commandSent = false;
             await GetLinearSwitchesStateFromLinear();
@@ -150,7 +150,7 @@ namespace Aerolithe
                 {
                     udpSendCameraLinearMotorData(0);
                     AppendTextToConsoleNL($"cameraRailNearLimitSwitchPressed = {cameraRailNearLimitSwitchPressed} et offsets.hasBlackOnBorder = {offsets.hasBlackOnBorder}");
-                    AppendTextToConsoleNL("- RoutineCalibrationLinearNearest terminée");
+                    AppendTextToConsoleNL("RoutineCalibrationLinearNearest terminée");
                     break;
                 }
 
@@ -158,7 +158,7 @@ namespace Aerolithe
                 await Task.Delay(50); // Libère le thread UI et laisse LiveViewTimer tourner
             }
             AppendTextToConsoleNL($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}, offsets.hasBlackOnBorder = {offsets.hasBlackOnBorder},cameraRailNearLimitSwitchPressed = {cameraRailNearLimitSwitchPressed}, cameraRailFarLimitSwitchPressed = {cameraRailFarLimitSwitchPressed}");
-            AppendTextToConsoleNL("- RoutineCalibrationLinearNearest terminée");
+            AppendTextToConsoleNL("RoutineCalibrationLinearNearest terminée");
         }
 
         private async Task RoutineAutoCentrage(int timeoutMs = 5000)
@@ -168,7 +168,7 @@ namespace Aerolithe
             //    RoutineCalibrationLineareNearest();
             //}
 
-            AppendTextToConsoleNL("- RoutineAutoCentrage");
+            AppendTextToConsoleNL("RoutineAutoCentrage");
             cancelAutoCentrage = false;
 
             double kP = 0.3; // proportionnel

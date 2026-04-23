@@ -17,6 +17,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
@@ -83,6 +84,22 @@ namespace Aerolithe
         private bool StackConsoleScrollToCarret = true;
 
         public Timing timing = new Timing();
+
+
+        // Pour auto scroll off et on 
+        [DllImport("user32.dll")]
+        private static extern int GetScrollPos(IntPtr hWnd, int nBar);
+
+        [DllImport("user32.dll")]
+        private static extern int SetScrollPos(IntPtr hWnd, int nBar, int nPos, bool bRedraw);
+
+        [DllImport("user32.dll")]
+        private static extern int SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
+
+        private const int SB_VERT = 1;
+        private const int WM_VSCROLL = 0x0115;
+        private const int SB_THUMBPOSITION = 4;
+
 
         public Aerolithe()
         {
@@ -262,9 +279,20 @@ namespace Aerolithe
             btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
             btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
+            btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
 
             // Timer servant à calculer le temps entre takePictureAsync et device_ImageReady
             timing = new Timing();
+
+            // Positionnement de la fenêtre au départ
+            this.StartPosition = FormStartPosition.Manual;
+            var screen = Screen.FromControl(this).WorkingArea;
+            this.Location = new Point(
+                screen.Left, // Centré en X
+                screen.Top                       // Tout en haut en Y
+                );
+
+
         }
 
 
@@ -373,7 +401,7 @@ namespace Aerolithe
         }
         private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
         {
-            AppendTextToConsoleNL("- getTurntablePosFromWaveshare");
+            AppendTextToConsoleNL("getTurntablePosFromWaveshare");
             try
             {
                 _turntablePositionTcs = new TaskCompletionSource<int>();
@@ -601,7 +629,7 @@ namespace Aerolithe
 
         public async Task<bool> WaitForActuator(double target)
         {
-            AppendTextToConsoleNL("* WaitForActuator");
+            AppendTextToConsoleNL("WaitForActuator");
             double delta = 3;
             int timeoutMs = 10000;
             DateTime startTime = DateTime.Now;
@@ -668,7 +696,7 @@ namespace Aerolithe
             }
         }
 
-        public async Task AppendTextToConsoleNL(string message) // New Line
+        public void AppendTextToConsoleNL(string message) // New Line
         {
 
             System.Windows.Forms.RichTextBox textbox = txtBox_Console;
@@ -692,7 +720,7 @@ namespace Aerolithe
         }
 
 
-        private async Task AppendFormattedText(string text, Color color, System.Windows.Forms.RichTextBox textbox)
+        private void AppendFormattedText(string text, Color color, System.Windows.Forms.RichTextBox textbox)
         {
 
 
@@ -708,32 +736,66 @@ namespace Aerolithe
                 AppendFormattedTextInternal(text, color, textbox);
             }
 
-            await ManageRichTextBoxContent(textbox);
+            ManageRichTextBoxContent(textbox);
 
         }
 
 
+        //private void AppendFormattedTextInternal(string text, Color color, System.Windows.Forms.RichTextBox textbox)
+        //{
+        //    textbox.SelectionStart = textbox.Text.Length;
+        //    if (MainConsoleScrollToCarret)
+        //    {
+        //        textbox.ScrollToCaret();
+        //        textbox.Select(); // Active le caret sans voler le focus
+        //        textbox.SelectionLength = 0;
+        //    }
 
-        private void AppendFormattedTextInternal(string text, Color color, System.Windows.Forms.RichTextBox textbox)
+
+
+        //    textbox.SelectionColor = color;
+        //    textbox.AppendText(text);
+        //    textbox.SelectionColor = txtBox_Console.ForeColor;
+        //    ManageRichTextBoxContent(textbox);
+        //    textbox.Refresh();
+        //}
+
+
+
+        private void AppendFormattedTextInternal(string text, Color color, RichTextBox textbox)
         {
-            textbox.SelectionStart = textbox.Text.Length;
+            int scrollPos = 0;
+
+            if (!MainConsoleScrollToCarret)
+            {
+                scrollPos = GetScrollPos(textbox.Handle, SB_VERT);
+            }
+
+            textbox.SuspendLayout();
+
+            textbox.SelectionStart = textbox.TextLength;
+            textbox.SelectionLength = 0;
+            textbox.SelectionColor = color;
+            textbox.AppendText(text);
+            textbox.SelectionColor = textbox.ForeColor;
+
+            ManageRichTextBoxContent(textbox);
+
             if (MainConsoleScrollToCarret)
             {
                 textbox.ScrollToCaret();
-                textbox.Select(); // Active le caret sans voler le focus
-                textbox.SelectionLength = 0;
+            }
+            else
+            {
+                SetScrollPos(textbox.Handle, SB_VERT, scrollPos, true);
+                SendMessage(textbox.Handle, WM_VSCROLL, SB_THUMBPOSITION, scrollPos);
             }
 
-
-
-            textbox.SelectionColor = color;
-            textbox.AppendText(text);
-            textbox.SelectionColor = txtBox_Console.ForeColor;
-            ManageRichTextBoxContent(textbox);
-            textbox.Refresh();
+            textbox.ResumeLayout();
         }
 
-        private async Task ManageRichTextBoxContent(System.Windows.Forms.RichTextBox textbox)
+
+        private void ManageRichTextBoxContent(System.Windows.Forms.RichTextBox textbox)
         {
             int maxLength = 2147483647; // Maximum length for RichTextBox
             int threshold = (int)(maxLength * 0.5); // 50% of the maximum length
@@ -863,7 +925,7 @@ namespace Aerolithe
                     {
                         AppendTextToConsoleNL($"Erreur  btn_PrisePhotoSeqTotaleMain_Click :: DeleteAllPicturesInFolderWith  {ex.Message}");
                     }
-                    
+
                     ResetSequenceCancellationButton();
                     Task.Run(async () =>
                     {
@@ -882,7 +944,7 @@ namespace Aerolithe
                     await SequencePrisePhotoTotale(tokenSource.Token);
                 });
             }
-            
+
         }
 
         private void btn_cancelPhotoShootMain_Click(object sender, EventArgs e)
@@ -911,7 +973,7 @@ namespace Aerolithe
                 }
             }
             ResetSequenceCancellationButton();
-            
+
 
             Task.Run(async () =>
             {
@@ -1676,7 +1738,7 @@ namespace Aerolithe
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
-                
+
             }
         }
 
@@ -1704,7 +1766,7 @@ namespace Aerolithe
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
-                
+
             }
         }
         private void txtBox_nbrImg45deg_TextChanged(object sender, EventArgs e)
@@ -1729,7 +1791,7 @@ namespace Aerolithe
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
-                
+
             }
         }
 
@@ -1747,7 +1809,7 @@ namespace Aerolithe
         }
 
         private void txtBox_seqPad1_KeyDown(object sender, KeyEventArgs e)
-        {           
+        {
             if (e.KeyCode == Keys.Enter)
             {
                 if (int.TryParse(txtBox_seqPad1.Text, out int valeur))
@@ -2388,14 +2450,14 @@ namespace Aerolithe
         {
             projet.SaveImageToDisk = !projet.SaveImageToDisk;
             btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
-            projet.Save(appSettings.ProjectPath);
+            SavePrefsSettings();
         }
 
         private void btn_LiveViewEnable_Click(object sender, EventArgs e)
         {
             projet.LiveViewEnabled = !projet.LiveViewEnabled;
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
-            projet.Save(appSettings.ProjectPath);
+            SavePrefsSettings();
             if (projet.LiveViewEnabled)
             {
 
@@ -2412,6 +2474,11 @@ namespace Aerolithe
 
         }
 
-      
+        private void btn_AutoCentrageAuto_Click(object sender, EventArgs e)
+        {
+            projet.AutoCentrage = !projet.AutoCentrage;
+            btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
+            SavePrefsSettings();
+        }
     }
 }
