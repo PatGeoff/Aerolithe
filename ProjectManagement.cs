@@ -71,7 +71,7 @@ namespace Aerolithe
                     string nom = Path.GetFileName(appSettings.ProjectPath).Split('.')[0];
                     projet.ImageNameBase = nom;
                     string name = appSettings.ProjectPath;
-                    this.Text = name;
+                    SetMainWindowTitle(name);
 
                     SavePrefsSettings();
                     DisplayPathsInUI();
@@ -181,7 +181,7 @@ namespace Aerolithe
         {
             //string projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
             //lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}";
-            this.Text = appSettings.ProjectPath;
+            SetMainWindowTitle(appSettings.ProjectPath);
 
 
             try

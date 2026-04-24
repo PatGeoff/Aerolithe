@@ -339,7 +339,7 @@ namespace Aerolithe
                     lbl_turntablePosition.Invoke(new Action(() => lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés"));
                 }
 
-                _turntablePositionTcs?.SetResult(turntablePosition); // vers Aerolithe.cs/getTurntablePosFromWaveshare()
+                _turntablePositionTcs?.TrySetResult(turntablePosition); // vers Aerolithe.cs/getTurntablePosFromWaveshare()
             }
 
             if (message.Contains("FarLimitSwitchPressed"))
@@ -382,7 +382,7 @@ namespace Aerolithe
                     lbl_actatorAngle_2.Text = "Actuateur:  " + actuatorAngle.ToString() + " degrés";
                 }));
                 //await AppendTextToConsoleNL($"Angle de l'actuateur: {actuatorAngle.ToString()}");
-                _actuatorAngleTcs?.SetResult(actuatorAngle);
+                _actuatorAngleTcs?.TrySetResult(actuatorAngle);
 
             }
 

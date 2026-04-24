@@ -19,9 +19,6 @@ namespace Aerolithe
 
     public partial class Aerolithe : Form
     {
-        private TaskCompletionSource<bool> focusReadyTcs;
-
-        public Stopwatch sw;
         public int focusStackStepVar = 0; // Garde compte des steps de driveSteps effectué. 
         public int iterations = 24;  // Nombre de steps à effectuer 
         private bool _stopRequested = false;
@@ -41,8 +38,7 @@ namespace Aerolithe
             //AppendTextToConsoleNL("- nikonDoFocus");
             try
             {
-                focusReadyTcs = new TaskCompletionSource<bool>();
-                await Task.Run(() => NikonAutofocus());
+                await NikonAutofocus();
                 await Task.Delay(300);
                 focusStackStepVar = 0;
                 UpdateFocusStepVarLbl(focusStackStepVar);
@@ -66,65 +62,33 @@ namespace Aerolithe
             //AppendTextToConsoleNL("- NikonAutofocus");
             //var sw = Stopwatch.StartNew();
             //Debug.WriteLine($"[NikonAutoFocus()] lancement à : {sw.ElapsedMilliseconds} ms");
-            try
+            await RunExclusiveNikonOperationAsync(async () =>
             {
-                if (device.LiveViewEnabled)
-                {
-                    device.LiveViewEnabled = false;
-                }
-
                 await Task.Delay(200);
-            }
-            catch (Exception)
-            {
 
-                MessageBox.Show("Si la caméra n'est pas allumée, la fermer et la rallumer");
-            }
+                bool focusCompleted = false;
+                int essai = 0;
 
-
-            bool focusCompleted = false;
-            int essai = 0;
-            while (!focusCompleted)
-            {
-                try
+                while (!focusCompleted)
                 {
-                    device.Start(eNkMAIDCapability.kNkMAIDCapability_AutoFocus);
-                    focusCompleted = true; // Set focusCompleted to true only if no exception occurs
-                    focusStackStepVar = 0;
-                    UpdateFocusStepVarLbl(focusStackStepVar);
-                }
-                catch (NikonException ex)
-                {
-                    // AppendTextToConsoleNL(ex.Message);
-                    if (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
+                    try
+                    {
+                        device.Start(eNkMAIDCapability.kNkMAIDCapability_AutoFocus);
+                        focusCompleted = true;
+                        focusStackStepVar = 0;
+                        UpdateFocusStepVarLbl(focusStackStepVar);
+                    }
+                    catch (NikonException ex) when (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
                     {
                         AppendTextToConsoleNL(ex.Message);
-                        await Task.Delay(200); // Wait before retrying
-                        continue; // Retry autofocus
+                        await Task.Delay(200);
+                        continue;
                     }
-                    else
-                    {
 
-                        if (!device.LiveViewEnabled)
-                        {
-                            device.LiveViewEnabled = true;
-                            await Task.Delay(100);
-                            liveViewTimer.Start();
-                        }
-                        //throw new Exception("Autofocus failed due to an error: " + ex.Message);
-                        //AppendTextToConsoleNL("Impossible de faire le focus, erreur: " + ex.Message);
-                    }
+                    essai += 1;
+                    if (essai > 10) break;
                 }
-                essai += 1;
-                if (essai > 10) break;
-            }
-            //Debug.WriteLine($"[NikonAutoFocus()] avant de remettre le liveView  : {sw.ElapsedMilliseconds} ms");
-            if (!device.LiveViewEnabled)
-            {
-                device.LiveViewEnabled = true;
-                await Task.Delay(100);
-                liveViewTimer.Start();
-            }
+            }, pauseLiveView: true);
 
             //focusStackStepVar = 0;
 
@@ -134,7 +98,7 @@ namespace Aerolithe
 
         }
 
-        private async Task UpdateFocusStepVarLbl(int position)
+        private void UpdateFocusStepVarLbl(int position)
         {
             if (lbl_focusStepsVar.InvokeRequired)
             {
@@ -155,12 +119,12 @@ namespace Aerolithe
             formsPlot.Plot.Title($"<<   X: {currentCrosshairX:F0}   |   Y: {currentY:F2}   >>");
         }
 
-        private async Task DisplayBlurGraph(Dictionary<int, (int steps, int blurBlocks)> blurDataDict)
+        private Task DisplayBlurGraph(Dictionary<int, (int steps, int blurBlocks)> blurDataDict)
         {
             if (InvokeRequired)
             {
                 Invoke(new Action(() => DisplayBlurGraph(blurDataDict)));
-                return;
+                return Task.CompletedTask;
             }
 
             formsPlot = new ScottPlot.WinForms.FormsPlot { Dock = DockStyle.Fill };
@@ -231,6 +195,7 @@ namespace Aerolithe
             formsPlot.Plot.Axes.Left.Label.Text = "Nombre de blocs nets";
 
             formsPlot.Refresh();
+            return Task.CompletedTask;
         }
 
 
@@ -402,7 +367,7 @@ namespace Aerolithe
             int maxTargetUp = -1;
 
             // ====== 1) Première passe : reculer ======
-            ManualFocus(1, stepSize * iterations);
+            await ManualFocusAsync(1, stepSize * iterations);
             focusStackStepVar = iterations * -1;
             UpdateFocusStepVarLbl(focusStackStepVar);
 
@@ -414,7 +379,7 @@ namespace Aerolithe
             while (blurredBlocks >= minDetect && !_stopRequested)
             {
                 if (_stopRequested) return;
-                ManualFocus(1, stepSize);
+                await ManualFocusAsync(1, stepSize);
                 focusStackStepVar--;
                 UpdateFocusStepVarLbl(focusStackStepVar);
                 await Task.Delay(delayTime);
@@ -429,7 +394,7 @@ namespace Aerolithe
             // ====== 2) Deuxième passe : monter ======
             while (!_stopRequested)
             {
-                ManualFocus(0, stepSize);
+                await ManualFocusAsync(0, stepSize);
                 await Task.Delay(delayTime);
 
                 if (blurredBlocks >= minDetect)
@@ -461,7 +426,7 @@ namespace Aerolithe
             int steps = (int)(delta * stepSize * 0.75);
             AppendTextToConsoleNL($"stepSize={stepSize}, delta={delta}, steps={steps}");
 
-            ManualFocus(1, steps);
+            await ManualFocusAsync(1, steps);
             await Task.Delay(500);
 
             focusStackStepVar = maxTargetUp;
@@ -471,18 +436,18 @@ namespace Aerolithe
             {
                 while (blurredBlocks < minDetect && !_stopRequested)
                 {
-                    ManualFocus(0, stepSize);
+                    await ManualFocusAsync(0, stepSize);
                     await Task.Delay(delayTime * 5);
                 }
             }
 
             while (blurredBlocks > minDetect * 2 && !_stopRequested)
             {
-                ManualFocus(1, stepSize);
+                await ManualFocusAsync(1, stepSize);
                 await Task.Delay(delayTime * 5);
             }
 
-            ManualFocus(0, stepSize);
+            await ManualFocusAsync(0, stepSize);
             focusStackStepVar = 0;
             UpdateFocusStepVarLbl(focusStackStepVar);
             await Task.Delay(delayTime);
@@ -804,7 +769,7 @@ namespace Aerolithe
                     {
                         // Reculer de 1 pour revenir au point net
                         Debug.WriteLine($"Ajustement du focus pour atteindre {minDetect}. En ce moment blurredBlocks = {blurredBlocks}");
-                        ManualFocus(1, stepSize);
+                        await ManualFocusAsync(1, stepSize);
                         focusStackStepVar = 0;
                         UpdateFocusStepVarLbl(focusStackStepVar);
                         await Task.Delay(delayTime);
@@ -831,12 +796,11 @@ namespace Aerolithe
                     }
                     try
                     {
-                        miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                         await takePictureAsync();
                         AppendTextToConsoleNL("photo prise... onto the next :)");
                         //await miniaturesTcs.Task;
                         await Task.Delay(400);
-                        ManualFocus(0, newStepSize);
+                        await ManualFocusAsync(0, newStepSize);
                         await Task.Delay(delayTime);
                         focusStackStepVar += 1;
                         UpdateFocusStepVarLbl(focusStackStepVar);

@@ -1,7 +1,6 @@
 ﻿using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
-using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using Nikon;
 using System;
@@ -20,10 +19,12 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        private FlowLayoutPanel currentSequenceFlowLayoutPanel;
-        private TaskCompletionSource<bool> imageReadyTcs;
-        private TaskCompletionSource<bool> miniaturesTcs;
+        private TaskCompletionSource<bool>? imageReadyTcs;
+        private TaskCompletionSource<int>? captureCompleteTcs;
+        private TaskCompletionSource<bool>? miniaturesTcs;
         private Size panelSize = new Size(250, 200);
+        private readonly SemaphoreSlim _nikonOperationLock = new(1, 1);
+        private volatile bool _nikonOperationInProgress;
 
 
 
@@ -31,18 +32,18 @@ namespace Aerolithe
         {
             if (control.InvokeRequired)
             {
-                var tcs = new TaskCompletionSource();
+                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
                 control.BeginInvoke(new Action(async () =>
                 {
                     try
                     {
                         await action();
-                        tcs.SetResult();
+                        tcs.TrySetResult(true);
                     }
                     catch (Exception ex)
                     {
-                        tcs.SetException(ex);
+                        tcs.TrySetException(ex);
                     }
                 }));
 
@@ -51,6 +52,104 @@ namespace Aerolithe
             else
             {
                 return action();
+            }
+        }
+
+        public static Task InvokeOnUIAsync(Control control, Action action)
+        {
+            if (control.InvokeRequired)
+            {
+                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+                control.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        action();
+                        tcs.TrySetResult(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.TrySetException(ex);
+                    }
+                }));
+
+                return tcs.Task;
+            }
+
+            action();
+            return Task.CompletedTask;
+        }
+
+        private async Task RunExclusiveNikonOperationAsync(Func<Task> action, bool pauseLiveView = false)
+        {
+            await _nikonOperationLock.WaitAsync();
+
+            bool resumeLiveView = false;
+
+            try
+            {
+                _nikonOperationInProgress = true;
+
+                if (pauseLiveView)
+                {
+                    await InvokeOnUIAsync(this, () =>
+                    {
+                        if (device != null && device.LiveViewEnabled)
+                        {
+                            resumeLiveView = projet.LiveViewEnabled;
+                            liveViewTimer.Stop();
+                            device.LiveViewEnabled = false;
+                        }
+                    });
+                }
+
+                await InvokeOnUIAsync(this, action);
+            }
+            finally
+            {
+                try
+                {
+                    if (pauseLiveView && resumeLiveView)
+                    {
+                        await InvokeOnUIAsync(this, () =>
+                        {
+                            if (device != null && projet.LiveViewEnabled && !device.LiveViewEnabled)
+                            {
+                                device.LiveViewEnabled = true;
+                                liveViewTimer.Start();
+                            }
+                        });
+                    }
+                }
+                finally
+                {
+                    _nikonOperationInProgress = false;
+                    _nikonOperationLock.Release();
+                }
+            }
+        }
+
+        private async Task CaptureImageAndWaitForMiniatureAsync()
+        {
+            if (_pendingMiniatureTcs != null)
+                throw new InvalidOperationException("Une capture est déjà en cours.");
+
+            var miniatureTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingMiniatureTcs = miniatureTcs;
+
+            try
+            {
+                AppendTextToConsoleNL($"[Thread CaptureImageAndWaitForMiniatureAsync] Thread# {Thread.CurrentThread.ManagedThreadId} -> UI? {(!this.InvokeRequired).ToString()}");
+                await takePictureAsync();
+                await miniatureTcs.Task;
+            }
+            finally
+            {
+                if (ReferenceEquals(_pendingMiniatureTcs, miniatureTcs))
+                {
+                    _pendingMiniatureTcs = null;
+                }
             }
         }
 
@@ -69,56 +168,66 @@ namespace Aerolithe
 
         public async Task takePictureAsync()
         {
+            if (imageReadyTcs != null)
+            {
+                throw new InvalidOperationException("Une capture est déjà en cours.");
+            }
 
-            timing.StartTimer();
+            var currentImageReadyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var currentCaptureCompleteTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            imageReadyTcs = currentImageReadyTcs;
+            captureCompleteTcs = currentCaptureCompleteTcs;
 
             try
             {
-                if (InvokeRequired)
-                {
-                    Invoke(new Action(() =>
-                    {
-                        AppendTextToConsoleNL($"[Thread takePictureAsync] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
-                        try
-                        {
-                            device.Capture();
-                        }
-                        catch (Exception)
-                        {
-                            AppendTextToConsoleNL("La Nikon n'est pas active");
-                        }
-                        
-                    }));
-                }
-                else
-                {
-                    try
-                    {
-                        device.Capture();
-                        AppendTextToConsoleNL($"[Thread takePictureAsync] no Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
+                timing.StartTimer();
 
-                    }
-                    catch (Exception)
+                await InvokeOnUIAsync(this, () =>
+                {
+                    AppendTextToConsoleNL($"[Thread takePictureAsync] Thread# {Thread.CurrentThread.ManagedThreadId} -> UI? {(!this.InvokeRequired).ToString()}");
+                    device.Capture();
+                    AppendTextToConsoleNL("Capture de l'image par la Nikon ...");
+                });
+
+                var completedTask = await Task.WhenAny(
+                    currentImageReadyTcs.Task,
+                    Task.Delay(TimeSpan.FromSeconds(20)));
+
+                if (completedTask != currentImageReadyTcs.Task)
+                {
+                    if (currentCaptureCompleteTcs.Task.IsCompletedSuccessfully)
                     {
-                        AppendTextToConsoleNL("La Nikon n'est pas active");
+                        AppendTextToConsoleNL($"CaptureComplete reçu, mais pas de ImageReady. data={currentCaptureCompleteTcs.Task.Result}");
                     }
+
+                    throw new TimeoutException("Timeout en attente de device_ImageReady après Capture().");
                 }
 
-;
-                AppendTextToConsoleNL("Capture de l'image par la Nikon ...");
-                //AppendTextToConsoleNL(projet.GetImageFullPath());
-                
+                await currentImageReadyTcs.Task;
             }
-            catch (NikonException ex)
+            catch (NikonException ex) when (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
             {
-                if (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
-                {
-                    AppendTextToConsoleNL(ex.Message);
-                    await Task.Delay(200); // Wait before retrying
-                }
+                AppendTextToConsoleNL(ex.Message);
+                await Task.Delay(200);
                 throw;
             }
+            catch (Exception)
+            {
+                AppendTextToConsoleNL("La Nikon n'est pas active");
+                throw;
+            }
+            finally
+            {
+                if (ReferenceEquals(imageReadyTcs, currentImageReadyTcs))
+                {
+                    imageReadyTcs = null;
+                }
 
+                if (ReferenceEquals(captureCompleteTcs, currentCaptureCompleteTcs))
+                {
+                    captureCompleteTcs = null;
+                }
+            }
         }
 
 
@@ -261,6 +370,9 @@ namespace Aerolithe
                 }
                 catch (Exception ex)
                 {
+                    imageReadyTcs?.TrySetException(ex);
+                    _pendingMiniatureTcs?.TrySetException(ex);
+                    miniaturesTcs?.TrySetException(ex);
                     Invoke(() => MessageBox.Show("Erreur lors du traitement de l'image : " + ex.Message));
                 }
             }
@@ -268,6 +380,8 @@ namespace Aerolithe
             {
                 Invoke(() => MessageBox.Show("device_ImageReady exception: " + ex.Message));
                 imageReadyTcs?.TrySetException(ex);
+                _pendingMiniatureTcs?.TrySetException(ex);
+                miniaturesTcs?.TrySetException(ex);
             }
 
            
@@ -473,10 +587,10 @@ namespace Aerolithe
             return finalBitmap;
         }
 
-        public async Task SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath)
+        public void SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath)
         {
             // Create an Image object from the stream
-            Image image = System.Drawing.Image.FromStream(imageStream);
+            using Image image = System.Drawing.Image.FromStream(imageStream);
 
             // Save the image to a temporary stream
             using (MemoryStream tempStream = new MemoryStream())
@@ -514,7 +628,13 @@ namespace Aerolithe
 
             try
             {
-                await InvokeOnUIAsync(this, takePictureAsync);
+                // Ce micro-déplacement débloque souvent la Nikon et réduit fortement
+                // le délai avant ImageReady dans ce projet.
+                await ManualFocusAsync(1, 1);
+                await Task.Delay(200);
+                await takePictureAsync();
+                await Task.Delay(200);
+                await ManualFocusAsync(1, 1);
 
                 //this.BeginInvoke(new Action(async () =>
                 //{
@@ -666,29 +786,38 @@ namespace Aerolithe
         }
 
 
-        private void ManualFocus(int up, double newFocusValue)
+        private async Task ManualFocusAsync(int up, double newFocusValue)
         {
+            await RunExclusiveNikonOperationAsync(() =>
+            {
+                driveStep.Value = newFocusValue;
+                device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
 
-            driveStep.Value = newFocusValue;
-            device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
-            try
-            {
-                if (up == 1)
+                try
                 {
-                    //Drive focus towards infinity
-                    device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
-                    //AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_ClosestToInfinity... oldFocusValue = {oldFocusValue.ToString()}");
+                    if (up == 1)
+                    {
+                        device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
+                    }
+                    else
+                    {
+                        device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
-                    //AppendTextToConsoleNL($"setting Drive Step to newFocusValue = {newFocusValue.ToString()} with kNkMAIDMFDrive_InfinityToClosest... oldFocusValue = {oldFocusValue.ToString()}");
+                    AppendTextToConsoleNL(ex.Message);
+                    throw;
                 }
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleNL(ex.Message);
-            }
+
+                return Task.CompletedTask;
+            });
+        }
+
+        private void device_CaptureComplete(NikonDevice sender, int data)
+        {
+            AppendTextToConsoleNL($"device_CaptureComplete: data={data}");
+            captureCompleteTcs?.TrySetResult(data);
         }
 
 
@@ -697,10 +826,10 @@ namespace Aerolithe
 
     public class Timing
     {
-        private System.Timers.Timer _timer;
-        private Stopwatch _stopwatch;
+        private System.Timers.Timer? _timer;
+        private Stopwatch _stopwatch = new();
 
-        public TimeSpan ElapsedTime => _stopwatch?.Elapsed ?? TimeSpan.Zero;
+        public TimeSpan ElapsedTime => _stopwatch.Elapsed;
 
         public void StartTimer()
         {
@@ -717,7 +846,7 @@ namespace Aerolithe
             _timer?.Dispose();
             _timer = null;
 
-            _stopwatch?.Stop();
+            _stopwatch.Stop();
         }
 
 

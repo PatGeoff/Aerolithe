@@ -14,7 +14,7 @@ namespace Aerolithe
     public partial class FocusStackReportControl : UserControl
     {
         private List<FocusStackTaskInfo> taskInfos = new List<FocusStackTaskInfo>();
-        private FocusStackTaskInfo taskInfo;
+        private FocusStackTaskInfo? taskInfo;
 
         public FocusStackReportControl()
         {
@@ -72,7 +72,7 @@ namespace Aerolithe
             richTextBox_PicReport.ScrollToCaret();
         }
 
-        private void btn_RepriseRoutine_Click(object sender, EventArgs e)
+        private async void btn_RepriseRoutine_Click(object sender, EventArgs e)
         {
 
             using (var dialog = new RepriseDialogForm())
@@ -84,7 +84,7 @@ namespace Aerolithe
                 {
                     case 0:
                         // Cette série seulement
-                        ReprendreUneSerieRatee();
+                        await ReprendreUneSerieRatee();
                         break;
                     case 1:
                         // Toutes les séries ratées
@@ -96,19 +96,21 @@ namespace Aerolithe
                 }
             }
         }
-        private void ReprendreUneSerieRatee()
+        private async Task ReprendreUneSerieRatee()
         {
+            if (taskInfo == null) return;
+
             switch (taskInfo.Serie)
             {
                 case "0":
-                    Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
-                    Aerolithe.Instance.WaitForActuator(5);
+                    await Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
+                    await Aerolithe.Instance.WaitForActuator(5);
                     break;
                 case "1":
-                    Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
+                    await Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
                     break;
                 case "2":
-                    Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
+                    await Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
                     break;
             }
             
@@ -121,10 +123,10 @@ namespace Aerolithe
 
     public class FocusStackTaskInfo
     {
-        public string Serie { get; set; }
+        public string Serie { get; set; } = string.Empty;
         public double Elevation { get; set; }
         public double Rotation { get; set; }
-        public string Filename { get; set; }
-        public string Status { get; set; }
+        public string Filename { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
     }
 }

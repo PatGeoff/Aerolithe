@@ -1,7 +1,6 @@
 ﻿//Aerolithe.cs
 
 using Aerolithe.Properties;
-using Aerolithe.Properties;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
@@ -29,6 +28,9 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
+        public const string UiRevision = "REV-0002-capture-sequence-debug";
+        private string _windowTitleBase = "Aucun projet";
+
         // THIS IP ADDRESS 192.168.2.4 //
 
         // Champs d’instance (readonly) : on les initialise dans le constructeur
@@ -105,6 +107,7 @@ namespace Aerolithe
         {
 
             InitializeComponent();
+            SetMainWindowTitle();
 
 
             stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
@@ -1177,11 +1180,11 @@ namespace Aerolithe
             }
         }
 
-        private void btn_focusMinus_Click(object sender, EventArgs e)
+        private async void btn_focusMinus_Click(object sender, EventArgs e)
         {
             try
             {
-                ManualFocus(1, stepSize);
+                await ManualFocusAsync(1, stepSize);
                 focusStackStepVar -= 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
             }
@@ -1191,11 +1194,11 @@ namespace Aerolithe
 
         }
 
-        private void btn_focusPlus_Click(object sender, EventArgs e)
+        private async void btn_focusPlus_Click(object sender, EventArgs e)
         {
             try
             {
-                ManualFocus(0, stepSize);
+                await ManualFocusAsync(0, stepSize);
                 focusStackStepVar += 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
             }
@@ -2453,25 +2456,42 @@ namespace Aerolithe
             SavePrefsSettings();
         }
 
-        private void btn_LiveViewEnable_Click(object sender, EventArgs e)
+        private async void btn_LiveViewEnable_Click(object sender, EventArgs e)
         {
             projet.LiveViewEnabled = !projet.LiveViewEnabled;
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
             SavePrefsSettings();
-            if (projet.LiveViewEnabled)
+            await RunExclusiveNikonOperationAsync(() =>
             {
+                if (device == null)
+                {
+                    return Task.CompletedTask;
+                }
 
-                device.LiveViewEnabled = true;
-                Task.Run(async () => Task.Delay(100));
-                liveViewTimer.Start();
+                if (projet.LiveViewEnabled)
+                {
+                    device.LiveViewEnabled = true;
+                    liveViewTimer.Start();
+                }
+                else
+                {
+                    device.LiveViewEnabled = false;
+                    liveViewTimer.Stop();
+                }
+                
+                return Task.CompletedTask;
+            });
 
-            }
-            else
+        }
+
+        private void SetMainWindowTitle(string? baseTitle = null)
+        {
+            if (!string.IsNullOrWhiteSpace(baseTitle))
             {
-                device.LiveViewEnabled = false;
-                liveViewTimer.Stop();
+                _windowTitleBase = baseTitle;
             }
 
+            Text = $"{_windowTitleBase} | {UiRevision}";
         }
 
         private void btn_AutoCentrageAuto_Click(object sender, EventArgs e)

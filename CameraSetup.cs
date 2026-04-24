@@ -32,7 +32,7 @@ namespace Aerolithe
         private Timer liveViewTimer;
         public Image capturedImage;
         public NikonPreview preview;
-        private NikonLiveViewImage imageView = null;
+        private NikonLiveViewImage? imageView = null;
         public double oldFocusValue;
         public double blurrynessAmount = 0;
         public double blurrynessAmountMask = 0;
@@ -88,6 +88,7 @@ namespace Aerolithe
                 device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_SaveMedia, (uint)eNkMAIDSaveMedia.kNkMAIDSaveMedia_SDRAM);
 
                 device.ImageReady += new ImageReadyDelegate(device_ImageReady);
+                device.CaptureComplete += new CaptureCompleteDelegate(device_CaptureComplete);
                 device.Progress += new ProgressDelegate(OnNikonProgress);
                 AppendTextToConsoleNL("Nikon delegates initialisés");
                 deviceLoaded();
@@ -174,7 +175,7 @@ namespace Aerolithe
         // Le System.Windows.Form.Timer sur lequel LiveViewTimer_Tick s'exécute est sur le trhead principal donc pas besoin de Invoke dans les appels aux contrôles du UI.
         async void LiveViewTimer_Tick(object? sender, EventArgs e)
         {
-            if (isProcessing) return;
+            if (isProcessing || _nikonOperationInProgress || device == null) return;
             isProcessing = true;
 
             try
@@ -256,7 +257,7 @@ namespace Aerolithe
                                     oldMat?.Dispose();
                             }));
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             AppendTextToConsoleNL($"Erreur LiveViewTimer_Tick :: this.BeginInvoke(new Action(() => using var bmpTemp ...");
                         }

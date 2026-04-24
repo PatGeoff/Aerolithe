@@ -14,8 +14,7 @@ namespace Aerolithe
     public partial class AutoCloseMessageBox : Form
     {
         private DialogResult dialogResult;
-        private Timer timer;
-        private int duration;
+        private Timer? timer;
         public AutoCloseMessageBox(string message, int width, int height)
         {
             InitializeComponent();

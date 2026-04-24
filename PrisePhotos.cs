@@ -24,11 +24,7 @@ namespace Aerolithe
         private int actuatorDelay1 = 5000; // secondes
         private int actuatorDelay2 = 9000; // secondes
         public int delayTimePhotoShoot = 1000;
-        private bool working = false;
-        private int _Elevation = 5;
         private int _Serie = 0;
-        private int totalPhotos = 0;
-        private string[] angleStr = { "5", "25", "45" };
         private int[] angleIndexes = [5, 25, 45];
 
         private Stopwatch _stopwatch = new Stopwatch();
@@ -63,11 +59,11 @@ namespace Aerolithe
             //Stopwatch sw = Stopwatch.StartNew();
             try
             {
-                ManualFocus(1, 1); // Sert seulement pour rendre takePictureAsync plus rapide. Débloque la Nikon et la photo se télécharge en 1.5s au de 15 secondes ??
+                await ManualFocusAsync(1, 1); // Sert seulement pour rendre takePictureAsync plus rapide. Débloque la Nikon et la photo se télécharge en 1.5s au de 15 secondes ??
                 await Task.Delay(200);
                 await takePictureAsync();
                 await Task.Delay(200);
-                ManualFocus(1, 1); // Sert seulement pour rendre takePictureAsync plus rapide. Débloque la Nikon et la photo se télécharge en 1.5s au de 15 secondes ??
+                await ManualFocusAsync(1, 1); // Sert seulement pour rendre takePictureAsync plus rapide. Débloque la Nikon et la photo se télécharge en 1.5s au de 15 secondes ??
             }
             catch (Exception ex)
             {
@@ -287,11 +283,12 @@ namespace Aerolithe
                     {
                         try
                         {
-                            miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                            var measurementMiniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                            miniaturesTcs = measurementMiniaturesTcs;
                             AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: SaveMesurementImage] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
 
                             await SaveMesurementImage();                            
-                            await miniaturesTcs.Task;
+                            await measurementMiniaturesTcs.Task;
                             AppendTextToConsoleNL("miniaturesTcs.Task = True, on passe à la série de photo");
                         }
                         catch (Exception ex)
@@ -335,32 +332,12 @@ namespace Aerolithe
                     else
                     {
                        
-                           AppendTextToConsoleNL("Prise de photo sans focus stack (EssayerPrendrePhotoAsync()");
-                           this.BeginInvoke(new Action(async () =>
-                           {
-                               if (_pendingMiniatureTcs != null)
-                                   throw new InvalidOperationException("Une capture est déjà en cours.");
-
-                               _pendingMiniatureTcs =
-                                   new TaskCompletionSource<bool>(
-                                       TaskCreationOptions.RunContinuationsAsynchronously);
-                               
-
-                               AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: creation de _pendingMiniatureTcs sur le thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
-
-                               await takePictureAsync();                             
-
-
-                               await _pendingMiniatureTcs.Task;
-                               AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: await _pendingMiniatureTcs.Task] a été setté à True par AfficherMiniatures sur le thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
-
-
-                               AppendTextToConsoleNL("Ici");
-                               projet.FocusSerieIncrement += 1;
-                               SavePrefsSettings();
-                               await Task.Delay(300);
-                              
-                           }));
+                           AppendTextToConsoleNL("Prise de photo sans focus stack");
+                           await CaptureImageAndWaitForMiniatureAsync();
+                           AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: miniature reçue] thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
+                           projet.FocusSerieIncrement += 1;
+                           SavePrefsSettings();
+                           await Task.Delay(300);
 
 
 
@@ -459,16 +436,17 @@ namespace Aerolithe
             await Task.Run(() => UpdateTimerAsync(_cts.Token));
         }
 
-        private async Task PauseTimer()
+        private Task PauseTimer()
         {
             if (_stopwatch.IsRunning)
                 _stopwatch.Stop();
             else
                 _stopwatch.Start();
 
+            return Task.CompletedTask;
         }
 
-        private async Task StopTimer()
+        private Task StopTimer()
         {
             _cts?.Cancel();
             _stopwatch.Reset();
@@ -482,6 +460,8 @@ namespace Aerolithe
             {
                 lbl_timer.Text = "";
             }
+
+            return Task.CompletedTask;
         }
 
     }
