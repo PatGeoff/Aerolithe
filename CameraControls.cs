@@ -412,6 +412,8 @@ namespace Aerolithe
 
                     _pendingMiniatureTcs?.TrySetResult(true);
                     _pendingMiniatureTcs = null;
+                    miniaturesTcs?.TrySetResult(true);
+                    miniaturesTcs = null;
 
                 }
             }

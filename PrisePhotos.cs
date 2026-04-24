@@ -35,11 +35,6 @@ namespace Aerolithe
         private CancellationTokenSource _cts;
         private bool photoPourMesure = false;
         private TaskCompletionSource<bool>? _pendingMiniatureTcs;
-
-
-          
-
-       
       
         private async Task EssayerPrendrePhotoAsync(int degres)
         {
@@ -295,8 +290,9 @@ namespace Aerolithe
                             miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                             AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: SaveMesurementImage] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
 
-                            await SaveMesurementImage();
+                            await SaveMesurementImage();                            
                             await miniaturesTcs.Task;
+                            AppendTextToConsoleNL("miniaturesTcs.Task = True, on passe à la série de photo");
                         }
                         catch (Exception ex)
                         {
@@ -352,9 +348,7 @@ namespace Aerolithe
 
                                AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: creation de _pendingMiniatureTcs sur le thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
 
-                               await takePictureAsync();
-                               
-                               await Task.Delay(400);
+                               await takePictureAsync();                             
 
 
                                await _pendingMiniatureTcs.Task;
@@ -363,7 +357,8 @@ namespace Aerolithe
 
                                AppendTextToConsoleNL("Ici");
                                projet.FocusSerieIncrement += 1;
-                               SavePrefsSettings();                               
+                               SavePrefsSettings();
+                               await Task.Delay(300);
                               
                            }));
 

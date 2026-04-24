@@ -240,20 +240,27 @@ namespace Aerolithe
                         // 4) Remplacer le masque global (référence) + afficher un clone Bitmap sur l'UI
                         var oldMat = maskMatLive;
                         maskMatLive = maskMatForThisFrame;
-
-                        this.BeginInvoke(new Action(() =>
+                        try
                         {
-                            using var bmpTemp = maskMatForThisFrame.ToBitmap();    // conversion GDI+ confinée à l'UI
-                            var uiClone = (Bitmap)bmpTemp.Clone();                  // donner un clone au PictureBox
+                            this.BeginInvoke(new Action(() =>
+                            {
+                                using var bmpTemp = maskMatForThisFrame.ToBitmap();    // conversion GDI+ confinée à l'UI
+                                var uiClone = (Bitmap)bmpTemp.Clone();                  // donner un clone au PictureBox
 
-                            var prevUi = picBox_liveMaskLum.Image;
-                            picBox_liveMaskLum.Image = uiClone;
-                            prevUi?.Dispose();
+                                var prevUi = picBox_liveMaskLum.Image;
+                                picBox_liveMaskLum.Image = uiClone;
+                                prevUi?.Dispose();
 
-                            // Libérer l'ancien Mat s'il n'est plus utilisé
-                            if (!ReferenceEquals(oldMat, maskMatForThisFrame))
-                                oldMat?.Dispose();
-                        }));
+                                // Libérer l'ancien Mat s'il n'est plus utilisé
+                                if (!ReferenceEquals(oldMat, maskMatForThisFrame))
+                                    oldMat?.Dispose();
+                            }));
+                        }
+                        catch (Exception ex)
+                        {
+                            AppendTextToConsoleNL($"Erreur LiveViewTimer_Tick :: this.BeginInvoke(new Action(() => using var bmpTemp ...");
+                        }
+                       
 
                     AfterMaskWork:
                         ;
