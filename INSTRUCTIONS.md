@@ -75,6 +75,98 @@ Comment valider que le travail est correct :
   - Contexte actuel: diagnostic et stabilisation du flux Nikon autour de la capture simple, de `SaveMesurementImage()` et de la séquence totale.
   - Cette révision sert de point de repère pour les tests sur la capture, les miniatures et les séquences.
 
+- `REV-0003-ui-uniformisation-base`
+  - Ajout d'une couche de standardisation visuelle par code sur l'UI principale.
+  - Uniformisation de base des boutons, labels, textboxes, combobox et onglets sans modifier le workflow.
+  - Distinction plus nette entre boutons texte, boutons icône et boutons de type danger/stop.
+  - Objectif: rendre l'interface plus cohérente visuellement avant toute réorganisation plus fine des panneaux.
+
+- `REV-0004-ui-button-text-fit`
+  - Ajustement de la couche UI pour mieux faire entrer les libellés longs dans les boutons.
+  - Largeur minimale augmentée pour les boutons texte.
+  - Police légèrement réduite sur les boutons avec libellés longs.
+  - Autorisation d'un rendu texte plus souple pour limiter les débordements visuels.
+
+- `REV-0005-ui-layout-global`
+  - Uniformisation de la position des boutons et des contrôles par code sur l'ensemble du formulaire.
+  - Normalisation des marges, paddings et docks dans les `TableLayoutPanel`, `FlowLayoutPanel` et panneaux.
+  - Objectif: rendre l'alignement des boutons plus cohérent sur tous les onglets sans refaire le Designer manuellement.
+
+- `REV-0006-ui-layout-revert`
+  - Retrait de la passe de layout global.
+  - Motif: le rendu global n'était pas satisfaisant visuellement.
+  - Retour à la version précédente du layout, tout en conservant l'uniformisation visuelle de base et l'ajustement des textes de boutons.
+
+- `REV-0007-ui-font-vs`
+  - Adoucissement de la typographie pour se rapprocher davantage du rendu Visual Studio.
+  - Remplacement des variantes `Segoe UI Semibold` par `Segoe UI` régulière sur les contrôles standardisés.
+  - Objectif: réduire l'aspect trop dur ou trop gras de l'interface.
+
+- `REV-0008-ui-phosphor-toggles`
+  - Restauration d'un style plus proche de l'UI d'origine pour les boutons icône/toggle.
+  - Retour à la fonte `Phosphor` sur ces boutons.
+  - Rendu circulaire réintroduit pour retrouver l'apparence des boutons avec crochet plus appréciée visuellement.
+
+- `REV-0009-ui-toggle-revert-exact`
+  - Annulation de toute stylisation appliquée par code sur les boutons icône/toggle.
+  - Motif: retour exact à l'apparence définie par le Designer pour les boutons crochet/toggle.
+  - Les boutons texte standardisés restent harmonisés, mais les toggles reviennent à leur rendu d'origine.
+
+- `REV-0010-ui-sequence-button-12pt`
+  - Fix explicite de la taille de police à `12 pt` pour les boutons `Prise de photos en séquence totale`.
+  - Motif: éviter que la couche de standardisation ne réduise trop ce libellé important.
+
+- `REV-0011-ui-roboto-medium`
+  - La couche de style standardisée utilise maintenant `Roboto Medium` au lieu de `Segoe UI`.
+  - S'applique aux boutons texte, labels standard, textboxes, combobox et onglets.
+  - Les boutons toggle/icône restent inchangés et continuent de suivre leur rendu Designer.
+
+- `REV-0012-ui-console-light`
+  - Les consoles utilisent maintenant une fonte plus légère que le reste de l'interface.
+  - `txtBox_Console` et `txtBox_FFMPEGConsole` passent en `Roboto` au lieu de `Roboto Medium`.
+
+- `REV-0013-ui-tabcontrol-style`
+  - Les `TabControl` utilisent maintenant un rendu custom au lieu du style WinForms par défaut.
+  - Objectif: obtenir des onglets plus lisibles et plus propres visuellement, avec un état sélectionné plus clair.
+
+- `REV-0014-ui-tabcontrol-revert`
+  - Retrait du rendu custom des `TabControl`.
+  - Motif: le comportement/rendu n'était pas satisfaisant.
+  - Retour au rendu standard précédent avec seulement la fonte harmonisée.
+
+- `REV-0015-ui-cancel-neutral`
+  - Les boutons `Cancel`/`Canceller` ne sont plus colorés en rouge par la couche de style.
+  - Retour à une teinte neutre pour mieux respecter le goût utilisateur.
+
+- `REV-0016-ui-height-plus4`
+  - Légère augmentation de la hauteur visuelle des boutons, du `MenuStrip` et des onglets.
+  - Le bouton `Prise de photos en séquence totale` est forcé en `DockStyle.Fill`.
+  - Objectif: donner un peu plus d'air sans modifier fortement le layout.
+
+- `REV-0017-reset-increments-full`
+  - Le reset remet maintenant à zéro `Serie`, `RotationSerieIncrement` et `FocusSerieIncrement`.
+  - Motif: faire en sorte que `lbl_ImgFullPath` reflète réellement une remise à zéro du nom/path affiché.
+
+- `REV-0018-console-lighter`
+  - Les consoles utilisent maintenant une fonte plus légère visuellement.
+  - Passage à `Segoe UI` pour les consoles, avec une couleur de texte adoucie (`220,220,220`) au lieu du blanc pur.
+
+- `REV-0019-button-font-10pt`
+  - Augmentation de la taille de texte des boutons texte standardisés à `10 pt`.
+  - Les libellés longs restent légèrement réduits pour éviter les débordements.
+  - Les boutons de séquence gardent leur exception à `12 pt`.
+
+- `REV-0020-reset-button-text-fix`
+  - Désactivation de `UseCompatibleTextRendering` sur les boutons texte standardisés.
+  - Motif: le bouton `Reset Increment` affichait son texte dans le Designer mais pas au runtime.
+  - Hypothèse retenue: conflit de rendu texte WinForms/GDI+ avec la couche de style appliquée par code.
+
+- `REV-0021-series-progress-fix`
+  - Correction de l'affichage de progression des séries pendant les séquences automatiques.
+  - `lbl_CoteSerie`, `lbl_ElevSerie` et `lbl_RotSerie` sont maintenant mis à jour aussi quand le code tourne déjà sur le thread UI.
+  - Le report de `flowPanelReports` utilise maintenant une série 1-based cohérente, ce qui supprime les valeurs `-1`.
+  - L'incrément de rotation n'est plus poussé au-delà de la dernière photo d'une série.
+
 ### Contexte Confirmé
 
 - Le projet est une application WinForms .NET 8 avec Nikon D850, live view, autofocus, focus stack, masquage, UDP/ESP32 et séquences automatiques.

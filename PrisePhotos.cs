@@ -85,6 +85,7 @@ namespace Aerolithe
 
             _stopwatch.Start();
             _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
+            int startingSerie = projet.Serie;
 
             // projet.Serie = 0, 1 ou 2 ---> (5,25,45)
             for (int i = projet.Serie; i < angleIndexes.Length; i++)
@@ -106,6 +107,11 @@ namespace Aerolithe
                 try
                 {
                     projet.Serie = i;
+                    if (i != startingSerie)
+                    {
+                        projet.RotationSerieIncrement = 0;
+                        projet.FocusSerieIncrement = 0;
+                    }
                     SavePrefsSettings();
                     // i = (0-2), angle = (5, 25, 45), rotation = (0 à x) mais pas 0-360, plutôt 0 à 4096/nombre de photos
                     await SequencePrisePhotoIndividuelleActuateurAsync(cancellationToken);
@@ -140,6 +146,26 @@ namespace Aerolithe
             if (_stopRequested) return;
 
             AppendTextToConsoleNL($"Séquence {+1} terminée");
+        }
+
+        private void UpdateSequenceStatusLabels(int angle, int currentRotation, int totalRotations)
+        {
+            Action updateAction = () =>
+            {
+                string cote = projet.Cote == 0 ? "A" : "B";
+                lbl_CoteSerie.Text = cote;
+                lbl_ElevSerie.Text = $"{angle}°";
+                lbl_RotSerie.Text = $"{currentRotation}/{totalRotations}";
+            };
+
+            if (lbl_CoteSerie.InvokeRequired)
+            {
+                lbl_CoteSerie.Invoke(updateAction);
+            }
+            else
+            {
+                updateAction();
+            }
         }
 
         private async Task PrisePhotoSequenceAsync(CancellationToken cancellationToken)
@@ -263,19 +289,7 @@ namespace Aerolithe
 
                     if (_stopRequested) return;
                     AppendTextToConsoleNL($"photo {(i + 1)}/{serieId[projet.Serie]} à {degresActuelTableTournante}°");
-
-
-
-                    if (lbl_CoteSerie.InvokeRequired)
-                    {
-                        lbl_CoteSerie.Invoke(new Action(() =>
-                        {
-                            string cote = (projet.Cote == 0) ? "A" : "B";
-                            lbl_CoteSerie.Text = cote;
-                            lbl_ElevSerie.Text = $"{actuatorAngle}°";
-                            lbl_RotSerie.Text = $"{i + 1}/{serieId[projet.Serie]}";
-                        }));
-                    }
+                    UpdateSequenceStatusLabels(angleIndexes[projet.Serie], i + 1, serieId[projet.Serie]);
 
                     // Prise de la photo pour la mesure du volume au besoin
 
@@ -366,13 +380,16 @@ namespace Aerolithe
 
                     }
                     //AppendTextToConsoleNL("Séquence #" + (i+1).ToString() + " terminée");
-                    try
+                    if (i < serieId[projet.Serie] - 1)
                     {
-                        await IncrementImgSeq();
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: IncrementImgSeq: {ex.Message}");
+                        try
+                        {
+                            await IncrementImgSeq();
+                        }
+                        catch (Exception ex)
+                        {
+                            AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: IncrementImgSeq: {ex.Message}");
+                        }
                     }
 
                 }
@@ -380,6 +397,10 @@ namespace Aerolithe
             catch (Exception ex)
             {
                 AppendTextToConsoleNL($" Erreur dans la séquence : {ex.Message}");
+            }
+            if (serieId[projet.Serie] > 0)
+            {
+                UpdateSequenceStatusLabels(angleIndexes[projet.Serie], serieId[projet.Serie], serieId[projet.Serie]);
             }
             _stopwatch.Stop();
         }

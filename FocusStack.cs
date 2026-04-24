@@ -41,7 +41,7 @@ namespace Aerolithe
             AppendTextToConsoleNL("EnqueueFocusStackTask");
             var task = new FocusStackTask
             {
-                Serie = serie - 1,
+                Serie = serie,
                 Elevation = elevation,
                 Rotation = rotation,
                 ImagePaths = imagePaths,
@@ -114,7 +114,7 @@ namespace Aerolithe
                         }));
                     }
 
-                    EnqueueFocusStackTask(imagePaths, outputPath, projet.GetMaskFullImagePath(), projet.ApplyMask, (int)actuatorAngle, turntablePosition, _Serie);
+                    EnqueueFocusStackTask(imagePaths, outputPath, projet.GetMaskFullImagePath(), projet.ApplyMask, (int)actuatorAngle, turntablePosition, projet.Serie + 1);
                 }
             }
         }
@@ -165,11 +165,11 @@ namespace Aerolithe
                 if (imageFiles.Length > 0)
                 {
                     this.BeginInvoke((Action)(() => AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0])));
-                    EnqueueFocusStackTask(imageFiles, outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, _Serie);
+                    EnqueueFocusStackTask(imageFiles, outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, projet.Serie + 1);
                 }
                 else
                 {
-                    EnqueueFocusStackTask(Array.Empty<string>(), outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, _Serie, "Erreur");
+                    EnqueueFocusStackTask(Array.Empty<string>(), outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, projet.Serie + 1, "Erreur");
                     this.BeginInvoke((Action)(() => AppendTextToConsoleNL("Aucune image trouvée dans le dossier.")));
                 }
             }));

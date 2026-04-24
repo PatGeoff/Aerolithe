@@ -28,7 +28,7 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public const string UiRevision = "REV-0002-capture-sequence-debug";
+        public const string UiRevision = "REV-0021-series-progress-fix";
         private string _windowTitleBase = "Aucun projet";
 
         // THIS IP ADDRESS 192.168.2.4 //
@@ -108,6 +108,7 @@ namespace Aerolithe
 
             InitializeComponent();
             SetMainWindowTitle();
+            ApplyStandardizedUiLook();
 
 
             stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
@@ -2492,6 +2493,144 @@ namespace Aerolithe
             }
 
             Text = $"{_windowTitleBase} | {UiRevision}";
+        }
+
+        private void ApplyStandardizedUiLook()
+        {
+            Font = new Font("Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            ApplyUiLookRecursive(this);
+        }
+
+        private void ApplyUiLookRecursive(Control parent)
+        {
+            foreach (Control control in parent.Controls)
+            {
+                switch (control)
+                {
+                    case System.Windows.Forms.Button button:
+                        StyleButton(button);
+                        break;
+                    case System.Windows.Forms.TextBox textBox:
+                        StyleTextInput(textBox);
+                        break;
+                    case System.Windows.Forms.ComboBox comboBox:
+                        StyleComboBox(comboBox);
+                        break;
+                    case Label label:
+                        StyleLabel(label);
+                        break;
+                    case TabControl tabControl:
+                        tabControl.Font = new Font("Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
+                        tabControl.Padding = new Point(tabControl.Padding.X, Math.Max(tabControl.Padding.Y, 8));
+                        break;
+                    case MenuStrip menuStrip:
+                        StyleMenuStrip(menuStrip);
+                        break;
+                }
+
+                ApplyUiLookRecursive(control);
+            }
+        }
+
+        private void StyleButton(System.Windows.Forms.Button button)
+        {
+            bool isIconButton = IsIconButton(button);
+            bool isPrimaryAction = IsPrimaryActionButton(button);
+
+            if (isIconButton)
+            {
+                return;
+            }
+
+            button.FlatStyle = FlatStyle.Flat;
+            button.FlatAppearance.BorderSize = 1;
+            button.FlatAppearance.BorderColor = Color.FromArgb(72, 72, 72);
+            button.Margin = isIconButton ? new Padding(3) : new Padding(6);
+            button.Padding = isIconButton ? Padding.Empty : new Padding(8, 4, 8, 4);
+            button.ForeColor = Color.White;
+            button.AutoEllipsis = true;
+            button.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            button.UseCompatibleTextRendering = false;
+
+            button.MinimumSize = new Size(148, 46);
+            float fontSize = 10F;
+            if (button.Text.Length >= 22)
+            {
+                fontSize = 9F;
+                button.Padding = new Padding(6, 3, 6, 3);
+            }
+
+            if (button.Name == "btn_PrisePhotoSeqTotale" || button.Name == "btn_PrisePhotoSeqTotaleMain")
+            {
+                fontSize = 12F;
+                button.Padding = new Padding(8, 4, 8, 4);
+                button.Dock = DockStyle.Fill;
+            }
+
+            button.Font = new Font("Roboto Medium", fontSize, FontStyle.Regular, GraphicsUnit.Point);
+
+            if (isPrimaryAction)
+            {
+                button.BackColor = Color.FromArgb(42, 42, 42);
+                button.FlatAppearance.BorderColor = Color.FromArgb(92, 92, 92);
+            }
+            else
+            {
+                button.BackColor = Color.FromArgb(34, 34, 34);
+            }
+        }
+        
+        private void StyleTextInput(System.Windows.Forms.TextBox textBox)
+        {
+            bool isConsoleTextBox = textBox.Name == "txtBox_Console" || textBox.Name == "txtBox_FFMPEGConsole";
+            textBox.Font = new Font(isConsoleTextBox ? "Segoe UI" : "Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            textBox.Margin = new Padding(6);
+            textBox.BorderStyle = BorderStyle.FixedSingle;
+
+            if (isConsoleTextBox)
+            {
+                textBox.ForeColor = Color.FromArgb(220, 220, 220);
+            }
+        }
+
+        private void StyleMenuStrip(MenuStrip menuStrip)
+        {
+            menuStrip.Font = new Font("Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            menuStrip.Padding = new Padding(menuStrip.Padding.Left, 4, menuStrip.Padding.Right, 4);
+            menuStrip.AutoSize = true;
+        }
+
+        private void StyleComboBox(System.Windows.Forms.ComboBox comboBox)
+        {
+            comboBox.Font = new Font("Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            comboBox.Margin = new Padding(6);
+        }
+
+        private void StyleLabel(Label label)
+        {
+            if (label.Font.Name == "Phosphor")
+            {
+                return;
+            }
+
+            label.Font = new Font("Roboto Medium", label.Font.Size, FontStyle.Regular, GraphicsUnit.Point);
+        }
+
+
+        private static bool IsIconButton(System.Windows.Forms.Button button)
+        {
+            return button.Font.Name.Contains("Phosphor", StringComparison.OrdinalIgnoreCase)
+                || button.Text.Length <= 2;
+        }
+
+        private static bool IsPrimaryActionButton(System.Windows.Forms.Button button)
+        {
+            string id = $"{button.Name} {button.Text}".ToLowerInvariant();
+            return id.Contains("prise")
+                || id.Contains("photo")
+                || id.Contains("focus")
+                || id.Contains("autofocus")
+                || id.Contains("capture");
         }
 
         private void btn_AutoCentrageAuto_Click(object sender, EventArgs e)

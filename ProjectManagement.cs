@@ -422,8 +422,10 @@ namespace Aerolithe
             AppendTextToConsoleNL("ResetSerieIncrementAndName");
             try
             {
-               
                 projet.Serie = 0;
+                projet.RotationSerieIncrement = 0;
+                projet.FocusSerieIncrement = 0;
+
                 DisplayPathsInUI();
                 SavePrefsSettings();
             }
