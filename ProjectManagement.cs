@@ -521,8 +521,8 @@ namespace Aerolithe
             toolTip.SetToolTip(textBox_FocusFreqSpeed, "Délai en millisecondes entre chaque focus.");
             toolTip.SetToolTip(lbl_ResBlurDetect, "Résolution de la netteté, généralement autour de 100.");
             toolTip.SetToolTip(lbl_BlockAmountBlurDetet, "Grosseur des carrés de détection, les valeurs étant 16,32,64 ou 128");
-            toolTip.SetToolTip(textBox_minDetect, "Seuil minimum de détections pour considérer une image d'avoir une partie nette.");
-            toolTip.SetToolTip(textBox_nbrPhotosFS, "Seuil maximal de photos prises lors d'un focus stack");
+            toolTip.SetToolTip(textBox_minDetect, "Seuil minimum de détections pour considérer qu'une image a une partie nette.");
+            toolTip.SetToolTip(textBox_nbrPhotosFS, "Nombre maximal de photos prises lors d'un focus stack");
             toolTip.SetToolTip(lbl_FreezeMask, "Freeze le masque ci-haut");
             toolTip.SetToolTip(btn_freezeMask, "Freeze le masque ci-haut");
             toolTip.SetToolTip(lbl_FocusStackEnable, "Active le Focus Stacking");
