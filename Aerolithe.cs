@@ -908,8 +908,10 @@ namespace Aerolithe
 
         #endregion
 
-        private void btn_PrisePhotoSeqTotaleMain_Click(object sender, EventArgs e)
+        private async void btn_PrisePhotoSeqTotaleMain_Click(object sender, EventArgs e)
         {
+            if (!await ConfirmNetworkBeforeSequenceAsync()) return;
+
             if (projet.FocusSerieIncrement != 0 || projet.RotationSerieIncrement != 0)
             {
                 DialogResult result = MessageBox.Show(
@@ -1017,8 +1019,10 @@ namespace Aerolithe
         }
 
 
-        private void btn_PrisePhotoSeqTotale_Click(object sender, EventArgs e)
+        private async void btn_PrisePhotoSeqTotale_Click(object sender, EventArgs e)
         {
+            if (!await ConfirmNetworkBeforeSequenceAsync()) return;
+
             bool startFromBeginning = projet.FocusSerieIncrement == 0 && projet.RotationSerieIncrement == 0;
 
             if (projet.FocusSerieIncrement != 0 || projet.RotationSerieIncrement != 0)
@@ -1056,8 +1060,10 @@ namespace Aerolithe
             });
         }
 
-        private void btn_PriseImagesMesuresTotale_Click(object sender, EventArgs e)
+        private async void btn_PriseImagesMesuresTotale_Click(object sender, EventArgs e)
         {
+            if (!await ConfirmNetworkBeforeSequenceAsync()) return;
+
             QueryProject();
             if (appSettings.ProjectPath == null) return;
 
@@ -1088,7 +1094,7 @@ namespace Aerolithe
         }
 
 
-        private void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
+        private async void btn_prisePhotoSeq1_Click(object sender, EventArgs e)
         {
             // Afficher une boîte de dialogue pour confirmer
             var result = MessageBox.Show(
@@ -1101,6 +1107,8 @@ namespace Aerolithe
             {
                 return; // Si l'utilisateur refuse, on sort de la méthode
             }
+
+            if (!await ConfirmNetworkBeforeSequenceAsync()) return;
 
             // Si l'utilisateur accepte, on continue
             //projet.RotationSerieIncrement = int.Parse(txtBox_seqPad1.Text);
@@ -1140,7 +1148,7 @@ namespace Aerolithe
             });
         }
 
-        private void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
+        private async void btn_prisePhotoSeq2_Click(object sender, EventArgs e)
         {
             // Afficher une boîte de dialogue pour confirmer
             var result = MessageBox.Show(
@@ -1153,6 +1161,9 @@ namespace Aerolithe
             {
                 return; // Si l'utilisateur refuse, on sort de la méthode
             }
+
+            if (!await ConfirmNetworkBeforeSequenceAsync()) return;
+
             //projet.RotationSerieIncrement = int.Parse(txtBox_seqPad2.Text);
 
             DisplayPathsInUI();
@@ -1190,7 +1201,7 @@ namespace Aerolithe
 
         }
 
-        private void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
+        private async void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
         {
             // Afficher une boîte de dialogue pour confirmer
             var result = MessageBox.Show(
@@ -1203,6 +1214,8 @@ namespace Aerolithe
             {
                 return; // Si l'utilisateur refuse, on sort de la méthode
             }
+
+            if (!await ConfirmNetworkBeforeSequenceAsync()) return;
 
             //projet.RotationSerieIncrement = int.Parse(txtBox_seqPad3.Text);
 
@@ -2359,7 +2372,7 @@ namespace Aerolithe
             // base.OnFormClosing(e);
         }
 
-        private void repriseDerniereSequence_Click(object sender, EventArgs e)
+        private async void repriseDerniereSequence_Click(object sender, EventArgs e)
         {
             _autoPingCts?.Cancel();
             if (projet.Serie < 0) projet.Serie = 0;
@@ -2375,6 +2388,8 @@ namespace Aerolithe
 
             if (result == DialogResult.Yes)
             {
+                if (!await ConfirmNetworkBeforeSequenceAsync()) return;
+
                 lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
                 lbl_ElevSerie.Text = angleIndexes[projet.Serie].ToString();
 

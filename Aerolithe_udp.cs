@@ -669,23 +669,62 @@ namespace Aerolithe
                 SetUi();
         }
 
-        // === Ping de tous les appareils + mise à jour des labels et du bouton ===
-        public async Task PingAll()
+        private async Task<Dictionary<string, bool>> PingAllDevicesAsync()
         {
-            // Lance les pings en parallèle
             var tasks = devices.Select(async dev =>
             {
                 bool ok = await PingHostAsync(dev.Address, timeoutMs: 1000); // garde le timeout similaire
                 UpdateStatusLabel(dev.Name, ok);
-                return ok; // On retourne l'état pour calculer l'état global
+                return new KeyValuePair<string, bool>(dev.Name, ok);
             }).ToArray();
 
-            // Attendre tous les résultats
-            bool[] results = await Task.WhenAll(tasks);
-            bool allConnected = results.All(r => r);
+            KeyValuePair<string, bool>[] results = await Task.WhenAll(tasks);
+            var statuses = results.ToDictionary(result => result.Key, result => result.Value, StringComparer.OrdinalIgnoreCase);
 
-            // Met à jour le bouton d'alerte
+            bool allConnected = statuses.Values.All(isConnected => isConnected);
             UpdateWarningButton(allConnected);
+
+            return statuses;
+        }
+
+        // === Ping de tous les appareils + mise à jour des labels et du bouton ===
+        public async Task<bool> PingAll()
+        {
+            Dictionary<string, bool> statuses = await PingAllDevicesAsync();
+            return statuses.Values.All(isConnected => isConnected);
+        }
+
+        private async Task<bool> ConfirmNetworkBeforeSequenceAsync()
+        {
+            Dictionary<string, bool> statuses = await PingAllDevicesAsync();
+            if (statuses.Values.All(isConnected => isConnected))
+            {
+                return true;
+            }
+
+            string disconnectedDevices = string.Join(
+                Environment.NewLine,
+                statuses
+                    .Where(status => !status.Value)
+                    .Select(status => $"- {status.Key}"));
+
+            string message =
+                "Le réseau Aérolithe ne semble pas connecté ou certains appareils ne répondent pas au ping." +
+                Environment.NewLine + Environment.NewLine +
+                "Appareils non connectés:" +
+                Environment.NewLine +
+                disconnectedDevices +
+                Environment.NewLine + Environment.NewLine +
+                "Voulez-vous continuer quand même?";
+
+            DialogResult result = MessageBox.Show(
+                this,
+                message,
+                "Réseau non connecté",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.None);
+
+            return result == DialogResult.Yes;
         }
 
         // === Boucle périodique (async) pour pinger toutes les X secondes ===

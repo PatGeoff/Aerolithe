@@ -90,7 +90,7 @@ namespace Aerolithe
 
                 using var bin = new Mat();
                 if (threshold < 0)
-                    CvInvoke.Threshold(norm, bin, 0, 255, ThresholdType.BinaryInv | ThresholdType.Otsu);
+                    CvInvoke.Threshold(norm, bin, 0, 255, (invert ? ThresholdType.BinaryInv : ThresholdType.Binary) | ThresholdType.Otsu);
                 else
                 {
                     threshold = Math.Max(0, Math.Min(255, threshold));
@@ -214,7 +214,7 @@ namespace Aerolithe
                 using var bin = new Mat();
                 if (threshold < 0)
                 {
-                    CvInvoke.Threshold(norm, bin, 0, 255, ThresholdType.BinaryInv | ThresholdType.Otsu);
+                    CvInvoke.Threshold(norm, bin, 0, 255, (invert ? ThresholdType.BinaryInv : ThresholdType.Binary) | ThresholdType.Otsu);
                 }
                 else
                 {

@@ -242,7 +242,17 @@ namespace Aerolithe
 
 
             // Clone du masque Live
-            Mat uiClone = maskMatLive.Clone();
+            Mat uiClone;
+            lock (_maskLock)
+            {
+                if (maskMatLive == null || maskMatLive.IsEmpty)
+                {
+                    AppendTextToConsoleNL("AutomaticFocusRoutine: masque live nul ou vide.");
+                    return;
+                }
+
+                uiClone = maskMatLive.Clone();
+            }
 
             // ===============================
             // 1) TEST DU MASQUE NOIR
@@ -261,83 +271,113 @@ namespace Aerolithe
                 
                 bool foundValidMask = false;
 
-                for (int t = 60; t >= 0; t -= 1)
+                for (int t = 60; t >= 0 && !foundValidMask; t -= 1)
                 {
                     Invoke(new Action(() =>
                     {
                         hScrollBar_liveMaskThresh.Value = t;
                         lbl_maskAmount.Text = t.ToString();
                     }));
-                    // Première acquisition du masque
-                    Mat testMask = await BrightnessMaskFromBytesMat(
-                        imageView.JpegBuffer,
-                        t,
-                        invert: false
-                    );
 
-                    // Si déjà noir → on passe au t suivant
-                    if (IsMatAllBlack(testMask))
+                    foreach (bool invert in new[] { false, true })
                     {
-                        testMask.Dispose();
-                        continue;
-                    }
-
-                    // Sinon → le masque est non-noir → on surveille 1 seconde
-                    bool stayedValidFor1s = true;
-                    var start = DateTime.Now;
-
-                    while ((DateTime.Now - start).TotalMilliseconds < 700)
-                    {
-                        await Task.Delay(50); // petite attente pour éviter trop de CPU
-
-                        Mat testMask2 = await BrightnessMaskFromBytesMat(
+                        // Première acquisition du masque
+                        Mat testMask = await BrightnessMaskFromBytesMat(
                             imageView.JpegBuffer,
                             t,
-                            invert: false
+                            invert
                         );
 
-                        // Si ça redevient noir avant la fin → t ne convient pas
-                        if (IsMatAllBlack(testMask2))
+                        // Si déjà noir → on passe au mode/seuil suivant
+                        if (IsMatAllBlack(testMask))
                         {
-                            stayedValidFor1s = false;
-                            testMask2.Dispose();
-                            break;
+                            testMask.Dispose();
+                            continue;
                         }
 
-                        testMask2.Dispose();
-                    }
+                        // Sinon → le masque est non-noir → on surveille 1 seconde
+                        bool stayedValidFor1s = true;
+                        var start = DateTime.Now;
 
-                    testMask.Dispose();
+                        while ((DateTime.Now - start).TotalMilliseconds < 700)
+                        {
+                            await Task.Delay(50); // petite attente pour éviter trop de CPU
 
-                    if (stayedValidFor1s)
-                    {
-                        // Valeur validée : stable pendant 1 seconde
-                        Mat finalMask = await BrightnessMaskFromBytesMat(
-                            imageView.JpegBuffer,
-                            t,
-                            invert: false
-                        );
+                            Mat testMask2 = await BrightnessMaskFromBytesMat(
+                                imageView.JpegBuffer,
+                                t,
+                                invert
+                            );
 
-                        uiClone?.Dispose();
-                        uiClone = finalMask.Clone();
-                        finalMask.Dispose();
+                            // Si ça redevient noir avant la fin → t ne convient pas
+                            if (IsMatAllBlack(testMask2))
+                            {
+                                stayedValidFor1s = false;
+                                testMask2.Dispose();
+                                break;
+                            }
 
-                        foundValidMask = true;
-                        break;
+                            testMask2.Dispose();
+                        }
+
+                        testMask.Dispose();
+
+                        if (stayedValidFor1s)
+                        {
+                            // Valeur validée : stable pendant 1 seconde
+                            Mat finalMask = await BrightnessMaskFromBytesMat(
+                                imageView.JpegBuffer,
+                                t,
+                                invert
+                            );
+
+                            uiClone?.Dispose();
+                            uiClone = finalMask.Clone();
+                            finalMask.Dispose();
+
+                            foundValidMask = true;
+                            break;
+                        }
                     }
                 }
 
                 // Rien trouvé
                 if (!foundValidMask)
                 {
+                    foreach (bool invert in new[] { false, true })
+                    {
+                        Mat autoMask = await BrightnessMaskFromBytesMat(
+                            imageView.JpegBuffer,
+                            -1,
+                            invert
+                        );
+
+                        if (!IsMatAllBlack(autoMask))
+                        {
+                            uiClone?.Dispose();
+                            uiClone = autoMask.Clone();
+                            foundValidMask = true;
+                        }
+
+                        autoMask.Dispose();
+
+                        if (foundValidMask)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                if (!foundValidMask)
+                {
                     Invoke(new Action(() =>
                     {
                         hScrollBar_liveMaskThresh.Value = originalThresh;
-                    }));                    
+                    }));
 
                     MessageBox.Show(
                         this,
-                        "Aucune valeur de seuil n’a tenu 1 seconde sans redevenir noire.\n" +
+                        "Aucune valeur de seuil n’a donné un masque stable et utilisable.\n" +
                         "Vérifiez l’éclairage, la mise au point ou la luminosité.",
                         "Erreur - Masque impossible",
                         MessageBoxButtons.OK,
@@ -348,9 +388,12 @@ namespace Aerolithe
                 }
 
                 // Succès
-                var oldMask = maskMatLive;
-                maskMatLive = uiClone.Clone();
-                oldMask?.Dispose();
+                lock (_maskLock)
+                {
+                    var oldMask = maskMatLive;
+                    maskMatLive = uiClone.Clone();
+                    oldMask?.Dispose();
+                }
                 maskFreeze = true;
                 Invoke(new Action(() =>
                 {
@@ -360,9 +403,12 @@ namespace Aerolithe
 
             else
             {
-                var oldMask = maskMatLive;
-                maskMatLive = uiClone.Clone();
-                oldMask?.Dispose();
+                lock (_maskLock)
+                {
+                    var oldMask = maskMatLive;
+                    maskMatLive = uiClone.Clone();
+                    oldMask?.Dispose();
+                }
                 maskFreeze = true;
                 Invoke(new Action(() =>
                 {
@@ -372,7 +418,41 @@ namespace Aerolithe
 
 
             // ====== SAUVEGARDE DU MASQUE ======
-            await SaveMaskAsPngTransparentBlack(maskMatLive, projet.GetMaskFullImagePath());
+            Mat maskToSave;
+            lock (_maskLock)
+            {
+                if (maskMatLive == null || maskMatLive.IsEmpty)
+                {
+                    AppendTextToConsoleNL("AutomaticFocusRoutine: masque live nul ou vide avant sauvegarde.");
+                    return;
+                }
+
+                maskToSave = maskMatLive.Clone();
+            }
+
+            if (IsMatAllBlack(maskToSave))
+            {
+                maskToSave.Dispose();
+                maskFreeze = false;
+                Invoke(new Action(() =>
+                {
+                    btn_freezeMask.Text = "";
+                }));
+
+                MessageBox.Show(
+                    this,
+                    "Le masque calculé est noir ou presque noir. Il ne sera pas sauvegardé.\n" +
+                    "Réessayez après avoir stabilisé l'éclairage ou ajusté le seuil.",
+                    "Erreur - Masque invalide",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+
+                return;
+            }
+
+            await SaveMaskAsPngTransparentBlack(maskToSave, projet.GetMaskFullImagePath());
+            maskToSave.Dispose();
 
                    
 

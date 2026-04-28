@@ -41,7 +41,7 @@ namespace Aerolithe
         public bool maskFreeze = false;
         public bool liveViewStatus = false;
 
-        private Mat? maskMatLive;       // remplace maskBitmapLive
+        private Mat maskMatLive;       // remplace maskBitmapLive
         private readonly object _maskLock = new object(); // si tu veux un lock simple
 
         // Taille du rendu histogramme (pixels)
@@ -208,17 +208,24 @@ namespace Aerolithe
                         }
 
                         // 3) Masque luminosité (pipeline Mat)
-                        Mat? maskMatForThisFrame = null;
+                        Mat maskMatForThisFrame = null;
                         try
                         {
                             if (!maskFreeze || maskMatLive == null)
+                            {
                                 maskMatForThisFrame = await BrightnessMaskFromBytesMat(
                                     imageView.JpegBuffer,
                                     hScrollBar_liveMaskThresh.Value,
                                     invert: false
                                 );
+                            }
                             else
-                                maskMatForThisFrame = maskMatLive; // réutilisation si freeze
+                            {
+                                lock (_maskLock)
+                                {
+                                    maskMatForThisFrame = maskMatLive?.Clone();
+                                }
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -229,6 +236,8 @@ namespace Aerolithe
                         // 3b) Si pas de masque -> Nettoyage de l'UI du masque et on saute
                         if (maskMatForThisFrame == null || maskMatForThisFrame.IsEmpty)
                         {
+                            maskMatForThisFrame?.Dispose();
+                            maskMatForThisFrame = null;
                             this.BeginInvoke(new Action(() =>
                             {
                                 var oldUi = picBox_liveMaskLum.Image;
@@ -238,27 +247,35 @@ namespace Aerolithe
                             goto AfterMaskWork;
                         }
 
-                        // 4) Remplacer le masque global (référence) + afficher un clone Bitmap sur l'UI
-                        var oldMat = maskMatLive;
-                        maskMatLive = maskMatForThisFrame;
+                        bool maskIsAllBlack = IsMatAllBlack(maskMatForThisFrame);
+
+                        // 4) Remplacer le masque global avec un clone indépendant, puis afficher un Bitmap indépendant.
+                        if (!maskFreeze && !maskIsAllBlack)
+                        {
+                            lock (_maskLock)
+                            {
+                                var oldMat = maskMatLive;
+                                maskMatLive = maskMatForThisFrame.Clone();
+                                oldMat?.Dispose();
+                            }
+                        }
+
                         try
                         {
+                            using var bmpTemp = maskMatForThisFrame.ToBitmap();
+                            var uiClone = (Bitmap)bmpTemp.Clone();
+
                             this.BeginInvoke(new Action(() =>
                             {
-                                using var bmpTemp = maskMatForThisFrame.ToBitmap();    // conversion GDI+ confinée à l'UI
-                                var uiClone = (Bitmap)bmpTemp.Clone();                  // donner un clone au PictureBox
-
                                 var prevUi = picBox_liveMaskLum.Image;
                                 picBox_liveMaskLum.Image = uiClone;
                                 prevUi?.Dispose();
-
-                                // Libérer l'ancien Mat s'il n'est plus utilisé
-                                if (!ReferenceEquals(oldMat, maskMatForThisFrame))
-                                    oldMat?.Dispose();
                             }));
                         }
                         catch (Exception)
                         {
+                            maskMatForThisFrame.Dispose();
+                            maskMatForThisFrame = null;
                             AppendTextToConsoleNL($"Erreur LiveViewTimer_Tick :: this.BeginInvoke(new Action(() => using var bmpTemp ...");
                         }
                        
@@ -267,9 +284,17 @@ namespace Aerolithe
                         ;
 
                         // 5) Centrage en tâche de fond — on clone le Mat pour éviter Dispose concurrent
-                        if (maskMatLive != null && !maskMatLive.IsEmpty && projet.AutoCentrage)
+                        Mat localMaskMat = null;
+                        lock (_maskLock)
                         {
-                            var localMaskMat = maskMatLive.Clone();
+                            if (maskMatLive != null && !maskMatLive.IsEmpty && projet.AutoCentrage)
+                            {
+                                localMaskMat = maskMatLive.Clone();
+                            }
+                        }
+
+                        if (localMaskMat != null)
+                        {
                             _ = Task.Run(async () =>
                             {
                                 try
@@ -367,6 +392,8 @@ namespace Aerolithe
                             picBox_LiveView_Main.Image = (Bitmap)bgBmp.Clone();
                             prevMain?.Dispose();
                         }
+
+                        maskMatForThisFrame?.Dispose();
                     } // end using background
                 }
                 else
@@ -411,7 +438,16 @@ namespace Aerolithe
             // Certaines versions attendent 'ref' sur les scalaires, et des tableaux pour les localisations :
             CvInvoke.MinMaxIdx(gray, out minVal, out maxVal, minLoc, maxLoc, null);
 
-            return maxVal <= 0.0;
+            if (maxVal <= 0.0) return true;
+
+            using var binary = new Mat();
+            CvInvoke.Threshold(gray, binary, 1, 255, ThresholdType.Binary);
+
+            int whitePixels = CvInvoke.CountNonZero(binary);
+            int totalPixels = Math.Max(1, gray.Rows * gray.Cols);
+            double whiteRatio = whitePixels / (double)totalPixels;
+
+            return whiteRatio < 0.003;
         }
 
 

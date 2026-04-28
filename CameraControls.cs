@@ -286,9 +286,11 @@ namespace Aerolithe
 
                 Bitmap finalBitmap = null;
 
+                int maskThreshold = GetCurrentMaskThreshold();
+
                 try
                 {
-                    finalBitmap = await Task.Run(() =>
+                    finalBitmap = await Task.Run(async () =>
                     {
                         using (var memoryStream = new MemoryStream(image.Buffer))
                         using (var originalBitmap = new Bitmap(memoryStream))
@@ -297,8 +299,25 @@ namespace Aerolithe
                             projet.PictureHeight = originalBitmap.Height;
                             projet.Save(appSettings.ProjectPath); // -- <
 
-
-                            var processedBitmap = projet.ApplyMask ? ApplyMask(originalBitmap) : new Bitmap(originalBitmap);
+                            Bitmap processedBitmap;
+                            Mat registeredMask = null;
+                            try
+                            {
+                                if (projet.ApplyMask && !projet.FocusStackEnabled)
+                                {
+                                    registeredMask = await BuildRegisteredMaskFromCapturedJpegAsync(image.Buffer, maskThreshold);
+                                    processedBitmap = ApplyMask(originalBitmap, registeredMask);
+                                    await SaveMaskAsPngTransparentBlack(registeredMask, projet.GetMaskFullImagePath());
+                                }
+                                else
+                                {
+                                    processedBitmap = projet.ApplyMask ? ApplyMask(originalBitmap) : new Bitmap(originalBitmap);
+                                }
+                            }
+                            finally
+                            {
+                                registeredMask?.Dispose();
+                            }
 
                             // faire un projet.SavePictures  ???
                             // Sauvegarde si activée                          
@@ -581,16 +600,74 @@ namespace Aerolithe
 
             return destImage;
         }
+        private int GetCurrentMaskThreshold()
+        {
+            try
+            {
+                if (hScrollBar_liveMaskThresh.InvokeRequired)
+                {
+                    return (int)hScrollBar_liveMaskThresh.Invoke(new Func<int>(() => hScrollBar_liveMaskThresh.Value));
+                }
+
+                return hScrollBar_liveMaskThresh.Value;
+            }
+            catch
+            {
+                return appSettings.ThreshVal;
+            }
+        }
+
+        private async Task<Mat> BuildRegisteredMaskFromCapturedJpegAsync(byte[] jpegBuffer, int threshold)
+        {
+            foreach (var candidate in new[]
+            {
+                (Threshold: threshold, Invert: false),
+                (Threshold: threshold, Invert: true),
+                (Threshold: -1, Invert: false),
+                (Threshold: -1, Invert: true)
+            })
+            {
+                Mat mask = await BrightnessMaskFromBytesMat(jpegBuffer, candidate.Threshold, candidate.Invert);
+                if (!IsMatAllBlack(mask))
+                {
+                    return mask;
+                }
+
+                mask.Dispose();
+            }
+
+            throw new InvalidOperationException("Impossible de générer un masque enregistré avec l'image capturée.");
+        }
+
         private Bitmap ApplyMask(Bitmap originalBitmap)
         {
-            var sourceImage = originalBitmap.ToImage<Bgr, byte>();
-            //var maskGray = maskBitmapLive.ToImage<Gray, byte>();
-            var maskGray = maskMatLive.ToImage<Gray, byte>();
-            var resizedMask = maskGray.Resize(projet.PictureWidth, projet.PictureHeight, Emgu.CV.CvEnum.Inter.Linear);
+            Mat maskClone = null;
+            try
+            {
+                lock (_maskLock)
+                {
+                    if (maskMatLive == null || maskMatLive.IsEmpty)
+                    {
+                        throw new InvalidOperationException("Masque live nul ou vide.");
+                    }
 
-            //var invertedMask = resizedMask.Not();
-            var invertedMask = resizedMask;
-            var maskBgr = invertedMask.Convert<Bgr, byte>();
+                    maskClone = maskMatLive.Clone();
+                }
+
+                return ApplyMask(originalBitmap, maskClone);
+            }
+            finally
+            {
+                maskClone?.Dispose();
+            }
+        }
+
+        private Bitmap ApplyMask(Bitmap originalBitmap, Mat maskMat)
+        {
+            var sourceImage = originalBitmap.ToImage<Bgr, byte>();
+            var maskGray = maskMat.ToImage<Gray, byte>();
+            var resizedMask = maskGray.Resize(projet.PictureWidth, projet.PictureHeight, Emgu.CV.CvEnum.Inter.Linear);
+            var maskBgr = resizedMask.Convert<Bgr, byte>();
 
             sourceImage._And(maskBgr);
             var finalBitmap = sourceImage.ToBitmap();
@@ -598,7 +675,6 @@ namespace Aerolithe
             // Libération
             maskGray.Dispose();
             resizedMask.Dispose();
-            invertedMask.Dispose();
             maskBgr.Dispose();
             sourceImage.Dispose();
 

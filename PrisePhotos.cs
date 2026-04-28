@@ -25,7 +25,7 @@ namespace Aerolithe
         private int actuatorDelay2 = 9000; // secondes
         public int delayTimePhotoShoot = 1000;
         private int _Serie = 0;
-        private int[] angleIndexes = [5, 25, 45];
+        private int[] angleIndexes = new int[] { 5, 25, 45 };
 
         private Stopwatch _stopwatch = new Stopwatch();
         private CancellationTokenSource _cts;
@@ -132,7 +132,12 @@ namespace Aerolithe
         {
             int serieAffichee = projet.Serie + 1;
             int angle = projet.Serie >= 0 && projet.Serie < angleIndexes.Length ? angleIndexes[projet.Serie] : -1;
-            int rotationAffichee = projet.RotationSerieIncrement + 1;
+            int[] paddingNbr = { appSettings.Padding5Deg, appSettings.Padding25Deg, appSettings.Padding45Deg };
+            int rotationAffichee = projet.RotationSerieIncrement;
+            if (rotationAffichee <= 0 && projet.Serie >= 0 && projet.Serie < paddingNbr.Length)
+            {
+                rotationAffichee = paddingNbr[projet.Serie];
+            }
 
             string message = $"Une erreur est survenue à la série {serieAffichee} ({angle}°), rotation {rotationAffichee}." +
                 $"{Environment.NewLine}{Environment.NewLine}Message d'erreur: {ex.Message}";
@@ -370,7 +375,7 @@ namespace Aerolithe
             await Task.Delay(800, cancellationToken);
 
             int[] paddingNbr = { appSettings.Padding5Deg, appSettings.Padding25Deg, appSettings.Padding45Deg };
-            serieId = [appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg];
+            serieId = new int[] { appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg };
 
 
             int divider = 0;
@@ -397,12 +402,16 @@ namespace Aerolithe
 
             try
             {
-                // de 0 à 13 si on a 14 images dans serieId[2] (par exemple) 
-                for (int i = projet.RotationSerieIncrement; i <= serieId[projet.Serie] - 1; i++)
+                int paddingDepart = paddingNbr[projet.Serie];
+                int localStartIndex = projet.RotationSerieIncrement > paddingDepart
+                    ? projet.RotationSerieIncrement - paddingDepart
+                    : 0;
+
+                // i est l'index physique local de rotation. RotationSerieIncrement reste le numéro global pour nommer/sauver.
+                for (int i = localStartIndex; i <= serieId[projet.Serie] - 1; i++)
                 {
 
-                    // On a commencé avec i = projet.RotationSerieIncrement mais à chaque tour i +=1 donc on devra sauvegarder i dans projet.RotationSerieIncrement
-                    projet.RotationSerieIncrement = i;
+                    projet.RotationSerieIncrement = paddingDepart + i;
                     SavePrefsSettings();
 
 
