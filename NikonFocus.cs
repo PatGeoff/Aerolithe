@@ -121,6 +121,11 @@ namespace Aerolithe
 
         private Task DisplayBlurGraph(Dictionary<int, (int steps, int blurBlocks)> blurDataDict)
         {
+            if (_stopRequested || blurDataDict.Count == 0)
+            {
+                return Task.CompletedTask;
+            }
+
             if (InvokeRequired)
             {
                 Invoke(new Action(() => DisplayBlurGraph(blurDataDict)));
@@ -150,6 +155,11 @@ namespace Aerolithe
             var blurDataList = blurDataDict.ToList();
             int[] xs = blurDataList.Select(pair => pair.Value.steps).ToArray();
             int[] ys = blurDataList.Select(pair => pair.Value.blurBlocks).ToArray();
+
+            if (_stopRequested || xs.Length == 0 || ys.Length == 0)
+            {
+                return Task.CompletedTask;
+            }
 
             formsPlot.Plot.Add.Scatter(xs, ys);
 
@@ -338,6 +348,9 @@ namespace Aerolithe
                 }
 
                 // Succès
+                var oldMask = maskMatLive;
+                maskMatLive = uiClone.Clone();
+                oldMask?.Dispose();
                 maskFreeze = true;
                 Invoke(new Action(() =>
                 {
@@ -347,6 +360,9 @@ namespace Aerolithe
 
             else
             {
+                var oldMask = maskMatLive;
+                maskMatLive = uiClone.Clone();
+                oldMask?.Dispose();
                 maskFreeze = true;
                 Invoke(new Action(() =>
                 {
@@ -809,8 +825,9 @@ namespace Aerolithe
                     }
                     catch (Exception e)
                     {
-                        MessageBox.Show(e.Message);
                         AppendTextToConsoleNL(e.Message);
+                        _stopRequested = true;
+                        throw;
                     }
                     Debug.WriteLine("itération " + i.ToString() + " blurredBLocks: " + blurredBlocks.ToString());
                 }

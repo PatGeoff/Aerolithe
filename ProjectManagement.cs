@@ -186,13 +186,16 @@ namespace Aerolithe
 
             try
             {
-                projet.Load(appSettings.ProjectPath);
+                projet = projet.Load(appSettings.ProjectPath);
                 stepSize = projet.StepSize;
                 hScrollBar_driveStep.Value = stepSize;
                 txtBox_DriveStep.Text = stepSize.ToString();
                 maxNbrPicturesAllowed = projet.MaxPicturesAllowed;
                 if (maxNbrPicturesAllowed == 0) maxNbrPicturesAllowed = 15;
                 textBox_nbrPhotosFS.Text = maxNbrPicturesAllowed.ToString();
+                txtBox_mesurements5deg.Text = projet.Mesurements5deg.ToString();
+                txtBox_mesurements25deg.Text = projet.Mesurements25deg.ToString();
+                txtBox_mesurements45deg.Text = projet.Mesurements45deg.ToString();
             }
             catch (Exception ex)
             {
@@ -485,6 +488,10 @@ namespace Aerolithe
                     MessageBox.Show($"Erreur lors de la suppression des fichiers : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+            if (result == DialogResult.No)
+            {
+                flowLayoutPanel1.Controls.Clear();
+            }
         }
 
         public void DeleteAllPicturesInFolderWith()
@@ -705,6 +712,16 @@ namespace Aerolithe
 
         public bool SaveImageForMesurements { get; set; } = true;
 
+        public int Mesurements5deg { get; set; } = 6;
+        public int Mesurements25deg { get; set; } = 6;
+        public int Mesurements45deg { get; set; } = 0;
+
+        [JsonIgnore]
+        public int? ForcedMesurementActuatorAngle { get; set; }
+
+        [JsonIgnore]
+        public int? ForcedMesurementIndex { get; set; }
+
         public bool LiveViewEnabled { get; set; } = true;
 
         public bool AutoCentrage { get; set; } = true;
@@ -728,6 +745,11 @@ namespace Aerolithe
 
         public string GetMesurementImageNameFull(){
             string cote = (Cote == 0) ? "A" : "B";
+            if (ForcedMesurementActuatorAngle.HasValue && ForcedMesurementIndex.HasValue)
+            {
+                return $"{ImageNameBase}_{cote}_M_{ForcedMesurementActuatorAngle.Value:D2}deg_{ForcedMesurementIndex.Value:D2}.jpg";
+            }
+
             return $"{ImageNameBase}_{cote}_M_{RotationSerieIncrement:D2}.jpg";
         }
 

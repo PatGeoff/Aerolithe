@@ -68,6 +68,8 @@ namespace Aerolithe
             catch (Exception ex)
             {
                 AppendTextToConsoleNL($"Erreur dans EssayerPrendrePhotoAsync :: takePictureAsync avec {ex.Message}");
+                _stopRequested = true;
+                throw;
             }
             
             
@@ -118,8 +120,62 @@ namespace Aerolithe
                 }
                 catch (Exception ex)
                 {
+                    _stopRequested = true;
                     AppendTextToConsoleNL($"Erreur à * SequencePrisePhotoTotale:  {ex.Message}");
+                    ShowSequenceErrorMessage(ex);
+                    return;
                 }
+            }
+        }
+
+        private void ShowSequenceErrorMessage(Exception ex)
+        {
+            int serieAffichee = projet.Serie + 1;
+            int angle = projet.Serie >= 0 && projet.Serie < angleIndexes.Length ? angleIndexes[projet.Serie] : -1;
+            int rotationAffichee = projet.RotationSerieIncrement + 1;
+
+            string message = $"Une erreur est survenue à la série {serieAffichee} ({angle}°), rotation {rotationAffichee}." +
+                $"{Environment.NewLine}{Environment.NewLine}Message d'erreur: {ex.Message}";
+
+            void showMessage() => MessageBox.Show(
+                this,
+                message,
+                "Erreur pendant la séquence",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+
+            if (InvokeRequired)
+            {
+                Invoke(new Action(showMessage));
+            }
+            else
+            {
+                showMessage();
+            }
+        }
+
+        private void ShowMeasurementSequenceErrorMessage(Exception ex)
+        {
+            string angle = projet.ForcedMesurementActuatorAngle?.ToString() ?? "?";
+            string index = projet.ForcedMesurementIndex.HasValue ? (projet.ForcedMesurementIndex.Value + 1).ToString() : "?";
+
+            string message = $"Une erreur est survenue pendant la séquence d'images de mesure à {angle}°, image {index}." +
+                $"{Environment.NewLine}{Environment.NewLine}Message d'erreur: {ex.Message}";
+
+            void showMessage() => MessageBox.Show(
+                this,
+                message,
+                "Erreur pendant les images de mesure",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+
+            if (InvokeRequired)
+            {
+                Invoke(new Action(showMessage));
+            }
+            else
+            {
+                showMessage();
             }
         }
 
@@ -146,6 +202,117 @@ namespace Aerolithe
             if (_stopRequested) return;
 
             AppendTextToConsoleNL($"Séquence {+1} terminée");
+        }
+
+        private async Task SequenceTotaleImageMesuresAsync(CancellationToken cancellationToken)
+        {
+            AppendTextToConsoleNL("SequenceTotaleImageMesuresAsync");
+            _stopwatch.Start();
+            _ = UpdateTimerAsync(cancellationToken);
+
+            try
+            {
+                await PriseImagesMesurePourActuateurAsync(5, projet.Mesurements5deg, cancellationToken);
+                if (_stopRequested) return;
+
+                await PriseImagesMesurePourActuateurAsync(25, projet.Mesurements25deg, cancellationToken);
+                if (_stopRequested) return;
+
+                await PriseImagesMesurePourActuateurAsync(45, projet.Mesurements45deg, cancellationToken);
+            }
+            finally
+            {
+                projet.ForcedMesurementActuatorAngle = null;
+                projet.ForcedMesurementIndex = null;
+            }
+        }
+
+        private async Task PriseImagesMesurePourActuateurAsync(int actuatorTarget, int imageCount, CancellationToken cancellationToken)
+        {
+            if (imageCount <= 0)
+            {
+                AppendTextToConsoleNL($"Séquence mesure {actuatorTarget}° ignorée: nombre d'images invalide ({imageCount}).");
+                return;
+            }
+
+            AppendTextToConsoleNL($"Images de mesure à {actuatorTarget}°: {imageCount} images");
+            await UdpSendActuatorMessageAsync($"actuator {actuatorTarget}");
+            if (_stopRequested) return;
+
+            await WaitForActuator(actuatorTarget);
+            if (_stopRequested) return;
+
+            await Task.Delay(1000, cancellationToken);
+
+            for (int i = 0; i < imageCount; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_stopRequested) return;
+
+                int turntableTarget = (int)Math.Round(i * (4096.0 / imageCount));
+                ttTargetPosition = turntableTarget;
+                projet.RotationSerieIncrement = i;
+                projet.ForcedMesurementActuatorAngle = actuatorTarget;
+                projet.ForcedMesurementIndex = i;
+
+                AppendTextToConsoleNL($"Image de mesure {actuatorTarget}° {(i + 1)}/{imageCount} - table {turntableTarget}/4096");
+                UpdateSequenceStatusLabels(actuatorTarget, i + 1, imageCount);
+
+                await UdpSendTurnTableMessageAsync($"turntable,{turntableTarget},{turntableSpeed}");
+                if (_stopRequested) return;
+
+                await WaitForTurntablePositionAsync(turntableTarget);
+                if (_stopRequested) return;
+
+                if (projet.AutoCentrage)
+                {
+                    try
+                    {
+                        await nikonDoFocus();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PriseImagesMesurePourActuateurAsync :: NikonDoFocus: {ex.Message}");
+                        _stopRequested = true;
+                        throw;
+                    }
+
+                    calculerCentre = true;
+                    await Task.Delay(200, cancellationToken);
+
+                    try
+                    {
+                        await RoutineAutoCentrage();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur PriseImagesMesurePourActuateurAsync :: RoutineAutoCentrage: {ex.Message}");
+                        _stopRequested = true;
+                        throw;
+                    }
+
+                    if (_stopRequested) return;
+                }
+
+                try
+                {
+                    var measurementMiniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    miniaturesTcs = measurementMiniaturesTcs;
+                    await SaveMesurementImage();
+                    await measurementMiniaturesTcs.Task;
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL($"Erreur PriseImagesMesurePourActuateurAsync :: SaveMesurementImage: {ex.Message}");
+                    _stopRequested = true;
+                    throw;
+                }
+                finally
+                {
+                    projet.ForcedMesurementActuatorAngle = null;
+                    projet.ForcedMesurementIndex = null;
+                }
+            }
         }
 
         private void UpdateSequenceStatusLabels(int angle, int currentRotation, int totalRotations)
@@ -194,12 +361,13 @@ namespace Aerolithe
 
 
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
-            await Task.Delay(800);
+            await Task.Delay(800, cancellationToken);
 
             await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
             cancellationToken.ThrowIfCancellationRequested();
             await WaitForTurntablePositionAsync(0);
-            await Task.Delay(800);
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Delay(800, cancellationToken);
 
             int[] paddingNbr = { appSettings.Padding5Deg, appSettings.Padding25Deg, appSettings.Padding45Deg };
             serieId = [appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg];
@@ -214,6 +382,7 @@ namespace Aerolithe
             catch (Exception e)
             {
                 AppendTextToConsoleNL(e.Message);
+                throw new InvalidOperationException("Nombre d'images invalide pour la série courante.", e);
                 //AppendTextToConsoleNL("S'assurer qu'il y a bien un nombre d'image valide aux séquences 1, 2 et 3 dans l'onglet Caméra/Automation");
             }
 
@@ -259,6 +428,7 @@ namespace Aerolithe
                     if (_stopRequested) return;
 
                     await WaitForTurntablePositionAsync(degresActuelTableTournante);
+                    cancellationToken.ThrowIfCancellationRequested();
                    
 
                     try
@@ -268,11 +438,13 @@ namespace Aerolithe
                     catch (Exception ex)
                     {
                         AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: NikonDoFocus: {ex.Message}");
+                        _stopRequested = true;
+                        throw;
                     }
 
 
                     calculerCentre = true;
-                    await Task.Delay(200); // délai avant la routine ?? 
+                    await Task.Delay(200, cancellationToken); // délai avant la routine ?? 
 
                     try
                     {
@@ -281,6 +453,8 @@ namespace Aerolithe
                     catch (Exception ex)
                     {
                         AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: RoutineAutoCentrage: {ex.Message}");
+                        _stopRequested = true;
+                        throw;
                     }
 
                     // Autocentrage terminé.
@@ -288,6 +462,7 @@ namespace Aerolithe
                     // Actuateur en position
 
                     if (_stopRequested) return;
+                    cancellationToken.ThrowIfCancellationRequested();
                     AppendTextToConsoleNL($"photo {(i + 1)}/{serieId[projet.Serie]} à {degresActuelTableTournante}°");
                     UpdateSequenceStatusLabels(angleIndexes[projet.Serie], i + 1, serieId[projet.Serie]);
 
@@ -309,6 +484,7 @@ namespace Aerolithe
                         {
 
                             AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: SaveMesurementImage:  {ex.Message}");
+                            throw;
                         }
 
                     }
@@ -340,6 +516,7 @@ namespace Aerolithe
                         {
                             //MessageBox.Show(e.Message);
                             AppendTextToConsoleNL("Erreur: " + e.Message);
+                            throw;
 
                         }
                     }
@@ -348,10 +525,11 @@ namespace Aerolithe
                        
                            AppendTextToConsoleNL("Prise de photo sans focus stack");
                            await CaptureImageAndWaitForMiniatureAsync();
+                           cancellationToken.ThrowIfCancellationRequested();
                            AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: miniature reçue] thread # {Thread.CurrentThread.ManagedThreadId}]  Thread du UI? {(!this.InvokeRequired).ToString()}");
                            projet.FocusSerieIncrement += 1;
                            SavePrefsSettings();
-                           await Task.Delay(300);
+                           await Task.Delay(300, cancellationToken);
 
 
 
@@ -389,6 +567,7 @@ namespace Aerolithe
                         catch (Exception ex)
                         {
                             AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: IncrementImgSeq: {ex.Message}");
+                            throw;
                         }
                     }
 
@@ -397,6 +576,7 @@ namespace Aerolithe
             catch (Exception ex)
             {
                 AppendTextToConsoleNL($" Erreur dans la séquence : {ex.Message}");
+                throw;
             }
             if (serieId[projet.Serie] > 0)
             {

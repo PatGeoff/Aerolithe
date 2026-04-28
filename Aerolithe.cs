@@ -108,7 +108,6 @@ namespace Aerolithe
 
             InitializeComponent();
             SetMainWindowTitle();
-            ApplyStandardizedUiLook();
 
 
             stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
@@ -177,9 +176,13 @@ namespace Aerolithe
                         txtBox_nbrImg5deg.Text = appSettings.NbrImg5Deg.ToString();
                         txtBox_nbrImg25deg.Text = appSettings.NbrImg25Deg.ToString();
                         txtBox_nbrImg45deg.Text = appSettings.NbrImg45Deg.ToString();
+                        txtBox_mesurements5deg.Text = projet.Mesurements5deg.ToString();
+                        txtBox_mesurements25deg.Text = projet.Mesurements25deg.ToString();
+                        txtBox_mesurements45deg.Text = projet.Mesurements45deg.ToString();
                         txtBox_seqPad1.Text = appSettings.Padding5Deg.ToString();
                         txtBox_seqPad2.Text = appSettings.Padding25Deg.ToString();
                         txtBox_seqPad3.Text = appSettings.Padding45Deg.ToString();
+
                         UpdateSequencePadding();
 
                         OpenProject(appSettings.ProjectPath);
@@ -937,16 +940,73 @@ namespace Aerolithe
                         await SequencePrisePhotoTotale(tokenSource.Token);
                     });
                 }
+                if (result == DialogResult.No)
+                {
+                    DialogResult dr = MessageBox.Show(
+                   "Voulez-vous démarrer la série?",
+                   "Confirmation",
+                   MessageBoxButtons.YesNo,
+                   MessageBoxIcon.Question
+                  );
+                    if (dr == DialogResult.Yes) {
+
+                        try
+                        {
+                            DeleteAllPicturesInFolderWith();
+                        }
+                        catch (Exception ex)
+                        {
+                            AppendTextToConsoleNL($"Erreur  btn_PrisePhotoSeqTotaleMain_Click :: DeleteAllPicturesInFolderWith  {ex.Message}");
+                        }
+
+                        ResetSequenceCancellationButton();
+                        Task.Run(async () =>
+                        {
+                            tokenSource = new CancellationTokenSource();
+                            await SequencePrisePhotoTotale(tokenSource.Token);
+                        });
+                    }
+                    else
+                    {
+                        return;
+                    }
+
+                }
             }
             else
             {
-                ResetSequenceCancellationButton();
-
-                Task.Run(async () =>
+                DialogResult dr = MessageBox.Show(
+                   "Voulez-vous démarrer la série?",
+                   "Confirmation",
+                   MessageBoxButtons.YesNo,
+                   MessageBoxIcon.Question
+                  );
+                if (dr == DialogResult.Yes)
                 {
-                    tokenSource = new CancellationTokenSource();
-                    await SequencePrisePhotoTotale(tokenSource.Token);
-                });
+
+                    try
+                    {
+                        DeleteAllPicturesInFolderWith();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL($"Erreur  btn_PrisePhotoSeqTotaleMain_Click :: DeleteAllPicturesInFolderWith  {ex.Message}");
+                    }
+
+                    ResetSerieIncrementAndName();
+                    ResetRotationIncrementAndName();
+                    ResetFocusIncrementationAndName();
+                    ResetSequenceCancellationButton();
+                    Task.Run(async () =>
+                    {
+                        tokenSource = new CancellationTokenSource();
+                        await SequencePrisePhotoTotale(tokenSource.Token);
+                    });
+                }
+                else
+                {
+                    return;
+                }
             }
 
         }
@@ -959,6 +1019,8 @@ namespace Aerolithe
 
         private void btn_PrisePhotoSeqTotale_Click(object sender, EventArgs e)
         {
+            bool startFromBeginning = projet.FocusSerieIncrement == 0 && projet.RotationSerieIncrement == 0;
+
             if (projet.FocusSerieIncrement != 0 || projet.RotationSerieIncrement != 0)
             {
                 DialogResult result = MessageBox.Show(
@@ -970,12 +1032,20 @@ namespace Aerolithe
 
                 if (result == DialogResult.Yes)
                 {
+                    startFromBeginning = true;
                     ResetSerieIncrementAndName();
                     ResetFocusIncrementationAndName();
                     ResetRotationIncrementAndName();
                     DeleteAllPicturesInFolderWith();
                 }
             }
+            if (startFromBeginning)
+            {
+                ResetSerieIncrementAndName();
+                ResetFocusIncrementationAndName();
+                ResetRotationIncrementAndName();
+            }
+
             ResetSequenceCancellationButton();
 
 
@@ -983,6 +1053,37 @@ namespace Aerolithe
             {
                 tokenSource = new CancellationTokenSource();
                 await SequencePrisePhotoTotale(tokenSource.Token);
+            });
+        }
+
+        private void btn_PriseImagesMesuresTotale_Click(object sender, EventArgs e)
+        {
+            QueryProject();
+            if (appSettings.ProjectPath == null) return;
+
+            if (!TryUpdateMesurementCountsFromTextBoxes()) return;
+            SavePrefsSettings();
+
+            DisplayPathsInUI();
+            ResetSequenceCancellationButton();
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    tokenSource = new CancellationTokenSource();
+                    await SequenceTotaleImageMesuresAsync(tokenSource.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    AppendTextToConsoleNL("Séquence totale d'images de mesure annulée.");
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL($"Erreur btn_PriseImagesMesuresTotale_Click: {ex.Message}");
+                    _stopRequested = true;
+                    ShowMeasurementSequenceErrorMessage(ex);
+                }
             });
         }
 
@@ -1009,17 +1110,33 @@ namespace Aerolithe
             ResetSequenceCancellationButton();
             projet.Serie = 0;
             projet.RotationSerieIncrement = 0;
+            projet.FocusSerieIncrement = 0;
             SavePrefsSettings();
 
+            tokenSource = new CancellationTokenSource();
+            var cancellationToken = tokenSource.Token;
 
             Task.Run(async () =>
             {
-                await UdpSendActuatorMessageAsync("actuator 5");
-                if (_stopRequested) return;
-                await WaitForActuator(5);
-                tokenSource = new CancellationTokenSource();
-                projet.Serie = 0;
-                await PrisePhotoSequenceAsync(tokenSource.Token);
+                try
+                {
+                    await UdpSendActuatorMessageAsync("actuator 5");
+                    if (_stopRequested) return;
+                    await WaitForActuator(5);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    projet.Serie = 0;
+                    await PrisePhotoSequenceAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    AppendTextToConsoleNL("Séquence photo 5° annulée.");
+                }
+                catch (Exception ex)
+                {
+                    _stopRequested = true;
+                    AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq1_Click: {ex.Message}");
+                    ShowSequenceErrorMessage(ex);
+                }
             });
         }
 
@@ -1043,15 +1160,32 @@ namespace Aerolithe
             ResetSequenceCancellationButton();
             projet.Serie = 1;
             projet.RotationSerieIncrement = 0;
+            projet.FocusSerieIncrement = 0;
             SavePrefsSettings();
+
+            tokenSource = new CancellationTokenSource();
+            var cancellationToken = tokenSource.Token;
 
             Task.Run(async () =>
             {
-                await UdpSendActuatorMessageAsync("actuator 25");
-                if (_stopRequested) return;
-                await WaitForActuator(25);
-                tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token);
+                try
+                {
+                    await UdpSendActuatorMessageAsync("actuator 25");
+                    if (_stopRequested) return;
+                    await WaitForActuator(25);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await PrisePhotoSequenceAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    AppendTextToConsoleNL("Séquence photo 25° annulée.");
+                }
+                catch (Exception ex)
+                {
+                    _stopRequested = true;
+                    AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq2_Click: {ex.Message}");
+                    ShowSequenceErrorMessage(ex);
+                }
             });
 
         }
@@ -1078,15 +1212,32 @@ namespace Aerolithe
             ResetSequenceCancellationButton();
             projet.Serie = 2;
             projet.RotationSerieIncrement = 0;
+            projet.FocusSerieIncrement = 0;
             SavePrefsSettings();
+
+            tokenSource = new CancellationTokenSource();
+            var cancellationToken = tokenSource.Token;
 
             Task.Run(async () =>
             {
-                await UdpSendActuatorMessageAsync("actuator 45");
-                if (_stopRequested) return;
-                await WaitForActuator(45);
-                tokenSource = new CancellationTokenSource();
-                await PrisePhotoSequenceAsync(tokenSource.Token);
+                try
+                {
+                    await UdpSendActuatorMessageAsync("actuator 45");
+                    if (_stopRequested) return;
+                    await WaitForActuator(45);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await PrisePhotoSequenceAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    AppendTextToConsoleNL("Séquence photo 45° annulée.");
+                }
+                catch (Exception ex)
+                {
+                    _stopRequested = true;
+                    AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq3_Click: {ex.Message}");
+                    ShowSequenceErrorMessage(ex);
+                }
             });
         }
 
@@ -1134,7 +1285,7 @@ namespace Aerolithe
             maskFreeze = false;
             btn_freezeMask.Text = "";
 
-            //tokenSource.Cancel();
+            tokenSource?.Cancel();
             _cts?.Cancel();
             _stopRequested = true;
             if (btn_cancelPhotoShoot.InvokeRequired)
@@ -2495,142 +2646,78 @@ namespace Aerolithe
             Text = $"{_windowTitleBase} | {UiRevision}";
         }
 
-        private void ApplyStandardizedUiLook()
+        private void txtBox_mesurements5deg_TextChanged(object sender, EventArgs e)
         {
-            Font = new Font("Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
-            ApplyUiLookRecursive(this);
+            txtBox_mesurements5deg.ForeColor = Color.Gray;
         }
 
-        private void ApplyUiLookRecursive(Control parent)
+        private void txtBox_mesurements5deg_KeyDown(object sender, KeyEventArgs e)
         {
-            foreach (Control control in parent.Controls)
+            if (e.KeyCode == Keys.Enter)
             {
-                switch (control)
-                {
-                    case System.Windows.Forms.Button button:
-                        StyleButton(button);
-                        break;
-                    case System.Windows.Forms.TextBox textBox:
-                        StyleTextInput(textBox);
-                        break;
-                    case System.Windows.Forms.ComboBox comboBox:
-                        StyleComboBox(comboBox);
-                        break;
-                    case Label label:
-                        StyleLabel(label);
-                        break;
-                    case TabControl tabControl:
-                        tabControl.Font = new Font("Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
-                        tabControl.Padding = new Point(tabControl.Padding.X, Math.Max(tabControl.Padding.Y, 8));
-                        break;
-                    case MenuStrip menuStrip:
-                        StyleMenuStrip(menuStrip);
-                        break;
-                }
-
-                ApplyUiLookRecursive(control);
+                SaveMesurementCountFromTextBox(txtBox_mesurements5deg, 5);
+                e.SuppressKeyPress = true;
             }
         }
 
-        private void StyleButton(System.Windows.Forms.Button button)
+        private void txtBox_mesurements25deg_TextChanged(object sender, EventArgs e)
         {
-            bool isIconButton = IsIconButton(button);
-            bool isPrimaryAction = IsPrimaryActionButton(button);
+            txtBox_mesurements25deg.ForeColor = Color.Gray;
+        }
 
-            if (isIconButton)
+        private void txtBox_mesurements25deg_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
             {
-                return;
-            }
-
-            button.FlatStyle = FlatStyle.Flat;
-            button.FlatAppearance.BorderSize = 1;
-            button.FlatAppearance.BorderColor = Color.FromArgb(72, 72, 72);
-            button.Margin = isIconButton ? new Padding(3) : new Padding(6);
-            button.Padding = isIconButton ? Padding.Empty : new Padding(8, 4, 8, 4);
-            button.ForeColor = Color.White;
-            button.AutoEllipsis = true;
-            button.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            button.UseCompatibleTextRendering = false;
-
-            button.MinimumSize = new Size(148, 46);
-            float fontSize = 10F;
-            if (button.Text.Length >= 22)
-            {
-                fontSize = 9F;
-                button.Padding = new Padding(6, 3, 6, 3);
-            }
-
-            if (button.Name == "btn_PrisePhotoSeqTotale" || button.Name == "btn_PrisePhotoSeqTotaleMain")
-            {
-                fontSize = 12F;
-                button.Padding = new Padding(8, 4, 8, 4);
-                button.Dock = DockStyle.Fill;
-            }
-
-            button.Font = new Font("Roboto Medium", fontSize, FontStyle.Regular, GraphicsUnit.Point);
-
-            if (isPrimaryAction)
-            {
-                button.BackColor = Color.FromArgb(42, 42, 42);
-                button.FlatAppearance.BorderColor = Color.FromArgb(92, 92, 92);
-            }
-            else
-            {
-                button.BackColor = Color.FromArgb(34, 34, 34);
+                SaveMesurementCountFromTextBox(txtBox_mesurements25deg, 25);
+                e.SuppressKeyPress = true;
             }
         }
-        
-        private void StyleTextInput(System.Windows.Forms.TextBox textBox)
+        private void txtBox_mesurements45deg_TextChanged(object sender, EventArgs e)
         {
-            bool isConsoleTextBox = textBox.Name == "txtBox_Console" || textBox.Name == "txtBox_FFMPEGConsole";
-            textBox.Font = new Font(isConsoleTextBox ? "Segoe UI" : "Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
-            textBox.Margin = new Padding(6);
-            textBox.BorderStyle = BorderStyle.FixedSingle;
+            txtBox_mesurements45deg.ForeColor = Color.Gray;
+        }
 
-            if (isConsoleTextBox)
+        private void txtBox_mesurements45deg_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
             {
-                textBox.ForeColor = Color.FromArgb(220, 220, 220);
+                SaveMesurementCountFromTextBox(txtBox_mesurements45deg, 45);
+                e.SuppressKeyPress = true;
             }
         }
 
-        private void StyleMenuStrip(MenuStrip menuStrip)
+
+        private bool TryUpdateMesurementCountsFromTextBoxes()
         {
-            menuStrip.Font = new Font("Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
-            menuStrip.Padding = new Padding(menuStrip.Padding.Left, 4, menuStrip.Padding.Right, 4);
-            menuStrip.AutoSize = true;
+            return TryUpdateMesurementCountFromTextBox(txtBox_mesurements5deg, 5)
+                && TryUpdateMesurementCountFromTextBox(txtBox_mesurements25deg, 25)
+                && TryUpdateMesurementCountFromTextBox(txtBox_mesurements45deg, 45);
         }
 
-        private void StyleComboBox(System.Windows.Forms.ComboBox comboBox)
+        private bool TryUpdateMesurementCountFromTextBox(System.Windows.Forms.TextBox textBox, int angle)
         {
-            comboBox.Font = new Font("Roboto Medium", 9F, FontStyle.Regular, GraphicsUnit.Point);
-            comboBox.Margin = new Padding(6);
+            if (!int.TryParse(textBox.Text, out int valeur) || valeur < 0)
+            {
+                MessageBox.Show("SVP entrer un nombre valide égal ou plus grand que zéro");
+                return false;
+            }
+
+            textBox.ForeColor = Color.White;
+            if (angle == 5) projet.Mesurements5deg = valeur;
+            if (angle == 25) projet.Mesurements25deg = valeur;
+            if (angle == 45) projet.Mesurements45deg = valeur;
+            return true;
         }
 
-        private void StyleLabel(Label label)
+        private void SaveMesurementCountFromTextBox(System.Windows.Forms.TextBox textBox, int angle)
         {
-            if (label.Font.Name == "Phosphor")
+            if (!TryUpdateMesurementCountFromTextBox(textBox, angle))
             {
                 return;
             }
 
-            label.Font = new Font("Roboto Medium", label.Font.Size, FontStyle.Regular, GraphicsUnit.Point);
-        }
-
-
-        private static bool IsIconButton(System.Windows.Forms.Button button)
-        {
-            return button.Font.Name.Contains("Phosphor", StringComparison.OrdinalIgnoreCase)
-                || button.Text.Length <= 2;
-        }
-
-        private static bool IsPrimaryActionButton(System.Windows.Forms.Button button)
-        {
-            string id = $"{button.Name} {button.Text}".ToLowerInvariant();
-            return id.Contains("prise")
-                || id.Contains("photo")
-                || id.Contains("focus")
-                || id.Contains("autofocus")
-                || id.Contains("capture");
+            SavePrefsSettings();
         }
 
         private void btn_AutoCentrageAuto_Click(object sender, EventArgs e)

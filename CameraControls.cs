@@ -141,7 +141,11 @@ namespace Aerolithe
             try
             {
                 AppendTextToConsoleNL($"[Thread CaptureImageAndWaitForMiniatureAsync] Thread# {Thread.CurrentThread.ManagedThreadId} -> UI? {(!this.InvokeRequired).ToString()}");
+                await ManualFocusAsync(1, 1);
+                await Task.Delay(200);
                 await takePictureAsync();
+                await Task.Delay(200);
+                await ManualFocusAsync(1, 1);
                 await miniatureTcs.Task;
             }
             finally
@@ -156,14 +160,28 @@ namespace Aerolithe
 
         private async void takePictureAsyncSimple()
         {
-            miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            AppendTextToConsoleNL($"[Thread takePictureAsyncSimple] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
+            try
+            {
+                miniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                AppendTextToConsoleNL($"[Thread takePictureAsyncSimple] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
 
-            Stopwatch sw = Stopwatch.StartNew();
-            await takePictureAsync();  // attend que imageReadyTcs soit résolu   
-            sw.Stop();
-            string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
-            AppendTextToConsoleNL($"photo prise en {tempsMs} secondes");
+                Stopwatch sw = Stopwatch.StartNew();
+                await takePictureAsync();  // attend que imageReadyTcs soit résolu   
+                sw.Stop();
+                string tempsMs = sw.Elapsed.TotalSeconds.ToString("F2");
+                AppendTextToConsoleNL($"photo prise en {tempsMs} secondes");
+            }
+            catch (Exception ex)
+            {
+                _stopRequested = true;
+                AppendTextToConsoleNL($"Erreur takePictureAsyncSimple: {ex.Message}");
+                MessageBox.Show(
+                    this,
+                    $"Une erreur caméra est survenue pendant la prise de photo.{Environment.NewLine}{Environment.NewLine}Message d'erreur: {ex.Message}",
+                    "Erreur caméra",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         public async Task takePictureAsync()
@@ -655,6 +673,8 @@ namespace Aerolithe
             {
                 Debug.Write(ex.Message);
                 AppendTextToConsoleNL($"Erreur SaveMesurementImage :: takePictureAsync:  {ex.Message}");
+                _stopRequested = true;
+                throw;
             }
 
             AppendTextToConsoleNL(timing.ElapsedTime.TotalSeconds.ToString("F2"));

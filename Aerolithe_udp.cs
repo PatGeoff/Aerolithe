@@ -655,8 +655,8 @@ namespace Aerolithe
             void SetUi()
             {
                 // Texte: "!" en rouge si au moins un NON connecté, sinon vide
-                btn_WarningPing.Text = allConnected ? string.Empty : "!";
-                btn_WarningPing.ForeColor = allConnected ? SystemColors.ControlText : Color.Firebrick;
+                btn_WarningPing.Text = allConnected ? string.Empty : "";
+                btn_WarningPing.ForeColor = allConnected ? SystemColors.ControlText : Color.Red;
 
                 // Optionnel: style supplémentaire
                 // btn_WarningPing.Font = new Font(btn_WarningPing.Font, allConnected ? FontStyle.Regular : FontStyle.Bold);
