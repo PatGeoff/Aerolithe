@@ -82,6 +82,10 @@ namespace Aerolithe
 
         private void CreateAllFolders(string projectDirectory)
         {
+            if (string.IsNullOrWhiteSpace(projectDirectory))
+            {
+                return;
+            }
 
             projet.ImageFolderPath = Path.Combine(projectDirectory, "images");
             if (!Directory.Exists(projet.ImageFolderPath))
@@ -273,13 +277,13 @@ namespace Aerolithe
         //    txtBox_seqPad2.ForeColor = Color.White;
         //    txtBox_seqPad3.ForeColor = Color.White;
         //}
-        private void UpdateSequencePadding()
+        private void UpdateSequencePadding(bool recalculateFromImageCounts = false)
         {
             listBox_paddingView.Items.Clear();
 
-            int nbr5 = appSettings.NbrImg5Deg;
-            int nbr25 = appSettings.NbrImg25Deg;
-            int nbr45 = appSettings.NbrImg45Deg;
+            int nbr5 = int.TryParse(txtBox_nbrImg5deg.Text, out int parsedNbr5) ? parsedNbr5 : appSettings.NbrImg5Deg;
+            int nbr25 = int.TryParse(txtBox_nbrImg25deg.Text, out int parsedNbr25) ? parsedNbr25 : appSettings.NbrImg25Deg;
+            int nbr45 = int.TryParse(txtBox_nbrImg45deg.Text, out int parsedNbr45) ? parsedNbr45 : appSettings.NbrImg45Deg;
 
             int pad5 = int.Parse(txtBox_seqPad1.Text);
             int pad25 = int.Parse(txtBox_seqPad2.Text);
@@ -288,7 +292,7 @@ namespace Aerolithe
             int pad5_final = pad5 + nbr5 - 1;  // genre 20 images de 0 à 19
 
             int pad25_initial;
-            if (pad25 == appSettings.Padding25Deg && pad5 != appSettings.Padding5Deg)
+            if (recalculateFromImageCounts || (pad25 == appSettings.Padding25Deg && pad5 != appSettings.Padding5Deg))
             {
                  pad25_initial = pad5_final + 1; // 20
             }
@@ -298,10 +302,10 @@ namespace Aerolithe
             }
 
 
-            int pad25_final = nbr25 + pad25_initial; // genre 20 images de 20 à 39
+            int pad25_final = pad25_initial + nbr25 - 1; // genre 20 images de 20 à 39
 
             int pad45_initial;
-            if (pad45 == appSettings.Padding45Deg && (pad5 != appSettings.Padding5Deg || pad25 != appSettings.Padding25Deg)) 
+            if (recalculateFromImageCounts || (pad45 == appSettings.Padding45Deg && (pad5 != appSettings.Padding5Deg || pad25 != appSettings.Padding25Deg))) 
             {
                 pad45_initial = pad25_final + 1;
                 
@@ -311,7 +315,7 @@ namespace Aerolithe
                 pad45_initial = Math.Max(pad45, pad25_final + 1);
             }
 
-            int pad45_final = nbr45 + pad45_initial;
+            int pad45_final = pad45_initial + nbr45 - 1;
 
                         
             // === UI ===
@@ -325,6 +329,9 @@ namespace Aerolithe
             txtBox_seqPad3.ForeColor = Color.White;
 
             // === Sauvegarde autoritaire ===
+            appSettings.NbrImg5Deg = nbr5;
+            appSettings.NbrImg25Deg = nbr25;
+            appSettings.NbrImg45Deg = nbr45;
             appSettings.Padding5Deg = pad5;
             appSettings.Padding25Deg = pad25_initial;
             appSettings.Padding45Deg = pad45_initial;
@@ -540,14 +547,20 @@ namespace Aerolithe
             toolTip.SetToolTip(btn_applyMask, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
             toolTip.SetToolTip(btn_SaveImageToDisk, "Sauvegarde des image sur disque. Essentiel");
             toolTip.SetToolTip(lbl_saveImageTodisk, "Sauvegarde des image sur disque. Essentiel");
-            toolTip.SetToolTip(btn_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {projet.GetMesurementsFolderpath()}\" ");
-            toolTip.SetToolTip(lbl_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {projet.GetMesurementsFolderpath()}\" ");
+            string measurementsFolderPath = projet.GetMesurementsFolderpath();
+            string measurementsDestination = string.IsNullOrWhiteSpace(measurementsFolderPath)
+                ? "le dossier de mesures du projet ouvert"
+                : measurementsFolderPath;
+            toolTip.SetToolTip(btn_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {measurementsDestination}\" ");
+            toolTip.SetToolTip(lbl_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {measurementsDestination}\" ");
             toolTip.SetToolTip(lbl_LiveViewEnable, "Active/Désactive le Live View");
             toolTip.SetToolTip(btn_LiveViewEnable, "Active/Désactive le Live View");
-            toolTip.SetToolTip(lbl_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure durant la séquence.\nLes images se retrouveront dans {projet.GetMesurementsFolderpath()}");
-            toolTip.SetToolTip(btn_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure durant la séquence.\nLes images se retrouveront dans {projet.GetMesurementsFolderpath()}");
-            toolTip.SetToolTip(btn_AutoCentrageAuto, "Centrage Automatique de l'objet");
-            toolTip.SetToolTip(lbl_AutoCentrageAuto, "Centrage Automatique de l'objet");
+            toolTip.SetToolTip(lbl_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure durant 'Prise de photos en séquence, la total'\nIndépendant de 'Séquence Images pour volume'.\nLes images se retrouveront dans {measurementsDestination}");
+            toolTip.SetToolTip(btn_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure durant 'Prise de photos en séquence, la total'\nIndépendant de 'Séquence Images pour volume'.\nLes images se retrouveront dans {measurementsDestination}");
+            toolTip.SetToolTip(btn_AutoCentrageAuto, "Centrage Automatique de l'objet avant chaque série. * Recommandé *");
+            toolTip.SetToolTip(lbl_AutoCentrageAuto, "Centrage Automatique de l'objet avant chaque série. * Recommandé *");
+            toolTip.SetToolTip(lbl_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
+            toolTip.SetToolTip(btn_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
         }
 
 
@@ -712,6 +725,8 @@ namespace Aerolithe
 
         public bool SaveImageForMesurements { get; set; } = true;
 
+        public bool AutoCentrageActuator { get; set; } = false;
+
         public int Mesurements5deg { get; set; } = 6;
         public int Mesurements25deg { get; set; } = 6;
         public int Mesurements45deg { get; set; } = 0;
@@ -776,6 +791,11 @@ namespace Aerolithe
 
         public string GetMesurementsFolderpath()
         {
+            if (string.IsNullOrWhiteSpace(ImageFolderPath))
+            {
+                return string.Empty;
+            }
+
             string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
             return Path.Combine(ImageFolderPath, "mesures", coteFolder);
         }
@@ -883,6 +903,14 @@ namespace Aerolithe
        
 
         public int ThreshVal { get; set; } = 20;
+
+        public int ThreshVal_1 { get; set; } = 20;
+
+        public int ThreshVal_2 { get; set; } = 20;
+
+        public int ThreshVal_3 { get; set; } = 20;
+
+        public int MaskAlgorithmIndex { get; set; } = 0;
 
         public bool AutoCentrage { get; set; } = true;
 

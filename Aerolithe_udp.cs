@@ -20,6 +20,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 
 
@@ -33,6 +34,7 @@ namespace Aerolithe
         public bool rotaryEncoderSteperMotorTriggered = false;
         private System.Timers.Timer _oscTimer;
         private string _lastOscMessage;
+        private CancellationTokenSource? _actuatorAnglePollingCts;
 
 
         public void InitializeUdpClient()
@@ -64,11 +66,58 @@ namespace Aerolithe
                 {
                     await client.SendAsync(bytes, bytes.Length, new IPEndPoint(actuatorIpAddress, actuatorPort));
                 }
+
+                StartActuatorAnglePolling(message);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private async Task SendActuatorAngleRequestAsync()
+        {
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes("actuator angle");
+                using (UdpClient client = new UdpClient())
+                {
+                    await client.SendAsync(bytes, bytes.Length, new IPEndPoint(actuatorIpAddress, actuatorPort));
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur lecture angle actuateur: {ex.Message}");
+            }
+        }
+
+        private void StartActuatorAnglePolling(string message)
+        {
+            if (!message.StartsWith("actuator", StringComparison.OrdinalIgnoreCase)) return;
+            if (message.StartsWith("actuator angle", StringComparison.OrdinalIgnoreCase)) return;
+
+            _actuatorAnglePollingCts?.Cancel();
+
+            if (message.Contains("stop", StringComparison.OrdinalIgnoreCase)) return;
+
+            _actuatorAnglePollingCts = new CancellationTokenSource();
+            var token = _actuatorAnglePollingCts.Token;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    DateTime stopAt = DateTime.UtcNow.AddSeconds(20);
+                    while (!token.IsCancellationRequested && DateTime.UtcNow < stopAt)
+                    {
+                        await SendActuatorAngleRequestAsync();
+                        await Task.Delay(400, token);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                }
+            }, token);
         }
 
         private async Task UdpSendTurnTableMessageAsync(string message)
@@ -192,11 +241,11 @@ namespace Aerolithe
         private async Task ListenForMessages()
         {
 
-            while (true)
+            while (!_shutdownStarted)
             {
                 try
                 {
-                    while (true)
+                    while (!_shutdownStarted)
                     {
                         UdpReceiveResult result = await udpClient.ReceiveAsync();
                         string message = Encoding.UTF8.GetString(result.Buffer);
@@ -205,9 +254,20 @@ namespace Aerolithe
                         CheckMessage(message);
                     }
                 }
+                catch (ObjectDisposedException) when (_shutdownStarted)
+                {
+                    return;
+                }
+                catch (SocketException) when (_shutdownStarted)
+                {
+                    return;
+                }
                 catch (Exception ex)
                 {
-
+                    if (_shutdownStarted)
+                    {
+                        return;
+                    }
                     Debug.WriteLine($"Exception: {ex.Message}");
                 }
 
@@ -218,11 +278,11 @@ namespace Aerolithe
         private async Task ListenForOSCMessages()
         {
             AppendTextToConsoleNL("ListenForOSCMessages() lancé");
-            while (true)
+            while (!_shutdownStarted)
             {
                 try
                 {
-                    while (true)
+                    while (!_shutdownStarted)
                     {
                         UdpReceiveResult result = await udpClientOSC.ReceiveAsync();
 
@@ -238,9 +298,20 @@ namespace Aerolithe
                         }
                     }
                 }
+                catch (ObjectDisposedException) when (_shutdownStarted)
+                {
+                    return;
+                }
+                catch (SocketException) when (_shutdownStarted)
+                {
+                    return;
+                }
                 catch (Exception ex)
                 {
-
+                    if (_shutdownStarted)
+                    {
+                        return;
+                    }
                     Debug.WriteLine($"Exception: {ex.Message}");
                 }
 

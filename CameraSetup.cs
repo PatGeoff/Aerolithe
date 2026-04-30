@@ -305,7 +305,7 @@ namespace Aerolithe
 
                                     lbl_Centrage.Invoke(new Action(() =>
                                     {
-                                        lbl_Centrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}";
+                                        lbl_Centrage.Text = $"Offset X={offsets.offsetX:F2}, Y={offsets.offsetY:F2}, Dépasse: {offsets.hasBlackOnBorder}, Présent: {offsets.hasForeground}";
                                     }));
                                 }
                                 finally

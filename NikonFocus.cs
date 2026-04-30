@@ -46,13 +46,21 @@ namespace Aerolithe
             }
             catch (Exception ex)
             {
-                if (!device.LiveViewEnabled)
+                AppendTextToConsoleNL("Autofocus Nikon ignoré: " + ex.Message);
+
+                try
                 {
-                    device.LiveViewEnabled = true;
-                    await Task.Delay(100);
-                    liveViewTimer.Start();
+                    if (!device.LiveViewEnabled)
+                    {
+                        device.LiveViewEnabled = true;
+                        await Task.Delay(100);
+                        liveViewTimer.Start();
+                    }
                 }
-                throw new Exception("Autofocus failed due to an error: " + ex.Message);
+                catch (Exception liveViewEx)
+                {
+                    AppendTextToConsoleNL("Impossible de relancer le live view après autofocus ignoré: " + liveViewEx.Message);
+                }
             }
 
         }
@@ -270,9 +278,16 @@ namespace Aerolithe
                 }));
                 
                 bool foundValidMask = false;
+                int startThresh = ClampMaskThreshold(originalThresh);
+                IEnumerable<int> thresholdCandidates = Enumerable
+                    .Range(0, startThresh + 1)
+                    .Select(offset => startThresh - offset)
+                    .Concat(Enumerable.Range(startThresh + 1, 255 - startThresh));
 
-                for (int t = 60; t >= 0 && !foundValidMask; t -= 1)
+                foreach (int t in thresholdCandidates)
                 {
+                    if (foundValidMask) break;
+
                     Invoke(new Action(() =>
                     {
                         hScrollBar_liveMaskThresh.Value = t;
@@ -418,41 +433,8 @@ namespace Aerolithe
 
 
             // ====== SAUVEGARDE DU MASQUE ======
-            Mat maskToSave;
-            lock (_maskLock)
-            {
-                if (maskMatLive == null || maskMatLive.IsEmpty)
-                {
-                    AppendTextToConsoleNL("AutomaticFocusRoutine: masque live nul ou vide avant sauvegarde.");
-                    return;
-                }
-
-                maskToSave = maskMatLive.Clone();
-            }
-
-            if (IsMatAllBlack(maskToSave))
-            {
-                maskToSave.Dispose();
-                maskFreeze = false;
-                Invoke(new Action(() =>
-                {
-                    btn_freezeMask.Text = "";
-                }));
-
-                MessageBox.Show(
-                    this,
-                    "Le masque calculé est noir ou presque noir. Il ne sera pas sauvegardé.\n" +
-                    "Réessayez après avoir stabilisé l'éclairage ou ajusté le seuil.",
-                    "Erreur - Masque invalide",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error
-                );
-
-                return;
-            }
-
-            await SaveMaskAsPngTransparentBlack(maskToSave, projet.GetMaskFullImagePath());
-            maskToSave.Dispose();
+            // Source volontaire: ce qui est affiché dans picBox_liveMaskLum au moment de la sauvegarde.
+            await SaveDisplayedMaskAsPngAsync(projet.GetMaskFullImagePath());
 
                    
 

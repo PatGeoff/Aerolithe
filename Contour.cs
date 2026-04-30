@@ -65,6 +65,18 @@ namespace Aerolithe
     int threshold = 100,
     bool invert = false)
         {
+            return appSettings.MaskAlgorithmIndex switch
+            {
+                1 => await EdgeAssistedBrightnessMaskFromBytesMat(jpegBuffer, threshold, invert),
+                _ => await CorrectedBrightnessMaskFromBytesMat(jpegBuffer, threshold, invert),
+            };
+        }
+
+        private async Task<Mat> CorrectedBrightnessMaskFromBytesMat(
+    byte[] jpegBuffer,
+    int threshold = 100,
+    bool invert = false)
+        {
             if (jpegBuffer == null || jpegBuffer.Length == 0)
                 throw new ArgumentException("jpegBuffer est nul ou vide.", nameof(jpegBuffer));
 
@@ -115,23 +127,9 @@ namespace Aerolithe
                     return filled.Clone();
                 }
 
-                int bestIdx = -1;
-                double bestScore = double.NegativeInfinity;
-                float cxImg = w / 2f;
-                float cyImg = h / 2f;
-
                 var statsArr = stats.GetData();
                 var centArr = centroids.GetData();
-
-                for (int i = 1; i < n; i++)
-                {
-                    int area = (int)statsArr.GetValue(i, (int)ConnectedComponentsTypes.Area);
-                    double ccx = (double)centArr.GetValue(i, 0);
-                    double ccy = (double)centArr.GetValue(i, 1);
-                    double dist2 = (ccx - cxImg) * (ccx - cxImg) + (ccy - cyImg) * (ccy - cyImg);
-                    double score = area - 0.1 * dist2;
-                    if (score > bestScore) { bestScore = score; bestIdx = i; }
-                }
+                int bestIdx = SelectBestObjectComponent(statsArr, centArr, n, w, h);
 
                 using var finalMask = new Mat();
                 CvInvoke.InRange(labels, new ScalarArray(bestIdx), new ScalarArray(bestIdx), finalMask);
@@ -169,11 +167,243 @@ namespace Aerolithe
                 CvInvoke.Threshold(ff, solid, 254, 255, ThresholdType.Binary);
                 CvInvoke.Erode(solid, solid, kSeal, new Point(-1, -1), 1, BorderType.Reflect, default);
 
-                if (invert) CvInvoke.BitwiseNot(solid, solid);
+                using var filledSolid = FillMaskHoles(solid);
+                if (invert) CvInvoke.BitwiseNot(filledSolid, filledSolid);
 
                 // Retourner un clone autonome
-                return solid.Clone();
+                return filledSolid.Clone();
             });
+        }
+
+        private async Task<Mat> RawBrightnessMaskFromBytesMat(
+            byte[] jpegBuffer,
+            int threshold = 100,
+            bool invert = false)
+        {
+            if (jpegBuffer == null || jpegBuffer.Length == 0)
+                throw new ArgumentException("jpegBuffer est nul ou vide.", nameof(jpegBuffer));
+
+            return await Task.Run(() =>
+            {
+                using var gray = new Mat();
+                CvInvoke.Imdecode(jpegBuffer, ImreadModes.Grayscale, gray);
+                if (gray.IsEmpty)
+                    throw new InvalidOperationException("Échec du décodage JPEG.");
+
+                using var smooth = new Mat();
+                CvInvoke.GaussianBlur(gray, smooth, new Size(3, 3), 0);
+
+                using var bin = new Mat();
+                if (threshold < 0)
+                {
+                    CvInvoke.Threshold(smooth, bin, 0, 255, (invert ? ThresholdType.BinaryInv : ThresholdType.Binary) | ThresholdType.Otsu);
+                }
+                else
+                {
+                    threshold = Math.Max(0, Math.Min(255, threshold));
+                    CvInvoke.Threshold(smooth, bin, threshold, 255, invert ? ThresholdType.BinaryInv : ThresholdType.Binary);
+                }
+
+                using var k3 = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
+                CvInvoke.MorphologyEx(bin, bin, MorphOp.Open, k3, new Point(-1, -1), 1, BorderType.Reflect, default);
+                CvInvoke.MorphologyEx(bin, bin, MorphOp.Close, k3, new Point(-1, -1), 2, BorderType.Reflect, default);
+
+                return SolidMaskFromBestComponent(bin, gray.Cols, gray.Rows);
+            });
+        }
+
+        private async Task<Mat> EdgeAssistedBrightnessMaskFromBytesMat(
+            byte[] jpegBuffer,
+            int threshold = 100,
+            bool invert = false)
+        {
+            if (jpegBuffer == null || jpegBuffer.Length == 0)
+                throw new ArgumentException("jpegBuffer est nul ou vide.", nameof(jpegBuffer));
+
+            return await Task.Run(() =>
+            {
+                using var color = new Mat();
+                CvInvoke.Imdecode(jpegBuffer, ImreadModes.Color, color);
+                if (color.IsEmpty)
+                    throw new InvalidOperationException("Échec du décodage JPEG.");
+
+                int h = color.Rows;
+                int w = color.Cols;
+
+                using var gray = new Mat();
+                CvInvoke.CvtColor(color, gray, ColorConversion.Bgr2Gray);
+
+                using var smooth = new Mat();
+                CvInvoke.GaussianBlur(gray, smooth, new Size(5, 5), 0);
+
+                using var lumBin = new Mat();
+                if (threshold < 0)
+                {
+                    CvInvoke.Threshold(smooth, lumBin, 0, 255, (invert ? ThresholdType.BinaryInv : ThresholdType.Binary) | ThresholdType.Otsu);
+                }
+                else
+                {
+                    threshold = Math.Max(0, Math.Min(255, threshold));
+                    CvInvoke.Threshold(smooth, lumBin, threshold, 255, invert ? ThresholdType.BinaryInv : ThresholdType.Binary);
+                }
+
+                using var edges = new Mat();
+                CvInvoke.Canny(smooth, edges, 40, 120);
+
+                int edgeKernelSize = Math.Max(3, (int)Math.Round(Math.Max(w, h) * 0.004));
+                edgeKernelSize = Math.Min(edgeKernelSize, 15);
+                if ((edgeKernelSize & 1) == 0) edgeKernelSize++;
+
+                using var kEdge = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(edgeKernelSize, edgeKernelSize), new Point(-1, -1));
+                CvInvoke.Dilate(edges, edges, kEdge, new Point(-1, -1), 1, BorderType.Reflect, default);
+
+                using var combined = new Mat();
+                CvInvoke.BitwiseOr(lumBin, edges, combined);
+
+                using var hsv = new Mat();
+                CvInvoke.CvtColor(color, hsv, ColorConversion.Bgr2Hsv);
+                using var hsvChannels = new VectorOfMat();
+                CvInvoke.Split(hsv, hsvChannels);
+                using var saturation = hsvChannels[1];
+                using var satBin = new Mat();
+                CvInvoke.Threshold(saturation, satBin, 35, 255, ThresholdType.Binary);
+
+                using var kSat = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(5, 5), new Point(-1, -1));
+                CvInvoke.MorphologyEx(satBin, satBin, MorphOp.Close, kSat, new Point(-1, -1), 2, BorderType.Reflect, default);
+                CvInvoke.BitwiseOr(combined, satBin, combined);
+
+                int closeKernelSize = Math.Max(7, (int)Math.Round(Math.Max(w, h) * 0.012));
+                closeKernelSize = Math.Min(closeKernelSize, 31);
+                if ((closeKernelSize & 1) == 0) closeKernelSize++;
+
+                using var kClose = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(closeKernelSize, closeKernelSize), new Point(-1, -1));
+                CvInvoke.MorphologyEx(combined, combined, MorphOp.Close, kClose, new Point(-1, -1), 2, BorderType.Reflect, default);
+
+                int openKernelSize = Math.Max(5, (int)Math.Round(Math.Max(w, h) * 0.007));
+                openKernelSize = Math.Min(openKernelSize, 17);
+                if ((openKernelSize & 1) == 0) openKernelSize++;
+
+                using var kOpen = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(openKernelSize, openKernelSize), new Point(-1, -1));
+                CvInvoke.MorphologyEx(combined, combined, MorphOp.Open, kOpen, new Point(-1, -1), 1, BorderType.Reflect, default);
+
+                return SolidMaskFromBestComponent(combined, w, h);
+            });
+        }
+
+        private static Mat SolidMaskFromBestComponent(Mat binaryMask, int w, int h)
+        {
+            using var labels = new Mat();
+            using var stats = new Mat();
+            using var centroids = new Mat();
+            int n = CvInvoke.ConnectedComponentsWithStats(binaryMask, labels, stats, centroids, LineType.EightConnected, DepthType.Cv32S);
+
+            if (n <= 1)
+            {
+                using var filled = FillByExternalContours(binaryMask);
+                return filled.Clone();
+            }
+
+            var statsArr = stats.GetData();
+            var centArr = centroids.GetData();
+            int bestIdx = SelectBestObjectComponent(statsArr, centArr, n, w, h);
+
+            using var finalMask = new Mat();
+            CvInvoke.InRange(labels, new ScalarArray(bestIdx), new ScalarArray(bestIdx), finalMask);
+
+            using var filledBest = FillByExternalContours(finalMask);
+            using var solidBest = FillMaskHoles(filledBest);
+            return solidBest.Clone();
+        }
+
+        private static int SelectBestObjectComponent(Array statsArr, Array centArr, int componentCount, int imageWidth, int imageHeight)
+        {
+            int bestIdx = 1;
+            double bestScore = double.NegativeInfinity;
+            double targetX = imageWidth * 0.5;
+            double targetY = imageHeight * 0.43;
+
+            for (int i = 1; i < componentCount; i++)
+            {
+                int left = (int)statsArr.GetValue(i, (int)ConnectedComponentsTypes.Left);
+                int top = (int)statsArr.GetValue(i, (int)ConnectedComponentsTypes.Top);
+                int width = (int)statsArr.GetValue(i, (int)ConnectedComponentsTypes.Width);
+                int height = (int)statsArr.GetValue(i, (int)ConnectedComponentsTypes.Height);
+                int area = (int)statsArr.GetValue(i, (int)ConnectedComponentsTypes.Area);
+
+                if (area <= 0 || width <= 0 || height <= 0)
+                    continue;
+
+                double ccx = (double)centArr.GetValue(i, 0);
+                double ccy = (double)centArr.GetValue(i, 1);
+                double widthRatio = width / (double)imageWidth;
+                double heightRatio = height / (double)imageHeight;
+                double bottom = top + height;
+
+                bool likelyTurntable =
+                    widthRatio > 0.45 &&
+                    heightRatio < 0.35 &&
+                    ccy > imageHeight * 0.45;
+
+                bool touchesFrameTooMuch =
+                    left <= 1 ||
+                    top <= 1 ||
+                    left + width >= imageWidth - 2 ||
+                    bottom >= imageHeight - 2;
+
+                double dx = Math.Abs(ccx - targetX);
+                double dy = Math.Abs(ccy - targetY);
+                double compactness = Math.Min(width, height) / (double)Math.Max(width, height);
+                double score = Math.Sqrt(area) * 12.0
+                               + compactness * 250.0
+                               - dx * 1.4
+                               - dy * 1.1;
+
+                if (likelyTurntable)
+                    score -= 5000.0;
+
+                if (touchesFrameTooMuch)
+                    score -= 1500.0;
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestIdx = i;
+                }
+            }
+
+            return bestIdx;
+        }
+
+        private static Mat FillMaskHoles(Mat binaryMask)
+        {
+            int h = binaryMask.Rows;
+            int w = binaryMask.Cols;
+
+            using var mask = new Mat();
+            binaryMask.CopyTo(mask);
+
+            using var exterior = new Mat();
+            CvInvoke.BitwiseNot(mask, exterior);
+
+            using var floodFilled = exterior.Clone();
+            Rectangle bbox;
+            CvInvoke.FloodFill(
+                floodFilled,
+                null,
+                new Point(0, 0),
+                new MCvScalar(0),
+                out bbox,
+                new MCvScalar(0),
+                new MCvScalar(0),
+                Connectivity.EightConnected,
+                FloodFillType.Default);
+
+            using var holes = new Mat();
+            CvInvoke.Threshold(floodFilled, holes, 254, 255, ThresholdType.Binary);
+
+            var filled = new Mat();
+            CvInvoke.BitwiseOr(mask, holes, filled);
+            return filled;
         }
 
         private async Task<Bitmap> BrightnessMaskFromBytes(
@@ -375,27 +605,18 @@ namespace Aerolithe
         {
             if (File.Exists(focusStackOutputPath))
             {
-                using (var originalBitmap = new Bitmap(focusStackOutputPath))
+                string maskPath = projet.GetMaskFullImagePath();
+                if (!File.Exists(maskPath))
                 {
-                    Bitmap finalBitmap;
+                    MessageBox.Show("Masque introuvable : " + maskPath);
+                    AppendTextToConsoleNL("PostFocusStackMask: masque introuvable : " + maskPath);
+                    return;
+                }
 
-                    var sourceImage = originalBitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
-                    //var maskGray = maskBitmapLive.ToImage<Emgu.CV.Structure.Gray, byte>();
-                    var maskGray = maskMatLive.ToImage<Emgu.CV.Structure.Gray, byte>();
-
-                    var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Linear);
-                    var invertedMask = resizedMask;
-                    var maskBgr = invertedMask.Convert<Emgu.CV.Structure.Bgr, byte>();
-
-                    sourceImage._And(maskBgr);
-                    finalBitmap = sourceImage.ToBitmap();
-
-                    // Libération
-                    maskGray.Dispose();
-                    resizedMask.Dispose();
-                    invertedMask.Dispose();
-                    maskBgr.Dispose();
-                    sourceImage.Dispose();
+                using (var originalBitmap = new Bitmap(focusStackOutputPath))
+                using (var savedMask = LoadSavedMaskAsGrayMat(maskPath))
+                {
+                    Bitmap finalBitmap = ApplyMask(originalBitmap, savedMask);
 
                     // Sauvegarde de l'image finale
                     string directory = Path.GetDirectoryName(focusStackOutputPath);
@@ -409,10 +630,38 @@ namespace Aerolithe
                     picBox_FocusStackedImage.Image?.Dispose();
                     picBox_FocusStackedImage.Image = finalBitmap;
                     stackedImageInBuffer = true;
-                    //AppendTextToConsoleNL("stackedImageInBuffer = " + stackedImageInBuffer);
+                    AppendTextToConsoleNL("PostFocusStackMask: masque sauvegardé appliqué : " + maskPath);
                 }
             }
 
+        }
+
+        private Mat LoadSavedMaskAsGrayMat(string maskPath)
+        {
+            using var mask = CvInvoke.Imread(maskPath, ImreadModes.Unchanged);
+            if (mask == null || mask.IsEmpty)
+            {
+                throw new InvalidOperationException("Masque sauvegardé nul ou vide : " + maskPath);
+            }
+
+            var gray = new Mat();
+
+            if (mask.NumberOfChannels == 4)
+            {
+                using var channels = new VectorOfMat();
+                CvInvoke.Split(mask, channels);
+                channels[3].CopyTo(gray);
+            }
+            else if (mask.NumberOfChannels == 3)
+            {
+                CvInvoke.CvtColor(mask, gray, ColorConversion.Bgr2Gray);
+            }
+            else
+            {
+                mask.CopyTo(gray);
+            }
+
+            return gray;
         }
     }
 

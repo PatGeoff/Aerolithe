@@ -11,6 +11,8 @@ using ScottPlot.Statistics;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Printing;
+using System.Drawing.Text;
+using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -28,7 +30,7 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public const string UiRevision = "REV-0021-series-progress-fix";
+        public const string UiRevision = "REV-0027-nonblocking-focus-mask";
         private string _windowTitleBase = "Aucun projet";
 
         // THIS IP ADDRESS 192.168.2.4 //
@@ -56,6 +58,11 @@ namespace Aerolithe
 
         private Dictionary<string, Label> _labelMap;
         private CancellationTokenSource _autoPingCts;
+        private volatile bool _shutdownStarted;
+        private PrivateFontCollection? _bundledPhosphorFonts;
+        private const int DesignedClientWidth = 4374;
+        private const int DesignedClientHeight = 2529;
+        private float _uiScale = 1.0f;
 
 
         public bool stackedImageInBuffer = false;
@@ -63,6 +70,9 @@ namespace Aerolithe
         public bool _DebugContinue = true;
 
         private bool isChangingCheckState = false;
+        private bool _isInitializingMaskThresholds = false;
+        private bool _testAutoCenterActuatorEnabled = false;
+        private CancellationTokenSource? _manualActuatorAutoCenterCts;
         //private string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MyResources\\Models", "u2net.onnx");
 
         private int[] serieId = [];
@@ -107,6 +117,8 @@ namespace Aerolithe
         {
 
             InitializeComponent();
+            ScaleUiToCurrentScreen();
+            ApplyBundledPhosphorFontToControls();
             SetMainWindowTitle();
 
 
@@ -280,13 +292,13 @@ namespace Aerolithe
 
             btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
             btn_applyMask.Text = projet.ApplyMask ? "" : "";
-            txtBox_DefaultMaskThresh.Text = appSettings.ThreshVal.ToString();
-            hScrollBar_liveMaskThresh.Value = appSettings.ThreshVal;
-            lbl_maskAmount.Text = appSettings.ThreshVal.ToString();
+            InitializeMaskThresholdSettings();
+            InitializeMaskAlgorithmDropdown();
             btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
             btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
             btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
+            btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
 
             // Timer servant à calculer le temps entre takePictureAsync et device_ImageReady
             timing = new Timing();
@@ -298,8 +310,109 @@ namespace Aerolithe
                 screen.Left, // Centré en X
                 screen.Top                       // Tout en haut en Y
                 );
+            this.MinimumSize = new Size(
+                Math.Min(1800, screen.Width),
+                Math.Min(1000, screen.Height));
+            this.Size = new Size(
+                Math.Min((int)Math.Round(DesignedClientWidth * _uiScale), screen.Width),
+                Math.Min((int)Math.Round(DesignedClientHeight * _uiScale), screen.Height));
+            this.WindowState = FormWindowState.Maximized;
 
 
+        }
+
+        private void ScaleUiToCurrentScreen()
+        {
+            var screen = Screen.FromControl(this).WorkingArea;
+            var widthScale = screen.Width / (float)DesignedClientWidth;
+            var heightScale = screen.Height / (float)DesignedClientHeight;
+            _uiScale = Math.Min(1.0f, Math.Min(widthScale, heightScale));
+
+            if (_uiScale >= 0.99f)
+            {
+                _uiScale = 1.0f;
+                return;
+            }
+
+            SuspendLayout();
+            try
+            {
+                Scale(new SizeF(_uiScale, _uiScale));
+                ClientSize = new Size(
+                    Math.Min((int)Math.Round(DesignedClientWidth * _uiScale), screen.Width),
+                    Math.Min((int)Math.Round(DesignedClientHeight * _uiScale), screen.Height));
+            }
+            finally
+            {
+                ResumeLayout(performLayout: true);
+            }
+
+            Debug.WriteLine($"UI scale applied: {_uiScale:0.###} for screen {screen.Width}x{screen.Height}");
+        }
+
+        private void ApplyBundledPhosphorFontToControls()
+        {
+            var fontPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "MyResources",
+                "Fonts",
+                "Phosphor",
+                "regular",
+                "Phosphor.ttf");
+
+            if (!File.Exists(fontPath))
+            {
+                return;
+            }
+
+            try
+            {
+                _bundledPhosphorFonts = new PrivateFontCollection();
+                _bundledPhosphorFonts.AddFontFile(fontPath);
+
+                if (_bundledPhosphorFonts.Families.Length == 0)
+                {
+                    return;
+                }
+
+                ApplyPhosphorFontToControlTree(this, _bundledPhosphorFonts.Families[0]);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Impossible de charger la fonte Phosphor locale: " + ex.Message);
+            }
+        }
+
+        private static void ApplyPhosphorFontToControlTree(Control parent, FontFamily phosphorFamily)
+        {
+            foreach (Control control in parent.Controls)
+            {
+                if (control.Font != null &&
+                    string.Equals(control.Font.FontFamily.Name, "Phosphor", StringComparison.OrdinalIgnoreCase))
+                {
+                    control.Font = new Font(
+                        phosphorFamily,
+                        control.Font.Size,
+                        control.Font.Style,
+                        control.Font.Unit,
+                        control.Font.GdiCharSet,
+                        control.Font.GdiVerticalFont);
+
+                    if (control is ButtonBase button)
+                    {
+                        button.UseCompatibleTextRendering = false;
+                    }
+                    else if (control is Label label)
+                    {
+                        label.UseCompatibleTextRendering = false;
+                    }
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyPhosphorFontToControlTree(control, phosphorFamily);
+                }
+            }
         }
 
 
@@ -308,6 +421,94 @@ namespace Aerolithe
         {
             System.Windows.Forms.ToolTip toolTipMask = new System.Windows.Forms.ToolTip();
             System.Windows.Forms.ToolTip toolTipCutoff = new System.Windows.Forms.ToolTip();
+        }
+
+        private void InitializeMaskAlgorithmDropdown()
+        {
+            int selectedIndex = appSettings.MaskAlgorithmIndex;
+            if (selectedIndex == 2 && comboBox_MaskAlgorithm.Items.Count == 2)
+            {
+                selectedIndex = 1;
+            }
+
+            if (selectedIndex < 0 || selectedIndex >= comboBox_MaskAlgorithm.Items.Count)
+            {
+                selectedIndex = 0;
+            }
+
+            comboBox_MaskAlgorithm.SelectedIndex = selectedIndex;
+            ApplyMaskThresholdForSelectedAlgorithm();
+        }
+
+        private void InitializeMaskThresholdSettings()
+        {
+            _isInitializingMaskThresholds = true;
+
+            if (appSettings.ThreshVal_1 == 20 && appSettings.ThreshVal != 20)
+            {
+                appSettings.ThreshVal_1 = appSettings.ThreshVal;
+            }
+
+            if (appSettings.ThreshVal_2 == 20 && appSettings.ThreshVal_3 != 20)
+            {
+                appSettings.ThreshVal_2 = appSettings.ThreshVal_3;
+            }
+
+            txtBox_DefaultMaskThresh.Text = ClampMaskThreshold(appSettings.ThreshVal_1).ToString();
+            txtBox_DefaultMaskThresh2.Text = ClampMaskThreshold(appSettings.ThreshVal_2).ToString();
+            txtBox_DefaultMaskThresh3.Text = ClampMaskThreshold(appSettings.ThreshVal_3).ToString();
+
+            txtBox_DefaultMaskThresh.ForeColor = Color.White;
+            txtBox_DefaultMaskThresh2.ForeColor = Color.White;
+            txtBox_DefaultMaskThresh3.ForeColor = Color.White;
+
+            _isInitializingMaskThresholds = false;
+        }
+
+        private int ClampMaskThreshold(int value)
+        {
+            return Math.Max(hScrollBar_liveMaskThresh.Minimum, Math.Min(255, value));
+        }
+
+        private int GetMaskThresholdSetting(int algorithmIndex)
+        {
+            return algorithmIndex switch
+            {
+                1 => appSettings.ThreshVal_2,
+                _ => appSettings.ThreshVal_1,
+            };
+        }
+
+        private void SetMaskThresholdSetting(int algorithmIndex, int value)
+        {
+            value = ClampMaskThreshold(value);
+
+            switch (algorithmIndex)
+            {
+                case 1:
+                    appSettings.ThreshVal_2 = value;
+                    txtBox_DefaultMaskThresh2.Text = value.ToString();
+                    txtBox_DefaultMaskThresh2.ForeColor = Color.White;
+                    break;
+                case 2:
+                    appSettings.ThreshVal_3 = value;
+                    txtBox_DefaultMaskThresh3.Text = value.ToString();
+                    txtBox_DefaultMaskThresh3.ForeColor = Color.White;
+                    break;
+                default:
+                    appSettings.ThreshVal_1 = value;
+                    appSettings.ThreshVal = value;
+                    txtBox_DefaultMaskThresh.Text = value.ToString();
+                    txtBox_DefaultMaskThresh.ForeColor = Color.White;
+                    break;
+            }
+        }
+
+        private void ApplyMaskThresholdForSelectedAlgorithm()
+        {
+            int value = ClampMaskThreshold(GetMaskThresholdSetting(comboBox_MaskAlgorithm.SelectedIndex));
+            hScrollBar_liveMaskThresh.Value = value;
+            lbl_maskAmount.Text = value.ToString();
         }
 
 
@@ -561,16 +762,19 @@ namespace Aerolithe
         private void btn_actuator_5_Click(object sender, EventArgs e)
         {
             UdpSendActuatorMessageAsync("actuator 5");
+            StartManualActuatorAutoCenterTracking(5);
         }
 
         private void btn_actuator_25_Click(object sender, EventArgs e)
         {
             UdpSendActuatorMessageAsync("actuator 25");
+            StartManualActuatorAutoCenterTracking(25);
         }
 
         private void btn_actuator_45_Click(object sender, EventArgs e)
         {
             UdpSendActuatorMessageAsync("actuator 45");
+            StartManualActuatorAutoCenterTracking(45);
         }
 
         public void encoderRotationActuateur(int position)
@@ -618,11 +822,13 @@ namespace Aerolithe
         private void btn_Actuator_Down_Click(object sender, EventArgs e)
         {
             UdpSendActuatorMessageAsync("actuator down");
+            StartManualActuatorAutoCenterTracking();
         }
 
         private void btn_Actuator_Up_Click(object sender, EventArgs e)
         {
             UdpSendActuatorMessageAsync("actuator up");
+            StartManualActuatorAutoCenterTracking();
         }
 
         private void performActuatorCalibration()
@@ -634,23 +840,110 @@ namespace Aerolithe
             performActuatorCalibration();
         }
 
-        public async Task<bool> WaitForActuator(double target)
+        public async Task<bool> WaitForActuator(double target, CancellationToken cancellationToken = default)
         {
             AppendTextToConsoleNL("WaitForActuator");
             double delta = 3;
             int timeoutMs = 10000;
             DateTime startTime = DateTime.Now;
+            CancellationTokenSource? actuatorAutoCenterCts = null;
+            Task? actuatorAutoCenterTask = null;
+            bool targetReached = false;
+            bool blobSeenDuringMove = offsets.hasForeground;
+            DateTime? blobLostSince = offsets.hasForeground ? null : DateTime.Now;
+            int autofocusRecoveryCount = 0;
 
-            while (!_stopRequested && (DateTime.Now - startTime).TotalMilliseconds <= timeoutMs)
+            if (ShouldAutoCenterDuringActuatorMove())
             {
-                // Vérifie si on est dans la plage cible
-                if (Math.Abs(actuatorAngle - target) <= delta)
+                actuatorAutoCenterCts = new CancellationTokenSource();
+                actuatorAutoCenterTask = RunAutoCentrageContinuPendantActuateurAsync(actuatorAutoCenterCts.Token);
+            }
+
+            try
+            {
+                while (!_stopRequested && !cancellationToken.IsCancellationRequested && (DateTime.Now - startTime).TotalMilliseconds <= timeoutMs)
                 {
-                    AppendTextToConsoleNL($"Actuateur dans la plage : {actuatorAngle} (cible {target})");
-                    return true;
+                    await SendActuatorAngleRequestAsync();
+
+                    if (ShouldAutoCenterDuringActuatorMove())
+                    {
+                        if (offsets.hasForeground)
+                        {
+                            blobSeenDuringMove = true;
+                            blobLostSince = null;
+                        }
+                        else if (blobSeenDuringMove)
+                        {
+                            blobLostSince ??= DateTime.Now;
+
+                            if (autofocusRecoveryCount < 2 && (DateTime.Now - blobLostSince.Value).TotalMilliseconds >= 1000)
+                            {
+                                autofocusRecoveryCount++;
+                                AppendTextToConsoleNL("Blob perdu pendant mouvement d'actuateur: pause + autofocus");
+                                await UdpSendActuatorMessageAsync("actuator stop");
+                                await TryAutofocusPendantActuateurAsync(cancellationToken);
+                                await SendActuatorTargetAsync(target);
+                                blobLostSince = DateTime.Now;
+                            }
+                        }
+                    }
+
+                    // Vérifie si on est dans la plage cible
+                    if (Math.Abs(actuatorAngle - target) <= delta)
+                    {
+                        AppendTextToConsoleNL($"Actuateur dans la plage : {actuatorAngle} (cible {target})");
+                        targetReached = true;
+                        break;
+                    }
+
+                    await Task.Delay(500, cancellationToken); // Aligné avec la fréquence d'update
+                }
+            }
+            finally
+            {
+                actuatorAutoCenterCts?.Cancel();
+                cancelAutoCentrage = true;
+
+                if (actuatorAutoCenterTask != null)
+                {
+                    try
+                    {
+                        await actuatorAutoCenterTask;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
                 }
 
-                await Task.Delay(500); // Aligné avec la fréquence d'update
+                actuatorAutoCenterCts?.Dispose();
+
+                if (targetReached && ShouldAutoCenterDuringActuatorMove() && !_stopRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    if (blobSeenDuringMove)
+                    {
+                        AppendTextToConsoleNL("Autofocus final à la position d'actuateur atteinte");
+                        await TryAutofocusPendantActuateurAsync(cancellationToken);
+                    }
+
+                    if (offsets.hasForeground)
+                    {
+                        AppendTextToConsoleNL("Auto-centrage final à la position d'actuateur atteinte");
+                        await RoutineAutoCentrage(3000);
+                    }
+                    else
+                    {
+                        AppendTextToConsoleNL("Auto-centrage final ignoré: aucun blob détecté");
+                    }
+                }
+
+                udpSendLiftVerticalMotorData(0);
+                udpSendLiftHorizontalData(0);
+                udpSendCameraLinearMotorData(0);
+            }
+
+            if (targetReached)
+            {
+                return true;
             }
 
             // Si on sort de la boucle, soit timeout, soit stop demandé
@@ -662,8 +955,97 @@ namespace Aerolithe
             {
                 AppendTextToConsoleNL("Arrêt demandé par l'utilisateur.");
             }
+            else if (cancellationToken.IsCancellationRequested)
+            {
+                AppendTextToConsoleNL("Arrêt demandé par l'utilisateur.");
+            }
 
             return false;
+        }
+
+        private bool ShouldAutoCenterDuringActuatorMove()
+        {
+            return projet.AutoCentrageActuator || _testAutoCenterActuatorEnabled;
+        }
+
+        private async Task SendActuatorTargetAsync(double target)
+        {
+            if (Math.Abs(target - 5) < 0.1)
+            {
+                await UdpSendActuatorMessageAsync("actuator 5");
+            }
+            else if (Math.Abs(target - 25) < 0.1)
+            {
+                await UdpSendActuatorMessageAsync("actuator 25");
+            }
+            else if (Math.Abs(target - 45) < 0.1)
+            {
+                await UdpSendActuatorMessageAsync("actuator 45");
+            }
+            else
+            {
+                await UdpSendActuatorMessageAsync($"actuator custom, {target.ToString("0", CultureInfo.InvariantCulture)}");
+            }
+        }
+
+        private async Task TryAutofocusPendantActuateurAsync(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested || _stopRequested) return;
+
+            try
+            {
+                await nikonDoFocus();
+                await Task.Delay(300, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Autofocus pendant actuateur ignoré: {ex.Message}");
+            }
+        }
+
+        private void StartManualActuatorAutoCenterTracking(double? target = null)
+        {
+            if (!_testAutoCenterActuatorEnabled) return;
+
+            _manualActuatorAutoCenterCts?.Cancel();
+            _manualActuatorAutoCenterCts = new CancellationTokenSource();
+            var token = _manualActuatorAutoCenterCts.Token;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    if (target.HasValue)
+                    {
+                        await WaitForActuator(target.Value, token);
+                        return;
+                    }
+
+                    Task autoCenterTask = RunAutoCentrageContinuPendantActuateurAsync(token);
+
+                    try
+                    {
+                        DateTime startTime = DateTime.Now;
+                        while (!token.IsCancellationRequested && !_stopRequested && (DateTime.Now - startTime).TotalSeconds < 20)
+                        {
+                            await SendActuatorAngleRequestAsync();
+                            await Task.Delay(300, token);
+                        }
+                    }
+                    finally
+                    {
+                        _manualActuatorAutoCenterCts?.Cancel();
+                        cancelAutoCentrage = true;
+                        await autoCenterTask;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                }
+            }, token);
         }
 
 
@@ -950,7 +1332,8 @@ namespace Aerolithe
                    MessageBoxButtons.YesNo,
                    MessageBoxIcon.Question
                   );
-                    if (dr == DialogResult.Yes) {
+                    if (dr == DialogResult.Yes)
+                    {
 
                         try
                         {
@@ -1622,7 +2005,22 @@ namespace Aerolithe
 
         private void btn_stopActuatorMoving_Click(object sender, EventArgs e)
         {
+            _manualActuatorAutoCenterCts?.Cancel();
             UdpSendActuatorMessageAsync("actuator stop");
+        }
+
+        private void btn_TestAutoCenterActuator_Click(object sender, EventArgs e)
+        {
+            _testAutoCenterActuatorEnabled = !_testAutoCenterActuatorEnabled;
+            btn_TestAutoCenterActuator.Text = _testAutoCenterActuatorEnabled ? "" : "";
+
+            if (!_testAutoCenterActuatorEnabled)
+            {
+                _manualActuatorAutoCenterCts?.Cancel();
+                udpSendLiftVerticalMotorData(0);
+                udpSendLiftHorizontalData(0);
+                udpSendCameraLinearMotorData(0);
+            }
         }
 
 
@@ -1682,6 +2080,21 @@ namespace Aerolithe
         private void hScrollBar_liveMaskThresh_Scroll(object sender, ScrollEventArgs e)
         {
             lbl_maskAmount.Text = hScrollBar_liveMaskThresh.Value.ToString();
+        }
+
+        private void comboBox_MaskAlgorithm_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBox_MaskAlgorithm.SelectedIndex < 0) return;
+
+            appSettings.MaskAlgorithmIndex = comboBox_MaskAlgorithm.SelectedIndex;
+            ApplyMaskThresholdForSelectedAlgorithm();
+            appSettings.Save();
+
+            if (maskFreeze)
+            {
+                maskFreeze = false;
+                btn_freezeMask.Text = "";
+            }
         }
 
         private void btn_goToImgFolder_Click(object sender, EventArgs e)
@@ -1892,13 +2305,12 @@ namespace Aerolithe
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_nbrImg5deg.Text, out int valeur))
+                if (int.TryParse(txtBox_nbrImg5deg.Text, out int valeur) && valeur > 0)
                 {
                     txtBox_nbrImg5deg.ForeColor = Color.White;
                     lbl_Serie5Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
                     appSettings.NbrImg5Deg = valeur;
-                    appSettings.Save();
-                    UpdateSequencePadding();
+                    UpdateSequencePadding(true);
                 }
                 else
                 {
@@ -1920,13 +2332,12 @@ namespace Aerolithe
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_nbrImg25deg.Text, out int valeur))
+                if (int.TryParse(txtBox_nbrImg25deg.Text, out int valeur) && valeur > 0)
                 {
                     txtBox_nbrImg25deg.ForeColor = Color.White;
                     lbl_Serie25Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
                     appSettings.NbrImg25Deg = valeur;
-                    appSettings.Save();
-                    UpdateSequencePadding();
+                    UpdateSequencePadding(true);
                 }
                 else
                 {
@@ -1945,13 +2356,12 @@ namespace Aerolithe
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_nbrImg45deg.Text, out int valeur))
+                if (int.TryParse(txtBox_nbrImg45deg.Text, out int valeur) && valeur > 0)
                 {
                     txtBox_nbrImg45deg.ForeColor = Color.White;
                     lbl_Serie45Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
                     appSettings.NbrImg45Deg = valeur;
-                    appSettings.Save();
-                    UpdateSequencePadding();
+                    UpdateSequencePadding(true);
                 }
                 else
                 {
@@ -2347,8 +2757,8 @@ namespace Aerolithe
 
         private void Aerolithe_FormClosed(object sender, FormClosedEventArgs e)
         {
-            Application.Exit();
-            Application.ExitThread();
+            ShutdownApplication();
+            AppLifecycle.HardExitAfter(AppLifecycle.StopAllGraceful, graceMs: 250, killIfStuck: true);
         }
 
         private async void btn_PingAll_Click(object sender, EventArgs e)
@@ -2368,8 +2778,71 @@ namespace Aerolithe
 
         private void Aerolithe_FormClosing(object sender, FormClosingEventArgs e)
         {
-            _autoPingCts?.Cancel();
-            // base.OnFormClosing(e);
+            ShutdownApplication();
+        }
+
+        private void ShutdownApplication()
+        {
+            if (_shutdownStarted)
+            {
+                return;
+            }
+
+            _shutdownStarted = true;
+            _stopRequested = true;
+
+            try { _autoPingCts?.Cancel(); } catch { }
+            try { _actuatorAnglePollingCts?.Cancel(); } catch { }
+            try { _manualActuatorAutoCenterCts?.Cancel(); } catch { }
+            try { tokenSource?.Cancel(); } catch { }
+            try { _cts?.Cancel(); } catch { }
+
+            try { imageReadyTcs?.TrySetCanceled(); } catch { }
+            try { captureCompleteTcs?.TrySetCanceled(); } catch { }
+            try { miniaturesTcs?.TrySetCanceled(); } catch { }
+            try { _pendingMiniatureTcs?.TrySetCanceled(); } catch { }
+
+            try
+            {
+                liveViewTimer?.Stop();
+                liveViewTimer?.Dispose();
+            }
+            catch { }
+
+            try
+            {
+                _oscTimer?.Stop();
+                _oscTimer?.Dispose();
+            }
+            catch { }
+
+            try { udpClient?.Close(); } catch { }
+            try { udpClient?.Dispose(); } catch { }
+            try { udpClientOSC?.Close(); } catch { }
+            try { udpClientOSC?.Dispose(); } catch { }
+
+            try
+            {
+                if (device != null)
+                {
+                    try { device.ImageReady -= new ImageReadyDelegate(device_ImageReady); } catch { }
+                    try { device.CaptureComplete -= new CaptureCompleteDelegate(device_CaptureComplete); } catch { }
+                    try { device.Progress -= new ProgressDelegate(OnNikonProgress); } catch { }
+                    try { device.LiveViewEnabled = false; } catch { }
+                }
+
+                if (manager != null)
+                {
+                    try { manager.DeviceAdded -= new DeviceAddedDelegate(manager_DeviceAdded); } catch { }
+                    try { manager.DeviceRemoved -= new DeviceRemovedDelegate(manager_DeviceRemoved); } catch { }
+
+                    var shutdownTask = Task.Run(() => manager.Shutdown());
+                    shutdownTask.Wait(TimeSpan.FromMilliseconds(1000));
+                }
+            }
+            catch { }
+
+            AppLifecycle.StopAllGraceful(waitMsPerTask: 100);
         }
 
         private async void repriseDerniereSequence_Click(object sender, EventArgs e)
@@ -2599,12 +3072,16 @@ namespace Aerolithe
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_DefaultMaskThresh.Text, out int value))
+                if (sender is System.Windows.Forms.TextBox textBox && int.TryParse(textBox.Text, out int value))
                 {
-                    txtBox_DefaultMaskThresh.ForeColor = Color.White;
-                    txtBox_DefaultMaskThresh.Text = value.ToString();
-                    appSettings.ThreshVal = value;
-                    hScrollBar_liveMaskThresh.Value = value;
+                    int algorithmIndex = textBox == txtBox_DefaultMaskThresh2 ? 1 :
+                                         textBox == txtBox_DefaultMaskThresh3 ? 2 : 0;
+
+                    SetMaskThresholdSetting(algorithmIndex, value);
+                    if (comboBox_MaskAlgorithm.SelectedIndex == algorithmIndex)
+                    {
+                        ApplyMaskThresholdForSelectedAlgorithm();
+                    }
                     appSettings.Save();
                 }
                 // Empêche le son 'ding'
@@ -2613,7 +3090,19 @@ namespace Aerolithe
         }
         private void txtBox_DefaultMaskThresh_TextChanged(object sender, EventArgs e)
         {
-            txtBox_DefaultMaskThresh.ForeColor = Color.Gray;
+            if (_isInitializingMaskThresholds) return;
+
+            if (sender is System.Windows.Forms.TextBox textBox)
+            {
+                textBox.ForeColor = Color.Gray;
+            }
+        }
+
+        private void btn_SaveThresh_Click(object sender, EventArgs e)
+        {
+            int selectedIndex = comboBox_MaskAlgorithm.SelectedIndex < 0 ? 0 : comboBox_MaskAlgorithm.SelectedIndex;
+            SetMaskThresholdSetting(selectedIndex, hScrollBar_liveMaskThresh.Value);
+            appSettings.Save();
         }
 
         private void btn_SaveImageToDisk_Click(object sender, EventArgs e)
@@ -2645,7 +3134,7 @@ namespace Aerolithe
                     device.LiveViewEnabled = false;
                     liveViewTimer.Stop();
                 }
-                
+
                 return Task.CompletedTask;
             });
 
@@ -2740,6 +3229,55 @@ namespace Aerolithe
             projet.AutoCentrage = !projet.AutoCentrage;
             btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
             SavePrefsSettings();
+        }
+
+        private void btn_AutoCentrageActuator_Click(object sender, EventArgs e)
+        {
+            projet.AutoCentrageActuator = !projet.AutoCentrageActuator;
+            btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
+            SavePrefsSettings();
+        }
+
+        private void effacerToutesLesImagesEtFocusToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string folderPath = projet.ImageFolderPath;
+
+                if (Directory.Exists(folderPath))
+                {
+                    // Afficher une boîte de confirmation
+                    DialogResult result = MessageBox.Show(
+                        "Voulez-vous vraiment effacer toutes les images et sous-dossiers ?",
+                        "Confirmation",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning,
+                        MessageBoxDefaultButton.Button2);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        // Supprimer le dossier et son contenu
+                        Directory.Delete(folderPath, true);
+
+                        // Recréer le dossier vide
+                        CreateAllFolders(Path.GetDirectoryName(appSettings.ProjectPath));
+
+                        Debug.WriteLine("Toutes les images ont été effacées.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Opération annulée.", "Annulation", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("Le dossier spécifié n'existe pas.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Erreur lors de la suppression : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }

@@ -267,11 +267,7 @@ namespace Aerolithe
                 }
 
 
-                if (projet.SaveImageToDisk && (
-                    projet.ImageFolderPath == null
-                    || projet.ImageNameBase == null
-                    || projet.GetMesurementsFullImagePath() == null
-                    || projet.FocusStackFolderName == null))
+                if (!ProjectSaveTargetIsReady())
                 {
                     AppendTextToConsoleNL($"Un des dossiers n'existe pas:" +
                         $"\nprojet.ImageFolderPath = {projet.ImageFolderPath}" +
@@ -280,7 +276,6 @@ namespace Aerolithe
                         $"\nprojet.FocusStackFolderName = {projet.FocusStackFolderName}" +
                         $"\net Finalement projet.SaveImageToDisk = {projet.SaveImageToDisk}"
                         );
-                    return; // ← quitte device_ImageReady
                 }
 
 
@@ -297,17 +292,66 @@ namespace Aerolithe
                         {
                             projet.PictureWidth = originalBitmap.Width;
                             projet.PictureHeight = originalBitmap.Height;
-                            projet.Save(appSettings.ProjectPath); // -- <
+                            if (!string.IsNullOrWhiteSpace(appSettings.ProjectPath))
+                            {
+                                projet.Save(appSettings.ProjectPath); // -- <
+                            }
+
+                            if (!ProjectSaveTargetIsReady())
+                            {
+                                AppendTextToConsoleNL("Aucun projet valide n'est ouvert. Image reçue et affichée, mais non sauvegardée.");
+                                return new Bitmap(originalBitmap);
+                            }
 
                             Bitmap processedBitmap;
                             Mat registeredMask = null;
                             try
                             {
+                                AppendTextToConsoleNL(
+                                    $"MASK SAVE STATE: ApplyMask={projet.ApplyMask}, FocusStack={projet.FocusStackEnabled}, photoPourMesure={photoPourMesure}, maskFreeze={maskFreeze}, SaveImageForMesurements={projet.SaveImageForMesurements}, threshold={maskThreshold}, algo={appSettings.MaskAlgorithmIndex}"
+                                );
+
                                 if (projet.ApplyMask && !projet.FocusStackEnabled)
                                 {
-                                    registeredMask = await BuildRegisteredMaskFromCapturedJpegAsync(image.Buffer, maskThreshold);
-                                    processedBitmap = ApplyMask(originalBitmap, registeredMask);
-                                    await SaveMaskAsPngTransparentBlack(registeredMask, projet.GetMaskFullImagePath());
+                                    string savedMaskPath = projet.GetMaskFullImagePath();
+                                    try
+                                    {
+                                        if (File.Exists(savedMaskPath))
+                                        {
+                                            registeredMask = LoadSavedMaskAsGrayMat(savedMaskPath);
+                                            AppendTextToConsoleNL("Masque sauvegardé appliqué à l'image : " + savedMaskPath);
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppendTextToConsoleNL("Masque sauvegardé non disponible, utilisation du masque live: " + ex.Message);
+                                        registeredMask?.Dispose();
+                                        registeredMask = null;
+                                    }
+
+                                    if (registeredMask == null)
+                                    {
+                                        lock (_maskLock)
+                                        {
+                                            if (maskMatLive != null && !maskMatLive.IsEmpty)
+                                            {
+                                                registeredMask = maskMatLive.Clone();
+                                            }
+                                        }
+
+                                        if (registeredMask != null)
+                                        {
+                                            AppendTextToConsoleNL("Masque live appliqué à l'image sans écrire de fichier masque.");
+                                        }
+                                        else
+                                        {
+                                            AppendTextToConsoleNL("Aucun masque sauvegardé ou live disponible. Image sauvegardée sans masque.");
+                                        }
+                                    }
+
+                                    processedBitmap = registeredMask != null
+                                        ? ApplyMask(originalBitmap, registeredMask)
+                                        : new Bitmap(originalBitmap);
                                 }
                                 else
                                 {
@@ -403,6 +447,12 @@ namespace Aerolithe
                         imageReadyTcs.TrySetResult(true);
                     }
 
+                    if (!ProjectSaveTargetIsReady())
+                    {
+                        _pendingMiniatureTcs?.TrySetResult(true);
+                        miniaturesTcs?.TrySetResult(true);
+                    }
+
 
                 }
                 catch (Exception ex)
@@ -425,7 +475,20 @@ namespace Aerolithe
         }
 
 
-    
+        private bool ProjectSaveTargetIsReady()
+        {
+            if (!projet.SaveImageToDisk)
+            {
+                return true;
+            }
+
+            return !string.IsNullOrWhiteSpace(appSettings.ProjectPath)
+                && !string.IsNullOrWhiteSpace(projet.ImageFolderPath)
+                && !string.IsNullOrWhiteSpace(projet.ImageNameBase)
+                && !string.IsNullOrWhiteSpace(projet.FocusStackFolderName)
+                && !string.IsNullOrWhiteSpace(projet.GetMesurementsFolderpath());
+        }
+
 
         private void AfficherMiniatures(string nomImage, string imagePath, Size panelSize)
         {
@@ -613,7 +676,7 @@ namespace Aerolithe
             }
             catch
             {
-                return appSettings.ThreshVal;
+                return ClampMaskThreshold(GetMaskThresholdSetting(appSettings.MaskAlgorithmIndex));
             }
         }
 
@@ -664,21 +727,30 @@ namespace Aerolithe
 
         private Bitmap ApplyMask(Bitmap originalBitmap, Mat maskMat)
         {
-            var sourceImage = originalBitmap.ToImage<Bgr, byte>();
-            var maskGray = maskMat.ToImage<Gray, byte>();
-            var resizedMask = maskGray.Resize(projet.PictureWidth, projet.PictureHeight, Emgu.CV.CvEnum.Inter.Linear);
-            var maskBgr = resizedMask.Convert<Bgr, byte>();
+            using var sourceImage = originalBitmap.ToImage<Bgr, byte>();
+            using var maskGray = maskMat.ToImage<Gray, byte>();
+            using var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Nearest);
+            using var binaryMask = CreateBinaryMaskWithInset(resizedMask.Mat);
 
-            sourceImage._And(maskBgr);
-            var finalBitmap = sourceImage.ToBitmap();
+            using var sourceMat = sourceImage.Mat;
+            using var masked = Mat.Zeros(sourceMat.Rows, sourceMat.Cols, sourceMat.Depth, sourceMat.NumberOfChannels);
+            sourceMat.CopyTo(masked, binaryMask);
 
-            // Libération
-            maskGray.Dispose();
-            resizedMask.Dispose();
-            maskBgr.Dispose();
-            sourceImage.Dispose();
+            int nonZero = CvInvoke.CountNonZero(binaryMask);
+            AppendTextToConsoleNL($"ApplyMask: pixels masque={nonZero}/{binaryMask.Rows * binaryMask.Cols}");
 
-            return finalBitmap;
+            return masked.ToBitmap();
+        }
+
+        private static Mat CreateBinaryMaskWithInset(Mat mask)
+        {
+            var binaryMask = new Mat();
+            CvInvoke.Threshold(mask, binaryMask, 1, 255, ThresholdType.Binary);
+
+            using var kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
+            CvInvoke.Erode(binaryMask, binaryMask, kernel, new Point(-1, -1), 1, BorderType.Constant, new MCvScalar(0));
+
+            return binaryMask;
         }
 
         public void SaveStreamAsJpegWithProgress(Stream imageStream, string outputPath)
@@ -763,7 +835,7 @@ namespace Aerolithe
         {
             if (maskSrc == null || maskSrc.IsEmpty)
             {
-                AppendTextToConsoleNL("ERREUR (PNG transparent): Mat source nul ou vide.");
+                AppendTextToConsoleNL("ERREUR (PNG masque): Mat source nul ou vide.");
                 return;
             }
 
@@ -819,9 +891,6 @@ namespace Aerolithe
                         }
                     }
 
-                    // Optionnel : binariser si tu veux forcer à {0,255} (décommenter si nécessaire)
-                    // CvInvoke.Threshold(grayMask, grayMask, 127, 255, ThresholdType.Binary);
-
                     // 2) Redimensionner en "Nearest" pour préserver 0/255
                     using var resizedMask = new Mat();
                     CvInvoke.Resize(
@@ -832,53 +901,64 @@ namespace Aerolithe
                         Inter.Nearest
                     );
 
-                    // 3) Construire l'image BGRA :
-                    //    - RGB = 255 (blanc) pour les pixels opaques
-                    //    - A   = masque (0 = transparent, 255 = opaque)
-                    using var whiteBgr = new Image<Bgr, byte>(
-                        resizedMask.Cols, resizedMask.Rows,
-                        new Bgr(255, 255, 255)
-                    );
+                    // 3) Sauvegarder un masque simple noir/blanc sans alpha.
+                    // Un PNG avec alpha peut paraître blanc partout dans certains viewers
+                    // et peut être relu comme blanc partout si l'alpha est ignoré.
+                    using var binaryMask = CreateBinaryMaskWithInset(resizedMask);
+                    int nonZero = CvInvoke.CountNonZero(binaryMask);
+                    AppendTextToConsoleNL($"SaveMask: pixels masque={nonZero}/{binaryMask.Rows * binaryMask.Cols}");
 
-                    using var bgrMat = whiteBgr.Mat;
-                    using var bgra = new Mat();
-
-                    // Split BGR
-                    var bgrChannels = bgrMat.Split(); // [0]=B, [1]=G, [2]=R
-
-                    try
-                    {
-                        // S'assurer que l'alpha est 8UC1
-                        using var alpha = new Mat();
-                        if (resizedMask.Depth == DepthType.Cv8U && resizedMask.NumberOfChannels == 1)
-                        {
-                            resizedMask.CopyTo(alpha);
-                        }
-                        else
-                        {
-                            CvInvoke.Normalize(resizedMask, alpha, 0, 255, NormType.MinMax, DepthType.Cv8U);
-                        }
-
-                        // Merge en BGRA (4 canaux)
-                        using var vm = new VectorOfMat(bgrChannels[0], bgrChannels[1], bgrChannels[2], alpha);
-                        CvInvoke.Merge(vm, bgra);
-
-                        // 4) Sauvegarde en .png (préserve l'alpha)
-                        CvInvoke.Imwrite(outputPathPng, bgra);
-                    }
-                    finally
-                    {
-                        foreach (var ch in bgrChannels) ch.Dispose();
-                    }
+                    CvInvoke.Imwrite(outputPathPng, binaryMask);
                 });
 
-                AppendTextToConsoleNL($"Masque PNG sauvegardé (noir transparent): {outputPathPng}");
+                AppendTextToConsoleNL($"Masque PNG sauvegardé (noir/blanc): {outputPathPng}");
             }
             catch (Exception ex)
             {
-                AppendTextToConsoleNL("ERREUR (PNG transparent):");
+                AppendTextToConsoleNL("ERREUR (PNG masque):");
                 AppendTextToConsoleNL(ex.Message);
             }
+        }
+
+        private async Task SaveDisplayedMaskAsPngAsync(string outputPathPng)
+        {
+            Bitmap displayedMask;
+
+            if (picBox_liveMaskLum.InvokeRequired)
+            {
+                displayedMask = (Bitmap)picBox_liveMaskLum.Invoke(new Func<Bitmap>(() =>
+                {
+                    if (picBox_liveMaskLum.Image == null)
+                        return null;
+
+                    return new Bitmap(picBox_liveMaskLum.Image);
+                }));
+            }
+            else
+            {
+                if (picBox_liveMaskLum.Image == null)
+                {
+                    AppendTextToConsoleNL("Aucun masque affiché dans picBox_liveMaskLum. Sauvegarde du masque ignorée.");
+                    return;
+                }
+
+                displayedMask = new Bitmap(picBox_liveMaskLum.Image);
+            }
+
+            if (displayedMask == null)
+            {
+                AppendTextToConsoleNL("Aucun masque affiché dans picBox_liveMaskLum. Sauvegarde du masque ignorée.");
+                return;
+            }
+
+            using (displayedMask)
+            using (var maskImage = displayedMask.ToImage<Gray, byte>())
+            using (var maskMat = maskImage.Mat.Clone())
+            {
+                await SaveMaskAsPngTransparentBlack(maskMat, outputPathPng);
+            }
+
+            AppendTextToConsoleNL("Masque sauvegardé depuis picBox_liveMaskLum : " + outputPathPng);
         }
 
 

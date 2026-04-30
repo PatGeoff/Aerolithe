@@ -33,7 +33,8 @@ Les Cancellation tokens et les TaskCompletionSources se réalisent pas pas sur l
 
 Ce que je dois respecter :
 
--
+- Continuer à documenter les changements significatifs dans ce fichier, section `Journal Technique`.
+- Mettre à jour `UiRevision` dans `Aerolithe.cs` quand un changement fonctionnel est fait.
 
 ## Fichiers Concernés
 
@@ -166,6 +167,45 @@ Comment valider que le travail est correct :
   - `lbl_CoteSerie`, `lbl_ElevSerie` et `lbl_RotSerie` sont maintenant mis à jour aussi quand le code tourne déjà sur le thread UI.
   - Le report de `flowPanelReports` utilise maintenant une série 1-based cohérente, ce qui supprime les valeurs `-1`.
   - L'incrément de rotation n'est plus poussé au-delà de la dernière photo d'une série.
+
+- `REV-0022-saved-mask-apply`
+  - Retrait de `checkBox_ApplyMaskStackedImage`, qui existait dans le Designer mais n'était branchée à aucune logique.
+  - `PostFocusStackMask()` applique maintenant le masque sauvegardé sur disque via `projet.GetMaskFullImagePath()` au lieu d'utiliser directement `maskMatLive`.
+  - L'application du masque utilise maintenant un redimensionnement `Nearest` pour préserver un masque net 0/255.
+  - Pendant `device_ImageReady`, si `projet.ApplyMask` est actif et que le focus stack est désactivé, l'image utilise le masque sauvegardé existant sans l'écraser automatiquement.
+  - Si aucun masque sauvegardé n'existe, un masque est généré depuis l'image capturée en fallback, puis sauvegardé.
+  - Les JPEG continuent d'être écrasés lors d'une reprise de séquence, car la sauvegarde utilise `FileMode.Create`.
+  - Correction additionnelle: l'application du masque crée maintenant une image noire et copie l'image source uniquement où le masque est blanc.
+  - Correction additionnelle: les PNG de masque sauvegardent maintenant le masque en RGB noir/blanc en plus de l'alpha, pour rester valides même si l'alpha est ignoré à la relecture.
+  - Ajout d'un log `ApplyMask: pixels masque=...` pour confirmer qu'un masque non vide est réellement appliqué.
+
+- `REV-0023-binary-mask-png`
+  - Correction du format de sauvegarde des fichiers `*_mask.png`.
+  - Les masques sont maintenant sauvegardés comme PNG grayscale noir/blanc sans canal alpha.
+  - Motif: les PNG avec alpha pouvaient être affichés ou relus comme blancs partout, ce qui rendait l'application du masque inefficace.
+  - Ajout d'un log `SaveMask: pixels masque=...` pour confirmer que le fichier sauvegardé contient bien un masque non plein écran.
+
+- `REV-0024-save-displayed-mask`
+  - La sauvegarde du masque prend maintenant explicitement l'image affichée dans `picBox_liveMaskLum` au moment de la sauvegarde.
+  - Le fichier `*_mask.png` existant est écrasé par ce masque affiché, sans recalcul depuis la photo capturée.
+  - Objectif: revenir au principe initial: le masque sauvé correspond exactement au blob visible dans le PictureBox.
+
+- `REV-0025-no-mask-write-on-capture`
+  - Pendant `device_ImageReady`, une capture photo n'écrit plus de fichier `*_mask.png`.
+  - Si le masque sauvegardé est disponible, il est lu et appliqué.
+  - Si le masque sauvegardé n'est pas disponible ou pas accessible, la capture applique le `maskMatLive` courant en mémoire sans écrire sur disque.
+  - Motif: éviter les erreurs réseau/partage du type `Access to the path ... *_mask.png is denied` pendant la prise de photo.
+
+- `REV-0026-mask-inset`
+  - Réintroduction d'un léger rétrécissement du masque avant sauvegarde et avant application sur les photos.
+  - Le masque est binarisé puis érodé avec un kernel rectangle 3x3, une itération.
+  - Objectif: retirer le fin contour blanc autour de l'objet pour éviter que Metashape l'interprète comme faisant partie de la roche.
+
+- `REV-0027-nonblocking-focus-mask`
+  - `nikonDoFocus()` ne propage plus une exception Nikon d'autofocus vers les séquences.
+  - En cas d'échec autofocus Nikon, l'erreur est loggée dans la console et le code tente de relancer le live view si nécessaire.
+  - Pendant une capture avec masque, si aucun masque sauvegardé ou live n'est disponible, l'image est sauvegardée sans masque au lieu d'arrêter la séquence.
+  - Si aucun masque n'est affiché dans `picBox_liveMaskLum`, la sauvegarde du masque est ignorée avec un log console au lieu de lever une exception.
 
 ### Contexte Confirmé
 
