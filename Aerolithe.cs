@@ -8,6 +8,7 @@ using Emgu.CV.XPhoto;
 using Microsoft.VisualBasic;
 using Nikon;
 using ScottPlot.Statistics;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Printing;
@@ -60,9 +61,6 @@ namespace Aerolithe
         private CancellationTokenSource _autoPingCts;
         private volatile bool _shutdownStarted;
         private PrivateFontCollection? _bundledPhosphorFonts;
-        private const int DesignedClientWidth = 4374;
-        private const int DesignedClientHeight = 2529;
-        private float _uiScale = 1.0f;
 
 
         public bool stackedImageInBuffer = false;
@@ -117,7 +115,6 @@ namespace Aerolithe
         {
 
             InitializeComponent();
-            ScaleUiToCurrentScreen();
             ApplyBundledPhosphorFontToControls();
             SetMainWindowTitle();
 
@@ -146,6 +143,11 @@ namespace Aerolithe
             { "Actuator",             lbl_IP_Actuator },
             { "Lift Vertical",  lbl_IP_liftVertical },
         };
+
+            if (IsRunningInDesigner())
+            {
+                return;
+            }
 
             StartAutoPingLoop(TimeSpan.FromSeconds(60));
 
@@ -314,40 +316,20 @@ namespace Aerolithe
                 Math.Min(1800, screen.Width),
                 Math.Min(1000, screen.Height));
             this.Size = new Size(
-                Math.Min((int)Math.Round(DesignedClientWidth * _uiScale), screen.Width),
-                Math.Min((int)Math.Round(DesignedClientHeight * _uiScale), screen.Height));
+                Math.Min(4374, screen.Width),
+                Math.Min(2529, screen.Height));
             this.WindowState = FormWindowState.Maximized;
 
 
         }
 
-        private void ScaleUiToCurrentScreen()
+        private static bool IsRunningInDesigner()
         {
-            var screen = Screen.FromControl(this).WorkingArea;
-            var widthScale = screen.Width / (float)DesignedClientWidth;
-            var heightScale = screen.Height / (float)DesignedClientHeight;
-            _uiScale = Math.Min(1.0f, Math.Min(widthScale, heightScale));
+            var processName = Process.GetCurrentProcess().ProcessName;
 
-            if (_uiScale >= 0.99f)
-            {
-                _uiScale = 1.0f;
-                return;
-            }
-
-            SuspendLayout();
-            try
-            {
-                Scale(new SizeF(_uiScale, _uiScale));
-                ClientSize = new Size(
-                    Math.Min((int)Math.Round(DesignedClientWidth * _uiScale), screen.Width),
-                    Math.Min((int)Math.Round(DesignedClientHeight * _uiScale), screen.Height));
-            }
-            finally
-            {
-                ResumeLayout(performLayout: true);
-            }
-
-            Debug.WriteLine($"UI scale applied: {_uiScale:0.###} for screen {screen.Width}x{screen.Height}");
+            return LicenseManager.UsageMode == LicenseUsageMode.Designtime ||
+                processName.Contains("devenv", StringComparison.OrdinalIgnoreCase) ||
+                processName.Contains("DesignToolsServer", StringComparison.OrdinalIgnoreCase);
         }
 
         private void ApplyBundledPhosphorFontToControls()
@@ -449,18 +431,11 @@ namespace Aerolithe
                 appSettings.ThreshVal_1 = appSettings.ThreshVal;
             }
 
-            if (appSettings.ThreshVal_2 == 20 && appSettings.ThreshVal_3 != 20)
-            {
-                appSettings.ThreshVal_2 = appSettings.ThreshVal_3;
-            }
-
             txtBox_DefaultMaskThresh.Text = ClampMaskThreshold(appSettings.ThreshVal_1).ToString();
             txtBox_DefaultMaskThresh2.Text = ClampMaskThreshold(appSettings.ThreshVal_2).ToString();
-            txtBox_DefaultMaskThresh3.Text = ClampMaskThreshold(appSettings.ThreshVal_3).ToString();
 
             txtBox_DefaultMaskThresh.ForeColor = Color.White;
             txtBox_DefaultMaskThresh2.ForeColor = Color.White;
-            txtBox_DefaultMaskThresh3.ForeColor = Color.White;
 
             _isInitializingMaskThresholds = false;
         }
@@ -489,11 +464,6 @@ namespace Aerolithe
                     appSettings.ThreshVal_2 = value;
                     txtBox_DefaultMaskThresh2.Text = value.ToString();
                     txtBox_DefaultMaskThresh2.ForeColor = Color.White;
-                    break;
-                case 2:
-                    appSettings.ThreshVal_3 = value;
-                    txtBox_DefaultMaskThresh3.Text = value.ToString();
-                    txtBox_DefaultMaskThresh3.ForeColor = Color.White;
                     break;
                 default:
                     appSettings.ThreshVal_1 = value;
@@ -3074,8 +3044,7 @@ namespace Aerolithe
             {
                 if (sender is System.Windows.Forms.TextBox textBox && int.TryParse(textBox.Text, out int value))
                 {
-                    int algorithmIndex = textBox == txtBox_DefaultMaskThresh2 ? 1 :
-                                         textBox == txtBox_DefaultMaskThresh3 ? 2 : 0;
+                    int algorithmIndex = textBox == txtBox_DefaultMaskThresh2 ? 1 : 0;
 
                     SetMaskThresholdSetting(algorithmIndex, value);
                     if (comboBox_MaskAlgorithm.SelectedIndex == algorithmIndex)
@@ -3279,5 +3248,11 @@ namespace Aerolithe
                 Debug.WriteLine($"Erreur lors de la suppression : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        private void picBox_liveMaskLum_Click(object sender, EventArgs e)
+        {
+
+        }
+
     }
 }

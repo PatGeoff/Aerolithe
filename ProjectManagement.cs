@@ -561,6 +561,11 @@ namespace Aerolithe
             toolTip.SetToolTip(lbl_AutoCentrageAuto, "Centrage Automatique de l'objet avant chaque série. * Recommandé *");
             toolTip.SetToolTip(lbl_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
             toolTip.SetToolTip(btn_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
+            toolTip.SetToolTip(lbl_blobCount, "Affiche les parties nettes dans le LiveView");
+            toolTip.SetToolTip(btn_ShowSharpnessOverlay, "Affiche les parties nettes dans le LiveView");
+            toolTip.SetToolTip(lbl_blobCountLogo, "Affiche les parties nettes dans le LiveView");
+
+
         }
 
 
