@@ -184,14 +184,14 @@ namespace Aerolithe
             var startTime = DateTime.Now;
 
             // Corriger X
-            Debug.WriteLine($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}");
+            //Debug.WriteLine($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}");
 
 
             while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs && !cancelAutoCentrage && !_stopRequested)
             {
 
 
-                Debug.WriteLine("Routine Auto Centrage démarrée");
+               // Debug.WriteLine("Routine Auto Centrage démarrée");
 
                 if (!offsets.hasForeground)
                 {
@@ -207,7 +207,7 @@ namespace Aerolithe
                 if (Math.Abs(offsetX) <= tolerance && Math.Abs(offsetY) <= tolerance)
                 {
                     Debug.WriteLine("Centrage terminé: En deça de la tolérance");
-                    AppendTextToConsoleNL("Centrage terminé: En deça de la tolérance");
+                    //AppendTextToConsoleNL("Centrage terminé: En deça de la tolérance");
                     break;
                 }
 
@@ -216,7 +216,7 @@ namespace Aerolithe
 
                 udpSendLiftHorizontalData(stepX);
 
-                Debug.WriteLine($"Move X: {stepX} (offsetX={offsetX})");
+               //Debug.WriteLine($"Move X: {stepX} (offsetX={offsetX})");
 
 
                 int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * kP, minStep, maxStep);
@@ -236,7 +236,7 @@ namespace Aerolithe
             udpSendLiftHorizontalData(0);
             udpSendCameraLinearMotorData(0);
 
-            AppendTextToConsoleNL("Routine Auto Centrage terminée");
+            //AppendTextToConsoleNL("Routine Auto Centrage terminée");
             Debug.WriteLine("Routine terminée (timeout ou centrage).");
 
         }

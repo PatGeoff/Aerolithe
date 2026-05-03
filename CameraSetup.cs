@@ -209,6 +209,8 @@ namespace Aerolithe
 
                         // 3) Masque luminosité (pipeline Mat)
                         Mat maskMatForThisFrame = null;
+                        Mat maskMatForLiveProcessing = null;
+                        bool usingFrozenMask = false;
                         try
                         {
                             if (!maskFreeze || maskMatLive == null)
@@ -221,6 +223,7 @@ namespace Aerolithe
                             }
                             else
                             {
+                                usingFrozenMask = true;
                                 lock (_maskLock)
                                 {
                                     maskMatForThisFrame = maskMatLive?.Clone();
@@ -249,20 +252,47 @@ namespace Aerolithe
 
                         bool maskIsAllBlack = IsMatAllBlack(maskMatForThisFrame);
 
-                        // 4) Remplacer le masque global avec un clone indépendant, puis afficher un Bitmap indépendant.
-                        if (!maskFreeze && !maskIsAllBlack)
+                        if (!maskIsAllBlack)
+                        {
+                            maskMatForLiveProcessing = usingFrozenMask
+                                ? maskMatForThisFrame.Clone()
+                                : CreateBinaryMaskWithInset(maskMatForThisFrame, GetCurrentMaskShrink());
+                            maskIsAllBlack = IsMatAllBlack(maskMatForLiveProcessing);
+                        }
+
+                        // 4) Remplacer le masque global avec le même masque que celui affiché.
+                        if (!usingFrozenMask && !maskIsAllBlack)
                         {
                             lock (_maskLock)
                             {
                                 var oldMat = maskMatLive;
-                                maskMatLive = maskMatForThisFrame.Clone();
+                                maskMatLive = maskMatForLiveProcessing.Clone();
                                 oldMat?.Dispose();
                             }
+                        }
+                        else if (!usingFrozenMask && maskIsAllBlack)
+                        {
+                            lock (_maskLock)
+                            {
+                                var oldMat = maskMatLive;
+                                maskMatLive = null;
+                                oldMat?.Dispose();
+                            }
+
+                            offsets.offsetX = 0;
+                            offsets.offsetY = 0;
+                            offsets.hasBlackOnBorder = false;
+                            offsets.hasForeground = false;
+                            offsets.boundingBox = Rectangle.Empty;
+
+                            udpSendLiftVerticalMotorData(0);
+                            udpSendLiftHorizontalData(0);
+                            udpSendCameraLinearMotorData(0);
                         }
 
                         try
                         {
-                            using var bmpTemp = maskMatForThisFrame.ToBitmap();
+                            using var bmpTemp = (maskMatForLiveProcessing ?? maskMatForThisFrame).ToBitmap();
                             var uiClone = (Bitmap)bmpTemp.Clone();
 
                             this.BeginInvoke(new Action(() =>
@@ -275,7 +305,9 @@ namespace Aerolithe
                         catch (Exception)
                         {
                             maskMatForThisFrame.Dispose();
+                            maskMatForLiveProcessing?.Dispose();
                             maskMatForThisFrame = null;
+                            maskMatForLiveProcessing = null;
                             AppendTextToConsoleNL($"Erreur LiveViewTimer_Tick :: this.BeginInvoke(new Action(() => using var bmpTemp ...");
                         }
                        
@@ -316,14 +348,13 @@ namespace Aerolithe
                         }
 
                         // 6) Pipeline de netteté / overlay avec le masque courant (Mat)
-                        if (maskMatForThisFrame != null && !maskMatForThisFrame.IsEmpty)
+                        if (maskMatForLiveProcessing != null && !maskMatForLiveProcessing.IsEmpty)
                         {
                             using (var sourceImage = background.ToImage<Bgr, byte>()) // si tu as besoin de Image<> pour d'autres opérations
-                            using (var maskGrayImg = maskMatForThisFrame.ToImage<Gray, byte>())
+                            using (var maskGrayImg = maskMatForLiveProcessing.ToImage<Gray, byte>())
                             using (var resizedMaskImg = maskGrayImg.Width != sourceImage.Width || maskGrayImg.Height != sourceImage.Height
                                                          ? maskGrayImg.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Nearest)
                                                          : maskGrayImg.Copy())
-                            using (var kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1)))
                             using (var grayForFocus = new Mat())
                             using (var safeMask = new Mat()) // Mat final pour ComputeSharpnessGridMaskedROI
                             {
@@ -334,8 +365,7 @@ namespace Aerolithe
                                 // Image -> Mat pour la carte de netteté
                                 CvInvoke.CvtColor(background, grayForFocus, ColorConversion.Bgr2Gray);
 
-                                // Petite érosion pour s’éloigner des bords
-                                CvInvoke.Erode(resizedMaskImg, safeMask, kernel, new Point(-1, -1), 1, BorderType.Constant, new MCvScalar(0));
+                                resizedMaskImg.Mat.CopyTo(safeMask);
 
                                 int blockSize = trackBar_blobCount.Value * 8;
                                 double[,] sharpnessGrid = ComputeSharpnessGridMaskedROI(grayForFocus, safeMask, blockSize, 0.8);
@@ -394,6 +424,7 @@ namespace Aerolithe
                         }
 
                         maskMatForThisFrame?.Dispose();
+                        maskMatForLiveProcessing?.Dispose();
                     } // end using background
                 }
                 else

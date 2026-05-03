@@ -61,6 +61,17 @@ namespace Aerolithe
         private CancellationTokenSource _autoPingCts;
         private volatile bool _shutdownStarted;
         private PrivateFontCollection? _bundledPhosphorFonts;
+        private readonly object _sequencePauseLock = new();
+        private bool _sequencePaused;
+        private TaskCompletionSource<bool> _sequenceResumeTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private static readonly Color SequenceActionButtonBackColor = Color.FromArgb(35, 35, 35);
+        private static readonly Color SequencePausedButtonBackColor = Color.FromArgb(110, 70, 20);
+        private readonly Dictionary<System.Windows.Forms.Button, Color> _sequencePauseButtonBackColors = new();
+        private TableLayoutPanel? _volumeSequenceActionsPanel;
+        private TableLayoutPanel? _totalSequenceActionsPanel;
+        private System.Windows.Forms.Button? _volumePauseResumeButton;
+        private System.Windows.Forms.Button? _totalPauseResumeButton;
+        private bool _isInitializingMaskShrinkSettings;
 
 
         public bool stackedImageInBuffer = false;
@@ -149,6 +160,7 @@ namespace Aerolithe
                 return;
             }
 
+            InitializeSequenceActionControls();
             StartAutoPingLoop(TimeSpan.FromSeconds(60));
 
             // Vérifie si on est sur le réseau WIFI Aérolithe et popup un message d'erreur sinon. À remettre à la version finale
@@ -193,6 +205,7 @@ namespace Aerolithe
                         txtBox_mesurements5deg.Text = projet.Mesurements5deg.ToString();
                         txtBox_mesurements25deg.Text = projet.Mesurements25deg.ToString();
                         txtBox_mesurements45deg.Text = projet.Mesurements45deg.ToString();
+                        InitializeMaskShrinkSettings();
                         txtBox_seqPad1.Text = appSettings.Padding5Deg.ToString();
                         txtBox_seqPad2.Text = appSettings.Padding25Deg.ToString();
                         txtBox_seqPad3.Text = appSettings.Padding45Deg.ToString();
@@ -212,10 +225,10 @@ namespace Aerolithe
                         }
 
 
-                        if (!string.IsNullOrWhiteSpace(projet.GetFocusStackPath()))
-                        {
-                            lbl_StackedPath.Text = projet.GetFocusStackPath();
-                        }
+                        //if (!string.IsNullOrWhiteSpace(projet.GetFocusStackPath()))
+                        //{
+                        //    lbl_StackedPath.Text = projet.GetFocusStackPath();
+                        //}
 
 
                     }
@@ -290,17 +303,17 @@ namespace Aerolithe
 
             ToggleCote(projet.Cote);
 
-            if (appSettings.ProjectPath != null) CreateAllFolders(Path.GetDirectoryName(appSettings.ProjectPath));
-
             btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
             btn_applyMask.Text = projet.ApplyMask ? "" : "";
             InitializeMaskThresholdSettings();
+            InitializeMaskShrinkSettings();
             InitializeMaskAlgorithmDropdown();
             btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
             btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
             btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
             btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
+            btn_ShowSharpnessOverlay.Text = projet.ViewSharpnessOverlay ? "" : "";
 
             // Timer servant à calculer le temps entre takePictureAsync et device_ImageReady
             timing = new Timing();
@@ -330,6 +343,181 @@ namespace Aerolithe
             return LicenseManager.UsageMode == LicenseUsageMode.Designtime ||
                 processName.Contains("devenv", StringComparison.OrdinalIgnoreCase) ||
                 processName.Contains("DesignToolsServer", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void InitializeSequenceActionControls()
+        {
+
+            _volumeSequenceActionsPanel = tableLayoutPanel62;
+            _totalSequenceActionsPanel = tableLayoutPanel63;
+
+            ConfigureSequenceActionPanel(
+                _volumeSequenceActionsPanel,
+                "tl_volumeSequenceActions",
+                out _volumePauseResumeButton,
+                out var volumeCancelButton);
+            ConfigureSequenceActionPanel(
+                _totalSequenceActionsPanel,
+                "tl_totalSequenceActions",
+                out _totalPauseResumeButton,
+                out var totalCancelButton);
+
+            _volumePauseResumeButton.Click += (_, __) => ToggleSequencePause(_volumePauseResumeButton, _totalPauseResumeButton);
+            _totalPauseResumeButton.Click += (_, __) => ToggleSequencePause(_volumePauseResumeButton, _totalPauseResumeButton);
+            volumeCancelButton.Click += (_, __) => StopSequences();
+            totalCancelButton.Click += (_, __) => StopSequences();
+
+            SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
+            SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
+        }
+
+        private void ConfigureSequenceActionPanel(TableLayoutPanel panel, string name, out System.Windows.Forms.Button pauseResumeButton, out System.Windows.Forms.Button cancelButton)
+        {
+            panel.Dock = DockStyle.Top;
+
+            var buttons = panel.Controls
+                .OfType<System.Windows.Forms.Button>()
+                .OrderBy(button => panel.GetRow(button))
+                .ThenBy(button => panel.GetColumn(button))
+                .ToList();
+
+            if (buttons.Count >= 2)
+            {
+                pauseResumeButton = buttons[0];
+                cancelButton = buttons[1];
+            }
+            else
+            {
+                pauseResumeButton = buttons.Count > 0 ? buttons[0] : CreateSequenceActionButton("Pause");
+                cancelButton = CreateSequenceActionButton("Cancellation");
+                cancelButton.BackColor = Color.FromArgb(80, 30, 30);
+
+                if (!panel.Controls.Contains(pauseResumeButton))
+                {
+                    panel.Controls.Add(pauseResumeButton, 0, 0);
+                }
+
+                if (!panel.Controls.Contains(cancelButton))
+                {
+                    panel.Controls.Add(cancelButton, 1, 0);
+                }
+            }
+
+            pauseResumeButton.Text = "Pause";
+            pauseResumeButton.Dock = DockStyle.Fill;
+            cancelButton.Text = "Cancellation";
+            cancelButton.Dock = DockStyle.Fill;
+            _sequencePauseButtonBackColors[pauseResumeButton] = pauseResumeButton.BackColor;
+        }
+
+        private System.Windows.Forms.Button CreateSequenceActionButton(string text)
+        {
+            return new System.Windows.Forms.Button
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = SequenceActionButtonBackColor,
+                ForeColor = Color.White,
+                Font = new Font("Roboto Medium", 9F, FontStyle.Bold, GraphicsUnit.Point, 0),
+                UseVisualStyleBackColor = false
+            };
+        }
+
+        private void ToggleSequencePause(params System.Windows.Forms.Button?[] pauseButtons)
+        {
+            bool paused;
+            lock (_sequencePauseLock)
+            {
+                if (_sequencePaused)
+                {
+                    _sequencePaused = false;
+                    _sequenceResumeTcs.TrySetResult(true);
+                }
+                else
+                {
+                    _sequencePaused = true;
+                    _sequenceResumeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                }
+
+                paused = _sequencePaused;
+            }
+
+            AppendTextToConsoleNL(
+                paused
+                    ? $"{GetActiveSequenceName()} mise en pause."
+                    : $"{GetActiveSequenceName()} reprise.",
+                paused ? Color.Orange : Color.LightGreen);
+
+            foreach (var button in pauseButtons)
+            {
+                SetPauseButtonState(button, paused);
+            }
+        }
+
+        private string GetActiveSequenceName()
+        {
+            if (_volumeSequenceActionsPanel?.Visible == true) return "Séquence volume";
+            if (_totalSequenceActionsPanel?.Visible == true) return "Routine totale";
+            return "Séquence";
+        }
+
+        private void ResumeSequenceIfPaused()
+        {
+            lock (_sequencePauseLock)
+            {
+                _sequencePaused = false;
+                _sequenceResumeTcs.TrySetResult(true);
+            }
+
+            SetPauseButtonState(_volumePauseResumeButton, paused: false);
+            SetPauseButtonState(_totalPauseResumeButton, paused: false);
+        }
+
+        private void SetPauseButtonState(System.Windows.Forms.Button? button, bool paused)
+        {
+            if (button == null) return;
+
+            button.Text = paused ? "Reprise" : "Pause";
+            button.BackColor = paused
+                ? SequencePausedButtonBackColor
+                : (_sequencePauseButtonBackColors.TryGetValue(button, out var backColor) ? backColor : SequenceActionButtonBackColor);
+        }
+
+        private void SetSequenceActionControlsVisible(TableLayoutPanel? panel, bool visible)
+        {
+            void update()
+            {
+                if (panel == null) return;
+                if (!visible) ResumeSequenceIfPaused();
+                panel.Visible = visible;
+                panel.Enabled = visible;
+            }
+
+            if (InvokeRequired)
+            {
+                Invoke(new Action(update));
+            }
+            else
+            {
+                update();
+            }
+        }
+
+        private async Task WaitIfSequencePausedAsync(CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                TaskCompletionSource<bool> resumeTcs;
+                lock (_sequencePauseLock)
+                {
+                    if (!_sequencePaused) return;
+                    resumeTcs = _sequenceResumeTcs;
+                }
+
+                using var registration = cancellationToken.Register(() => resumeTcs.TrySetCanceled(cancellationToken));
+                await resumeTcs.Task;
+            }
         }
 
         private void ApplyBundledPhosphorFontToControls()
@@ -445,12 +633,26 @@ namespace Aerolithe
             return Math.Max(hScrollBar_liveMaskThresh.Minimum, Math.Min(255, value));
         }
 
+        private int ClampMaskShrink(int value)
+        {
+            return Math.Max(trackBar_maskShrink1.Minimum, Math.Min(trackBar_maskShrink1.Maximum, value));
+        }
+
         private int GetMaskThresholdSetting(int algorithmIndex)
         {
             return algorithmIndex switch
             {
                 1 => appSettings.ThreshVal_2,
                 _ => appSettings.ThreshVal_1,
+            };
+        }
+
+        private int GetMaskShrinkSetting(int algorithmIndex)
+        {
+            return algorithmIndex switch
+            {
+                1 => projet.MaskShrink_2,
+                _ => projet.MaskShrink_1,
             };
         }
 
@@ -474,11 +676,50 @@ namespace Aerolithe
             }
         }
 
+        private void SetMaskShrinkSetting(int algorithmIndex, int value)
+        {
+            value = ClampMaskShrink(value);
+
+            switch (algorithmIndex)
+            {
+                case 1:
+                    projet.MaskShrink_2 = value;
+                    trackBar_maskShrink2.Value = value;
+                    lbl_maskShrink2.Text = value.ToString();
+                    break;
+                default:
+                    projet.MaskShrink_1 = value;
+                    trackBar_maskShrink1.Value = value;
+                    lbl_maskShrink1.Text = value.ToString();
+                    break;
+            }
+        }
+
         private void ApplyMaskThresholdForSelectedAlgorithm()
         {
             int value = ClampMaskThreshold(GetMaskThresholdSetting(comboBox_MaskAlgorithm.SelectedIndex));
             hScrollBar_liveMaskThresh.Value = value;
             lbl_maskAmount.Text = value.ToString();
+        }
+
+        private void InitializeMaskShrinkSettings()
+        {
+            _isInitializingMaskShrinkSettings = true;
+
+            SetMaskShrinkSetting(0, projet.MaskShrink_1);
+            SetMaskShrinkSetting(1, projet.MaskShrink_2);
+
+            trackBar_maskShrink1.Scroll -= trackBar_maskShrink_Scroll;
+            trackBar_maskShrink2.Scroll -= trackBar_maskShrink_Scroll;
+            trackBar_maskShrink1.Scroll += trackBar_maskShrink_Scroll;
+            trackBar_maskShrink2.Scroll += trackBar_maskShrink_Scroll;
+
+            _isInitializingMaskShrinkSettings = false;
+        }
+
+        private int GetCurrentMaskShrink()
+        {
+            return ClampMaskShrink(GetMaskShrinkSetting(appSettings.MaskAlgorithmIndex));
         }
 
 
@@ -833,6 +1074,9 @@ namespace Aerolithe
             {
                 while (!_stopRequested && !cancellationToken.IsCancellationRequested && (DateTime.Now - startTime).TotalMilliseconds <= timeoutMs)
                 {
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     await SendActuatorAngleRequestAsync();
 
                     if (ShouldAutoCenterDuringActuatorMove())
@@ -1078,6 +1322,28 @@ namespace Aerolithe
             }
         }
 
+        public void AppendTextToConsoleNL(string message, Color messageColor) // New Line
+        {
+
+            System.Windows.Forms.RichTextBox textbox = txtBox_Console;
+
+            string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
+
+            if (textbox.InvokeRequired)
+            {
+                textbox.Invoke(new Action(() =>
+                {
+                    AppendFormattedText(timestamp, Color.Gray, textbox);
+                    AppendFormattedText(message + Environment.NewLine, messageColor, textbox);
+                }));
+            }
+            else
+            {
+                AppendFormattedText(timestamp, Color.Gray, textbox);
+                AppendFormattedText(message + Environment.NewLine, messageColor, textbox);
+            }
+        }
+
 
         private void AppendFormattedText(string text, Color color, System.Windows.Forms.RichTextBox textbox)
         {
@@ -1288,11 +1554,7 @@ namespace Aerolithe
                     }
 
                     ResetSequenceCancellationButton();
-                    Task.Run(async () =>
-                    {
-                        tokenSource = new CancellationTokenSource();
-                        await SequencePrisePhotoTotale(tokenSource.Token);
-                    });
+                    StartTotalPhotoSequenceWithControls();
                 }
                 if (result == DialogResult.No)
                 {
@@ -1315,11 +1577,7 @@ namespace Aerolithe
                         }
 
                         ResetSequenceCancellationButton();
-                        Task.Run(async () =>
-                        {
-                            tokenSource = new CancellationTokenSource();
-                            await SequencePrisePhotoTotale(tokenSource.Token);
-                        });
+                        StartTotalPhotoSequenceWithControls();
                     }
                     else
                     {
@@ -1352,11 +1610,7 @@ namespace Aerolithe
                     ResetRotationIncrementAndName();
                     ResetFocusIncrementationAndName();
                     ResetSequenceCancellationButton();
-                    Task.Run(async () =>
-                    {
-                        tokenSource = new CancellationTokenSource();
-                        await SequencePrisePhotoTotale(tokenSource.Token);
-                    });
+                    StartTotalPhotoSequenceWithControls();
                 }
                 else
                 {
@@ -1369,6 +1623,23 @@ namespace Aerolithe
         private void btn_cancelPhotoShootMain_Click(object sender, EventArgs e)
         {
             StopSequences();
+        }
+
+        private void StartTotalPhotoSequenceWithControls()
+        {
+            Task.Run(async () =>
+            {
+                SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: true);
+                try
+                {
+                    tokenSource = new CancellationTokenSource();
+                    await SequencePrisePhotoTotale(tokenSource.Token);
+                }
+                finally
+                {
+                    SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
+                }
+            });
         }
 
 
@@ -1406,11 +1677,7 @@ namespace Aerolithe
             ResetSequenceCancellationButton();
 
 
-            Task.Run(async () =>
-            {
-                tokenSource = new CancellationTokenSource();
-                await SequencePrisePhotoTotale(tokenSource.Token);
-            });
+            StartTotalPhotoSequenceWithControls();
         }
 
         private async void btn_PriseImagesMesuresTotale_Click(object sender, EventArgs e)
@@ -1428,6 +1695,7 @@ namespace Aerolithe
 
             Task.Run(async () =>
             {
+                SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: true);
                 try
                 {
                     tokenSource = new CancellationTokenSource();
@@ -1442,6 +1710,10 @@ namespace Aerolithe
                     AppendTextToConsoleNL($"Erreur btn_PriseImagesMesuresTotale_Click: {ex.Message}");
                     _stopRequested = true;
                     ShowMeasurementSequenceErrorMessage(ex);
+                }
+                finally
+                {
+                    SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
                 }
             });
         }
@@ -1651,16 +1923,19 @@ namespace Aerolithe
             maskFreeze = false;
             btn_freezeMask.Text = "";
 
+            AppendTextToConsoleNL($"{GetActiveSequenceName()} cancellée par l'utilisateur.", Color.Red);
+
             tokenSource?.Cancel();
             _cts?.Cancel();
             _stopRequested = true;
+            SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
+            SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
             if (btn_cancelPhotoShoot.InvokeRequired)
             {
                 btn_cancelPhotoShoot.Invoke(new Action(() =>
                 {
                     btn_stopAutomaticFocusCapture.BackColor = Color.FromArgb(30, 30, 30);
                     btn_cancelPhotoShoot.BackColor = Color.FromArgb(30, 30, 30);
-                    btn_cancelPhotoShootMain.BackColor = Color.FromArgb(30, 30, 30);
                     // lbl_CancelStatus.Text = "Cancel? OUI";
                 }));
             }
@@ -1668,7 +1943,6 @@ namespace Aerolithe
             {
                 btn_stopAutomaticFocusCapture.BackColor = Color.FromArgb(30, 30, 30);
                 btn_cancelPhotoShoot.BackColor = Color.FromArgb(30, 30, 30);
-                btn_cancelPhotoShootMain.BackColor = Color.FromArgb(30, 30, 30);
                 // lbl_CancelStatus.Text = "Cancel? OUI";
             }
 
@@ -1687,14 +1961,12 @@ namespace Aerolithe
                 {
                     btn_cancelPhotoShoot.BackColor = System.Drawing.Color.FromArgb(100, 80, 30, 30);
                     btn_stopAutomaticFocusCapture.BackColor = System.Drawing.Color.FromArgb(100, 80, 30, 30);
-                    btn_cancelPhotoShootMain.BackColor = Color.FromArgb(30, 30, 30);
                 }));
             }
             else
             {
                 btn_cancelPhotoShoot.BackColor = System.Drawing.Color.FromArgb(100, 80, 30, 30);
                 btn_stopAutomaticFocusCapture.BackColor = System.Drawing.Color.FromArgb(100, 30, 80, 30);
-                btn_cancelPhotoShootMain.BackColor = Color.FromArgb(30, 30, 30);
             }
         }
 
@@ -1902,7 +2174,7 @@ namespace Aerolithe
         {
             Task.Run(async () =>
             {
-                panelSize = new Size(panelSize.Width - 20, panelSize.Height - 20);
+                panelSize = new Size(Math.Max(90, panelSize.Width - 20), Math.Max(70, panelSize.Height - 20));
                 await ResizePanelsAsync(panelSize);
             });
 
@@ -1916,20 +2188,7 @@ namespace Aerolithe
                 {
                     this.Invoke((System.Windows.Forms.MethodInvoker)delegate
                     {
-                        panel.Size = newSize;
-
-                        foreach (Control inner in panel.Controls.OfType<TableLayoutPanel>())
-                        {
-                            foreach (Control item in inner.Controls)
-                            {
-                                if (item is Label label)
-                                {
-                                    float newFontSize = Math.Max(6, newSize.Height / 20f); // ajustable
-                                    label.Font = new Font(label.Font.FontFamily, newFontSize);
-                                }
-
-                            }
-                        }
+                        ApplyThumbnailLayout(panel, newSize);
                     });
                 });
             }
@@ -2052,12 +2311,30 @@ namespace Aerolithe
             lbl_maskAmount.Text = hScrollBar_liveMaskThresh.Value.ToString();
         }
 
+        private void trackBar_maskShrink_Scroll(object? sender, EventArgs e)
+        {
+            if (_isInitializingMaskShrinkSettings) return;
+
+            if (sender == trackBar_maskShrink2)
+            {
+                SetMaskShrinkSetting(1, trackBar_maskShrink2.Value);
+            }
+            else
+            {
+                SetMaskShrinkSetting(0, trackBar_maskShrink1.Value);
+            }
+
+            SavePrefsSettings();
+        }
+
         private void comboBox_MaskAlgorithm_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBox_MaskAlgorithm.SelectedIndex < 0) return;
 
             appSettings.MaskAlgorithmIndex = comboBox_MaskAlgorithm.SelectedIndex;
             ApplyMaskThresholdForSelectedAlgorithm();
+            SetMaskShrinkSetting(0, projet.MaskShrink_1);
+            SetMaskShrinkSetting(1, projet.MaskShrink_2);
             appSettings.Save();
 
             if (maskFreeze)
@@ -2766,6 +3043,8 @@ namespace Aerolithe
             try { _manualActuatorAutoCenterCts?.Cancel(); } catch { }
             try { tokenSource?.Cancel(); } catch { }
             try { _cts?.Cancel(); } catch { }
+            try { SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false); } catch { }
+            try { SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false); } catch { }
 
             try { imageReadyTcs?.TrySetCanceled(); } catch { }
             try { captureCompleteTcs?.TrySetCanceled(); } catch { }
@@ -3248,11 +3527,7 @@ namespace Aerolithe
                 Debug.WriteLine($"Erreur lors de la suppression : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
-        private void picBox_liveMaskLum_Click(object sender, EventArgs e)
-        {
-
-        }
-
+               
+        
     }
 }

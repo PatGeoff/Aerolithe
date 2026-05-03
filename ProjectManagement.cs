@@ -88,70 +88,56 @@ namespace Aerolithe
             }
 
             projet.ImageFolderPath = Path.Combine(projectDirectory, "images");
-            if (!Directory.Exists(projet.ImageFolderPath))
-            {
-                Directory.CreateDirectory(projet.ImageFolderPath);
-            }
-            var imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "serie_A");
-            if (!Directory.Exists(imagesFolderNameSides))
-            {
-                Directory.CreateDirectory(imagesFolderNameSides);
-            }           
-            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "serie_B");
-            if (!Directory.Exists(imagesFolderNameSides))
-            {
-                Directory.CreateDirectory(imagesFolderNameSides);
-            }
-            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "noFS", "serie_A");
-            if (!Directory.Exists(imagesFolderNameSides))
-            {
-                Directory.CreateDirectory(imagesFolderNameSides);
-            }
-            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "noFS", "serie_B");
-            if (!Directory.Exists(imagesFolderNameSides))
-            {
-                Directory.CreateDirectory(imagesFolderNameSides);
-            }
-            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "mesures", "serie_A");
-            if (!Directory.Exists(imagesFolderNameSides))
-            {
-                Directory.CreateDirectory(imagesFolderNameSides);
-            }
-            imagesFolderNameSides = Path.Combine(projet.ImageFolderPath, "mesures", "serie_B");
-            if (!Directory.Exists(imagesFolderNameSides))
-            {
-                Directory.CreateDirectory(imagesFolderNameSides);
-            }   
-            
-            var focusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
-            projet.FocusStackFolderName = focusStackFolderName;
+            projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
+            EnsureProjectFoldersExist();
+        }
 
-            if (!Directory.Exists(focusStackFolderName))
+        private void NormalizeLoadedProjectPaths(string projectPath)
+        {
+            string? projectDirectory = Path.GetDirectoryName(projectPath);
+            if (string.IsNullOrWhiteSpace(projectDirectory))
             {
-                Directory.CreateDirectory(focusStackFolderName);
-            }
-            var focusStackFolderNameA = Path.Combine(focusStackFolderName, "focusStack_A");
-            if (!Directory.Exists(focusStackFolderNameA))
-            {
-                Directory.CreateDirectory(focusStackFolderNameA);
-            }
-            var focusStackFolderNameB = Path.Combine(focusStackFolderName, "focusStack_B");
-            if (!Directory.Exists(focusStackFolderNameB))
-            {
-                Directory.CreateDirectory(focusStackFolderNameB);
+                return;
             }
 
-            var maskFolderName = Path.Combine(focusStackFolderName, "masques_A");
-            if (!Directory.Exists(maskFolderName))
+            if (string.IsNullOrWhiteSpace(projet.ImageFolderPath) || !Directory.Exists(projet.ImageFolderPath))
             {
-                Directory.CreateDirectory(maskFolderName);
+                projet.ImageFolderPath = Path.Combine(projectDirectory, "images");
             }
 
-            maskFolderName = Path.Combine(focusStackFolderName, "masques_B");
-            if (!Directory.Exists(maskFolderName))
+            if (string.IsNullOrWhiteSpace(projet.FocusStackFolderName))
             {
-                Directory.CreateDirectory(maskFolderName);
+                projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
             }
+            else if (!ProjectPreferences.IsAbsolutePath(projet.FocusStackFolderName))
+            {
+                projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, projet.FocusStackFolderName);
+            }
+
+            EnsureProjectFoldersExist();
+        }
+
+        private void EnsureProjectFoldersExist()
+        {
+            if (string.IsNullOrWhiteSpace(projet.ImageFolderPath))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(projet.ImageFolderPath);
+            Directory.CreateDirectory(Path.Combine(projet.ImageFolderPath, "serie_A"));
+            Directory.CreateDirectory(Path.Combine(projet.ImageFolderPath, "serie_B"));
+            Directory.CreateDirectory(Path.Combine(projet.ImageFolderPath, "noFS", "serie_A"));
+            Directory.CreateDirectory(Path.Combine(projet.ImageFolderPath, "noFS", "serie_B"));
+            Directory.CreateDirectory(Path.Combine(projet.ImageFolderPath, "mesures", "serie_A"));
+            Directory.CreateDirectory(Path.Combine(projet.ImageFolderPath, "mesures", "serie_B"));
+
+            string focusStackRoot = projet.GetFocusStackRootPath();
+            Directory.CreateDirectory(focusStackRoot);
+            Directory.CreateDirectory(Path.Combine(focusStackRoot, "focusStack_A"));
+            Directory.CreateDirectory(Path.Combine(focusStackRoot, "focusStack_B"));
+            Directory.CreateDirectory(Path.Combine(focusStackRoot, "masques_A"));
+            Directory.CreateDirectory(Path.Combine(focusStackRoot, "masques_B"));
 
         }
 
@@ -183,6 +169,7 @@ namespace Aerolithe
 
         public void OpenProject(string path)
         {
+            appSettings.ProjectPath = path;
             //string projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
             //lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}";
             SetMainWindowTitle(appSettings.ProjectPath);
@@ -191,6 +178,7 @@ namespace Aerolithe
             try
             {
                 projet = projet.Load(appSettings.ProjectPath);
+                NormalizeLoadedProjectPaths(appSettings.ProjectPath);
                 stepSize = projet.StepSize;
                 hScrollBar_driveStep.Value = stepSize;
                 txtBox_DriveStep.Text = stepSize.ToString();
@@ -200,6 +188,9 @@ namespace Aerolithe
                 txtBox_mesurements5deg.Text = projet.Mesurements5deg.ToString();
                 txtBox_mesurements25deg.Text = projet.Mesurements25deg.ToString();
                 txtBox_mesurements45deg.Text = projet.Mesurements45deg.ToString();
+                InitializeMaskShrinkSettings();
+                DisplayPathsInUI();
+                projet.Save(appSettings.ProjectPath);
             }
             catch (Exception ex)
             {
@@ -256,7 +247,7 @@ namespace Aerolithe
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
                     projet.FocusStackFolderName = folderDialog.SelectedPath;
-                    lbl_StackedPath.Text = projet.GetFocusStackPath();
+                    //lbl_StackedPath.Text = projet.GetFocusStackPath();
                     SavePrefsSettings();
                 }
             }
@@ -371,13 +362,13 @@ namespace Aerolithe
                     lbl_ImgFullPath.Invoke(new Action(() =>
                     {
                         lbl_ImgFullPath.Text = projet.GetImageFullPath();
-                        lbl_StackedPath.Text = projet.GetFocusStackPath();
+                        //lbl_StackedPath.Text = projet.GetFocusStackPath();
                     }));
                 }
                 else
                 {
                     lbl_ImgFullPath.Text = projet.GetImageFullPath();
-                    lbl_StackedPath.Text = projet.GetFocusStackPath();
+                    //lbl_StackedPath.Text = projet.GetFocusStackPath();
                 }
             }
             catch (Exception ex)
@@ -746,6 +737,10 @@ namespace Aerolithe
 
         public bool AutoCentrage { get; set; } = true;
 
+        public int MaskShrink_1 { get; set; } = 1;
+
+        public int MaskShrink_2 { get; set; } = 1;
+
         // --- Méthodes utilitaires ---
         public string GetImageFullPath()
         {
@@ -814,7 +809,7 @@ namespace Aerolithe
         {
             // ex: C:\Projet\images\focusStack_A
             string coteFolder = (Cote == 0) ? "focusStack_A" : "focusStack_B";
-            return Path.Combine(ImageFolderPath, $"{FocusStackFolderName}", coteFolder);
+            return Path.Combine(GetFocusStackRootPath(), coteFolder);
         }
 
         public string GetFocusStackImageFullPath()
@@ -830,7 +825,7 @@ namespace Aerolithe
         {
             // ex: C:\Projet\images\masques_focusStack_A
             string coteFolder = (Cote == 0) ? "masques_A" : "masques_B";
-            return Path.Combine(FocusStackFolderName, coteFolder);
+            return Path.Combine(GetFocusStackRootPath(), coteFolder);
             //return ImageFolderPath;
         }
 
@@ -844,6 +839,36 @@ namespace Aerolithe
         public string GetMaskFullImagePath()
         {
             return Path.Combine(GetMaskFolderPath(), GetMaskImageName());
+        }
+
+        public string GetFocusStackRootPath()
+        {
+            if (string.IsNullOrWhiteSpace(FocusStackFolderName))
+            {
+                return Path.Combine(ImageFolderPath, "focusStack");
+            }
+
+            return IsAbsolutePath(FocusStackFolderName)
+                ? FocusStackFolderName
+                : Path.Combine(ImageFolderPath, FocusStackFolderName);
+        }
+
+        public static bool IsAbsolutePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+
+            if (Path.IsPathRooted(path) || path.StartsWith(@"\\"))
+            {
+                return true;
+            }
+
+            return path.Length >= 3
+                && char.IsLetter(path[0])
+                && path[1] == ':'
+                && (path[2] == '\\' || path[2] == '/');
         }
          
         ///

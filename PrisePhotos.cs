@@ -92,6 +92,9 @@ namespace Aerolithe
             // projet.Serie = 0, 1 ou 2 ---> (5,25,45)
             for (int i = projet.Serie; i < angleIndexes.Length; i++)
             {
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // Au début de chaque loop on s'assure que le maskFreeze soit false
                 maskFreeze = false;
                 if (btn_freezeMask.InvokeRequired)
@@ -192,18 +195,26 @@ namespace Aerolithe
             await UdpSendActuatorMessageAsync($"actuator {angle}");
             if (_stopRequested) return;
 
-            await WaitForActuator(angle);
+            await WaitIfSequencePausedAsync(ct);
+            ct.ThrowIfCancellationRequested();
+
+            await WaitForActuator(angle, ct);
             if (_stopRequested) return;
 
-            await Task.Delay(1000);
+            await WaitIfSequencePausedAsync(ct);
+            ct.ThrowIfCancellationRequested();
+
+            await Task.Delay(1000, ct);
 
             //await RoutineCalibration();
             //if (_stopRequested) return;
 
             AppendTextToConsoleNL("L'angle de l'actuateur est de " + actuatorAngle.ToString());
 
-            tokenSource = new CancellationTokenSource();
-            await PrisePhotoSequenceAsync(tokenSource.Token);
+            await WaitIfSequencePausedAsync(ct);
+            ct.ThrowIfCancellationRequested();
+
+            await PrisePhotoSequenceAsync(ct);
             if (_stopRequested) return;
 
             AppendTextToConsoleNL($"Séquence {+1} terminée");
@@ -244,13 +255,20 @@ namespace Aerolithe
             await UdpSendActuatorMessageAsync($"actuator {actuatorTarget}");
             if (_stopRequested) return;
 
-            await WaitForActuator(actuatorTarget);
+            await WaitIfSequencePausedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await WaitForActuator(actuatorTarget, cancellationToken);
             if (_stopRequested) return;
+
+            await WaitIfSequencePausedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
             await Task.Delay(1000, cancellationToken);
 
             for (int i = 0; i < imageCount; i++)
             {
+                await WaitIfSequencePausedAsync(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (_stopRequested) return;
 
@@ -263,16 +281,25 @@ namespace Aerolithe
                 AppendTextToConsoleNL($"Image de mesure {actuatorTarget}° {(i + 1)}/{imageCount} - table {turntableTarget}/4096");
                 UpdateSequenceStatusLabels(actuatorTarget, i + 1, imageCount);
 
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
                 await UdpSendTurnTableMessageAsync($"turntable,{turntableTarget},{turntableSpeed}");
                 if (_stopRequested) return;
 
-                await WaitForTurntablePositionAsync(turntableTarget);
+                await WaitForTurntablePositionAsync(turntableTarget, cancellationToken: cancellationToken);
                 if (_stopRequested) return;
+
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 if (projet.AutoCentrage)
                 {
                     try
                     {
+                        await WaitIfSequencePausedAsync(cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         await nikonDoFocus();
                     }
                     catch (Exception ex)
@@ -284,6 +311,9 @@ namespace Aerolithe
 
                     calculerCentre = true;
                     await Task.Delay(200, cancellationToken);
+
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     try
                     {
@@ -301,6 +331,9 @@ namespace Aerolithe
 
                 try
                 {
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     var measurementMiniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                     miniaturesTcs = measurementMiniaturesTcs;
                     await SaveMesurementImage();
@@ -365,13 +398,23 @@ namespace Aerolithe
             _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
 
 
+            await WaitIfSequencePausedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
             await UdpSendTurnTableMessageAsync($"turntable,150,{turntableSpeed}");
             await Task.Delay(800, cancellationToken);
 
+            await WaitIfSequencePausedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
             await UdpSendTurnTableMessageAsync($"turntable,0,{turntableSpeed}");
             cancellationToken.ThrowIfCancellationRequested();
-            await WaitForTurntablePositionAsync(0);
+            await WaitForTurntablePositionAsync(0, cancellationToken: cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
+
+            await WaitIfSequencePausedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
             await Task.Delay(800, cancellationToken);
 
             int[] paddingNbr = { appSettings.Padding5Deg, appSettings.Padding25Deg, appSettings.Padding45Deg };
@@ -410,6 +453,8 @@ namespace Aerolithe
                 // i est l'index physique local de rotation. RotationSerieIncrement reste le numéro global pour nommer/sauver.
                 for (int i = localStartIndex; i <= serieId[projet.Serie] - 1; i++)
                 {
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     projet.RotationSerieIncrement = paddingDepart + i;
                     SavePrefsSettings();
@@ -432,16 +477,22 @@ namespace Aerolithe
                     int degresActuelTableTournante = i * divider;
                     ttTargetPosition = degresActuelTableTournante;
 
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     await UdpSendTurnTableMessageAsync($"turntable,{degresActuelTableTournante},{turntableSpeed}");
 
                     if (_stopRequested) return;
 
-                    await WaitForTurntablePositionAsync(degresActuelTableTournante);
+                    await WaitForTurntablePositionAsync(degresActuelTableTournante, cancellationToken: cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
                    
 
                     try
                     {
+                        await WaitIfSequencePausedAsync(cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         await nikonDoFocus();
                     }
                     catch (Exception ex)
@@ -454,6 +505,9 @@ namespace Aerolithe
 
                     calculerCentre = true;
                     await Task.Delay(200, cancellationToken); // délai avant la routine ?? 
+
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     try
                     {
@@ -481,6 +535,9 @@ namespace Aerolithe
                     {
                         try
                         {
+                            await WaitIfSequencePausedAsync(cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
+
                             var measurementMiniaturesTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                             miniaturesTcs = measurementMiniaturesTcs;
                             AppendTextToConsoleNL($"[Thread PrisePhotoSequenceAsync :: SaveMesurementImage] Invoke Required Thread# {Thread.CurrentThread.ManagedThreadId} -> is Thread same as UI? {(!this.InvokeRequired).ToString()}");
@@ -506,8 +563,14 @@ namespace Aerolithe
                     {
                         try
                         {
+                            await WaitIfSequencePausedAsync(cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
+
                             await AutomaticFocusRoutine();
                             if (_stopRequested) return;
+
+                            await WaitIfSequencePausedAsync(cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
 
                             await AutomaticFocusThenCapture(delta);
 
@@ -532,6 +595,9 @@ namespace Aerolithe
                     else
                     {
                        
+                           await WaitIfSequencePausedAsync(cancellationToken);
+                           cancellationToken.ThrowIfCancellationRequested();
+
                            AppendTextToConsoleNL("Prise de photo sans focus stack");
                            await CaptureImageAndWaitForMiniatureAsync();
                            cancellationToken.ThrowIfCancellationRequested();
@@ -571,6 +637,9 @@ namespace Aerolithe
                     {
                         try
                         {
+                            await WaitIfSequencePausedAsync(cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
+
                             await IncrementImgSeq();
                         }
                         catch (Exception ex)
@@ -594,7 +663,12 @@ namespace Aerolithe
             _stopwatch.Stop();
         }
 
-        private async Task<bool> WaitForTurntablePositionAsync(int targetPos, int tolerance = 80, int timeoutMs = 10000, int checkInterval = 100)
+        private async Task<bool> WaitForTurntablePositionAsync(
+            int targetPos,
+            int tolerance = 80,
+            int timeoutMs = 10000,
+            int checkInterval = 100,
+            CancellationToken cancellationToken = default)
         {
             AppendTextToConsoleNL("WaitForTurntablePositionAsync");
 
@@ -602,6 +676,9 @@ namespace Aerolithe
 
             while ((DateTime.UtcNow - startTime).TotalMilliseconds < timeoutMs)
             {
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (_stopRequested) return false;
 
                 // Vérifie la position actuelle
@@ -611,7 +688,7 @@ namespace Aerolithe
                     return true;
                 }
 
-                await Task.Delay(checkInterval);
+                await Task.Delay(checkInterval, cancellationToken);
             }
 
             AppendTextToConsoleNL($"Timeout : position actuelle {turntablePosition}°, cible {targetPos}°");

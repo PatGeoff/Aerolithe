@@ -628,8 +628,8 @@ namespace Aerolithe
 
 
         //        //await SaveBitmapAsJpeg(maskBitmapLive,projet.GetMaskFullImagePath());
-        //        //await SaveMaskAsPngTransparentBlack(maskBitmapLive, projet.GetMaskFullImagePath());
-        //        await SaveMaskAsPngTransparentBlack(maskMatLive, projet.GetMaskFullImagePath());
+        //        //await SaveMaskAsPngNoTransparency(maskBitmapLive, projet.GetMaskFullImagePath());
+        //        await SaveMaskAsPngNoTransparency(maskMatLive, projet.GetMaskFullImagePath());
 
 
         //    var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();

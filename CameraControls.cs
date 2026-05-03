@@ -493,47 +493,57 @@ namespace Aerolithe
         private void AfficherMiniatures(string nomImage, string imagePath, Size panelSize)
         {
             AppendTextToConsoleNL("AfficherMiniatures");
-            string nomImageModifie = Path.GetFileName(imagePath).Split(".")[0];
+            string nomImageModifie = Path.GetFileNameWithoutExtension(imagePath);
             try
             {
                 using (Image originalImage = System.Drawing.Image.FromFile(imagePath))
                 {
-                    Image resizedImage = ResizeImage(originalImage, 150, 100);
+                    int imageWidth = Math.Max(120, panelSize.Width - 10);
+                    int imageHeight = Math.Max(80, panelSize.Height - 32);
+                    Image resizedImage = ResizeImage(originalImage, imageWidth, imageHeight);
 
                     Panel borderPanel = new Panel
                     {
                         Size = panelSize,
-                        BorderStyle = BorderStyle.FixedSingle
+                        BackColor = Color.FromArgb(14, 14, 14),
+                        BorderStyle = BorderStyle.FixedSingle,
+                        Margin = new Padding(3, 2, 3, 2)
                     };
 
                     TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
                     {
                         ColumnCount = 2,
                         RowCount = 2,
-                        Dock = DockStyle.Fill
+                        Dock = DockStyle.Fill,
+                        BackColor = Color.FromArgb(14, 14, 14),
+                        Padding = new Padding(1),
+                        Margin = new Padding(0)
                     };
 
-                    // Ajout des colonnes
-                    tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 85F)); // Pour le label
-                    tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F)); // Pour le bouton
+                    tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+                    tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, GetThumbnailDeleteButtonWidth(panelSize)));
 
-                    // Ajout des lignes
-                    tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F)); // Ligne du label + bouton
-                    tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Ligne de l'image
+                    tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, GetThumbnailHeaderHeight(panelSize)));
+                    tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
                     Button deleteButton = new Button
                     {
-                        Text = "X",
+                        Text = "",
+                        Name = "btn_deleteThumbnail",
                         Dock = DockStyle.Fill,
-                        Font = new Font(FontFamily.GenericSansSerif, 6),
-                        BackColor = Color.FromArgb(100, 30, 30, 30),
-                        ForeColor = Color.Red,
+                        Font = new Font("Phosphor", GetThumbnailIconFontSize(panelSize), FontStyle.Regular, GraphicsUnit.Point),
+                        BackColor = Color.FromArgb(14, 14, 14),
+                        ForeColor = Color.FromArgb(220, 220, 220),
                         Margin = new Padding(0),
+                        Padding = new Padding(0),
+                        TextAlign = ContentAlignment.MiddleCenter,
                         FlatStyle = FlatStyle.Flat
                     };
 
                     deleteButton.FlatAppearance.BorderSize = 0;
-                    deleteButton.FlatAppearance.BorderColor = Color.Black;
+                    deleteButton.FlatAppearance.BorderColor = Color.FromArgb(14, 14, 14);
+                    deleteButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(55, 35, 35);
+                    deleteButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(80, 35, 35);
 
                     deleteButton.Click += (s, e) =>
                     {
@@ -567,11 +577,15 @@ namespace Aerolithe
 
                     Label label = new Label
                     {
+                        Name = "lbl_thumbnailTitle",
                         Text = nomImageModifie,
-                        TextAlign = ContentAlignment.MiddleRight, // aligné à droite
+                        AutoEllipsis = true,
+                        TextAlign = ContentAlignment.MiddleLeft,
                         ForeColor = Color.White,
                         Dock = DockStyle.Fill,
-                        Font = new Font(FontFamily.GenericSansSerif, 7)
+                        Font = new Font(FontFamily.GenericSansSerif, GetThumbnailTitleFontSize(panelSize), FontStyle.Regular),
+                        Margin = new Padding(4, 0, 2, 0),
+                        Padding = new Padding(0)
                     };
 
                     if (photoPourMesure)
@@ -587,10 +601,13 @@ namespace Aerolithe
                     {
                         Image = resizedImage,
                         SizeMode = PictureBoxSizeMode.Zoom,
-                        Dock = DockStyle.Fill
+                        Dock = DockStyle.Fill,
+                        BackColor = Color.Black,
+                        Margin = new Padding(2, 1, 2, 2)
                     };
 
 
+                    new ToolTip().SetToolTip(label, nomImageModifie);
                     new ToolTip().SetToolTip(pictureBox, imagePath);
 
 
@@ -613,6 +630,7 @@ namespace Aerolithe
                     tableLayoutPanel.Controls.Add(pictureBox, 0, 1);
 
                     borderPanel.Controls.Add(tableLayoutPanel);
+                    ApplyThumbnailLayout(borderPanel, panelSize);
 
                     flowLayoutPanel1.Controls.Add(borderPanel);
                     flowLayoutPanel1.ScrollControlIntoView(borderPanel);
@@ -637,6 +655,67 @@ namespace Aerolithe
             }
 
           
+        }
+
+        private static int GetThumbnailHeaderHeight(Size size)
+        {
+            float titleFontSize = GetThumbnailTitleFontSize(size);
+            float iconFontSize = GetThumbnailIconFontSize(size);
+            int textHeight = (int)Math.Ceiling(Math.Max(titleFontSize, iconFontSize) * 1.55f);
+            int proportionalHeight = (int)Math.Round(size.Height * 0.12);
+
+            return Math.Max(28, Math.Min(38, Math.Max(textHeight + 12, proportionalHeight)));
+        }
+
+        private static int GetThumbnailDeleteButtonWidth(Size size)
+        {
+            return Math.Max(20, Math.Min(28, (int)Math.Round(size.Width * 0.10)));
+        }
+
+        private static float GetThumbnailTitleFontSize(Size size)
+        {
+            return Math.Max(7f, Math.Min(10f, size.Height / 30f));
+        }
+
+        private static float GetThumbnailIconFontSize(Size size)
+        {
+            return Math.Max(8f, Math.Min(11f, size.Height / 28f));
+        }
+
+        private static void ApplyThumbnailLayout(Panel panel, Size size)
+        {
+            panel.Size = size;
+
+            foreach (var tableLayoutPanel in panel.Controls.OfType<TableLayoutPanel>())
+            {
+                if (tableLayoutPanel.ColumnStyles.Count >= 2)
+                {
+                    tableLayoutPanel.ColumnStyles[0].SizeType = SizeType.Percent;
+                    tableLayoutPanel.ColumnStyles[0].Width = 100F;
+                    tableLayoutPanel.ColumnStyles[1].SizeType = SizeType.Absolute;
+                    tableLayoutPanel.ColumnStyles[1].Width = GetThumbnailDeleteButtonWidth(size);
+                }
+
+                if (tableLayoutPanel.RowStyles.Count >= 2)
+                {
+                    tableLayoutPanel.RowStyles[0].SizeType = SizeType.Absolute;
+                    tableLayoutPanel.RowStyles[0].Height = GetThumbnailHeaderHeight(size);
+                    tableLayoutPanel.RowStyles[1].SizeType = SizeType.Percent;
+                    tableLayoutPanel.RowStyles[1].Height = 100F;
+                }
+
+                foreach (Control item in tableLayoutPanel.Controls)
+                {
+                    if (item is Label label && label.Name == "lbl_thumbnailTitle")
+                    {
+                        label.Font = new Font(label.Font.FontFamily, GetThumbnailTitleFontSize(size), label.Font.Style);
+                    }
+                    else if (item is Button button && button.Name == "btn_deleteThumbnail")
+                    {
+                        button.Font = new Font(button.Font.FontFamily, GetThumbnailIconFontSize(size), button.Font.Style);
+                    }
+                }
+            }
         }
 
         private Image ResizeImage(Image image, int width, int height)
@@ -730,7 +809,7 @@ namespace Aerolithe
             using var sourceImage = originalBitmap.ToImage<Bgr, byte>();
             using var maskGray = maskMat.ToImage<Gray, byte>();
             using var resizedMask = maskGray.Resize(sourceImage.Width, sourceImage.Height, Emgu.CV.CvEnum.Inter.Nearest);
-            using var binaryMask = CreateBinaryMaskWithInset(resizedMask.Mat);
+            using var binaryMask = CreateBinaryMaskWithInset(resizedMask.Mat, 0);
 
             using var sourceMat = sourceImage.Mat;
             using var masked = Mat.Zeros(sourceMat.Rows, sourceMat.Cols, sourceMat.Depth, sourceMat.NumberOfChannels);
@@ -742,13 +821,18 @@ namespace Aerolithe
             return masked.ToBitmap();
         }
 
-        private static Mat CreateBinaryMaskWithInset(Mat mask)
+        private static Mat CreateBinaryMaskWithInset(Mat mask, int shrinkPixels)
         {
             var binaryMask = new Mat();
             CvInvoke.Threshold(mask, binaryMask, 1, 255, ThresholdType.Binary);
 
-            using var kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
-            CvInvoke.Erode(binaryMask, binaryMask, kernel, new Point(-1, -1), 1, BorderType.Constant, new MCvScalar(0));
+            shrinkPixels = Math.Max(0, shrinkPixels);
+            if (shrinkPixels > 0)
+            {
+                int kernelSize = shrinkPixels * 2 + 1;
+                using var kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(kernelSize, kernelSize), new Point(-1, -1));
+                CvInvoke.Erode(binaryMask, binaryMask, kernel, new Point(-1, -1), 1, BorderType.Constant, new MCvScalar(0));
+            }
 
             return binaryMask;
         }
@@ -831,7 +915,7 @@ namespace Aerolithe
 
         }
 
-        public async Task SaveMaskAsPngTransparentBlack(Mat maskSrc, string outputPathPng)
+        public async Task SaveMaskAsPngNoTransparency(Mat maskSrc, string outputPathPng)
         {
             if (maskSrc == null || maskSrc.IsEmpty)
             {
@@ -904,11 +988,32 @@ namespace Aerolithe
                     // 3) Sauvegarder un masque simple noir/blanc sans alpha.
                     // Un PNG avec alpha peut paraître blanc partout dans certains viewers
                     // et peut être relu comme blanc partout si l'alpha est ignoré.
-                    using var binaryMask = CreateBinaryMaskWithInset(resizedMask);
+                    using var binaryMask = CreateBinaryMaskWithInset(resizedMask, 0);
                     int nonZero = CvInvoke.CountNonZero(binaryMask);
                     AppendTextToConsoleNL($"SaveMask: pixels masque={nonZero}/{binaryMask.Rows * binaryMask.Cols}");
 
-                    CvInvoke.Imwrite(outputPathPng, binaryMask);
+                    string tmpPath = Path.Combine(dir ?? string.Empty, Guid.NewGuid().ToString("N") + ".tmp.png");
+                    try
+                    {
+                        if (!CvInvoke.Imwrite(tmpPath, binaryMask))
+                        {
+                            throw new IOException("CvInvoke.Imwrite a retourné false.");
+                        }
+
+                        if (File.Exists(outputPathPng))
+                        {
+                            File.Delete(outputPathPng);
+                        }
+
+                        File.Move(tmpPath, outputPathPng);
+                    }
+                    finally
+                    {
+                        if (File.Exists(tmpPath))
+                        {
+                            File.Delete(tmpPath);
+                        }
+                    }
                 });
 
                 AppendTextToConsoleNL($"Masque PNG sauvegardé (noir/blanc): {outputPathPng}");
@@ -955,7 +1060,7 @@ namespace Aerolithe
             using (var maskImage = displayedMask.ToImage<Gray, byte>())
             using (var maskMat = maskImage.Mat.Clone())
             {
-                await SaveMaskAsPngTransparentBlack(maskMat, outputPathPng);
+                await SaveMaskAsPngNoTransparency(maskMat, outputPathPng);
             }
 
             AppendTextToConsoleNL("Masque sauvegardé depuis picBox_liveMaskLum : " + outputPathPng);

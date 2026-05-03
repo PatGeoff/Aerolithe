@@ -207,6 +207,22 @@ Comment valider que le travail est correct :
   - Pendant une capture avec masque, si aucun masque sauvegardé ou live n'est disponible, l'image est sauvegardée sans masque au lieu d'arrêter la séquence.
   - Si aucun masque n'est affiché dans `picBox_liveMaskLum`, la sauvegarde du masque est ignorée avec un log console au lieu de lever une exception.
 
+- `REV-0028-live-mask-shrink`
+  - Ajout de deux valeurs projet `MaskShrink_1` et `MaskShrink_2` pour contrôler la contraction du masque par algorithme.
+  - Les valeurs sont chargées depuis le projet au démarrage/ouverture et mises à jour via les sliders/labels du Designer.
+  - Le masque affiché dans `picBox_liveMaskLum` est le masque déjà contracté.
+  - `maskMatLive`, le focus map, l'application sur photo et la sauvegarde disque utilisent ce même masque affiché, sans recontraction additionnelle.
+  - La sauvegarde du masque reste un PNG grayscale noir/blanc sans canal alpha.
+  - La méthode de sauvegarde a été renommée `SaveMaskAsPngNoTransparency` pour refléter ce comportement.
+
+- `REV-0029-thumbnail-layout`
+  - Refonte visuelle des miniatures ajoutées dans `flowLayoutPanel1`.
+  - Le titre utilise maintenant `Path.GetFileNameWithoutExtension(imagePath)` pour afficher le vrai nom du fichier.
+  - Le label du titre utilise `AutoEllipsis` et un tooltip avec le nom complet.
+  - Le bouton de suppression utilise l'icône Phosphor `` au lieu du `X` rouge.
+  - Le header, la taille du titre, la largeur du bouton et la taille de l'icône sont recalculés quand les boutons `+/-` changent la taille des miniatures.
+  - La hauteur du header dépend de la taille de police du titre et de l'icône pour éviter que Phosphor déborde verticalement.
+
 ### Contexte Confirmé
 
 - Le projet est une application WinForms .NET 8 avec Nikon D850, live view, autofocus, focus stack, masquage, UDP/ESP32 et séquences automatiques.
