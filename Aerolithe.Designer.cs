@@ -399,7 +399,6 @@
             splitContainer1 = new SplitContainer();
             tableLayoutPanel4 = new TableLayoutPanel();
             tableLayoutPanel45 = new TableLayoutPanel();
-            progressBar_ImageSave = new ProgressBar();
             btn_clearPicLayout = new Button();
             btn_plusSizePic = new Button();
             btn_minusSizePic = new Button();
@@ -415,11 +414,13 @@
             txtBox_FFMPEGConsole = new RichTextBox();
             tableLayoutPanel88 = new TableLayoutPanel();
             btn_StackConsoleView = new Button();
-            button1 = new Button();
             btn_clearFFMPEGConsole = new Button();
             tableLayoutPanel15 = new TableLayoutPanel();
             tableLayoutPanel87 = new TableLayoutPanel();
             btn_consoleScrollToCaret = new Button();
+            btn_enableNetworkConsoleMess = new Button();
+            button1 = new Button();
+            button3 = new Button();
             tableLayoutPanel5 = new TableLayoutPanel();
             folderBrowserDialog1 = new FolderBrowserDialog();
             tabControl1.SuspendLayout();
@@ -590,7 +591,7 @@
             btn_clearConsole.Location = new Point(1, 1);
             btn_clearConsole.Margin = new Padding(1);
             btn_clearConsole.Name = "btn_clearConsole";
-            btn_clearConsole.Size = new Size(21, 30);
+            btn_clearConsole.Size = new Size(28, 30);
             btn_clearConsole.TabIndex = 19;
             btn_clearConsole.Text = "";
             btn_clearConsole.UseVisualStyleBackColor = false;
@@ -825,7 +826,7 @@
             btn_PriseImagesMesuresTotale.Name = "btn_PriseImagesMesuresTotale";
             btn_PriseImagesMesuresTotale.Size = new Size(522, 52);
             btn_PriseImagesMesuresTotale.TabIndex = 52;
-            btn_PriseImagesMesuresTotale.Text = "Séquence de prise de photos (pour calcul du volume)";
+            btn_PriseImagesMesuresTotale.Text = "Séquence de prise de photos (Calibration)";
             btn_PriseImagesMesuresTotale.UseVisualStyleBackColor = false;
             btn_PriseImagesMesuresTotale.Click += btn_PriseImagesMesuresTotale_Click;
             // 
@@ -1112,13 +1113,14 @@
             btn_focusPlus.Dock = DockStyle.Fill;
             btn_focusPlus.FlatAppearance.BorderSize = 0;
             btn_focusPlus.FlatStyle = FlatStyle.Flat;
+            btn_focusPlus.Font = new Font("Phosphor", 8F);
             btn_focusPlus.ForeColor = Color.White;
             btn_focusPlus.Location = new Point(199, 1);
             btn_focusPlus.Margin = new Padding(1);
             btn_focusPlus.Name = "btn_focusPlus";
             btn_focusPlus.Size = new Size(148, 24);
             btn_focusPlus.TabIndex = 13;
-            btn_focusPlus.Text = ">>";
+            btn_focusPlus.Text = "";
             btn_focusPlus.UseVisualStyleBackColor = false;
             btn_focusPlus.Click += btn_focusPlus_Click;
             // 
@@ -1128,13 +1130,14 @@
             btn_focusMinus.Dock = DockStyle.Fill;
             btn_focusMinus.FlatAppearance.BorderSize = 0;
             btn_focusMinus.FlatStyle = FlatStyle.Flat;
+            btn_focusMinus.Font = new Font("Phosphor", 8F);
             btn_focusMinus.ForeColor = Color.White;
             btn_focusMinus.Location = new Point(51, 1);
             btn_focusMinus.Margin = new Padding(1);
             btn_focusMinus.Name = "btn_focusMinus";
             btn_focusMinus.Size = new Size(146, 24);
             btn_focusMinus.TabIndex = 12;
-            btn_focusMinus.Text = "<<";
+            btn_focusMinus.Text = "";
             btn_focusMinus.UseVisualStyleBackColor = false;
             btn_focusMinus.Click += btn_focusMinus_Click;
             // 
@@ -2068,6 +2071,7 @@
             label39.Size = new Size(73, 41);
             label39.TabIndex = 59;
             label39.Text = "Séquences";
+            label39.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // label29
             // 
@@ -2230,8 +2234,8 @@
             tableLayoutPanel29.Location = new Point(3, 3);
             tableLayoutPanel29.Name = "tableLayoutPanel29";
             tableLayoutPanel29.RowCount = 6;
-            tableLayoutPanel29.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
-            tableLayoutPanel29.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
+            tableLayoutPanel29.RowStyles.Add(new RowStyle(SizeType.Percent, 20.47244F));
+            tableLayoutPanel29.RowStyles.Add(new RowStyle(SizeType.Percent, 12.5984249F));
             tableLayoutPanel29.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
             tableLayoutPanel29.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
             tableLayoutPanel29.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
@@ -2247,25 +2251,26 @@
             label2.Location = new Point(1, 0);
             label2.Margin = new Padding(1, 0, 1, 0);
             label2.Name = "label2";
-            label2.Size = new Size(518, 42);
+            label2.Size = new Size(518, 52);
             label2.TabIndex = 6;
             label2.Text = "Stepper Motor";
             // 
             // tableLayoutPanel30
             // 
-            tableLayoutPanel30.ColumnCount = 3;
+            tableLayoutPanel30.ColumnCount = 4;
             tableLayoutPanel30.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanel30.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanel30.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel30.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35.8178062F));
+            tableLayoutPanel30.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30.8488617F));
+            tableLayoutPanel30.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 29F));
             tableLayoutPanel30.Controls.Add(label13, 0, 0);
             tableLayoutPanel30.Controls.Add(btn_StopLinearMotor, 1, 0);
             tableLayoutPanel30.Controls.Add(label12, 2, 0);
             tableLayoutPanel30.Dock = DockStyle.Fill;
-            tableLayoutPanel30.Location = new Point(3, 45);
+            tableLayoutPanel30.Location = new Point(3, 55);
             tableLayoutPanel30.Name = "tableLayoutPanel30";
             tableLayoutPanel30.RowCount = 1;
             tableLayoutPanel30.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel30.Size = new Size(514, 36);
+            tableLayoutPanel30.Size = new Size(514, 26);
             tableLayoutPanel30.TabIndex = 7;
             // 
             // label13
@@ -2276,20 +2281,20 @@
             label13.Location = new Point(1, 0);
             label13.Margin = new Padding(1, 0, 1, 0);
             label13.Name = "label13";
-            label13.Size = new Size(169, 36);
+            label13.Size = new Size(159, 26);
             label13.TabIndex = 23;
             label13.Text = "Loin de la météorite";
-            label13.TextAlign = ContentAlignment.BottomLeft;
+            label13.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // btn_StopLinearMotor
             // 
-            btn_StopLinearMotor.BackColor = Color.FromArgb(100, 40, 40);
+            btn_StopLinearMotor.BackColor = Color.FromArgb(40, 0, 0);
             btn_StopLinearMotor.Dock = DockStyle.Fill;
             btn_StopLinearMotor.ForeColor = Color.WhiteSmoke;
-            btn_StopLinearMotor.Location = new Point(172, 1);
+            btn_StopLinearMotor.Location = new Point(162, 1);
             btn_StopLinearMotor.Margin = new Padding(1);
             btn_StopLinearMotor.Name = "btn_StopLinearMotor";
-            btn_StopLinearMotor.Size = new Size(169, 34);
+            btn_StopLinearMotor.Size = new Size(171, 24);
             btn_StopLinearMotor.TabIndex = 21;
             btn_StopLinearMotor.Text = "Stop";
             btn_StopLinearMotor.UseVisualStyleBackColor = false;
@@ -2300,13 +2305,14 @@
             label12.AutoSize = true;
             label12.Dock = DockStyle.Fill;
             label12.ForeColor = Color.White;
-            label12.Location = new Point(343, 0);
+            label12.ImageAlign = ContentAlignment.MiddleRight;
+            label12.Location = new Point(335, 0);
             label12.Margin = new Padding(1, 0, 1, 0);
             label12.Name = "label12";
-            label12.Size = new Size(170, 36);
+            label12.Size = new Size(147, 26);
             label12.TabIndex = 22;
             label12.Text = "Près de la météorite";
-            label12.TextAlign = ContentAlignment.BottomCenter;
+            label12.TextAlign = ContentAlignment.MiddleRight;
             // 
             // tableLayoutPanel31
             // 
@@ -2367,7 +2373,6 @@
             // 
             btn_setStepperZeroRef.BackColor = Color.FromArgb(30, 30, 30);
             btn_setStepperZeroRef.Dock = DockStyle.Fill;
-            btn_setStepperZeroRef.FlatAppearance.BorderSize = 0;
             btn_setStepperZeroRef.FlatStyle = FlatStyle.Flat;
             btn_setStepperZeroRef.ForeColor = Color.White;
             btn_setStepperZeroRef.Location = new Point(1, 1);
@@ -2375,7 +2380,7 @@
             btn_setStepperZeroRef.Name = "btn_setStepperZeroRef";
             btn_setStepperZeroRef.Size = new Size(255, 34);
             btn_setStepperZeroRef.TabIndex = 1;
-            btn_setStepperZeroRef.Text = "Set Stepper Zero Reference";
+            btn_setStepperZeroRef.Text = "Setter la référence du zéro";
             btn_setStepperZeroRef.UseVisualStyleBackColor = false;
             btn_setStepperZeroRef.Click += btn_setStepperZeroPosition;
             // 
@@ -2383,7 +2388,6 @@
             // 
             button2.BackColor = Color.FromArgb(30, 30, 30);
             button2.Dock = DockStyle.Fill;
-            button2.FlatAppearance.BorderSize = 0;
             button2.FlatStyle = FlatStyle.Flat;
             button2.ForeColor = Color.White;
             button2.Location = new Point(258, 1);
@@ -2391,7 +2395,7 @@
             button2.Name = "button2";
             button2.Size = new Size(255, 34);
             button2.TabIndex = 25;
-            button2.Text = "Set Stepper Max Reference";
+            button2.Text = "Setter la référence du max";
             button2.UseVisualStyleBackColor = false;
             button2.Click += btn_setStepperMaxPosition;
             // 
@@ -2424,7 +2428,6 @@
             // 
             btn_stepperGetPosition.BackColor = Color.FromArgb(30, 30, 30);
             btn_stepperGetPosition.Dock = DockStyle.Fill;
-            btn_stepperGetPosition.FlatAppearance.BorderSize = 0;
             btn_stepperGetPosition.FlatStyle = FlatStyle.Flat;
             btn_stepperGetPosition.ForeColor = Color.White;
             btn_stepperGetPosition.Location = new Point(1, 1);
@@ -2432,7 +2435,7 @@
             btn_stepperGetPosition.Name = "btn_stepperGetPosition";
             btn_stepperGetPosition.Size = new Size(255, 34);
             btn_stepperGetPosition.TabIndex = 12;
-            btn_stepperGetPosition.Text = "Get Position";
+            btn_stepperGetPosition.Text = "Obtenir la position";
             btn_stepperGetPosition.UseVisualStyleBackColor = false;
             btn_stepperGetPosition.Click += btn_stepperGetPosition_Click;
             // 
@@ -2454,7 +2457,6 @@
             // 
             btn_GetSwtichesState.BackColor = Color.FromArgb(30, 30, 30);
             btn_GetSwtichesState.Dock = DockStyle.Fill;
-            btn_GetSwtichesState.FlatAppearance.BorderSize = 0;
             btn_GetSwtichesState.FlatStyle = FlatStyle.Flat;
             btn_GetSwtichesState.ForeColor = Color.White;
             btn_GetSwtichesState.Location = new Point(1, 1);
@@ -2462,7 +2464,7 @@
             btn_GetSwtichesState.Name = "btn_GetSwtichesState";
             btn_GetSwtichesState.Size = new Size(255, 36);
             btn_GetSwtichesState.TabIndex = 2;
-            btn_GetSwtichesState.Text = "Get Switches State";
+            btn_GetSwtichesState.Text = "Obtenire l'état des switchs";
             btn_GetSwtichesState.UseVisualStyleBackColor = false;
             btn_GetSwtichesState.Click += btn_GetSwtichesState_Click;
             // 
@@ -2480,6 +2482,7 @@
             // 
             // tableLayoutPanel47
             // 
+            tableLayoutPanel47.CellBorderStyle = TableLayoutPanelCellBorderStyle.Single;
             tableLayoutPanel47.ColumnCount = 1;
             tableLayoutPanel47.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel47.Controls.Add(trkBar_turntable, 0, 2);
@@ -2491,24 +2494,28 @@
             tableLayoutPanel47.Location = new Point(1, 1);
             tableLayoutPanel47.Name = "tableLayoutPanel47";
             tableLayoutPanel47.RowCount = 6;
-            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
-            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
             tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel47.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
             tableLayoutPanel47.Size = new Size(526, 694);
             tableLayoutPanel47.TabIndex = 40;
             // 
             // trkBar_turntable
             // 
             trkBar_turntable.Dock = DockStyle.Fill;
-            trkBar_turntable.Location = new Point(1, 61);
+            trkBar_turntable.Location = new Point(2, 78);
             trkBar_turntable.Margin = new Padding(1);
             trkBar_turntable.Maximum = 4096;
             trkBar_turntable.Name = "trkBar_turntable";
             trkBar_turntable.RightToLeft = RightToLeft.No;
-            trkBar_turntable.Size = new Size(524, 28);
+            trkBar_turntable.Size = new Size(522, 32);
             trkBar_turntable.TabIndex = 7;
             trkBar_turntable.TickFrequency = 0;
             trkBar_turntable.Value = 4096;
@@ -2522,23 +2529,25 @@
             tableLayoutPanel48.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 72.48521F));
             tableLayoutPanel48.Controls.Add(btn_queryTurntablePos, 0, 0);
             tableLayoutPanel48.Dock = DockStyle.Fill;
-            tableLayoutPanel48.Location = new Point(3, 3);
+            tableLayoutPanel48.Location = new Point(4, 4);
             tableLayoutPanel48.Name = "tableLayoutPanel48";
             tableLayoutPanel48.RowCount = 1;
             tableLayoutPanel48.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel48.Size = new Size(520, 24);
+            tableLayoutPanel48.Size = new Size(518, 34);
             tableLayoutPanel48.TabIndex = 22;
             // 
             // btn_queryTurntablePos
             // 
+            btn_queryTurntablePos.BackColor = Color.FromArgb(30, 30, 30);
             btn_queryTurntablePos.Dock = DockStyle.Fill;
-            btn_queryTurntablePos.Location = new Point(1, 1);
-            btn_queryTurntablePos.Margin = new Padding(1);
+            btn_queryTurntablePos.ForeColor = Color.White;
+            btn_queryTurntablePos.Location = new Point(0, 0);
+            btn_queryTurntablePos.Margin = new Padding(0);
             btn_queryTurntablePos.Name = "btn_queryTurntablePos";
-            btn_queryTurntablePos.Size = new Size(141, 22);
+            btn_queryTurntablePos.Size = new Size(142, 34);
             btn_queryTurntablePos.TabIndex = 39;
             btn_queryTurntablePos.Text = "Position?";
-            btn_queryTurntablePos.UseVisualStyleBackColor = true;
+            btn_queryTurntablePos.UseVisualStyleBackColor = false;
             btn_queryTurntablePos.Click += btn_queryTurntablePos_Click;
             // 
             // tableLayoutPanel49
@@ -2551,17 +2560,17 @@
             tableLayoutPanel49.Controls.Add(label4, 0, 0);
             tableLayoutPanel49.Controls.Add(lbl_turntablePosition, 1, 0);
             tableLayoutPanel49.Dock = DockStyle.Fill;
-            tableLayoutPanel49.Location = new Point(3, 33);
+            tableLayoutPanel49.Location = new Point(4, 45);
             tableLayoutPanel49.Name = "tableLayoutPanel49";
             tableLayoutPanel49.RowCount = 1;
             tableLayoutPanel49.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
-            tableLayoutPanel49.Size = new Size(520, 24);
+            tableLayoutPanel49.Size = new Size(518, 28);
             tableLayoutPanel49.TabIndex = 23;
             // 
             // lbl_turntablePositionDeg
             // 
             lbl_turntablePositionDeg.ForeColor = Color.White;
-            lbl_turntablePositionDeg.Location = new Point(347, 0);
+            lbl_turntablePositionDeg.Location = new Point(345, 0);
             lbl_turntablePositionDeg.Margin = new Padding(1, 0, 1, 0);
             lbl_turntablePositionDeg.Name = "lbl_turntablePositionDeg";
             lbl_turntablePositionDeg.Size = new Size(148, 24);
@@ -2576,7 +2585,7 @@
             label4.Location = new Point(1, 0);
             label4.Margin = new Padding(1, 0, 1, 0);
             label4.Name = "label4";
-            label4.Size = new Size(171, 24);
+            label4.Size = new Size(170, 28);
             label4.TabIndex = 8;
             label4.Text = "Table Tournante";
             label4.TextAlign = ContentAlignment.MiddleLeft;
@@ -2584,7 +2593,7 @@
             // lbl_turntablePosition
             // 
             lbl_turntablePosition.ForeColor = Color.White;
-            lbl_turntablePosition.Location = new Point(174, 0);
+            lbl_turntablePosition.Location = new Point(173, 0);
             lbl_turntablePosition.Margin = new Padding(1, 0, 1, 0);
             lbl_turntablePosition.Name = "lbl_turntablePosition";
             lbl_turntablePosition.Size = new Size(148, 24);
@@ -2603,37 +2612,43 @@
             tableLayoutPanel73.Controls.Add(lbl_ttIterations, 0, 0);
             tableLayoutPanel73.Controls.Add(lbl_turntableIterationDeg, 1, 0);
             tableLayoutPanel73.Dock = DockStyle.Fill;
-            tableLayoutPanel73.Location = new Point(3, 93);
+            tableLayoutPanel73.Location = new Point(4, 115);
             tableLayoutPanel73.Name = "tableLayoutPanel73";
             tableLayoutPanel73.RowCount = 1;
             tableLayoutPanel73.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel73.Size = new Size(520, 28);
+            tableLayoutPanel73.Size = new Size(518, 34);
             tableLayoutPanel73.TabIndex = 24;
             // 
             // btn_avanveTTdeg
             // 
+            btn_avanveTTdeg.BackColor = Color.FromArgb(30, 30, 30);
             btn_avanveTTdeg.Dock = DockStyle.Fill;
             btn_avanveTTdeg.FlatStyle = FlatStyle.Flat;
+            btn_avanveTTdeg.Font = new Font("Phosphor", 8F);
             btn_avanveTTdeg.ForeColor = Color.White;
-            btn_avanveTTdeg.Location = new Point(353, 3);
+            btn_avanveTTdeg.Location = new Point(349, 0);
+            btn_avanveTTdeg.Margin = new Padding(0);
             btn_avanveTTdeg.Name = "btn_avanveTTdeg";
-            btn_avanveTTdeg.Size = new Size(164, 22);
+            btn_avanveTTdeg.Size = new Size(169, 34);
             btn_avanveTTdeg.TabIndex = 2;
-            btn_avanveTTdeg.Text = ">>>";
-            btn_avanveTTdeg.UseVisualStyleBackColor = true;
+            btn_avanveTTdeg.Text = "";
+            btn_avanveTTdeg.UseVisualStyleBackColor = false;
             btn_avanveTTdeg.Click += btn_avanveTTdeg_Click;
             // 
             // btn_reculeTTdeg
             // 
+            btn_reculeTTdeg.BackColor = Color.FromArgb(30, 30, 30);
             btn_reculeTTdeg.Dock = DockStyle.Fill;
             btn_reculeTTdeg.FlatStyle = FlatStyle.Flat;
+            btn_reculeTTdeg.Font = new Font("Phosphor", 8F);
             btn_reculeTTdeg.ForeColor = Color.White;
-            btn_reculeTTdeg.Location = new Point(183, 3);
+            btn_reculeTTdeg.Location = new Point(180, 0);
+            btn_reculeTTdeg.Margin = new Padding(0);
             btn_reculeTTdeg.Name = "btn_reculeTTdeg";
-            btn_reculeTTdeg.Size = new Size(164, 22);
+            btn_reculeTTdeg.Size = new Size(169, 34);
             btn_reculeTTdeg.TabIndex = 1;
-            btn_reculeTTdeg.Text = "<<<";
-            btn_reculeTTdeg.UseVisualStyleBackColor = true;
+            btn_reculeTTdeg.Text = "";
+            btn_reculeTTdeg.UseVisualStyleBackColor = false;
             btn_reculeTTdeg.Click += btn_reculeTTdeg_Click;
             // 
             // lbl_ttIterations
@@ -2643,7 +2658,7 @@
             lbl_ttIterations.ForeColor = Color.White;
             lbl_ttIterations.Location = new Point(3, 0);
             lbl_ttIterations.Name = "lbl_ttIterations";
-            lbl_ttIterations.Size = new Size(84, 28);
+            lbl_ttIterations.Size = new Size(84, 34);
             lbl_ttIterations.TabIndex = 3;
             lbl_ttIterations.Text = "20 itérations";
             lbl_ttIterations.TextAlign = ContentAlignment.MiddleCenter;
@@ -2655,7 +2670,7 @@
             lbl_turntableIterationDeg.ForeColor = Color.White;
             lbl_turntableIterationDeg.Location = new Point(93, 0);
             lbl_turntableIterationDeg.Name = "lbl_turntableIterationDeg";
-            lbl_turntableIterationDeg.Size = new Size(84, 28);
+            lbl_turntableIterationDeg.Size = new Size(84, 34);
             lbl_turntableIterationDeg.TabIndex = 4;
             lbl_turntableIterationDeg.Text = "18 degrés";
             lbl_turntableIterationDeg.TextAlign = ContentAlignment.MiddleCenter;
@@ -2663,11 +2678,11 @@
             // trackBar_ttIncrements
             // 
             trackBar_ttIncrements.Dock = DockStyle.Fill;
-            trackBar_ttIncrements.Location = new Point(3, 127);
+            trackBar_ttIncrements.Location = new Point(4, 156);
             trackBar_ttIncrements.Maximum = 30;
             trackBar_ttIncrements.Minimum = 1;
             trackBar_ttIncrements.Name = "trackBar_ttIncrements";
-            trackBar_ttIncrements.Size = new Size(520, 24);
+            trackBar_ttIncrements.Size = new Size(518, 28);
             trackBar_ttIncrements.TabIndex = 25;
             trackBar_ttIncrements.Value = 20;
             trackBar_ttIncrements.ValueChanged += trackBar_ttIncrements_ValueChanged;
@@ -2696,8 +2711,8 @@
             tableLayoutPanel40.Name = "tableLayoutPanel40";
             tableLayoutPanel40.RowCount = 3;
             tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
-            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
-            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 10F));
+            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 30.6916428F));
+            tableLayoutPanel40.RowStyles.Add(new RowStyle(SizeType.Percent, 24.3515854F));
             tableLayoutPanel40.Size = new Size(526, 694);
             tableLayoutPanel40.TabIndex = 29;
             // 
@@ -2966,12 +2981,12 @@
             tableLayoutPanel90.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel90.Controls.Add(tableLayoutPanel95, 0, 0);
             tableLayoutPanel90.Dock = DockStyle.Fill;
-            tableLayoutPanel90.Location = new Point(3, 627);
+            tableLayoutPanel90.Location = new Point(3, 527);
             tableLayoutPanel90.Name = "tableLayoutPanel90";
             tableLayoutPanel90.RowCount = 2;
-            tableLayoutPanel90.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tableLayoutPanel90.RowStyles.Add(new RowStyle(SizeType.Absolute, 70F));
             tableLayoutPanel90.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel90.Size = new Size(520, 64);
+            tableLayoutPanel90.Size = new Size(520, 164);
             tableLayoutPanel90.TabIndex = 31;
             // 
             // tableLayoutPanel95
@@ -2986,7 +3001,7 @@
             tableLayoutPanel95.Name = "tableLayoutPanel95";
             tableLayoutPanel95.RowCount = 1;
             tableLayoutPanel95.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel95.Size = new Size(514, 30);
+            tableLayoutPanel95.Size = new Size(514, 64);
             tableLayoutPanel95.TabIndex = 6;
             // 
             // btn_CancelAutoCentrage
@@ -2997,7 +3012,7 @@
             btn_CancelAutoCentrage.ForeColor = Color.White;
             btn_CancelAutoCentrage.Location = new Point(354, 3);
             btn_CancelAutoCentrage.Name = "btn_CancelAutoCentrage";
-            btn_CancelAutoCentrage.Size = new Size(157, 24);
+            btn_CancelAutoCentrage.Size = new Size(157, 58);
             btn_CancelAutoCentrage.TabIndex = 6;
             btn_CancelAutoCentrage.Text = "Cancel";
             btn_CancelAutoCentrage.UseVisualStyleBackColor = false;
@@ -3011,7 +3026,7 @@
             btn_LiftAutoCenterRoutine.ForeColor = Color.White;
             btn_LiftAutoCenterRoutine.Location = new Point(3, 3);
             btn_LiftAutoCenterRoutine.Name = "btn_LiftAutoCenterRoutine";
-            btn_LiftAutoCenterRoutine.Size = new Size(345, 24);
+            btn_LiftAutoCenterRoutine.Size = new Size(345, 58);
             btn_LiftAutoCenterRoutine.TabIndex = 5;
             btn_LiftAutoCenterRoutine.Text = "Auto Centrage";
             btn_LiftAutoCenterRoutine.UseVisualStyleBackColor = false;
@@ -3038,43 +3053,50 @@
             tableLayoutPanel27.Location = new Point(1, 1);
             tableLayoutPanel27.Name = "tableLayoutPanel27";
             tableLayoutPanel27.RowCount = 2;
-            tableLayoutPanel27.RowStyles.Add(new RowStyle(SizeType.Percent, 31.7984085F));
-            tableLayoutPanel27.RowStyles.Add(new RowStyle(SizeType.Percent, 68.20159F));
+            tableLayoutPanel27.RowStyles.Add(new RowStyle(SizeType.Percent, 43.51585F));
+            tableLayoutPanel27.RowStyles.Add(new RowStyle(SizeType.Percent, 56.48415F));
             tableLayoutPanel27.Size = new Size(526, 694);
             tableLayoutPanel27.TabIndex = 14;
             // 
             // tableLayoutPanel21
             // 
+            tableLayoutPanel21.CellBorderStyle = TableLayoutPanelCellBorderStyle.Single;
             tableLayoutPanel21.ColumnCount = 1;
             tableLayoutPanel21.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel21.Controls.Add(btn_autofocusPageActuator, 0, 5);
-            tableLayoutPanel21.Controls.Add(tableLayoutPanel26, 0, 4);
-            tableLayoutPanel21.Controls.Add(tableLayoutPanel25, 0, 3);
-            tableLayoutPanel21.Controls.Add(tableLayoutPanel24, 0, 2);
-            tableLayoutPanel21.Controls.Add(tableLayoutPanel23, 0, 1);
+            tableLayoutPanel21.Controls.Add(btn_autofocusPageActuator, 0, 8);
+            tableLayoutPanel21.Controls.Add(tableLayoutPanel26, 0, 6);
+            tableLayoutPanel21.Controls.Add(tableLayoutPanel25, 0, 4);
+            tableLayoutPanel21.Controls.Add(tableLayoutPanel24, 0, 3);
+            tableLayoutPanel21.Controls.Add(tableLayoutPanel23, 0, 2);
             tableLayoutPanel21.Controls.Add(tableLayoutPanel22, 0, 0);
             tableLayoutPanel21.Dock = DockStyle.Fill;
             tableLayoutPanel21.Location = new Point(3, 3);
             tableLayoutPanel21.Name = "tableLayoutPanel21";
-            tableLayoutPanel21.RowCount = 6;
-            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
-            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
-            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
-            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
-            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
-            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Percent, 16.666666F));
-            tableLayoutPanel21.Size = new Size(520, 214);
+            tableLayoutPanel21.RowCount = 9;
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 4F));
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 4F));
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 4F));
+            tableLayoutPanel21.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            tableLayoutPanel21.Size = new Size(520, 296);
             tableLayoutPanel21.TabIndex = 13;
             // 
             // btn_autofocusPageActuator
             // 
-            btn_autofocusPageActuator.Location = new Point(1, 176);
-            btn_autofocusPageActuator.Margin = new Padding(1);
+            btn_autofocusPageActuator.BackColor = Color.FromArgb(30, 30, 30);
+            btn_autofocusPageActuator.Dock = DockStyle.Left;
+            btn_autofocusPageActuator.ForeColor = Color.White;
+            btn_autofocusPageActuator.Location = new Point(1, 221);
+            btn_autofocusPageActuator.Margin = new Padding(0);
             btn_autofocusPageActuator.Name = "btn_autofocusPageActuator";
-            btn_autofocusPageActuator.Size = new Size(255, 28);
+            btn_autofocusPageActuator.Size = new Size(255, 74);
             btn_autofocusPageActuator.TabIndex = 6;
             btn_autofocusPageActuator.Text = "Autofocus";
-            btn_autofocusPageActuator.UseVisualStyleBackColor = true;
+            btn_autofocusPageActuator.UseVisualStyleBackColor = false;
             btn_autofocusPageActuator.Click += btnAutofocus_Click;
             // 
             // tableLayoutPanel26
@@ -3086,34 +3108,40 @@
             tableLayoutPanel26.Controls.Add(txtBox_customAngle, 0, 0);
             tableLayoutPanel26.Controls.Add(btn_gotCustomAngle, 1, 0);
             tableLayoutPanel26.Dock = DockStyle.Fill;
-            tableLayoutPanel26.Location = new Point(3, 143);
+            tableLayoutPanel26.Location = new Point(4, 178);
             tableLayoutPanel26.Name = "tableLayoutPanel26";
             tableLayoutPanel26.RowCount = 1;
             tableLayoutPanel26.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel26.Size = new Size(514, 29);
+            tableLayoutPanel26.Size = new Size(512, 34);
             tableLayoutPanel26.TabIndex = 4;
             // 
             // txtBox_customAngle
             // 
+            txtBox_customAngle.BackColor = Color.FromArgb(30, 30, 30);
             txtBox_customAngle.Dock = DockStyle.Fill;
             txtBox_customAngle.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            txtBox_customAngle.ForeColor = Color.White;
             txtBox_customAngle.Location = new Point(1, 1);
             txtBox_customAngle.Margin = new Padding(1);
+            txtBox_customAngle.Multiline = true;
             txtBox_customAngle.Name = "txtBox_customAngle";
-            txtBox_customAngle.Size = new Size(91, 23);
+            txtBox_customAngle.Size = new Size(90, 32);
             txtBox_customAngle.TabIndex = 11;
             txtBox_customAngle.Text = "10";
             txtBox_customAngle.TextAlign = HorizontalAlignment.Center;
             // 
             // btn_gotCustomAngle
             // 
-            btn_gotCustomAngle.Location = new Point(94, 1);
-            btn_gotCustomAngle.Margin = new Padding(1);
+            btn_gotCustomAngle.BackColor = Color.FromArgb(30, 30, 30);
+            btn_gotCustomAngle.Dock = DockStyle.Fill;
+            btn_gotCustomAngle.ForeColor = Color.White;
+            btn_gotCustomAngle.Location = new Point(92, 0);
+            btn_gotCustomAngle.Margin = new Padding(0);
             btn_gotCustomAngle.Name = "btn_gotCustomAngle";
-            btn_gotCustomAngle.Size = new Size(59, 27);
+            btn_gotCustomAngle.Size = new Size(60, 34);
             btn_gotCustomAngle.TabIndex = 12;
             btn_gotCustomAngle.Text = "Go";
-            btn_gotCustomAngle.UseVisualStyleBackColor = true;
+            btn_gotCustomAngle.UseVisualStyleBackColor = false;
             btn_gotCustomAngle.Click += btn_gotCustomAngle_Click;
             // 
             // tableLayoutPanel25
@@ -3125,11 +3153,11 @@
             tableLayoutPanel25.Controls.Add(btn_TestAutoCenterActuator, 1, 0);
             tableLayoutPanel25.Controls.Add(label44, 0, 0);
             tableLayoutPanel25.Dock = DockStyle.Fill;
-            tableLayoutPanel25.Location = new Point(3, 108);
+            tableLayoutPanel25.Location = new Point(4, 132);
             tableLayoutPanel25.Name = "tableLayoutPanel25";
             tableLayoutPanel25.RowCount = 1;
             tableLayoutPanel25.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel25.Size = new Size(514, 29);
+            tableLayoutPanel25.Size = new Size(512, 34);
             tableLayoutPanel25.TabIndex = 3;
             // 
             // btn_TestAutoCenterActuator
@@ -3140,10 +3168,10 @@
             btn_TestAutoCenterActuator.FlatStyle = FlatStyle.Flat;
             btn_TestAutoCenterActuator.Font = new Font("Phosphor", 12F);
             btn_TestAutoCenterActuator.ForeColor = Color.White;
-            btn_TestAutoCenterActuator.Location = new Point(51, 1);
-            btn_TestAutoCenterActuator.Margin = new Padding(1);
+            btn_TestAutoCenterActuator.Location = new Point(50, 0);
+            btn_TestAutoCenterActuator.Margin = new Padding(0);
             btn_TestAutoCenterActuator.Name = "btn_TestAutoCenterActuator";
-            btn_TestAutoCenterActuator.Size = new Size(35, 27);
+            btn_TestAutoCenterActuator.Size = new Size(37, 34);
             btn_TestAutoCenterActuator.TabIndex = 10;
             btn_TestAutoCenterActuator.Text = "";
             btn_TestAutoCenterActuator.UseVisualStyleBackColor = false;
@@ -3158,7 +3186,7 @@
             label44.Location = new Point(0, 0);
             label44.Margin = new Padding(0);
             label44.Name = "label44";
-            label44.Size = new Size(50, 29);
+            label44.Size = new Size(50, 34);
             label44.TabIndex = 12;
             label44.Text = "";
             label44.TextAlign = ContentAlignment.MiddleCenter;
@@ -3173,47 +3201,53 @@
             tableLayoutPanel24.Controls.Add(btn_Actuator_Down, 1, 0);
             tableLayoutPanel24.Controls.Add(btn_stopActuatorMoving, 2, 0);
             tableLayoutPanel24.Dock = DockStyle.Fill;
-            tableLayoutPanel24.Location = new Point(3, 73);
+            tableLayoutPanel24.Location = new Point(4, 91);
             tableLayoutPanel24.Name = "tableLayoutPanel24";
             tableLayoutPanel24.RowCount = 1;
             tableLayoutPanel24.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel24.Size = new Size(514, 29);
+            tableLayoutPanel24.Size = new Size(512, 34);
             tableLayoutPanel24.TabIndex = 2;
             // 
             // btn_Actuator_Up
             // 
+            btn_Actuator_Up.BackColor = Color.FromArgb(30, 30, 30);
             btn_Actuator_Up.Dock = DockStyle.Fill;
-            btn_Actuator_Up.Location = new Point(1, 1);
-            btn_Actuator_Up.Margin = new Padding(1);
+            btn_Actuator_Up.ForeColor = Color.White;
+            btn_Actuator_Up.Location = new Point(0, 0);
+            btn_Actuator_Up.Margin = new Padding(0);
             btn_Actuator_Up.Name = "btn_Actuator_Up";
-            btn_Actuator_Up.Size = new Size(169, 27);
+            btn_Actuator_Up.Size = new Size(170, 34);
             btn_Actuator_Up.TabIndex = 4;
             btn_Actuator_Up.Text = "Up";
-            btn_Actuator_Up.UseVisualStyleBackColor = true;
+            btn_Actuator_Up.UseVisualStyleBackColor = false;
             btn_Actuator_Up.Click += btn_Actuator_Up_Click;
             // 
             // btn_Actuator_Down
             // 
+            btn_Actuator_Down.BackColor = Color.FromArgb(30, 30, 30);
             btn_Actuator_Down.Dock = DockStyle.Fill;
-            btn_Actuator_Down.Location = new Point(172, 1);
-            btn_Actuator_Down.Margin = new Padding(1);
+            btn_Actuator_Down.ForeColor = Color.White;
+            btn_Actuator_Down.Location = new Point(170, 0);
+            btn_Actuator_Down.Margin = new Padding(0);
             btn_Actuator_Down.Name = "btn_Actuator_Down";
-            btn_Actuator_Down.Size = new Size(169, 27);
+            btn_Actuator_Down.Size = new Size(170, 34);
             btn_Actuator_Down.TabIndex = 5;
             btn_Actuator_Down.Text = "Down";
-            btn_Actuator_Down.UseVisualStyleBackColor = true;
+            btn_Actuator_Down.UseVisualStyleBackColor = false;
             btn_Actuator_Down.Click += btn_Actuator_Down_Click;
             // 
             // btn_stopActuatorMoving
             // 
+            btn_stopActuatorMoving.BackColor = Color.FromArgb(30, 30, 30);
             btn_stopActuatorMoving.Dock = DockStyle.Fill;
-            btn_stopActuatorMoving.Location = new Point(343, 1);
-            btn_stopActuatorMoving.Margin = new Padding(1);
+            btn_stopActuatorMoving.ForeColor = Color.White;
+            btn_stopActuatorMoving.Location = new Point(340, 0);
+            btn_stopActuatorMoving.Margin = new Padding(0);
             btn_stopActuatorMoving.Name = "btn_stopActuatorMoving";
-            btn_stopActuatorMoving.Size = new Size(170, 27);
+            btn_stopActuatorMoving.Size = new Size(172, 34);
             btn_stopActuatorMoving.TabIndex = 10;
             btn_stopActuatorMoving.Text = "Stop";
-            btn_stopActuatorMoving.UseVisualStyleBackColor = true;
+            btn_stopActuatorMoving.UseVisualStyleBackColor = false;
             btn_stopActuatorMoving.Click += btn_stopActuatorMoving_Click;
             // 
             // tableLayoutPanel23
@@ -3226,87 +3260,94 @@
             tableLayoutPanel23.Controls.Add(btn_actuator25deg, 1, 0);
             tableLayoutPanel23.Controls.Add(btn_actuator45deg, 2, 0);
             tableLayoutPanel23.Dock = DockStyle.Fill;
-            tableLayoutPanel23.Location = new Point(3, 38);
+            tableLayoutPanel23.Location = new Point(4, 50);
             tableLayoutPanel23.Name = "tableLayoutPanel23";
             tableLayoutPanel23.RowCount = 1;
             tableLayoutPanel23.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel23.Size = new Size(514, 29);
+            tableLayoutPanel23.Size = new Size(512, 34);
             tableLayoutPanel23.TabIndex = 1;
             // 
             // btn_actuator5deg
             // 
+            btn_actuator5deg.BackColor = Color.FromArgb(30, 30, 30);
             btn_actuator5deg.Dock = DockStyle.Fill;
-            btn_actuator5deg.Location = new Point(1, 1);
-            btn_actuator5deg.Margin = new Padding(1);
+            btn_actuator5deg.ForeColor = Color.White;
+            btn_actuator5deg.Location = new Point(0, 0);
+            btn_actuator5deg.Margin = new Padding(0);
             btn_actuator5deg.Name = "btn_actuator5deg";
-            btn_actuator5deg.Size = new Size(169, 27);
+            btn_actuator5deg.Size = new Size(170, 34);
             btn_actuator5deg.TabIndex = 0;
             btn_actuator5deg.Text = "5";
-            btn_actuator5deg.UseVisualStyleBackColor = true;
+            btn_actuator5deg.UseVisualStyleBackColor = false;
             btn_actuator5deg.Click += btn_actuator_5_Click;
             // 
             // btn_actuator25deg
             // 
+            btn_actuator25deg.BackColor = Color.FromArgb(30, 30, 30);
             btn_actuator25deg.Dock = DockStyle.Fill;
-            btn_actuator25deg.Location = new Point(172, 1);
-            btn_actuator25deg.Margin = new Padding(1);
+            btn_actuator25deg.ForeColor = Color.White;
+            btn_actuator25deg.Location = new Point(170, 0);
+            btn_actuator25deg.Margin = new Padding(0);
             btn_actuator25deg.Name = "btn_actuator25deg";
-            btn_actuator25deg.Size = new Size(169, 27);
+            btn_actuator25deg.Size = new Size(170, 34);
             btn_actuator25deg.TabIndex = 1;
             btn_actuator25deg.Text = "25";
-            btn_actuator25deg.UseVisualStyleBackColor = true;
+            btn_actuator25deg.UseVisualStyleBackColor = false;
             btn_actuator25deg.Click += btn_actuator_25_Click;
             // 
             // btn_actuator45deg
             // 
+            btn_actuator45deg.BackColor = Color.FromArgb(30, 30, 30);
             btn_actuator45deg.Dock = DockStyle.Fill;
-            btn_actuator45deg.Location = new Point(343, 1);
-            btn_actuator45deg.Margin = new Padding(1);
+            btn_actuator45deg.ForeColor = Color.White;
+            btn_actuator45deg.Location = new Point(340, 0);
+            btn_actuator45deg.Margin = new Padding(0);
             btn_actuator45deg.Name = "btn_actuator45deg";
-            btn_actuator45deg.Size = new Size(170, 27);
+            btn_actuator45deg.Size = new Size(172, 34);
             btn_actuator45deg.TabIndex = 2;
             btn_actuator45deg.Text = "45";
-            btn_actuator45deg.UseVisualStyleBackColor = true;
+            btn_actuator45deg.UseVisualStyleBackColor = false;
             btn_actuator45deg.Click += btn_actuator_45_Click;
             // 
             // tableLayoutPanel22
             // 
-            tableLayoutPanel22.ColumnCount = 4;
-            tableLayoutPanel22.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tableLayoutPanel22.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tableLayoutPanel22.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tableLayoutPanel22.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayoutPanel22.ColumnCount = 3;
+            tableLayoutPanel22.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 43.46349F));
+            tableLayoutPanel22.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
+            tableLayoutPanel22.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 56.5365067F));
             tableLayoutPanel22.Controls.Add(btn_getActuatorAngle, 0, 0);
             tableLayoutPanel22.Controls.Add(lbl_actuatorAngle, 2, 0);
             tableLayoutPanel22.Controls.Add(label46, 1, 0);
             tableLayoutPanel22.Dock = DockStyle.Fill;
-            tableLayoutPanel22.Location = new Point(3, 3);
+            tableLayoutPanel22.Location = new Point(4, 4);
             tableLayoutPanel22.Name = "tableLayoutPanel22";
             tableLayoutPanel22.RowCount = 1;
             tableLayoutPanel22.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel22.Size = new Size(514, 29);
+            tableLayoutPanel22.Size = new Size(512, 34);
             tableLayoutPanel22.TabIndex = 0;
             // 
             // btn_getActuatorAngle
             // 
+            btn_getActuatorAngle.BackColor = Color.FromArgb(30, 30, 30);
             btn_getActuatorAngle.Dock = DockStyle.Fill;
-            btn_getActuatorAngle.Location = new Point(1, 1);
-            btn_getActuatorAngle.Margin = new Padding(1);
+            btn_getActuatorAngle.ForeColor = Color.White;
+            btn_getActuatorAngle.Location = new Point(0, 0);
+            btn_getActuatorAngle.Margin = new Padding(0);
             btn_getActuatorAngle.Name = "btn_getActuatorAngle";
-            btn_getActuatorAngle.Size = new Size(126, 27);
+            btn_getActuatorAngle.Size = new Size(170, 34);
             btn_getActuatorAngle.TabIndex = 7;
             btn_getActuatorAngle.Text = "Angle";
-            btn_getActuatorAngle.UseVisualStyleBackColor = true;
+            btn_getActuatorAngle.UseVisualStyleBackColor = false;
             btn_getActuatorAngle.Click += btn_getActuatorAngle_Click;
             // 
             // lbl_actuatorAngle
             // 
             lbl_actuatorAngle.Dock = DockStyle.Fill;
             lbl_actuatorAngle.ForeColor = Color.White;
-            lbl_actuatorAngle.Location = new Point(257, 0);
+            lbl_actuatorAngle.Location = new Point(291, 0);
             lbl_actuatorAngle.Margin = new Padding(1, 0, 1, 0);
             lbl_actuatorAngle.Name = "lbl_actuatorAngle";
-            lbl_actuatorAngle.Size = new Size(126, 29);
+            lbl_actuatorAngle.Size = new Size(220, 34);
             lbl_actuatorAngle.TabIndex = 9;
             lbl_actuatorAngle.TextAlign = ContentAlignment.MiddleLeft;
             // 
@@ -3315,10 +3356,10 @@
             label46.AutoSize = true;
             label46.Dock = DockStyle.Fill;
             label46.ForeColor = Color.White;
-            label46.Location = new Point(129, 0);
+            label46.Location = new Point(171, 0);
             label46.Margin = new Padding(1, 0, 1, 0);
             label46.Name = "label46";
-            label46.Size = new Size(126, 29);
+            label46.Size = new Size(118, 34);
             label46.TabIndex = 8;
             label46.Text = "Angle de l'actuateur:";
             label46.TextAlign = ContentAlignment.MiddleLeft;
@@ -4021,10 +4062,11 @@
             txtBox_DefaultMaskThresh.BorderStyle = BorderStyle.FixedSingle;
             txtBox_DefaultMaskThresh.Dock = DockStyle.Fill;
             txtBox_DefaultMaskThresh.ForeColor = Color.White;
-            txtBox_DefaultMaskThresh.Location = new Point(115, 4);
+            txtBox_DefaultMaskThresh.Location = new Point(112, 1);
+            txtBox_DefaultMaskThresh.Margin = new Padding(0);
             txtBox_DefaultMaskThresh.Multiline = true;
             txtBox_DefaultMaskThresh.Name = "txtBox_DefaultMaskThresh";
-            txtBox_DefaultMaskThresh.Size = new Size(40, 16);
+            txtBox_DefaultMaskThresh.Size = new Size(46, 22);
             txtBox_DefaultMaskThresh.TabIndex = 5;
             txtBox_DefaultMaskThresh.Text = "3";
             txtBox_DefaultMaskThresh.TextAlign = HorizontalAlignment.Center;
@@ -4049,10 +4091,11 @@
             txtBox_DefaultMaskThresh2.BorderStyle = BorderStyle.FixedSingle;
             txtBox_DefaultMaskThresh2.Dock = DockStyle.Fill;
             txtBox_DefaultMaskThresh2.ForeColor = Color.White;
-            txtBox_DefaultMaskThresh2.Location = new Point(115, 27);
+            txtBox_DefaultMaskThresh2.Location = new Point(112, 24);
+            txtBox_DefaultMaskThresh2.Margin = new Padding(0);
             txtBox_DefaultMaskThresh2.Multiline = true;
             txtBox_DefaultMaskThresh2.Name = "txtBox_DefaultMaskThresh2";
-            txtBox_DefaultMaskThresh2.Size = new Size(40, 17);
+            txtBox_DefaultMaskThresh2.Size = new Size(46, 23);
             txtBox_DefaultMaskThresh2.TabIndex = 6;
             txtBox_DefaultMaskThresh2.Text = "3";
             txtBox_DefaultMaskThresh2.TextAlign = HorizontalAlignment.Center;
@@ -4105,9 +4148,10 @@
             textBox_FocusIterations.BorderStyle = BorderStyle.FixedSingle;
             textBox_FocusIterations.Dock = DockStyle.Fill;
             textBox_FocusIterations.ForeColor = Color.White;
-            textBox_FocusIterations.Location = new Point(128, 3);
+            textBox_FocusIterations.Location = new Point(125, 0);
+            textBox_FocusIterations.Margin = new Padding(0);
             textBox_FocusIterations.Name = "textBox_FocusIterations";
-            textBox_FocusIterations.Size = new Size(34, 23);
+            textBox_FocusIterations.Size = new Size(40, 23);
             textBox_FocusIterations.TabIndex = 4;
             textBox_FocusIterations.Text = "24";
             textBox_FocusIterations.TextAlign = HorizontalAlignment.Center;
@@ -4174,9 +4218,10 @@
             textBox_FocusFreqSpeed.BorderStyle = BorderStyle.FixedSingle;
             textBox_FocusFreqSpeed.Dock = DockStyle.Fill;
             textBox_FocusFreqSpeed.ForeColor = Color.White;
-            textBox_FocusFreqSpeed.Location = new Point(147, 3);
+            textBox_FocusFreqSpeed.Location = new Point(144, 0);
+            textBox_FocusFreqSpeed.Margin = new Padding(0);
             textBox_FocusFreqSpeed.Name = "textBox_FocusFreqSpeed";
-            textBox_FocusFreqSpeed.Size = new Size(33, 23);
+            textBox_FocusFreqSpeed.Size = new Size(39, 23);
             textBox_FocusFreqSpeed.TabIndex = 3;
             textBox_FocusFreqSpeed.Text = "75";
             textBox_FocusFreqSpeed.TextAlign = HorizontalAlignment.Center;
@@ -4205,9 +4250,10 @@
             lbl_ResBlurDetect.AutoSize = true;
             lbl_ResBlurDetect.Dock = DockStyle.Fill;
             lbl_ResBlurDetect.ForeColor = Color.White;
-            lbl_ResBlurDetect.Location = new Point(128, 0);
+            lbl_ResBlurDetect.Location = new Point(125, 0);
+            lbl_ResBlurDetect.Margin = new Padding(0);
             lbl_ResBlurDetect.Name = "lbl_ResBlurDetect";
-            lbl_ResBlurDetect.Size = new Size(34, 27);
+            lbl_ResBlurDetect.Size = new Size(40, 27);
             lbl_ResBlurDetect.TabIndex = 2;
             lbl_ResBlurDetect.Text = "100";
             lbl_ResBlurDetect.TextAlign = ContentAlignment.MiddleCenter;
@@ -4260,9 +4306,10 @@
             lbl_BlockAmountBlurDetet.AutoSize = true;
             lbl_BlockAmountBlurDetet.Dock = DockStyle.Fill;
             lbl_BlockAmountBlurDetet.ForeColor = Color.White;
-            lbl_BlockAmountBlurDetet.Location = new Point(128, 0);
+            lbl_BlockAmountBlurDetet.Location = new Point(125, 0);
+            lbl_BlockAmountBlurDetet.Margin = new Padding(0);
             lbl_BlockAmountBlurDetet.Name = "lbl_BlockAmountBlurDetet";
-            lbl_BlockAmountBlurDetet.Size = new Size(34, 27);
+            lbl_BlockAmountBlurDetet.Size = new Size(40, 27);
             lbl_BlockAmountBlurDetet.TabIndex = 2;
             lbl_BlockAmountBlurDetet.Text = "32";
             lbl_BlockAmountBlurDetet.TextAlign = ContentAlignment.MiddleCenter;
@@ -4315,9 +4362,10 @@
             textBox_minDetect.BorderStyle = BorderStyle.FixedSingle;
             textBox_minDetect.Dock = DockStyle.Fill;
             textBox_minDetect.ForeColor = Color.White;
-            textBox_minDetect.Location = new Point(151, 3);
+            textBox_minDetect.Location = new Point(148, 0);
+            textBox_minDetect.Margin = new Padding(0);
             textBox_minDetect.Name = "textBox_minDetect";
-            textBox_minDetect.Size = new Size(38, 23);
+            textBox_minDetect.Size = new Size(44, 23);
             textBox_minDetect.TabIndex = 4;
             textBox_minDetect.Text = "5";
             textBox_minDetect.TextAlign = HorizontalAlignment.Center;
@@ -4358,9 +4406,10 @@
             textBox_nbrPhotosFS.BorderStyle = BorderStyle.FixedSingle;
             textBox_nbrPhotosFS.Dock = DockStyle.Fill;
             textBox_nbrPhotosFS.ForeColor = Color.White;
-            textBox_nbrPhotosFS.Location = new Point(128, 3);
+            textBox_nbrPhotosFS.Location = new Point(125, 0);
+            textBox_nbrPhotosFS.Margin = new Padding(0);
             textBox_nbrPhotosFS.Name = "textBox_nbrPhotosFS";
-            textBox_nbrPhotosFS.Size = new Size(34, 23);
+            textBox_nbrPhotosFS.Size = new Size(40, 23);
             textBox_nbrPhotosFS.TabIndex = 5;
             textBox_nbrPhotosFS.Text = "15";
             textBox_nbrPhotosFS.TextAlign = HorizontalAlignment.Center;
@@ -5726,9 +5775,9 @@
             // 
             tableLayoutPanel45.BackColor = Color.FromArgb(25, 25, 25);
             tableLayoutPanel45.ColumnCount = 11;
-            tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 24F));
-            tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 24F));
-            tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 24F));
+            tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
+            tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
+            tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
             tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42F));
             tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 151F));
             tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32F));
@@ -5737,7 +5786,6 @@
             tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 51F));
             tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel45.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 29F));
-            tableLayoutPanel45.Controls.Add(progressBar_ImageSave, 9, 0);
             tableLayoutPanel45.Controls.Add(btn_clearPicLayout, 0, 0);
             tableLayoutPanel45.Controls.Add(btn_plusSizePic, 2, 0);
             tableLayoutPanel45.Controls.Add(btn_minusSizePic, 1, 0);
@@ -5750,15 +5798,6 @@
             tableLayoutPanel45.Size = new Size(1874, 30);
             tableLayoutPanel45.TabIndex = 32;
             // 
-            // progressBar_ImageSave
-            // 
-            progressBar_ImageSave.Dock = DockStyle.Fill;
-            progressBar_ImageSave.Location = new Point(471, 3);
-            progressBar_ImageSave.Name = "progressBar_ImageSave";
-            progressBar_ImageSave.Size = new Size(1371, 24);
-            progressBar_ImageSave.TabIndex = 32;
-            progressBar_ImageSave.Visible = false;
-            // 
             // btn_clearPicLayout
             // 
             btn_clearPicLayout.BackColor = Color.FromArgb(25, 25, 25);
@@ -5768,10 +5807,10 @@
             btn_clearPicLayout.FlatStyle = FlatStyle.Flat;
             btn_clearPicLayout.Font = new Font("Phosphor", 13F);
             btn_clearPicLayout.ForeColor = Color.White;
-            btn_clearPicLayout.Location = new Point(2, 2);
-            btn_clearPicLayout.Margin = new Padding(2);
+            btn_clearPicLayout.Location = new Point(0, 0);
+            btn_clearPicLayout.Margin = new Padding(0);
             btn_clearPicLayout.Name = "btn_clearPicLayout";
-            btn_clearPicLayout.Size = new Size(20, 26);
+            btn_clearPicLayout.Size = new Size(30, 30);
             btn_clearPicLayout.TabIndex = 29;
             btn_clearPicLayout.Text = "";
             btn_clearPicLayout.UseVisualStyleBackColor = false;
@@ -5787,10 +5826,10 @@
             btn_plusSizePic.FlatStyle = FlatStyle.Flat;
             btn_plusSizePic.Font = new Font("Phosphor", 13F);
             btn_plusSizePic.ForeColor = Color.White;
-            btn_plusSizePic.Location = new Point(49, 1);
-            btn_plusSizePic.Margin = new Padding(1);
+            btn_plusSizePic.Location = new Point(60, 0);
+            btn_plusSizePic.Margin = new Padding(0);
             btn_plusSizePic.Name = "btn_plusSizePic";
-            btn_plusSizePic.Size = new Size(22, 28);
+            btn_plusSizePic.Size = new Size(30, 30);
             btn_plusSizePic.TabIndex = 31;
             btn_plusSizePic.Text = "";
             btn_plusSizePic.UseVisualStyleBackColor = false;
@@ -5805,10 +5844,10 @@
             btn_minusSizePic.FlatStyle = FlatStyle.Flat;
             btn_minusSizePic.Font = new Font("Phosphor", 13F);
             btn_minusSizePic.ForeColor = Color.White;
-            btn_minusSizePic.Location = new Point(25, 1);
-            btn_minusSizePic.Margin = new Padding(1);
+            btn_minusSizePic.Location = new Point(30, 0);
+            btn_minusSizePic.Margin = new Padding(0);
             btn_minusSizePic.Name = "btn_minusSizePic";
-            btn_minusSizePic.Size = new Size(22, 28);
+            btn_minusSizePic.Size = new Size(30, 30);
             btn_minusSizePic.TabIndex = 30;
             btn_minusSizePic.Text = "";
             btn_minusSizePic.UseVisualStyleBackColor = false;
@@ -5820,7 +5859,7 @@
             btn_goToImgFolder.Dock = DockStyle.Fill;
             btn_goToImgFolder.FlatAppearance.BorderSize = 0;
             btn_goToImgFolder.FlatStyle = FlatStyle.Flat;
-            btn_goToImgFolder.Font = new Font("Phosphor", 11.125F);
+            btn_goToImgFolder.Font = new Font("Phosphor", 13F);
             btn_goToImgFolder.ForeColor = Color.White;
             btn_goToImgFolder.Location = new Point(1848, 3);
             btn_goToImgFolder.Name = "btn_goToImgFolder";
@@ -5954,13 +5993,12 @@
             // 
             // tableLayoutPanel88
             // 
-            tableLayoutPanel88.ColumnCount = 4;
-            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 26F));
-            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 25F));
-            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 33F));
+            tableLayoutPanel88.ColumnCount = 3;
+            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32F));
+            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32F));
             tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel88.Controls.Add(btn_StackConsoleView, 2, 0);
-            tableLayoutPanel88.Controls.Add(button1, 1, 0);
+            tableLayoutPanel88.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel88.Controls.Add(btn_StackConsoleView, 1, 0);
             tableLayoutPanel88.Controls.Add(btn_clearFFMPEGConsole, 0, 0);
             tableLayoutPanel88.Dock = DockStyle.Fill;
             tableLayoutPanel88.Location = new Point(3, 3);
@@ -5980,29 +6018,13 @@
             btn_StackConsoleView.FlatStyle = FlatStyle.Flat;
             btn_StackConsoleView.Font = new Font("Phosphor", 13F);
             btn_StackConsoleView.ForeColor = Color.White;
-            btn_StackConsoleView.Location = new Point(54, 3);
+            btn_StackConsoleView.Location = new Point(35, 3);
             btn_StackConsoleView.Name = "btn_StackConsoleView";
-            btn_StackConsoleView.Size = new Size(27, 26);
+            btn_StackConsoleView.Size = new Size(26, 26);
             btn_StackConsoleView.TabIndex = 42;
             btn_StackConsoleView.Text = "";
             btn_StackConsoleView.UseVisualStyleBackColor = false;
             btn_StackConsoleView.Click += btn_StackConsoleView_Click;
-            // 
-            // button1
-            // 
-            button1.BackgroundImageLayout = ImageLayout.Zoom;
-            button1.Dock = DockStyle.Fill;
-            button1.FlatAppearance.BorderColor = Color.White;
-            button1.FlatAppearance.BorderSize = 0;
-            button1.FlatStyle = FlatStyle.Flat;
-            button1.Font = new Font("Phosphor", 13F);
-            button1.ForeColor = Color.White;
-            button1.Location = new Point(29, 3);
-            button1.Name = "button1";
-            button1.Size = new Size(19, 26);
-            button1.TabIndex = 41;
-            button1.Text = "";
-            button1.UseVisualStyleBackColor = true;
             // 
             // btn_clearFFMPEGConsole
             // 
@@ -6016,7 +6038,7 @@
             btn_clearFFMPEGConsole.Location = new Point(1, 1);
             btn_clearFFMPEGConsole.Margin = new Padding(1);
             btn_clearFFMPEGConsole.Name = "btn_clearFFMPEGConsole";
-            btn_clearFFMPEGConsole.Size = new Size(24, 30);
+            btn_clearFFMPEGConsole.Size = new Size(30, 30);
             btn_clearFFMPEGConsole.TabIndex = 20;
             btn_clearFFMPEGConsole.Text = "";
             btn_clearFFMPEGConsole.UseVisualStyleBackColor = false;
@@ -6040,18 +6062,23 @@
             // 
             // tableLayoutPanel87
             // 
-            tableLayoutPanel87.ColumnCount = 3;
-            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 23F));
-            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 31F));
+            tableLayoutPanel87.ColumnCount = 7;
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
             tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
+            tableLayoutPanel87.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
             tableLayoutPanel87.Controls.Add(btn_clearConsole, 0, 0);
             tableLayoutPanel87.Controls.Add(btn_consoleScrollToCaret, 1, 0);
+            tableLayoutPanel87.Controls.Add(btn_enableNetworkConsoleMess, 2, 0);
+            tableLayoutPanel87.Controls.Add(button1, 5, 0);
+            tableLayoutPanel87.Controls.Add(button3, 6, 0);
             tableLayoutPanel87.Dock = DockStyle.Fill;
             tableLayoutPanel87.Location = new Point(3, 3);
             tableLayoutPanel87.Name = "tableLayoutPanel87";
             tableLayoutPanel87.RowCount = 1;
-            tableLayoutPanel87.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            tableLayoutPanel87.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
             tableLayoutPanel87.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
             tableLayoutPanel87.Size = new Size(1871, 32);
             tableLayoutPanel87.TabIndex = 21;
@@ -6065,13 +6092,58 @@
             btn_consoleScrollToCaret.FlatStyle = FlatStyle.Flat;
             btn_consoleScrollToCaret.Font = new Font("Phosphor", 13F);
             btn_consoleScrollToCaret.ForeColor = Color.White;
-            btn_consoleScrollToCaret.Location = new Point(26, 3);
+            btn_consoleScrollToCaret.Location = new Point(33, 3);
             btn_consoleScrollToCaret.Name = "btn_consoleScrollToCaret";
-            btn_consoleScrollToCaret.Size = new Size(25, 26);
+            btn_consoleScrollToCaret.Size = new Size(24, 26);
             btn_consoleScrollToCaret.TabIndex = 40;
             btn_consoleScrollToCaret.Text = "";
             btn_consoleScrollToCaret.UseVisualStyleBackColor = true;
             btn_consoleScrollToCaret.Click += btn_consoleScrollToCaret_Click;
+            // 
+            // btn_enableNetworkConsoleMess
+            // 
+            btn_enableNetworkConsoleMess.Dock = DockStyle.Fill;
+            btn_enableNetworkConsoleMess.FlatAppearance.BorderSize = 0;
+            btn_enableNetworkConsoleMess.FlatStyle = FlatStyle.Flat;
+            btn_enableNetworkConsoleMess.Font = new Font("Phosphor", 13F);
+            btn_enableNetworkConsoleMess.ForeColor = SystemColors.WindowFrame;
+            btn_enableNetworkConsoleMess.Location = new Point(63, 3);
+            btn_enableNetworkConsoleMess.Name = "btn_enableNetworkConsoleMess";
+            btn_enableNetworkConsoleMess.Size = new Size(24, 26);
+            btn_enableNetworkConsoleMess.TabIndex = 41;
+            btn_enableNetworkConsoleMess.Text = "";
+            btn_enableNetworkConsoleMess.UseVisualStyleBackColor = true;
+            btn_enableNetworkConsoleMess.Click += btn_enableNetworkConsoleMess_Click;
+            // 
+            // button1
+            // 
+            button1.BackgroundImageLayout = ImageLayout.Zoom;
+            button1.FlatAppearance.BorderColor = Color.White;
+            button1.FlatAppearance.BorderSize = 0;
+            button1.FlatStyle = FlatStyle.Flat;
+            button1.Font = new Font("Phosphor", 13F);
+            button1.ForeColor = Color.White;
+            button1.Location = new Point(1814, 3);
+            button1.Name = "button1";
+            button1.Size = new Size(24, 26);
+            button1.TabIndex = 42;
+            button1.Text = "";
+            button1.UseVisualStyleBackColor = true;
+            // 
+            // button3
+            // 
+            button3.BackgroundImageLayout = ImageLayout.Zoom;
+            button3.FlatAppearance.BorderColor = Color.White;
+            button3.FlatAppearance.BorderSize = 0;
+            button3.FlatStyle = FlatStyle.Flat;
+            button3.Font = new Font("Phosphor", 13F);
+            button3.ForeColor = Color.White;
+            button3.Location = new Point(1844, 3);
+            button3.Name = "button3";
+            button3.Size = new Size(24, 26);
+            button3.TabIndex = 43;
+            button3.Text = "";
+            button3.UseVisualStyleBackColor = true;
             // 
             // tableLayoutPanel5
             // 
@@ -6444,7 +6516,6 @@
         private Label lbl_maskAmount;
         private Button btn_focusPlus;
         private Label label49;
-        private ProgressBar progressBar_ImageSave;
         private Button btn_goToImgFolder;
         private Label lbl_ttCurrentPos;
         private Label label52;
@@ -6595,7 +6666,6 @@
         private ToolStripMenuItem partirDunEndroitSpécifiqueToolStripMenuItem;
         private ToolStripMenuItem voirSiLesMicrocontrolleursSontConnectésToolStripMenuItem;
         private ToolStripMenuItem RepriseSpecifiqueToolStripMenuItem;
-        private Button button1;
         private Button btn_ffmpegJobClear;
         private Button btn_StackConsoleView;
         private FolderBrowserDialog folderBrowserDialog1;
@@ -6684,5 +6754,8 @@
         private Button btn_AutomaticMFocus;
         private Button btn_takePicture;
         private Button btn_Autofocus_StepperTab;
+        private Button btn_enableNetworkConsoleMess;
+        private Button button1;
+        private Button button3;
     }
 }

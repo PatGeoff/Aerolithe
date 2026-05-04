@@ -143,7 +143,12 @@ namespace Aerolithe
 
         private void SetVariables()
         {
-            serieId = new int[] { int.Parse(txtBox_nbrImg5deg.Text), int.Parse(txtBox_nbrImg25deg.Text), int.Parse(txtBox_nbrImg45deg.Text) };
+            serieId = new int[]
+            {
+                int.TryParse(txtBox_nbrImg5deg.Text, out int nbrImg5deg) ? nbrImg5deg : appSettings.NbrImg5Deg,
+                int.TryParse(txtBox_nbrImg25deg.Text, out int nbrImg25deg) ? nbrImg25deg : appSettings.NbrImg25Deg,
+                int.TryParse(txtBox_nbrImg45deg.Text, out int nbrImg45deg) ? nbrImg45deg : appSettings.NbrImg45Deg
+            };
         }
 
         private void SelectExistingProject()
@@ -179,6 +184,8 @@ namespace Aerolithe
             {
                 projet = projet.Load(appSettings.ProjectPath);
                 NormalizeLoadedProjectPaths(appSettings.ProjectPath);
+                EnsureLoadedProjectHasImageNameBase(appSettings.ProjectPath);
+                DisplayPathsInUI();
                 stepSize = projet.StepSize;
                 hScrollBar_driveStep.Value = stepSize;
                 txtBox_DriveStep.Text = stepSize.ToString();
@@ -189,7 +196,6 @@ namespace Aerolithe
                 txtBox_mesurements25deg.Text = projet.Mesurements25deg.ToString();
                 txtBox_mesurements45deg.Text = projet.Mesurements45deg.ToString();
                 InitializeMaskShrinkSettings();
-                DisplayPathsInUI();
                 projet.Save(appSettings.ProjectPath);
             }
             catch (Exception ex)
@@ -357,18 +363,21 @@ namespace Aerolithe
         {            
             try
             {
+                string imagePathText = GetImagePathLabelText();
+                string focusStackPathText = projet?.GetFocusStackPath() ?? string.Empty;
+
                 if (lbl_ImgFullPath.InvokeRequired)
                 {
                     lbl_ImgFullPath.Invoke(new Action(() =>
                     {
-                        lbl_ImgFullPath.Text = projet.GetImageFullPath();
-                        //lbl_StackedPath.Text = projet.GetFocusStackPath();
+                        lbl_ImgFullPath.Text = imagePathText;
+                        lbl_focusStackOutputDest.Text = focusStackPathText;
                     }));
                 }
                 else
                 {
-                    lbl_ImgFullPath.Text = projet.GetImageFullPath();
-                    //lbl_StackedPath.Text = projet.GetFocusStackPath();
+                    lbl_ImgFullPath.Text = imagePathText;
+                    lbl_focusStackOutputDest.Text = focusStackPathText;
                 }
             }
             catch (Exception ex)
@@ -377,6 +386,48 @@ namespace Aerolithe
 
             }
 
+        }
+
+        private void EnsureLoadedProjectHasImageNameBase(string projectPath)
+        {
+            if (projet == null || !string.IsNullOrWhiteSpace(projet.ImageNameBase))
+            {
+                return;
+            }
+
+            projet.ImageNameBase = Path.GetFileNameWithoutExtension(projectPath);
+        }
+
+        private string GetImagePathLabelText()
+        {
+            if (projet == null || string.IsNullOrWhiteSpace(projet.ImageFolderPath))
+            {
+                return string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(projet.ImageNameBase))
+            {
+                return EnsureTrailingDirectorySeparator(projet.ImageFolderPath);
+            }
+
+            try
+            {
+                return projet.GetImageFullPath();
+            }
+            catch
+            {
+                return EnsureTrailingDirectorySeparator(projet.ImageFolderPath);
+            }
+        }
+
+        private static string EnsureTrailingDirectorySeparator(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || Path.EndsInDirectorySeparator(path))
+            {
+                return path;
+            }
+
+            return path + Path.DirectorySeparatorChar;
         }
 
 
@@ -943,6 +994,10 @@ namespace Aerolithe
         public int MaskAlgorithmIndex { get; set; } = 0;
 
         public bool AutoCentrage { get; set; } = true;
+
+        public int ThumbnailWidth { get; set; } = 190;
+
+        public int ThumbnailHeight { get; set; } = 150;
 
         public List<MessagingUserSetting> MessagingUsers { get; set; } = new();
 

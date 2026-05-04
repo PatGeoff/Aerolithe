@@ -40,6 +40,7 @@ namespace Aerolithe
         public Bitmap maskBitmapLive;
         public bool maskFreeze = false;
         public bool liveViewStatus = false;
+        private bool _isInitializingCameraSettings = false;
 
         private Mat maskMatLive;       // remplace maskBitmapLive
         private readonly object _maskLock = new object(); // si tu veux un lock simple
@@ -121,25 +122,8 @@ namespace Aerolithe
             lbl_driveStepMax.Text = driveStep.Max.ToString();
             hScrollBar_driveStep.Minimum = (int)driveStep.Min;
             hScrollBar_driveStep.Maximum = (int)driveStep.Max;
-            //GetAperture();
-
-            GetImageType();
-            //GetExposureStatus();
-            //GetExposureModes();
-
-            GetImageSize();
-
-            //GetAfcPriority();
-            GetShutterSpeed();
-            GetLiveViewSize();
-            GetFocusMode();
-            //GetAFMode();
-            //GetLiveViewAFMode();
-            //GetFocusAreaMode();
-
-
-            //GetIso();
-            //GetWB();
+            LoadCameraSettings();
+            EnsureLiveViewSize1920x1080();
             //SetFrameDim();
             //InitializeCrosshairPosition();
             device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_SaveMedia, (uint)eNkMAIDSaveMedia.kNkMAIDSaveMedia_SDRAM);
@@ -284,10 +268,6 @@ namespace Aerolithe
                             offsets.hasBlackOnBorder = false;
                             offsets.hasForeground = false;
                             offsets.boundingBox = Rectangle.Empty;
-
-                            udpSendLiftVerticalMotorData(0);
-                            udpSendLiftHorizontalData(0);
-                            udpSendCameraLinearMotorData(0);
                         }
 
                         try
@@ -319,7 +299,7 @@ namespace Aerolithe
                         Mat localMaskMat = null;
                         lock (_maskLock)
                         {
-                            if (maskMatLive != null && !maskMatLive.IsEmpty && projet.AutoCentrage)
+                            if (maskMatLive != null && !maskMatLive.IsEmpty && IsAutoCenterOffsetTrackingActive())
                             {
                                 localMaskMat = maskMatLive.Clone();
                             }
@@ -486,42 +466,114 @@ namespace Aerolithe
        
         private void OnNikonProgress(NikonDevice sender, eNkMAIDDataObjType type, int done, int total)
         {
-            int percent = (int)((done / (float)total) * 100);
+            //int percent = (int)((done / (float)total) * 100);
 
-            if (progressBar_ImageSave.InvokeRequired)
-            {
-                progressBar_ImageSave.Invoke(new Action(() =>
-                {
-                    progressBar_ImageSave.Value = Math.Min(percent, 100);
+            //if (progressBar_ImageSave.InvokeRequired)
+            //{
+            //    progressBar_ImageSave.Invoke(new Action(() =>
+            //    {
+            //        progressBar_ImageSave.Value = Math.Min(percent, 100);
 
-                    // Remise à zéro une fois le transfert terminé
-                    if (done >= total)
-                    {
-                        progressBar_ImageSave.Value = 0;
-                    }
-                }));
-            }
-            else
-            {
-                progressBar_ImageSave.Value = Math.Min(percent, 100);
+            //        // Remise à zéro une fois le transfert terminé
+            //        if (done >= total)
+            //        {
+            //            progressBar_ImageSave.Value = 0;
+            //        }
+            //    }));
+            //}
+            //else
+            //{
+            //    progressBar_ImageSave.Value = Math.Min(percent, 100);
 
-                if (done >= total)
-                {
-                    progressBar_ImageSave.Value = 0;
-                }
-            }
+            //    if (done >= total)
+            //    {
+            //        progressBar_ImageSave.Value = 0;
+            //    }
+            //}
         }
 
 
         #region CAMERA INFO
+        private void LoadCameraSettings()
+        {
+            if (device == null) return;
+
+            _isInitializingCameraSettings = true;
+            try
+            {
+                TryLoadCameraSetting("Type d'image", GetImageType);
+                TryLoadCameraSetting("Dimensions de l'image", GetImageSize);
+                TryLoadCameraSetting("Shutter Speed", GetShutterSpeed);
+                TryLoadCameraSetting("Dimensions du liveView", GetLiveViewSize);
+                TryLoadCameraSetting("Mode d'exposition", GetExposureModes);
+                TryLoadCameraSetting("Focus Mode", GetFocusMode);
+                TryLoadCameraSetting("AF Mode", GetAFMode);
+                TryLoadCameraSetting("AFcPriority", GetAfcPriority);
+                TryLoadCameraSetting("FocusAreaMode", GetFocusAreaMode);
+                TryLoadCameraSetting("LiveView AF Mode", GetLiveViewAFMode);
+            }
+            finally
+            {
+                _isInitializingCameraSettings = false;
+            }
+        }
+
+        private void TryLoadCameraSetting(string settingName, Action loadAction)
+        {
+            try
+            {
+                loadAction();
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Lecture setting caméra ignorée ({settingName}): {ex.Message}");
+            }
+        }
+
+        private void PopulateEnumComboBox(System.Windows.Forms.ComboBox comboBox, NikonEnum values)
+        {
+            comboBox.BeginUpdate();
+            try
+            {
+                comboBox.Items.Clear();
+                for (int i = 0; i < values.Length; i++)
+                {
+                    comboBox.Items.Add(values[i].ToString());
+                }
+
+                if (values.Index >= 0 && values.Index < comboBox.Items.Count)
+                {
+                    comboBox.SelectedIndex = values.Index;
+                }
+            }
+            finally
+            {
+                comboBox.EndUpdate();
+            }
+        }
+
+        private void PopulateFixedComboBox(System.Windows.Forms.ComboBox comboBox, int selectedIndex, params string[] values)
+        {
+            comboBox.BeginUpdate();
+            try
+            {
+                comboBox.Items.Clear();
+                comboBox.Items.AddRange(values.Cast<object>().ToArray());
+                if (selectedIndex >= 0 && selectedIndex < comboBox.Items.Count)
+                {
+                    comboBox.SelectedIndex = selectedIndex;
+                }
+            }
+            finally
+            {
+                comboBox.EndUpdate();
+            }
+        }
+
         private void GetImageSize()
         {
             NikonEnum imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
-            for (int i = 0; i < imgSize.Length; i++)
-            {
-                comboBox_TaillePhotos.Items.Add(imgSize[i].ToString());
-            }
-            comboBox_TaillePhotos.SelectedIndex = imgSize.Index;
+            PopulateEnumComboBox(comboBox_TaillePhotos, imgSize);
 
             projet.PictureWidth = int.Parse((imgSize[imgSize.Index].ToString().Split("*")[0].Substring(2)));
             projet.PictureHeight = int.Parse(imgSize[imgSize.Index].ToString().Split("*")[1][..^1]);
@@ -530,81 +582,85 @@ namespace Aerolithe
         private void GetImageType()
         {
             NikonEnum imgType = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_CompressionLevel);
-            for (int i = 0; i < imgType.Length; i++)
-            {
-                comboBox_ImageType.Items.Add(imgType[i].ToString());
-            }
-            comboBox_ImageType.SelectedIndex = imgType.Index;
+            PopulateEnumComboBox(comboBox_ImageType, imgType);
         }
 
 
         private void GetShutterSpeed()
         {
             NikonEnum exposureTime = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed);
-            for (int i = 0; i < exposureTime.Length; i++)
-            {
-                comboBox_shutterTime.Items.Add(exposureTime[i].ToString());
-            }
-            comboBox_shutterTime.SelectedIndex = exposureTime.Index;
+            PopulateEnumComboBox(comboBox_shutterTime, exposureTime);
         }
 
         private void GetLiveViewSize()
         {
             NikonEnum liveviewSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
-            comboBox_TailleLiveView.Items.Add("640 x 424");
-            comboBox_TailleLiveView.Items.Add("1280 x 720");
-            comboBox_TailleLiveView.Items.Add("1920 x 1080");
-            switch (liveviewSize.ToString())
+            PopulateFixedComboBox(comboBox_TailleLiveView, liveviewSize.Index, "640 x 424", "1280 x 720", "1920 x 1080");
+        }
+
+        private void EnsureLiveViewSize1920x1080()
+        {
+            const int targetIndex = 2;
+            const string targetLabel = "1920 x 1080";
+
+            if (device == null) return;
+
+            try
             {
-                case "0":
-                    comboBox_TailleLiveView.SelectedIndex = 0;
-                    break;
-                case "1":
-                    comboBox_TailleLiveView.SelectedIndex = 1;
-                    break;
-                case "2":
-                    comboBox_TailleLiveView.SelectedIndex = 2;
-                    break;
+                NikonEnum liveviewSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
+                if (targetIndex >= liveviewSize.Length)
+                {
+                    AppendTextToConsoleNL("LiveView 1920 x 1080 non disponible sur cette caméra.");
+                    return;
+                }
+
+                if (liveviewSize.Index != targetIndex)
+                {
+                    liveviewSize.Index = targetIndex;
+                    device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, liveviewSize);
+                    AppendTextToConsoleNL("LiveView réglé à 1920 x 1080.");
+                }
+
+                if (comboBox_TailleLiveView.Items.Count > targetIndex)
+                {
+                    _isInitializingCameraSettings = true;
+                    try
+                    {
+                        comboBox_TailleLiveView.SelectedIndex = targetIndex;
+                    }
+                    finally
+                    {
+                        _isInitializingCameraSettings = false;
+                    }
+                }
+                else if (!comboBox_TailleLiveView.Items.Contains(targetLabel))
+                {
+                    comboBox_TailleLiveView.Items.Add(targetLabel);
+                    comboBox_TailleLiveView.SelectedItem = targetLabel;
+                }
             }
-            comboBox_TailleLiveView.SelectedIndex = liveviewSize.Index;
-            if (liveviewSize != null)
+            catch (Exception ex)
             {
-                liveviewSize.Index = 2;
-                device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, liveviewSize);
-                Task.Delay(100);
-                liveviewSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
-                comboBox_TailleLiveView.SelectedIndex = liveviewSize.Index;
+                AppendTextToConsoleNL($"Impossible de régler le LiveView à 1920 x 1080: {ex.Message}");
             }
         }
 
         private void GetExposureModes()
         {
             NikonEnum modeSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);
-            comboBox_ExpoMode.Items.Add("Programmed Auto (P)");
-            comboBox_ExpoMode.Items.Add("Shutter Priority (S)");
-            comboBox_ExpoMode.Items.Add("Aperture Priority (A)");
-            comboBox_ExpoMode.Items.Add("Manual (M)");
-            comboBox_ExpoMode.SelectedIndex = modeSize.Index;
+            PopulateFixedComboBox(comboBox_ExpoMode, modeSize.Index, "Programmed Auto (P)", "Shutter Priority (S)", "Aperture Priority (A)", "Manual (M)");
         }
 
         private void GetAfcPriority()
         {
             NikonEnum focusModes = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_AFcPriority);
-            for (int i = 0; i < focusModes.Length; i++)
-            {
-                comboBox_AfcPriority.Items.Add(focusModes[i].ToString());
-            }
-            comboBox_AfcPriority.SelectedIndex = focusModes.Index;
+            PopulateEnumComboBox(comboBox_AfcPriority, focusModes);
         }
 
         private void GetFocusAreaMode()
         {
             NikonEnum focusAreaModes = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_FocusAreaMode);
-            for (int i = 0; i < focusAreaModes.Length; i++)
-            {
-                comboBox_FocusAeraMode.Items.Add(focusAreaModes[i].ToString());
-            }
-            comboBox_FocusAeraMode.SelectedIndex = focusAreaModes.Index;
+            PopulateEnumComboBox(comboBox_FocusAeraMode, focusAreaModes);
         }
 
         private void GetFocusMode()
@@ -635,26 +691,22 @@ namespace Aerolithe
         private void GetAFMode()
         {
             var focusMode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode);
-            comboBox_AFMode.Items.Add("AF-S");
-            comboBox_AFMode.Items.Add("AF-C");
-            comboBox_AFMode.Items.Add("MF fixed");
-            comboBox_AFMode.Items.Add("MF selected");
-            comboBox_AFMode.SelectedIndex = (int)focusMode;
+            PopulateFixedComboBox(comboBox_AFMode, (int)focusMode, "AF-S", "AF-C", "MF fixed", "MF selected");
         }
 
 
 
-        //private void GetLiveViewAFMode()
-        //{
-        //    var liveViewAfMode = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewAF);
-        //    comboBox_LiveViewAFMode.Items.Add("Face priority");
-        //    comboBox_LiveViewAFMode.Items.Add("Wide area");
-        //    comboBox_LiveViewAFMode.Items.Add("Normal area");
-        //    comboBox_LiveViewAFMode.Items.Add("Subject tracking");
-        //    comboBox_LiveViewAFMode.Items.Add("Spot area");
-        //    comboBox_LiveViewAFMode.SelectedIndex = liveViewAfMode.Index;
+        private void GetLiveViewAFMode()
+        {
+            var liveViewAfMode = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewAF);
+            if (liveViewAfMode == null)
+            {
+                AppendTextToConsoleNL("Lecture setting caméra ignorée (LiveView AF Mode): capacité non disponible");
+                return;
+            }
 
-        //}
+            PopulateFixedComboBox(comboBox_LiveViewAFMode, liveViewAfMode.Index, "Face priority", "Wide area", "Normal area", "Subject tracking", "Spot area");
+        }
 
         #endregion
 

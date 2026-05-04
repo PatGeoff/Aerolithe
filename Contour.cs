@@ -82,96 +82,71 @@ namespace Aerolithe
 
             return await Task.Run(() =>
             {
-                using var gray = new Mat();
-                CvInvoke.Imdecode(jpegBuffer, ImreadModes.Grayscale, gray);
-                if (gray.IsEmpty)
+                using var color = new Mat();
+                CvInvoke.Imdecode(jpegBuffer, ImreadModes.Color, color);
+                if (color.IsEmpty)
                     throw new InvalidOperationException("Échec du décodage JPEG.");
 
-                int h = gray.Rows;
-                int w = gray.Cols;
+                int h = color.Rows;
+                int w = color.Cols;
 
-                int k = Math.Max(31, (int)(Math.Max(w, h) * 0.03));
-                if ((k & 1) == 0) k++;
-                using var illum = new Mat();
-                CvInvoke.GaussianBlur(gray, illum, new Size(k, k), k * 0.5);
+                using var gray = new Mat();
+                CvInvoke.CvtColor(color, gray, ColorConversion.Bgr2Gray);
 
-                using var norm = new Mat();
-                CvInvoke.Subtract(gray, illum, norm);
-                CvInvoke.Normalize(norm, norm, 0, 255, NormType.MinMax, DepthType.Cv8U);
-                CvInvoke.GaussianBlur(norm, norm, new Size(3, 3), 0);
+                using var smooth = new Mat();
+                CvInvoke.GaussianBlur(gray, smooth, new Size(5, 5), 0);
 
-                using var bin = new Mat();
-                if (threshold < 0)
-                    CvInvoke.Threshold(norm, bin, 0, 255, (invert ? ThresholdType.BinaryInv : ThresholdType.Binary) | ThresholdType.Otsu);
+                using var otsuMask = new Mat();
+                double otsu = CvInvoke.Threshold(smooth, otsuMask, 0, 255, ThresholdType.BinaryInv | ThresholdType.Otsu);
+
+                using var darkMask = new Mat();
+                if (threshold >= 0)
+                {
+                    int thresholdOffset = Math.Max(-80, Math.Min(120, threshold - 20));
+                    double effectiveThreshold = Math.Max(5, Math.Min(250, otsu + thresholdOffset));
+                    CvInvoke.Threshold(smooth, darkMask, effectiveThreshold, 255, ThresholdType.BinaryInv);
+                }
                 else
                 {
-                    threshold = Math.Max(0, Math.Min(255, threshold));
-                    var t = invert ? ThresholdType.BinaryInv : ThresholdType.Binary;
-                    CvInvoke.Threshold(norm, bin, threshold, 255, t);
+                    otsuMask.CopyTo(darkMask);
                 }
 
-                using var k3 = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
-                CvInvoke.MorphologyEx(bin, bin, MorphOp.Open, k3, new Point(-1, -1), 1, BorderType.Reflect, default);
-                CvInvoke.MorphologyEx(bin, bin, MorphOp.Close, k3, new Point(-1, -1), 1, BorderType.Reflect, default);
+                using var hsv = new Mat();
+                CvInvoke.CvtColor(color, hsv, ColorConversion.Bgr2Hsv);
+                using var hsvChannels = new VectorOfMat();
+                CvInvoke.Split(hsv, hsvChannels);
+                using var saturation = hsvChannels[1];
+                using var value = hsvChannels[2];
 
-                using var labels = new Mat();
-                using var stats = new Mat();
-                using var centroids = new Mat();
-                int n = CvInvoke.ConnectedComponentsWithStats(bin, labels, stats, centroids, LineType.EightConnected, DepthType.Cv32S);
+                using var satMask = new Mat();
+                CvInvoke.Threshold(saturation, satMask, 18, 255, ThresholdType.Binary);
 
-                if (n <= 1)
-                {
-                    using var filled = FillByExternalContours(bin);
-                    if (invert) CvInvoke.BitwiseNot(filled, filled);
-                    // IMPORTANT: retourner une nouvelle Mat indépendante (clone)
-                    return filled.Clone();
-                }
+                using var notTooBright = new Mat();
+                CvInvoke.Threshold(value, notTooBright, 230, 255, ThresholdType.BinaryInv);
 
-                var statsArr = stats.GetData();
-                var centArr = centroids.GetData();
-                int bestIdx = SelectBestObjectComponent(statsArr, centArr, n, w, h);
+                using var textureMask = new Mat();
+                CvInvoke.BitwiseAnd(satMask, notTooBright, textureMask);
 
-                using var finalMask = new Mat();
-                CvInvoke.InRange(labels, new ScalarArray(bestIdx), new ScalarArray(bestIdx), finalMask);
+                using var bin = new Mat();
+                CvInvoke.BitwiseOr(darkMask, textureMask, bin);
 
-                int left = (int)statsArr.GetValue(bestIdx, (int)ConnectedComponentsTypes.Left);
-                int top = (int)statsArr.GetValue(bestIdx, (int)ConnectedComponentsTypes.Top);
-                int width = (int)statsArr.GetValue(bestIdx, (int)ConnectedComponentsTypes.Width);
-                int height = (int)statsArr.GetValue(bestIdx, (int)ConnectedComponentsTypes.Height);
-                int right = left + width - 1;
-                int bottom = top + height - 1;
+                int openKernelSize = Math.Max(3, (int)Math.Round(Math.Max(w, h) * 0.004));
+                openKernelSize = Math.Min(openKernelSize, 11);
+                if ((openKernelSize & 1) == 0) openKernelSize++;
 
-                if (left <= 0) CvInvoke.Line(finalMask, new Point(0, top), new Point(0, bottom), new MCvScalar(255), 1);
-                if (right >= w - 1) CvInvoke.Line(finalMask, new Point(w - 1, top), new Point(w - 1, bottom), new MCvScalar(255), 1);
-                if (top <= 0) CvInvoke.Line(finalMask, new Point(left, 0), new Point(right, 0), new MCvScalar(255), 1);
-                if (bottom >= h - 1) CvInvoke.Line(finalMask, new Point(left, h - 1), new Point(right, h - 1), new MCvScalar(255), 1);
+                int closeKernelSize = Math.Max(9, (int)Math.Round(Math.Max(w, h) * 0.012));
+                closeKernelSize = Math.Min(closeKernelSize, 35);
+                if ((closeKernelSize & 1) == 0) closeKernelSize++;
 
-                int seal = Math.Max(1, (int)Math.Round(Math.Max(w, h) * 0.006));
-                seal = Math.Min(seal, 25);
-                if ((seal & 1) == 0) seal++;
-                using var kSeal = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(seal, seal), new Point(-1, -1));
+                using var kOpen = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(openKernelSize, openKernelSize), new Point(-1, -1));
+                using var kClose = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(closeKernelSize, closeKernelSize), new Point(-1, -1));
+                CvInvoke.MorphologyEx(bin, bin, MorphOp.Open, kOpen, new Point(-1, -1), 1, BorderType.Reflect, default);
+                CvInvoke.MorphologyEx(bin, bin, MorphOp.Close, kClose, new Point(-1, -1), 2, BorderType.Reflect, default);
 
-                using var edges = new Mat();
-                CvInvoke.Dilate(finalMask, edges, kSeal, new Point(-1, -1), 1, BorderType.Reflect, default);
+                using var solid = SolidMaskFromBestComponent(bin, w, h);
+                if (invert) CvInvoke.BitwiseNot(solid, solid);
 
-                using var comp = new Mat();
-                CvInvoke.BitwiseNot(edges, comp);
-
-                using var ff = comp.Clone();
-                Rectangle _bbox;
-                CvInvoke.FloodFill(ff, null, new Point(0, 0), new MCvScalar(0), out _bbox,
-                                   new MCvScalar(0), new MCvScalar(0),
-                                   Connectivity.EightConnected, FloodFillType.Default);
-
-                using var solid = new Mat();
-                CvInvoke.Threshold(ff, solid, 254, 255, ThresholdType.Binary);
-                CvInvoke.Erode(solid, solid, kSeal, new Point(-1, -1), 1, BorderType.Reflect, default);
-
-                using var filledSolid = FillMaskHoles(solid);
-                if (invert) CvInvoke.BitwiseNot(filledSolid, filledSolid);
-
-                // Retourner un clone autonome
-                return filledSolid.Clone();
+                return solid.Clone();
             });
         }
 
@@ -321,6 +296,8 @@ namespace Aerolithe
             double bestScore = double.NegativeInfinity;
             double targetX = imageWidth * 0.5;
             double targetY = imageHeight * 0.43;
+            int fallbackIdx = 1;
+            double fallbackScore = double.NegativeInfinity;
 
             for (int i = 1; i < componentCount; i++)
             {
@@ -338,11 +315,13 @@ namespace Aerolithe
                 double widthRatio = width / (double)imageWidth;
                 double heightRatio = height / (double)imageHeight;
                 double bottom = top + height;
+                bool touchesBottom = bottom >= imageHeight - 2;
+                bool touchesSide = left <= 1 || left + width >= imageWidth - 2;
 
                 bool likelyTurntable =
-                    widthRatio > 0.45 &&
-                    heightRatio < 0.35 &&
-                    ccy > imageHeight * 0.45;
+                    (widthRatio > 0.45 && heightRatio < 0.35 && ccy > imageHeight * 0.45) ||
+                    (touchesBottom && widthRatio > 0.30) ||
+                    (touchesSide && ccy > imageHeight * 0.55);
 
                 bool touchesFrameTooMuch =
                     left <= 1 ||
@@ -358,11 +337,22 @@ namespace Aerolithe
                                - dx * 1.4
                                - dy * 1.1;
 
+                if (score > fallbackScore)
+                {
+                    fallbackScore = score;
+                    fallbackIdx = i;
+                }
+
+                if (likelyTurntable && componentCount > 2)
+                {
+                    continue;
+                }
+
                 if (likelyTurntable)
-                    score -= 5000.0;
+                    score -= 20000.0;
 
                 if (touchesFrameTooMuch)
-                    score -= 1500.0;
+                    score -= 4000.0;
 
                 if (score > bestScore)
                 {
@@ -371,7 +361,7 @@ namespace Aerolithe
                 }
             }
 
-            return bestIdx;
+            return bestScore > double.NegativeInfinity ? bestIdx : fallbackIdx;
         }
 
         private static Mat FillMaskHoles(Mat binaryMask)

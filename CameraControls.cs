@@ -22,7 +22,7 @@ namespace Aerolithe
         private TaskCompletionSource<bool>? imageReadyTcs;
         private TaskCompletionSource<int>? captureCompleteTcs;
         private TaskCompletionSource<bool>? miniaturesTcs;
-        private Size panelSize = new Size(250, 200);
+        private Size panelSize = new Size(190, 150);
         private readonly SemaphoreSlim _nikonOperationLock = new(1, 1);
         private volatile bool _nikonOperationInProgress;
 
@@ -482,11 +482,44 @@ namespace Aerolithe
                 return true;
             }
 
+            RepairProjectSaveTargetIfPossible();
+
             return !string.IsNullOrWhiteSpace(appSettings.ProjectPath)
                 && !string.IsNullOrWhiteSpace(projet.ImageFolderPath)
                 && !string.IsNullOrWhiteSpace(projet.ImageNameBase)
                 && !string.IsNullOrWhiteSpace(projet.FocusStackFolderName)
                 && !string.IsNullOrWhiteSpace(projet.GetMesurementsFolderpath());
+        }
+
+        private void RepairProjectSaveTargetIfPossible()
+        {
+            if (string.IsNullOrWhiteSpace(appSettings.ProjectPath))
+            {
+                return;
+            }
+
+            string? projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
+            if (string.IsNullOrWhiteSpace(projectDirectory))
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(projet.ImageFolderPath))
+            {
+                projet.ImageFolderPath = Path.Combine(projectDirectory, "images");
+            }
+
+            if (string.IsNullOrWhiteSpace(projet.ImageNameBase))
+            {
+                projet.ImageNameBase = Path.GetFileNameWithoutExtension(appSettings.ProjectPath);
+            }
+
+            if (string.IsNullOrWhiteSpace(projet.FocusStackFolderName))
+            {
+                projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
+            }
+
+            EnsureProjectFoldersExist();
         }
 
 

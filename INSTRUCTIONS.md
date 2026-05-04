@@ -300,3 +300,28 @@ Comment valider que le travail est correct :
   - capture simple seule
   - capture pour mesure
 - Ne pas rebasculer `device.LiveViewEnabled` autour de la capture simple sans nouvelle preuve.
+
+## REV-0030-camera-settings-load
+
+- Les infos visibles dans `Settings/Caméra` sont maintenant chargées par `LoadCameraSettings()`.
+- Chaque lecture de setting caméra passe par `TryLoadCameraSetting(...)` pour qu'une erreur Nikon sur une capacité ne bloque pas l'affichage des settings suivants.
+- Les ComboBox sont remplis avec `_isInitializingCameraSettings = true`; les handlers `SelectedIndexChanged` quittent immédiatement pendant cette phase.
+- Important: remplir une ComboBox déclenche quand même `SelectedIndexChanged` dans WinForms. Il ne faut donc pas envoyer de `SetEnum` / `SetUnsigned` pendant le chargement initial.
+- `GetLiveViewSize()` ne force plus la taille live view à l'index `2` pendant une simple lecture. Le changement de taille doit passer par l'action utilisateur sur `comboBox_TailleLiveView`.
+- Les méthodes réactivées/branchées au chargement incluent:
+  - type d'image
+  - dimensions image
+  - shutter speed
+  - dimensions live view
+  - mode d'exposition
+  - focus mode
+  - AF mode
+  - AF-C priority
+  - focus area mode
+  - live view AF mode
+
+### À Surveiller
+
+- Si une capacité Nikon gèle complètement dans `device.GetEnum(...)` ou `device.GetUnsigned(...)`, le `try/catch` ne peut pas reprendre tant que l'appel natif ne retourne pas.
+- Dans ce cas, désactiver temporairement la capacité fautive dans `LoadCameraSettings()` et tester une lecture manuelle isolée avec la caméra connectée.
+- Ne pas remettre de `SetEnum` dans les méthodes `Get...`; ces méthodes doivent rester des lectures pures.

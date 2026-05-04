@@ -667,7 +667,7 @@ namespace Aerolithe
             int targetPos,
             int tolerance = 80,
             int timeoutMs = 10000,
-            int checkInterval = 100,
+            int checkInterval = 250,
             CancellationToken cancellationToken = default)
         {
             AppendTextToConsoleNL("WaitForTurntablePositionAsync");
@@ -684,14 +684,21 @@ namespace Aerolithe
                 // Vérifie la position actuelle
                 if (Math.Abs(turntablePosition - targetPos) <= tolerance)
                 {
-                    AppendTextToConsoleNL($"Position atteinte : {turntablePosition}° (cible : {targetPos}°)");
+                    AppendTextToConsoleNL($"Position atteinte : {turntablePosition}/4096 (cible : {targetPos}/4096)");
+                    return true;
+                }
+
+                int? reportedPosition = await RequestTurntablePositionAsync(TimeSpan.FromMilliseconds(500));
+                if (reportedPosition.HasValue && Math.Abs(reportedPosition.Value - targetPos) <= tolerance)
+                {
+                    AppendTextToConsoleNL($"Position atteinte : {reportedPosition.Value}/4096 (cible : {targetPos}/4096)");
                     return true;
                 }
 
                 await Task.Delay(checkInterval, cancellationToken);
             }
 
-            AppendTextToConsoleNL($"Timeout : position actuelle {turntablePosition}°, cible {targetPos}°");
+            AppendTextToConsoleNL($"Timeout : position actuelle {turntablePosition}/4096, cible {targetPos}/4096");
             return false;
         }
 

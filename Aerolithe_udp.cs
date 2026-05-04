@@ -42,11 +42,14 @@ namespace Aerolithe
             try
             {
                 udpClient = new UdpClient(localPort); // Initialize UdpClient
+                AppendTextToConsoleNL($"UDP listener démarré sur 0.0.0.0:{localPort}");
                 udpClientOSC = new UdpClient(localPortOSC);
+                AppendTextToConsoleNL($"UDP OSC listener démarré sur 0.0.0.0:{localPortOSC}");
                 Task.Run(() => listenUDP());
             }
             catch (Exception ex)
             {
+                AppendTextToConsoleNL($"Erreur InitializeUdpClient(): {ex.Message}");
                 MessageBox.Show($"Error initializing UDP client: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             // Initialize the timer
@@ -126,8 +129,13 @@ namespace Aerolithe
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
-                using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
+                if (udpClient != null)
                 {
+                    await udpClient.SendAsync(bytes, bytes.Length, new IPEndPoint(turntableIpAddress, turntablePort));
+                }
+                else
+                {
+                    using UdpClient client = new UdpClient(localPort);
                     await client.SendAsync(bytes, bytes.Length, new IPEndPoint(turntableIpAddress, turntablePort));
                 }
             }
@@ -250,7 +258,10 @@ namespace Aerolithe
                         UdpReceiveResult result = await udpClient.ReceiveAsync();
                         string message = Encoding.UTF8.GetString(result.Buffer);
                         //Debug.WriteLine($"Received message from {result.RemoteEndPoint}: {message}");
-                        //AppendTextToConsoleNL($"Received message from {result.RemoteEndPoint}: {message}");
+                        if (_networkConsoleMessagesEnabled)
+                        {
+                            AppendTextToConsoleNL($"UDP reçu de {result.RemoteEndPoint}: {message}");
+                        }
                         CheckMessage(message);
                     }
                 }
@@ -391,26 +402,9 @@ namespace Aerolithe
             //{
             //    turntablePositionReached = true;
             //}
-            if (message.Contains("position"))
+            if (TryReadTurntablePositionMessage(message, out int receivedTurntablePosition))
             {
-                string[] parts = message.Split(',');
-
-                turntablePosition = int.Parse(parts[1].Trim());
-
-                //AppendTextToConsoleNL($"Position de la table tournante reçue: {turntablePosition.ToString()}");
-                if (trkBar_turntable.InvokeRequired)
-                {
-                    if (turntablePosition < 0 || turntablePosition > 4096) turntablePosition = 0;
-
-                    trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
-                }
-                if (lbl_turntablePosition.InvokeRequired)
-                {
-                    lbl_turntablePosition.Invoke(new Action(() => lbl_turntablePosition.Text = trkBar_turntable.Value.ToString() + "/ 4096"));
-                    lbl_turntablePosition.Invoke(new Action(() => lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés"));
-                }
-
-                _turntablePositionTcs?.TrySetResult(turntablePosition); // vers Aerolithe.cs/getTurntablePosFromWaveshare()
+                UpdateTurntablePositionFromUdp(receivedTurntablePosition);
             }
 
             if (message.Contains("FarLimitSwitchPressed"))
@@ -756,6 +750,48 @@ namespace Aerolithe
             UpdateWarningButton(allConnected);
 
             return statuses;
+        }
+
+        private static bool TryReadTurntablePositionMessage(string message, out int position)
+        {
+            position = 0;
+
+            if (!message.Contains("position", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string[] parts = message.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2)
+            {
+                return false;
+            }
+
+            return int.TryParse(parts[1], out position);
+        }
+
+        private void UpdateTurntablePositionFromUdp(int position)
+        {
+            turntablePosition = Math.Clamp(position, 0, 4096);
+
+            void UpdateUi()
+            {
+                trkBar_turntable.Value = Math.Clamp(turntablePosition, trkBar_turntable.Minimum, trkBar_turntable.Maximum);
+                lbl_turntablePosition.Text = turntablePosition.ToString() + "/ 4096";
+                lbl_turntablePositionDeg.Text = ((int)(trkBar_turntable.Value / 4096.0 * 360)).ToString() + " degrés";
+                lbl_ttCurrentPos.Text = "Table Tournante: " + turntablePosition.ToString() + " / " + ttTargetPosition.ToString();
+            }
+
+            if (trkBar_turntable.InvokeRequired)
+            {
+                trkBar_turntable.BeginInvoke((Action)UpdateUi);
+            }
+            else
+            {
+                UpdateUi();
+            }
+
+            _turntablePositionTcs?.TrySetResult(turntablePosition);
         }
 
         // === Ping de tous les appareils + mise à jour des labels et du bouton ===

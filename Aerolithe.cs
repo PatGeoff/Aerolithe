@@ -60,6 +60,7 @@ namespace Aerolithe
         private Dictionary<string, Label> _labelMap;
         private CancellationTokenSource _autoPingCts;
         private volatile bool _shutdownStarted;
+        private bool _networkConsoleMessagesEnabled;
         private PrivateFontCollection? _bundledPhosphorFonts;
         private readonly object _sequencePauseLock = new();
         private bool _sequencePaused;
@@ -125,10 +126,16 @@ namespace Aerolithe
         public Aerolithe()
         {
 
+            Program.StartupLog("Aerolithe constructor: InitializeComponent starting.");
             InitializeComponent();
-            ApplyBundledPhosphorFontToControls();
+            Program.StartupLog("Aerolithe constructor: InitializeComponent completed.");
             SetMainWindowTitle();
-
+            fichierToolStripMenuItem1.Click += quitterAerolitheToolStripMenuItem_Click;
+            InitClasses();
+            Instance = this;
+            this.KeyDown += new KeyEventHandler(Form1_KeyDown);
+            this.KeyPreview = true;
+            picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
 
             stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
             turntableIpAddress = IPAddress.Parse("192.168.2.12");
@@ -161,37 +168,70 @@ namespace Aerolithe
             }
 
             InitializeSequenceActionControls();
-            StartAutoPingLoop(TimeSpan.FromSeconds(60));
+            UpdateNetworkConsoleMessagesButton();
+            timing = new Timing();
 
-            // Vérifie si on est sur le réseau WIFI Aérolithe et popup un message d'erreur sinon. À remettre à la version finale
-            //this.Shown += Aerolithe_ShownAsync;
+            // Positionnement de la fenêtre au départ
+            this.StartPosition = FormStartPosition.Manual;
+            var screen = Screen.FromControl(this).WorkingArea;
+            this.Location = new Point(
+                screen.Left, // Centré en X
+                screen.Top                       // Tout en haut en Y
+                );
+            this.MinimumSize = new Size(
+                Math.Min(1800, screen.Width),
+                Math.Min(1000, screen.Height));
+            this.Size = new Size(
+                Math.Min(4374, screen.Width),
+                Math.Min(2529, screen.Height));
+            this.WindowState = FormWindowState.Maximized;
 
+            Shown += Aerolithe_Shown;
+
+        }
+
+        private async void Aerolithe_Shown(object? sender, EventArgs e)
+        {
+            Shown -= Aerolithe_Shown;
+            Program.StartupLog("Main form shown.");
+            await InitializeAfterFirstRenderAsync();
+        }
+
+        private async Task InitializeAfterFirstRenderAsync()
+        {
+            await Task.Yield();
+
+            AppendTextToConsoleNL("Initialisation d'Aérolithe...");
+            Program.StartupLog("Post-render initialization starting.");
+
+            Program.StartupLog("Applying UI fonts starting.");
+            if (!ApplyBundledPhosphorFontToControls())
+            {
+                AppendTextToConsoleNL("Police Phosphor locale introuvable. Les icônes peuvent être mal affichées.");
+            }
+            Program.StartupLog("Applying UI fonts completed.");
 
             var nikonDir = Path.Combine(AppContext.BaseDirectory, "MyResources", "NikonLibs");
             var oldPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-            Environment.SetEnvironmentVariable("PATH", nikonDir + Path.PathSeparator + oldPath,
-                EnvironmentVariableTarget.Process);
-
-
-
-            InitClasses();
-
-            this.KeyDown += new KeyEventHandler(Form1_KeyDown);
-            this.KeyPreview = true; // Ensure the form receives key events
-            picBox_LiveView_Main.Image = Properties.Resources.camera_offline; // Mettre ça ici parce que Visual Studio fait chier 
+            Environment.SetEnvironmentVariable("PATH", nikonDir + Path.PathSeparator + oldPath, EnvironmentVariableTarget.Process);
 
             try
             {
                 appSettings = appSettings.Load();
+                ApplyThumbnailSizeFromSettings();
                 Debug.WriteLine(appSettings.ProjectPath);
-                if (!File.Exists(appSettings.ProjectPath)) appSettings.ProjectPath = "";
+                if (string.IsNullOrWhiteSpace(appSettings.ProjectPath) || !File.Exists(appSettings.ProjectPath))
+                {
+                    appSettings.ProjectPath = "";
+                }
                 appSettings.Save();
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                MessageBox.Show("Erreur durant appSettings.Load()\nerreur: " + e.Message);
-                throw;
+                MessageBox.Show("Erreur durant appSettings.Load()\nerreur: " + ex.Message);
+                return;
             }
+
             try
             {
                 if (!string.IsNullOrEmpty(appSettings.ProjectPath))
@@ -211,96 +251,58 @@ namespace Aerolithe
                         txtBox_seqPad3.Text = appSettings.Padding45Deg.ToString();
 
                         UpdateSequencePadding();
-
                         OpenProject(appSettings.ProjectPath);
-                        if (!string.IsNullOrWhiteSpace(projet.ImageFolderPath))
-                        {
-                            lbl_ImgFullPath.Text = projet.ImageFolderPath + "\\";
-                        }
-
-
-                        if (!string.IsNullOrWhiteSpace(projet.ImageNameBase))
-                        {
-                            DisplayPathsInUI();
-                        }
-
-
-                        //if (!string.IsNullOrWhiteSpace(projet.GetFocusStackPath()))
-                        //{
-                        //    lbl_StackedPath.Text = projet.GetFocusStackPath();
-                        //}
-
-
+                        DisplayPathsInUI();
                     }
-                    catch (Exception e)
+                    catch (Exception ex)
                     {
-                        Debug.WriteLine("Erreur:" + e);
+                        Debug.WriteLine("Erreur:" + ex);
+                        AppendTextToConsoleNL("Erreur chargement projet: " + ex.Message);
                     }
-
                 }
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                MessageBox.Show("Erreur durant project.Load()\nerreur: " + e.Message);
-                throw;
+                MessageBox.Show("Erreur durant project.Load()\nerreur: " + ex.Message);
+                return;
             }
+
+            ToolTipsSetup();
+            SetupPen();
+            SetTooltips();
+            SetVariables();
+            ApplyProjectStateToUi();
+
+            try
+            {
+                InitializeUdpClient();
+                StartAutoPingLoop(TimeSpan.FromSeconds(60));
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("Erreur durant InitializeUdpClient(): " + ex.Message);
+            }
+
+            _ = getActuatorAngleFromEsp32();
+            _ = getTurntablePosFromWaveshare();
+            _ = UdpSendLiftVerticalMessageAsync("stepmotor readData");
 
             try
             {
                 CamSetup();
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                MessageBox.Show("Erreur durant CamSetup()\nerreur: " + e.Message);
-                throw;
-            }
-            ToolTipsSetup();
-            // ButtonSetup();
-            try
-            {
-                InitializeUdpClient();
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show("Erreur durant InitializeUdpClient()\nerreur: " + e.Message);
-                throw;
+                AppendTextToConsoleNL("Erreur durant CamSetup(): " + ex.Message);
+                picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
             }
 
-            SetupPen();
-            SetTooltips();
-            try
-            {
-                getActuatorAngleFromEsp32();
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show("Erreur durant getActuatorAngleFromEsp32()\nerreur: " + e.Message);
-                throw;
-            }
-            try
-            {
-                getTurntablePosFromWaveshare();
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show("Erreur durant getTurntablePosFromWaveshare()\nerreur: " + e.Message);
-                throw;
-            }
-            SetVariables();
-
-            //tabControl1.SelectedTab = tabPage3; tabControl4.SelectedTab = tabControl4.TabPages[2];
-            try
-            {
-                UdpSendLiftVerticalMessageAsync("stepmotor readData");
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show("Erreur durant UdpSendLiftStepperNema23MessageAsync(\"stepmotor readData\")\nerreur: " + e.Message);
-                throw;
-            }
-            Instance = this; // Définit l'instance globale pour la classe FocusStackReportControl
             TestLoadNikonDlls();
+            AppendTextToConsoleNL("Initialisation terminée.");
+        }
 
+        private void ApplyProjectStateToUi()
+        {
             ToggleCote(projet.Cote);
 
             btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
@@ -314,26 +316,6 @@ namespace Aerolithe
             btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
             btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
             btn_ShowSharpnessOverlay.Text = projet.ViewSharpnessOverlay ? "" : "";
-
-            // Timer servant à calculer le temps entre takePictureAsync et device_ImageReady
-            timing = new Timing();
-
-            // Positionnement de la fenêtre au départ
-            this.StartPosition = FormStartPosition.Manual;
-            var screen = Screen.FromControl(this).WorkingArea;
-            this.Location = new Point(
-                screen.Left, // Centré en X
-                screen.Top                       // Tout en haut en Y
-                );
-            this.MinimumSize = new Size(
-                Math.Min(1800, screen.Width),
-                Math.Min(1000, screen.Height));
-            this.Size = new Size(
-                Math.Min(4374, screen.Width),
-                Math.Min(2529, screen.Height));
-            this.WindowState = FormWindowState.Maximized;
-
-
         }
 
         private static bool IsRunningInDesigner()
@@ -520,7 +502,7 @@ namespace Aerolithe
             }
         }
 
-        private void ApplyBundledPhosphorFontToControls()
+        private bool ApplyBundledPhosphorFontToControls()
         {
             var fontPath = Path.Combine(
                 AppContext.BaseDirectory,
@@ -532,7 +514,8 @@ namespace Aerolithe
 
             if (!File.Exists(fontPath))
             {
-                return;
+                Program.StartupLog("Bundled Phosphor font not found: " + fontPath);
+                return false;
             }
 
             try
@@ -542,14 +525,18 @@ namespace Aerolithe
 
                 if (_bundledPhosphorFonts.Families.Length == 0)
                 {
-                    return;
+                    Program.StartupLog("Bundled Phosphor font file loaded with no font families: " + fontPath);
+                    return false;
                 }
 
                 ApplyPhosphorFontToControlTree(this, _bundledPhosphorFonts.Families[0]);
+                return true;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine("Impossible de charger la fonte Phosphor locale: " + ex.Message);
+                Program.StartupLog("Unable to load bundled Phosphor font: " + ex);
+                return false;
             }
         }
 
@@ -557,6 +544,8 @@ namespace Aerolithe
         {
             foreach (Control control in parent.Controls)
             {
+                ApplyWindowsTextFontToControl(control);
+
                 if (control.Font != null &&
                     string.Equals(control.Font.FontFamily.Name, "Phosphor", StringComparison.OrdinalIgnoreCase))
                 {
@@ -570,11 +559,11 @@ namespace Aerolithe
 
                     if (control is ButtonBase button)
                     {
-                        button.UseCompatibleTextRendering = false;
+                        button.UseCompatibleTextRendering = true;
                     }
                     else if (control is Label label)
                     {
-                        label.UseCompatibleTextRendering = false;
+                        label.UseCompatibleTextRendering = true;
                     }
                 }
 
@@ -583,6 +572,34 @@ namespace Aerolithe
                     ApplyPhosphorFontToControlTree(control, phosphorFamily);
                 }
             }
+        }
+
+        private static void ApplyWindowsTextFontToControl(Control control)
+        {
+            if (control.Font == null ||
+                string.Equals(control.Font.FontFamily.Name, "Phosphor", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            string familyName = control.Font.FontFamily.Name;
+            bool shouldUseSegoe =
+                familyName.StartsWith("Roboto", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(familyName, FontFamily.GenericSansSerif.Name, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(familyName, "Microsoft Sans Serif", StringComparison.OrdinalIgnoreCase);
+
+            if (!shouldUseSegoe)
+            {
+                return;
+            }
+
+            control.Font = new Font(
+                "Segoe UI",
+                control.Font.Size,
+                control.Font.Style,
+                control.Font.Unit,
+                control.Font.GdiCharSet,
+                control.Font.GdiVerticalFont);
         }
 
 
@@ -823,9 +840,14 @@ namespace Aerolithe
             AppendTextToConsoleNL("getTurntablePosFromWaveshare");
             try
             {
-                _turntablePositionTcs = new TaskCompletionSource<int>();
-                await UdpSendTurnTableMessageAsync("Aerolithe_Asks_GetPosition");
-                turntablePosition = await _turntablePositionTcs.Task;
+                int? requestedPosition = await RequestTurntablePositionAsync(TimeSpan.FromSeconds(2));
+                if (!requestedPosition.HasValue)
+                {
+                    AppendTextToConsoleNL("Table tournante: aucune réponse de position.");
+                    return;
+                }
+
+                turntablePosition = requestedPosition.Value;
                 if (trkBar_turntable.InvokeRequired)
                 {
                     trkBar_turntable.Invoke(new Action(() =>
@@ -1478,6 +1500,8 @@ namespace Aerolithe
 
         private void comboBox_TaillePhotos_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_TaillePhotos.SelectedIndex < 0) return;
+
             NikonEnum imgSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize);
             imgSize.Index = comboBox_TaillePhotos.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ImageSize, imgSize);
@@ -1489,6 +1513,8 @@ namespace Aerolithe
 
         private void comboBox_TailleLiveView_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_TailleLiveView.SelectedIndex < 0) return;
+
             NikonEnum lvSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize);
             lvSize.Index = comboBox_TailleLiveView.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_LiveViewImageSize, lvSize);
@@ -1501,6 +1527,8 @@ namespace Aerolithe
         }
         private void comboBox_ExpoMode_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_ExpoMode.SelectedIndex < 0) return;
+
             NikonEnum modeSize = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);
             modeSize.Index = comboBox_ExpoMode.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode, modeSize);
@@ -1508,6 +1536,8 @@ namespace Aerolithe
 
         private void comboBox_shutterTime_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_shutterTime.SelectedIndex < 0) return;
+
             NikonEnum expoMode = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);
             if (expoMode.Index != 3)
             {
@@ -1826,6 +1856,32 @@ namespace Aerolithe
 
         }
 
+        private async Task<int?> RequestTurntablePositionAsync(TimeSpan timeout)
+        {
+            var requestTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _turntablePositionTcs = requestTcs;
+
+            try
+            {
+                await UdpSendTurnTableMessageAsync("Aerolithe_Asks_GetPosition");
+
+                Task completedTask = await Task.WhenAny(requestTcs.Task, Task.Delay(timeout));
+                if (completedTask == requestTcs.Task)
+                {
+                    return await requestTcs.Task;
+                }
+
+                return null;
+            }
+            finally
+            {
+                if (ReferenceEquals(_turntablePositionTcs, requestTcs))
+                {
+                    _turntablePositionTcs = null;
+                }
+            }
+        }
+
         private async void btn_prisePhotoSeq3_Click(object sender, EventArgs e)
         {
             // Afficher une boîte de dialogue pour confirmer
@@ -2005,6 +2061,8 @@ namespace Aerolithe
 
         private void comboBox_AfcPriority_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_AfcPriority.SelectedIndex < 0) return;
+
             NikonEnum focusModes = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_AFcPriority);
             focusModes.Index = comboBox_AfcPriority.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_AFcPriority, focusModes);
@@ -2012,6 +2070,8 @@ namespace Aerolithe
 
         private void comboBox_FocusAeraMode_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_FocusAeraMode.SelectedIndex < 0) return;
+
             //try
             //{
             //    NikonEnum focusAreaModes = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_FocusAreaMode);
@@ -2028,6 +2088,8 @@ namespace Aerolithe
 
         private void comboBox_AFMode_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_AFMode.SelectedIndex < 0) return;
+
             uint fm = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFMode);
             if (fm != 0)
             {
@@ -2076,12 +2138,16 @@ namespace Aerolithe
 
         private void comboBox_LiveViewAFMode_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_LiveViewAFMode.SelectedIndex < 0) return;
+
             //uint mode = device.GetUnsigned(eNkMAIDCapability.kNkMAIDCapability_AFModeAtLiveView);
 
         }
 
         private void comboBox_ImageType_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isInitializingCameraSettings || device == null || comboBox_ImageType.SelectedIndex < 0) return;
+
             var imageType = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_CompressionLevel);
             imageType.Index = comboBox_ImageType.SelectedIndex;
             device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_CompressionLevel, imageType);
@@ -2164,6 +2230,7 @@ namespace Aerolithe
             Task.Run(async () =>
             {
                 panelSize = new Size(panelSize.Width + 20, panelSize.Height + 20);
+                SaveThumbnailSizeToSettings();
                 await ResizePanelsAsync(panelSize);
             });
 
@@ -2175,9 +2242,24 @@ namespace Aerolithe
             Task.Run(async () =>
             {
                 panelSize = new Size(Math.Max(90, panelSize.Width - 20), Math.Max(70, panelSize.Height - 20));
+                SaveThumbnailSizeToSettings();
                 await ResizePanelsAsync(panelSize);
             });
 
+        }
+
+        private void ApplyThumbnailSizeFromSettings()
+        {
+            int width = appSettings.ThumbnailWidth > 0 ? appSettings.ThumbnailWidth : panelSize.Width;
+            int height = appSettings.ThumbnailHeight > 0 ? appSettings.ThumbnailHeight : panelSize.Height;
+            panelSize = new Size(Math.Max(90, width), Math.Max(70, height));
+        }
+
+        private void SaveThumbnailSizeToSettings()
+        {
+            appSettings.ThumbnailWidth = panelSize.Width;
+            appSettings.ThumbnailHeight = panelSize.Height;
+            appSettings.Save();
         }
 
         private async Task ResizePanelsAsync(Size newSize)
@@ -3028,6 +3110,11 @@ namespace Aerolithe
             ShutdownApplication();
         }
 
+        private void quitterAerolitheToolStripMenuItem_Click(object? sender, EventArgs e)
+        {
+            Close();
+        }
+
         private void ShutdownApplication()
         {
             if (_shutdownStarted)
@@ -3527,7 +3614,18 @@ namespace Aerolithe
                 Debug.WriteLine($"Erreur lors de la suppression : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-               
-        
+
+        private void btn_enableNetworkConsoleMess_Click(object sender, EventArgs e)
+        {
+            _networkConsoleMessagesEnabled = !_networkConsoleMessagesEnabled;
+            UpdateNetworkConsoleMessagesButton();
+        }
+
+        private void UpdateNetworkConsoleMessagesButton()
+        {
+            btn_enableNetworkConsoleMess.ForeColor = _networkConsoleMessagesEnabled
+                ? Color.White
+                : Color.FromArgb(100, 100, 100);
+        }
     }
 }

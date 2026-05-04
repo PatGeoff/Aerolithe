@@ -510,11 +510,11 @@ namespace Aerolithe
                             int current = int.Parse(match.Groups[1].Value);
                             int total = int.Parse(match.Groups[2].Value);
 
-                            progressBar_ImageSave.Invoke(() =>
-                            {
-                                progressBar_ImageSave.Maximum = total;
-                                progressBar_ImageSave.Value = Math.Min(current, total);
-                            });
+                            //progressBar_ImageSave.Invoke(() =>
+                            //{
+                            //    progressBar_ImageSave.Maximum = total;
+                            //    progressBar_ImageSave.Value = Math.Min(current, total);
+                            //});
 
                         }
                     }

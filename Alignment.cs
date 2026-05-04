@@ -14,6 +14,7 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         public bool calculerCentre = false;
+        private int _autoCenterOffsetTrackingRequests = 0;
         private OffsetsData offsets = new OffsetsData();
         bool cancelAutoCentrage = false;
         bool cameraRailFarLimitSwitchPressed = false;
@@ -106,6 +107,26 @@ namespace Aerolithe
             });
         }
 
+        private void BeginAutoCenterOffsetTracking()
+        {
+            Interlocked.Increment(ref _autoCenterOffsetTrackingRequests);
+            calculerCentre = true;
+        }
+
+        private void EndAutoCenterOffsetTracking()
+        {
+            if (Interlocked.Decrement(ref _autoCenterOffsetTrackingRequests) <= 0)
+            {
+                Interlocked.Exchange(ref _autoCenterOffsetTrackingRequests, 0);
+                calculerCentre = false;
+            }
+        }
+
+        private bool IsAutoCenterOffsetTrackingActive()
+        {
+            return Volatile.Read(ref _autoCenterOffsetTrackingRequests) > 0;
+        }
+
 
         private async Task RoutineLineareReculerHorsCadre()
         {
@@ -173,71 +194,82 @@ namespace Aerolithe
             //}
 
             //AppendTextToConsoleNL("RoutineAutoCentrage");
+            BeginAutoCenterOffsetTracking();
             cancelAutoCentrage = false;
 
-            double kP = 0.3; // proportionnel
-            const double tolerance = 5.0;
-            const int minStep = 2;
-            const int maxStep = 50;
-            const int delayMs = 150; // petit délai pour laisser le mouvement se faire
-
-            var startTime = DateTime.Now;
-
-            // Corriger X
-            //Debug.WriteLine($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}");
-
-
-            while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs && !cancelAutoCentrage && !_stopRequested)
+            try
             {
-
-
-               // Debug.WriteLine("Routine Auto Centrage démarrée");
-
                 if (!offsets.hasForeground)
                 {
-                    AppendTextToConsoleNL("Auto-centrage annulé: aucun objet détecté dans le masque.");
-                    break;
+                    await Task.Delay(200);
                 }
 
-                var offsetX = offsets.offsetX;
-                var offsetY = offsets.offsetY;
+                double kP = 0.3; // proportionnel
+                const double tolerance = 5.0;
+                const int minStep = 2;
+                const int maxStep = 50;
+                const int delayMs = 150; // petit délai pour laisser le mouvement se faire
 
-                //AppendTextToConsoleNL($"{offsetX}, {offsetY}");
+                var startTime = DateTime.Now;
 
-                if (Math.Abs(offsetX) <= tolerance && Math.Abs(offsetY) <= tolerance)
+                // Corriger X
+                //Debug.WriteLine($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}");
+
+
+                while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs && !cancelAutoCentrage && !_stopRequested)
                 {
-                    Debug.WriteLine("Centrage terminé: En deça de la tolérance");
-                    //AppendTextToConsoleNL("Centrage terminé: En deça de la tolérance");
-                    break;
+
+
+                    // Debug.WriteLine("Routine Auto Centrage démarrée");
+
+                    if (!offsets.hasForeground)
+                    {
+                        AppendTextToConsoleNL("Auto-centrage annulé: aucun objet détecté dans le masque.");
+                        break;
+                    }
+
+                    var offsetX = offsets.offsetX;
+                    var offsetY = offsets.offsetY;
+
+                    //AppendTextToConsoleNL($"{offsetX}, {offsetY}");
+
+                    if (Math.Abs(offsetX) <= tolerance && Math.Abs(offsetY) <= tolerance)
+                    {
+                        Debug.WriteLine("Centrage terminé: En deça de la tolérance");
+                        //AppendTextToConsoleNL("Centrage terminé: En deça de la tolérance");
+                        break;
+                    }
+
+                    int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * kP, minStep, maxStep);
+                    int stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
+
+                    udpSendLiftHorizontalData(stepX);
+
+                    //Debug.WriteLine($"Move X: {stepX} (offsetX={offsetX})");
+
+
+                    int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * kP, minStep, maxStep);
+                    int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
+
+                    udpSendLiftVerticalMotorData(stepY * 100);
+
+                    Debug.WriteLine($"Move Y: {stepY} (offsetY={offsetY})");
+
+                    if (offsets.hasBlackOnBorder) await RoutineLineareReculerHorsCadre();
+
+                    await Task.Delay(delayMs);
                 }
-
-                int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * kP, minStep, maxStep);
-                int stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
-
-                udpSendLiftHorizontalData(stepX);
-
-               //Debug.WriteLine($"Move X: {stepX} (offsetX={offsetX})");
-
-
-                int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * kP, minStep, maxStep);
-                int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
-
-                udpSendLiftVerticalMotorData(stepY * 100);
-
-                Debug.WriteLine($"Move Y: {stepY} (offsetY={offsetY})");
-
-                if (offsets.hasBlackOnBorder) await RoutineLineareReculerHorsCadre();
-
-                await Task.Delay(delayMs);
             }
+            finally
+            {
+                EndAutoCenterOffsetTracking();
+                udpSendLiftVerticalMotorData(0);
+                udpSendLiftHorizontalData(0);
+                udpSendCameraLinearMotorData(0);
 
-
-            udpSendLiftVerticalMotorData(0);
-            udpSendLiftHorizontalData(0);
-            udpSendCameraLinearMotorData(0);
-
-            //AppendTextToConsoleNL("Routine Auto Centrage terminée");
-            Debug.WriteLine("Routine terminée (timeout ou centrage).");
+                //AppendTextToConsoleNL("Routine Auto Centrage terminée");
+                Debug.WriteLine("Routine terminée (timeout ou centrage).");
+            }
 
         }
 
