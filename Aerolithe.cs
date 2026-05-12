@@ -31,7 +31,7 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public const string UiRevision = "REV-0027-nonblocking-focus-mask";
+        public const string UiRevision = "REV-0043-zero-series-and-focus-pause";
         private string _windowTitleBase = "Aucun projet";
 
         // THIS IP ADDRESS 192.168.2.4 //
@@ -68,6 +68,7 @@ namespace Aerolithe
         private static readonly Color SequenceActionButtonBackColor = Color.FromArgb(35, 35, 35);
         private static readonly Color SequencePausedButtonBackColor = Color.FromArgb(110, 70, 20);
         private readonly Dictionary<System.Windows.Forms.Button, Color> _sequencePauseButtonBackColors = new();
+        private string _lastSequenceErrorMessage = string.Empty;
         private TableLayoutPanel? _volumeSequenceActionsPanel;
         private TableLayoutPanel? _totalSequenceActionsPanel;
         private System.Windows.Forms.Button? _volumePauseResumeButton;
@@ -82,6 +83,9 @@ namespace Aerolithe
         private bool isChangingCheckState = false;
         private bool _isInitializingMaskThresholds = false;
         private bool _testAutoCenterActuatorEnabled = false;
+        private bool _automaticFocusRoutineRunning = false;
+        private readonly Color _automaticFocusRoutineNormalBackColor = Color.FromArgb(30, 30, 30);
+        private readonly Color _automaticFocusRoutineCancelBackColor = Color.FromArgb(100, 80, 30, 30);
         private CancellationTokenSource? _manualActuatorAutoCenterCts;
         //private string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MyResources\\Models", "u2net.onnx");
 
@@ -129,8 +133,10 @@ namespace Aerolithe
             Program.StartupLog("Aerolithe constructor: InitializeComponent starting.");
             InitializeComponent();
             Program.StartupLog("Aerolithe constructor: InitializeComponent completed.");
+            InitializeMessagingPanelLayout();
             SetMainWindowTitle();
             fichierToolStripMenuItem1.Click += quitterAerolitheToolStripMenuItem_Click;
+            toolStripMenuItem1.Click += ReglagesServeurEnvoiToolStripMenuItem_Click;
             InitClasses();
             Instance = this;
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
@@ -225,6 +231,7 @@ namespace Aerolithe
                     appSettings.ProjectPath = "";
                 }
                 appSettings.Save();
+                LoadMessagingUsersInUi();
             }
             catch (Exception ex)
             {
@@ -479,6 +486,27 @@ namespace Aerolithe
             if (InvokeRequired)
             {
                 Invoke(new Action(update));
+            }
+            else
+            {
+                update();
+            }
+        }
+
+        private void SetPhotoShootCancellationButtonVisible(bool visible)
+        {
+            void update()
+            {
+                btn_cancelPhotoShoot.Visible = visible;
+                btn_cancelPhotoShoot.Enabled = visible;
+                btn_cancelPhotoShoot.BackColor = visible
+                    ? Color.FromArgb(100, 80, 30, 30)
+                    : Color.FromArgb(30, 30, 30);
+            }
+
+            if (btn_cancelPhotoShoot.InvokeRequired)
+            {
+                btn_cancelPhotoShoot.Invoke((Action)update);
             }
             else
             {
@@ -954,6 +982,8 @@ namespace Aerolithe
 
         private void btn_LiftAutoCenterRoutine_Click(object sender, EventArgs e)
         {
+            _stopRequested = false;
+            cancelAutoCentrage = false;
             calculerCentre = true;
             Task.Run(async () =>
             {
@@ -1054,12 +1084,14 @@ namespace Aerolithe
         }
         private void btn_Actuator_Down_Click(object sender, EventArgs e)
         {
+            _stopRequested = false;
             UdpSendActuatorMessageAsync("actuator down");
             StartManualActuatorAutoCenterTracking();
         }
 
         private void btn_Actuator_Up_Click(object sender, EventArgs e)
         {
+            _stopRequested = false;
             UdpSendActuatorMessageAsync("actuator up");
             StartManualActuatorAutoCenterTracking();
         }
@@ -1244,7 +1276,7 @@ namespace Aerolithe
 
         private void StartManualActuatorAutoCenterTracking(double? target = null)
         {
-            if (!_testAutoCenterActuatorEnabled) return;
+            if (!ShouldAutoCenterDuringActuatorMove()) return;
 
             _manualActuatorAutoCenterCts?.Cancel();
             _manualActuatorAutoCenterCts = new CancellationTokenSource();
@@ -1657,16 +1689,42 @@ namespace Aerolithe
 
         private void StartTotalPhotoSequenceWithControls()
         {
+            DateTime startedAt = DateTime.Now;
+            bool focusStackWasEnabled = projet.FocusStackEnabled;
+            _lastSequenceErrorMessage = string.Empty;
+            ResetFocusStackNotificationTracking();
+
             Task.Run(async () =>
             {
                 SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: true);
+                string status = "Réussi";
+                string errorMessage = string.Empty;
                 try
                 {
                     tokenSource = new CancellationTokenSource();
                     await SequencePrisePhotoTotale(tokenSource.Token);
+                    if (_stopRequested)
+                    {
+                        status = "Échoué";
+                        errorMessage = _lastSequenceErrorMessage;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    status = "Annulé";
+                    AppendTextToConsoleNL("Séquence totale de prise de photos annulée.");
+                }
+                catch (Exception ex)
+                {
+                    status = "Échoué";
+                    errorMessage = ex.Message;
+                    _stopRequested = true;
+                    AppendTextToConsoleNL($"Erreur StartTotalPhotoSequenceWithControls: {ex.Message}");
+                    ShowSequenceErrorMessage(ex);
                 }
                 finally
                 {
+                    await SendSequenceNotificationAsync("Routine totale", startedAt, status, focusStackWasEnabled, errorMessage);
                     SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
                 }
             });
@@ -1778,27 +1836,57 @@ namespace Aerolithe
 
             tokenSource = new CancellationTokenSource();
             var cancellationToken = tokenSource.Token;
+            DateTime startedAt = DateTime.Now;
+            bool focusStackWasEnabled = projet.FocusStackEnabled;
+            ResetFocusStackNotificationTracking();
 
             Task.Run(async () =>
             {
+                SetPhotoShootCancellationButtonVisible(true);
+                string status = "Réussi";
+                string errorMessage = string.Empty;
                 try
                 {
+                    if (GetPhotoCountForCurrentSerie() == 0)
+                    {
+                        status = "Ignoré";
+                        AppendTextToConsoleNL("Série 5° ignorée: nombre de photos à 0. Actuateur et auto-centrage non exécutés.");
+                        UpdateSequenceStatusLabels(5, 0, 0);
+                        return;
+                    }
+
                     await UdpSendActuatorMessageAsync("actuator 5");
-                    if (_stopRequested) return;
-                    await WaitForActuator(5);
+                    if (_stopRequested)
+                    {
+                        status = "Échoué";
+                        return;
+                    }
+                    await WaitForActuator(5, cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
                     projet.Serie = 0;
                     await PrisePhotoSequenceAsync(cancellationToken);
+                    if (_stopRequested)
+                    {
+                        status = "Échoué";
+                    }
                 }
                 catch (OperationCanceledException)
                 {
+                    status = "Annulé";
                     AppendTextToConsoleNL("Séquence photo 5° annulée.");
                 }
                 catch (Exception ex)
                 {
+                    status = "Échoué";
+                    errorMessage = ex.Message;
                     _stopRequested = true;
                     AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq1_Click: {ex.Message}");
                     ShowSequenceErrorMessage(ex);
+                }
+                finally
+                {
+                    await SendSequenceNotificationAsync("Série 5°", startedAt, status, focusStackWasEnabled, errorMessage);
+                    SetPhotoShootCancellationButtonVisible(false);
                 }
             });
         }
@@ -1831,26 +1919,56 @@ namespace Aerolithe
 
             tokenSource = new CancellationTokenSource();
             var cancellationToken = tokenSource.Token;
+            DateTime startedAt = DateTime.Now;
+            bool focusStackWasEnabled = projet.FocusStackEnabled;
+            ResetFocusStackNotificationTracking();
 
             Task.Run(async () =>
             {
+                SetPhotoShootCancellationButtonVisible(true);
+                string status = "Réussi";
+                string errorMessage = string.Empty;
                 try
                 {
+                    if (GetPhotoCountForCurrentSerie() == 0)
+                    {
+                        status = "Ignoré";
+                        AppendTextToConsoleNL("Série 25° ignorée: nombre de photos à 0. Actuateur et auto-centrage non exécutés.");
+                        UpdateSequenceStatusLabels(25, 0, 0);
+                        return;
+                    }
+
                     await UdpSendActuatorMessageAsync("actuator 25");
-                    if (_stopRequested) return;
-                    await WaitForActuator(25);
+                    if (_stopRequested)
+                    {
+                        status = "Échoué";
+                        return;
+                    }
+                    await WaitForActuator(25, cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
                     await PrisePhotoSequenceAsync(cancellationToken);
+                    if (_stopRequested)
+                    {
+                        status = "Échoué";
+                    }
                 }
                 catch (OperationCanceledException)
                 {
+                    status = "Annulé";
                     AppendTextToConsoleNL("Séquence photo 25° annulée.");
                 }
                 catch (Exception ex)
                 {
+                    status = "Échoué";
+                    errorMessage = ex.Message;
                     _stopRequested = true;
                     AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq2_Click: {ex.Message}");
                     ShowSequenceErrorMessage(ex);
+                }
+                finally
+                {
+                    await SendSequenceNotificationAsync("Série 25°", startedAt, status, focusStackWasEnabled, errorMessage);
+                    SetPhotoShootCancellationButtonVisible(false);
                 }
             });
 
@@ -1911,26 +2029,56 @@ namespace Aerolithe
 
             tokenSource = new CancellationTokenSource();
             var cancellationToken = tokenSource.Token;
+            DateTime startedAt = DateTime.Now;
+            bool focusStackWasEnabled = projet.FocusStackEnabled;
+            ResetFocusStackNotificationTracking();
 
             Task.Run(async () =>
             {
+                SetPhotoShootCancellationButtonVisible(true);
+                string status = "Réussi";
+                string errorMessage = string.Empty;
                 try
                 {
+                    if (GetPhotoCountForCurrentSerie() == 0)
+                    {
+                        status = "Ignoré";
+                        AppendTextToConsoleNL("Série 45° ignorée: nombre de photos à 0. Actuateur et auto-centrage non exécutés.");
+                        UpdateSequenceStatusLabels(45, 0, 0);
+                        return;
+                    }
+
                     await UdpSendActuatorMessageAsync("actuator 45");
-                    if (_stopRequested) return;
-                    await WaitForActuator(45);
+                    if (_stopRequested)
+                    {
+                        status = "Échoué";
+                        return;
+                    }
+                    await WaitForActuator(45, cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
                     await PrisePhotoSequenceAsync(cancellationToken);
+                    if (_stopRequested)
+                    {
+                        status = "Échoué";
+                    }
                 }
                 catch (OperationCanceledException)
                 {
+                    status = "Annulé";
                     AppendTextToConsoleNL("Séquence photo 45° annulée.");
                 }
                 catch (Exception ex)
                 {
+                    status = "Échoué";
+                    errorMessage = ex.Message;
                     _stopRequested = true;
                     AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq3_Click: {ex.Message}");
                     ShowSequenceErrorMessage(ex);
+                }
+                finally
+                {
+                    await SendSequenceNotificationAsync("Série 45°", startedAt, status, focusStackWasEnabled, errorMessage);
+                    SetPhotoShootCancellationButtonVisible(false);
                 }
             });
         }
@@ -1959,9 +2107,24 @@ namespace Aerolithe
             SelectExistingProject();
         }
 
+        private void ReglagesServeurEnvoiToolStripMenuItem_Click(object? sender, EventArgs e)
+        {
+            using var form = new SmtpSettingsForm(appSettings);
+            if (form.ShowDialog(this) == DialogResult.OK)
+            {
+                AppendTextToConsoleNL("Réglages SMTP sauvegardés.");
+            }
+        }
+
 
         private void btn_stopAutomaticFocusCapture_Click(object sender, EventArgs e)
         {
+            if (_automaticFocusRoutineRunning)
+            {
+                RequestAutomaticFocusRoutineCancel();
+                return;
+            }
+
             StopSequences();
             maskFreeze = false;
             btn_freezeMask.Text = "";
@@ -1974,7 +2137,7 @@ namespace Aerolithe
             btn_freezeMask.Text = "";
         }
 
-        private async void StopSequences()
+        private void StopSequences()
         {
             maskFreeze = false;
             btn_freezeMask.Text = "";
@@ -1986,6 +2149,7 @@ namespace Aerolithe
             _stopRequested = true;
             SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
             SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
+            SetPhotoShootCancellationButtonVisible(false);
             if (btn_cancelPhotoShoot.InvokeRequired)
             {
                 btn_cancelPhotoShoot.Invoke(new Action(() =>
@@ -2001,10 +2165,6 @@ namespace Aerolithe
                 btn_cancelPhotoShoot.BackColor = Color.FromArgb(30, 30, 30);
                 // lbl_CancelStatus.Text = "Cancel? OUI";
             }
-
-            await Task.Delay(5000);
-
-            ResetSequenceCancellationButton();
 
         }
 
@@ -2122,9 +2282,63 @@ namespace Aerolithe
 
 
 
-        private void btn_AutomaticMFocus_Click(object sender, EventArgs e)
+        private async void btn_AutomaticMFocus_Click(object sender, EventArgs e)
         {
-            AutomaticFocusRoutine();
+            if (_automaticFocusRoutineRunning)
+            {
+                RequestAutomaticFocusRoutineCancel();
+                return;
+            }
+
+            _automaticFocusRoutineRunning = true;
+            _stopRequested = false;
+            SetAutomaticFocusRoutineButtonCancelState(true);
+
+            try
+            {
+                await AutomaticFocusRoutine();
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur Focus de routine: {ex.Message}", Color.Red);
+            }
+            finally
+            {
+                _automaticFocusRoutineRunning = false;
+                maskFreeze = false;
+                btn_freezeMask.Text = "";
+                SetAutomaticFocusRoutineButtonCancelState(false);
+                _stopRequested = false;
+            }
+        }
+
+        private void RequestAutomaticFocusRoutineCancel()
+        {
+            _stopRequested = true;
+            maskFreeze = false;
+            btn_freezeMask.Text = "";
+            AppendTextToConsoleNL("Focus de routine cancellé par l'utilisateur.", Color.Red);
+        }
+
+        private void SetAutomaticFocusRoutineButtonCancelState(bool isCancel)
+        {
+            void Apply()
+            {
+                btn_AutomaticMFocus.Text = isCancel ? "Cancel" : "Focus de routine";
+                btn_AutomaticMFocus.BackColor = isCancel
+                    ? _automaticFocusRoutineCancelBackColor
+                    : _automaticFocusRoutineNormalBackColor;
+                btn_AutomaticMFocus.ForeColor = Color.White;
+            }
+
+            if (btn_AutomaticMFocus.InvokeRequired)
+            {
+                btn_AutomaticMFocus.Invoke((Action)Apply);
+            }
+            else
+            {
+                Apply();
+            }
         }
 
 
@@ -2634,16 +2848,13 @@ namespace Aerolithe
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_nbrImg5deg.Text, out int valeur) && valeur > 0)
+                if (TryApplySequenceImageCount(txtBox_nbrImg5deg, lbl_Serie5Angle, value => appSettings.NbrImg5Deg = value))
                 {
-                    txtBox_nbrImg5deg.ForeColor = Color.White;
-                    lbl_Serie5Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
-                    appSettings.NbrImg5Deg = valeur;
                     UpdateSequencePadding(true);
                 }
                 else
                 {
-                    MessageBox.Show("SVP enter un nombre valide");
+                    MessageBox.Show("SVP entrer un nombre valide égal ou plus grand que zéro");
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
@@ -2661,16 +2872,13 @@ namespace Aerolithe
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_nbrImg25deg.Text, out int valeur) && valeur > 0)
+                if (TryApplySequenceImageCount(txtBox_nbrImg25deg, lbl_Serie25Angle, value => appSettings.NbrImg25Deg = value))
                 {
-                    txtBox_nbrImg25deg.ForeColor = Color.White;
-                    lbl_Serie25Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
-                    appSettings.NbrImg25Deg = valeur;
                     UpdateSequencePadding(true);
                 }
                 else
                 {
-                    MessageBox.Show("SVP enter un nombre valide");
+                    MessageBox.Show("SVP entrer un nombre valide égal ou plus grand que zéro");
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
@@ -2685,21 +2893,33 @@ namespace Aerolithe
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_nbrImg45deg.Text, out int valeur) && valeur > 0)
+                if (TryApplySequenceImageCount(txtBox_nbrImg45deg, lbl_Serie45Angle, value => appSettings.NbrImg45Deg = value))
                 {
-                    txtBox_nbrImg45deg.ForeColor = Color.White;
-                    lbl_Serie45Angle.Text = (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
-                    appSettings.NbrImg45Deg = valeur;
                     UpdateSequencePadding(true);
                 }
                 else
                 {
-                    MessageBox.Show("SVP enter un nombre valide");
+                    MessageBox.Show("SVP entrer un nombre valide égal ou plus grand que zéro");
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
 
             }
+        }
+
+        private bool TryApplySequenceImageCount(System.Windows.Forms.TextBox textBox, Label angleLabel, Action<int> applyValue)
+        {
+            if (!int.TryParse(textBox.Text, out int valeur) || valeur < 0)
+            {
+                return false;
+            }
+
+            textBox.ForeColor = Color.White;
+            angleLabel.Text = valeur == 0
+                ? "Série ignorée"
+                : (4096 / valeur).ToString() + " / " + (360 / valeur).ToString();
+            applyValue(valeur);
+            return true;
         }
 
 
@@ -3626,6 +3846,12 @@ namespace Aerolithe
             btn_enableNetworkConsoleMess.ForeColor = _networkConsoleMessagesEnabled
                 ? Color.White
                 : Color.FromArgb(100, 100, 100);
+        }
+
+        private void toolStripMenuItem2_Click(object sender, EventArgs e)
+        {
+            tabControl1.SelectTab("TabPage7");
+            tabControl2.SelectTab("TabPage8");
         }
     }
 }

@@ -217,322 +217,439 @@ namespace Aerolithe
         }
 
 
-        public async Task AutomaticFocusRoutine()
+        public async Task AutomaticFocusRoutine(CancellationToken cancellationToken = default)
         {
-            Invoke(new Action(() =>
+            try
             {
-                hScrollBar_liveMaskThresh.Value = appSettings.ThreshVal;
-                lbl_maskAmount.Text = appSettings.ThreshVal.ToString();
-            }));
-           
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                Invoke(new Action(() =>
+                {
+                    int threshold = ClampMaskThreshold(GetMaskThresholdSetting(appSettings.MaskAlgorithmIndex));
+                    hScrollBar_liveMaskThresh.Value = threshold;
+                    lbl_maskAmount.Text = threshold.ToString();
+                }));
+
                 AppendTextToConsoleNL("AutomaticFocusRoutine");
-            if (_stopRequested) return;
-
-            // Bouton STOP visible
-            if (btn_stopAutomaticFocusCapture.InvokeRequired)
-            {
-                btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
-                {
-                    btn_stopAutomaticFocusCapture.Visible = true;
-                    btn_stopAutomaticFocusCapture.Enabled = true;
-                }));
-            }
-            else
-            {
-                btn_stopAutomaticFocusCapture.Visible = true;
-                btn_stopAutomaticFocusCapture.Enabled = true;
-            }
-
-            await NikonAutofocus();
-            if (_stopRequested) return;           
-
-            await Task.Delay(400);            
-
-
-            // Clone du masque Live
-            Mat uiClone;
-            lock (_maskLock)
-            {
-                if (maskMatLive == null || maskMatLive.IsEmpty)
-                {
-                    AppendTextToConsoleNL("AutomaticFocusRoutine: masque live nul ou vide.");
-                    return;
-                }
-
-                uiClone = maskMatLive.Clone();
-            }
-
-            // ===============================
-            // 1) TEST DU MASQUE NOIR
-            // ===============================
-
-
-            if (IsMatAllBlack(uiClone))
-            {
-                maskFreeze = false;
-                int originalThresh = 20;
-                Invoke(new Action(() =>
-                {
-                    btn_freezeMask.Text = "";
-                    originalThresh = hScrollBar_liveMaskThresh.Value;
-                }));
-                
-                bool foundValidMask = false;
-                int startThresh = ClampMaskThreshold(originalThresh);
-                IEnumerable<int> thresholdCandidates = Enumerable
-                    .Range(0, startThresh + 1)
-                    .Select(offset => startThresh - offset)
-                    .Concat(Enumerable.Range(startThresh + 1, 255 - startThresh));
-
-                foreach (int t in thresholdCandidates)
-                {
-                    if (foundValidMask) break;
-
-                    Invoke(new Action(() =>
-                    {
-                        hScrollBar_liveMaskThresh.Value = t;
-                        lbl_maskAmount.Text = t.ToString();
-                    }));
-
-                    foreach (bool invert in new[] { false, true })
-                    {
-                        // Première acquisition du masque
-                        Mat testMask = await BrightnessMaskFromBytesMat(
-                            imageView.JpegBuffer,
-                            t,
-                            invert
-                        );
-
-                        // Si déjà noir → on passe au mode/seuil suivant
-                        if (IsMatAllBlack(testMask))
-                        {
-                            testMask.Dispose();
-                            continue;
-                        }
-
-                        // Sinon → le masque est non-noir → on surveille 1 seconde
-                        bool stayedValidFor1s = true;
-                        var start = DateTime.Now;
-
-                        while ((DateTime.Now - start).TotalMilliseconds < 700)
-                        {
-                            await Task.Delay(50); // petite attente pour éviter trop de CPU
-
-                            Mat testMask2 = await BrightnessMaskFromBytesMat(
-                                imageView.JpegBuffer,
-                                t,
-                                invert
-                            );
-
-                            // Si ça redevient noir avant la fin → t ne convient pas
-                            if (IsMatAllBlack(testMask2))
-                            {
-                                stayedValidFor1s = false;
-                                testMask2.Dispose();
-                                break;
-                            }
-
-                            testMask2.Dispose();
-                        }
-
-                        testMask.Dispose();
-
-                        if (stayedValidFor1s)
-                        {
-                            // Valeur validée : stable pendant 1 seconde
-                            Mat finalMask = await BrightnessMaskFromBytesMat(
-                                imageView.JpegBuffer,
-                                t,
-                                invert
-                            );
-
-                            uiClone?.Dispose();
-                            uiClone = finalMask.Clone();
-                            finalMask.Dispose();
-
-                            foundValidMask = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Rien trouvé
-                if (!foundValidMask)
-                {
-                    foreach (bool invert in new[] { false, true })
-                    {
-                        Mat autoMask = await BrightnessMaskFromBytesMat(
-                            imageView.JpegBuffer,
-                            -1,
-                            invert
-                        );
-
-                        if (!IsMatAllBlack(autoMask))
-                        {
-                            uiClone?.Dispose();
-                            uiClone = autoMask.Clone();
-                            foundValidMask = true;
-                        }
-
-                        autoMask.Dispose();
-
-                        if (foundValidMask)
-                        {
-                            break;
-                        }
-                    }
-                }
-
-                if (!foundValidMask)
-                {
-                    Invoke(new Action(() =>
-                    {
-                        hScrollBar_liveMaskThresh.Value = originalThresh;
-                    }));
-
-                    MessageBox.Show(
-                        this,
-                        "Aucune valeur de seuil n’a donné un masque stable et utilisable.\n" +
-                        "Vérifiez l’éclairage, la mise au point ou la luminosité.",
-                        "Erreur - Masque impossible",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error
-                    );
-
-                    return;
-                }
-
-                // Succès
-                lock (_maskLock)
-                {
-                    var oldMask = maskMatLive;
-                    maskMatLive = uiClone.Clone();
-                    oldMask?.Dispose();
-                }
-                maskFreeze = true;
-                Invoke(new Action(() =>
-                {
-                    btn_freezeMask.Text = "";
-                }));
-            }
-
-            else
-            {
-                lock (_maskLock)
-                {
-                    var oldMask = maskMatLive;
-                    maskMatLive = uiClone.Clone();
-                    oldMask?.Dispose();
-                }
-                maskFreeze = true;
-                Invoke(new Action(() =>
-                {
-                    btn_freezeMask.Text = "";
-                }));
-            }
-
-
-            // ====== SAUVEGARDE DU MASQUE ======
-            // Source volontaire: ce qui est affiché dans picBox_liveMaskLum au moment de la sauvegarde.
-            await SaveDisplayedMaskAsPngAsync(projet.GetMaskFullImagePath());
-
-                   
-
-            var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
-
-            int maxTargetDown = 0;
-            int maxUpperPosition = 0;
-            int maxTargetUp = -1;
-
-            // ====== 1) Première passe : reculer ======
-            await ManualFocusAsync(1, stepSize * iterations);
-            focusStackStepVar = iterations * -1;
-            UpdateFocusStepVarLbl(focusStackStepVar);
-
-            AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar);
-            await Task.Delay(500);
-            if (_stopRequested) return;
-
-            // Reculer jusqu'à ce que flou disparaît
-            while (blurredBlocks >= minDetect && !_stopRequested)
-            {
                 if (_stopRequested) return;
-                await ManualFocusAsync(1, stepSize);
-                focusStackStepVar--;
-                UpdateFocusStepVarLbl(focusStackStepVar);
-                await Task.Delay(delayTime);
-            }
 
-            maxTargetDown = focusStackStepVar;
-            await Task.Delay(200);
-
-            int blurConsecutiveCount = 0;
-            int i = 0;
-
-            // ====== 2) Deuxième passe : monter ======
-            while (!_stopRequested)
-            {
-                await ManualFocusAsync(0, stepSize);
-                await Task.Delay(delayTime);
-
-                if (blurredBlocks >= minDetect)
+                // Bouton STOP visible
+                if (btn_stopAutomaticFocusCapture.InvokeRequired)
                 {
-                    blurDataDict[i] = (focusStackStepVar, blurredBlocks);
-                    maxTargetUp = focusStackStepVar;
-                    blurConsecutiveCount = 0;
+                    btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
+                    {
+                        btn_stopAutomaticFocusCapture.Visible = true;
+                        btn_stopAutomaticFocusCapture.Enabled = true;
+                    }));
                 }
                 else
                 {
-                    blurConsecutiveCount++;
+                    btn_stopAutomaticFocusCapture.Visible = true;
+                    btn_stopAutomaticFocusCapture.Enabled = true;
                 }
 
-                focusStackStepVar++;
+                await NikonAutofocus();
+                if (_stopRequested) return;
+
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await Task.Delay(600, cancellationToken);
+                if (_stopRequested) return;
+
+
+                // Clone du masque Live
+                Mat uiClone;
+                lock (_maskLock)
+                {
+                    if (maskMatLive == null || maskMatLive.IsEmpty)
+                    {
+                        AppendTextToConsoleNL("AutomaticFocusRoutine: masque live nul ou vide.");
+                        return;
+                    }
+
+                    uiClone = maskMatLive.Clone();
+                }
+
+                // ===============================
+                // 1) TEST DU MASQUE NOIR
+                // ===============================
+
+
+                if (IsMatAllBlack(uiClone))
+                {
+                    maskFreeze = false;
+                    int originalThresh = 20;
+                    Invoke(new Action(() =>
+                    {
+                        btn_freezeMask.Text = "";
+                        originalThresh = hScrollBar_liveMaskThresh.Value;
+                    }));
+
+                    bool foundValidMask = false;
+                    IEnumerable<int> thresholdCandidates = GetAutomaticFocusMaskThresholdCandidates(originalThresh);
+                    bool[] invertCandidates = appSettings.MaskAlgorithmIndex == 0
+                        ? new[] { false }
+                        : new[] { false, true };
+
+                    foreach (int t in thresholdCandidates)
+                    {
+                        await WaitIfSequencePausedAsync(cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        if (foundValidMask || _stopRequested) break;
+
+                        Invoke(new Action(() =>
+                        {
+                            hScrollBar_liveMaskThresh.Value = t;
+                            lbl_maskAmount.Text = t.ToString();
+                        }));
+
+                        foreach (bool invert in invertCandidates)
+                        {
+                            await WaitIfSequencePausedAsync(cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
+
+                            if (_stopRequested) break;
+
+                            // Première acquisition du masque
+                            Mat testMask = await BrightnessMaskFromBytesMat(
+                                imageView.JpegBuffer,
+                                t,
+                                invert
+                            );
+
+                            // Si déjà noir → on passe au mode/seuil suivant
+                            if (!IsMaskUsableForAutomaticFocus(testMask))
+                            {
+                                testMask.Dispose();
+                                continue;
+                            }
+
+                            // Sinon → le masque est non-noir → on surveille 1 seconde
+                            bool stayedValidFor1s = true;
+                            var start = DateTime.Now;
+
+                            while ((DateTime.Now - start).TotalMilliseconds < 700 && !_stopRequested)
+                            {
+                                await WaitIfSequencePausedAsync(cancellationToken);
+                                cancellationToken.ThrowIfCancellationRequested();
+
+                                await Task.Delay(50, cancellationToken); // petite attente pour éviter trop de CPU
+
+                                Mat testMask2 = await BrightnessMaskFromBytesMat(
+                                    imageView.JpegBuffer,
+                                    t,
+                                    invert
+                                );
+
+                                // Si ça redevient noir avant la fin → t ne convient pas
+                                if (!IsMaskUsableForAutomaticFocus(testMask2))
+                                {
+                                    stayedValidFor1s = false;
+                                    testMask2.Dispose();
+                                    break;
+                                }
+
+                                testMask2.Dispose();
+                            }
+
+                            testMask.Dispose();
+
+                            if (_stopRequested) return;
+
+                            if (stayedValidFor1s)
+                            {
+                                // Valeur validée : stable pendant 1 seconde
+                                Mat finalMask = await BrightnessMaskFromBytesMat(
+                                    imageView.JpegBuffer,
+                                    t,
+                                    invert
+                                );
+
+                                uiClone?.Dispose();
+                                uiClone = finalMask.Clone();
+                                finalMask.Dispose();
+
+                                foundValidMask = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Rien trouvé
+                    if (!foundValidMask && !_stopRequested)
+                    {
+                        foreach (bool invert in invertCandidates)
+                        {
+                            await WaitIfSequencePausedAsync(cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
+
+                            Mat autoMask = await BrightnessMaskFromBytesMat(
+                                imageView.JpegBuffer,
+                                -1,
+                                invert
+                            );
+
+                            if (IsMaskUsableForAutomaticFocus(autoMask))
+                            {
+                                uiClone?.Dispose();
+                                uiClone = autoMask.Clone();
+                                foundValidMask = true;
+                            }
+
+                            autoMask.Dispose();
+
+                            if (foundValidMask)
+                            {
+                                break;
+                            }
+                        }
+                    }
+
+                    if (_stopRequested) return;
+
+                    if (!foundValidMask)
+                    {
+                        Invoke(new Action(() =>
+                        {
+                            hScrollBar_liveMaskThresh.Value = originalThresh;
+                        }));
+
+                        MessageBox.Show(
+                            this,
+                            "Aucune valeur de seuil n’a donné un masque stable et utilisable.\n" +
+                            "Vérifiez l’éclairage, la mise au point ou la luminosité.",
+                            "Erreur - Masque impossible",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+
+                        return;
+                    }
+
+                    // Succès
+                    lock (_maskLock)
+                    {
+                        var oldMask = maskMatLive;
+                        maskMatLive = uiClone.Clone();
+                        oldMask?.Dispose();
+                    }
+                    maskFreeze = true;
+                    Invoke(new Action(() =>
+                    {
+                        btn_freezeMask.Text = "";
+                    }));
+                }
+
+                else
+                {
+                    lock (_maskLock)
+                    {
+                        var oldMask = maskMatLive;
+                        maskMatLive = uiClone.Clone();
+                        oldMask?.Dispose();
+                    }
+                    maskFreeze = true;
+                    Invoke(new Action(() =>
+                    {
+                        btn_freezeMask.Text = "";
+                    }));
+                }
+
+
+                // ====== SAUVEGARDE DU MASQUE ======
+                // Source volontaire: ce qui est affiché dans picBox_liveMaskLum au moment de la sauvegarde.
+                await SaveDisplayedMaskAsPngAsync(projet.GetMaskFullImagePath());
+
+
+
+                var blurDataDict = new Dictionary<int, (int steps, int blurBlocks)>();
+
+                int maxTargetDown = 0;
+                int maxUpperPosition = 0;
+                int maxTargetUp = -1;
+
+                // ====== 1) Première passe : reculer ======
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await ManualFocusAsync(1, stepSize * iterations);
+                focusStackStepVar = iterations * -1;
                 UpdateFocusStepVarLbl(focusStackStepVar);
 
-                if (blurConsecutiveCount >= 4 && focusStackStepVar > 0)
-                    break;
+                AppendTextToConsoleNL("focusStackStepVar = " + focusStackStepVar);
+                await Task.Delay(500, cancellationToken);
+                if (_stopRequested) return;
 
-                i++;
-            }
-
-            maxUpperPosition = focusStackStepVar;
-            delta = maxTargetUp + Math.Abs(maxTargetDown);
-
-            await Task.Delay(500);
-
-            // ====== 3) Retour au point net ======
-            int steps = (int)(delta * stepSize * 0.75);
-            AppendTextToConsoleNL($"stepSize={stepSize}, delta={delta}, steps={steps}");
-
-            await ManualFocusAsync(1, steps);
-            await Task.Delay(500);
-
-            focusStackStepVar = maxTargetUp;
-            UpdateFocusStepVarLbl(focusStackStepVar);
-
-            if (blurredBlocks < minDetect)
-            {
-                while (blurredBlocks < minDetect && !_stopRequested)
+                // Reculer jusqu'à ce que flou disparaît
+                while (blurredBlocks >= minDetect && !_stopRequested)
                 {
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (_stopRequested) return;
+                    await ManualFocusAsync(1, stepSize);
+                    focusStackStepVar--;
+                    UpdateFocusStepVarLbl(focusStackStepVar);
+                    await Task.Delay(delayTime, cancellationToken);
+                }
+
+                maxTargetDown = focusStackStepVar;
+                await Task.Delay(200, cancellationToken);
+
+                int blurConsecutiveCount = 0;
+                int i = 0;
+
+                // ====== 2) Deuxième passe : monter ======
+                while (!_stopRequested)
+                {
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     await ManualFocusAsync(0, stepSize);
-                    await Task.Delay(delayTime * 5);
+                    await Task.Delay(delayTime, cancellationToken);
+
+                    if (blurredBlocks >= minDetect)
+                    {
+                        blurDataDict[i] = (focusStackStepVar, blurredBlocks);
+                        maxTargetUp = focusStackStepVar;
+                        blurConsecutiveCount = 0;
+                    }
+                    else
+                    {
+                        blurConsecutiveCount++;
+                    }
+
+                    focusStackStepVar++;
+                    UpdateFocusStepVarLbl(focusStackStepVar);
+
+                    if (blurConsecutiveCount >= 4 && focusStackStepVar > 0)
+                        break;
+
+                    i++;
+                }
+
+                if (_stopRequested) return;
+
+                maxUpperPosition = focusStackStepVar;
+                delta = maxTargetUp + Math.Abs(maxTargetDown);
+
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await Task.Delay(500, cancellationToken);
+                if (_stopRequested) return;
+
+                // ====== 3) Retour au point net ======
+                int steps = (int)(delta * stepSize * 0.75);
+                AppendTextToConsoleNL($"stepSize={stepSize}, delta={delta}, steps={steps}");
+
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await ManualFocusAsync(1, steps);
+                await Task.Delay(500, cancellationToken);
+                if (_stopRequested) return;
+
+                focusStackStepVar = maxTargetUp;
+                UpdateFocusStepVarLbl(focusStackStepVar);
+
+                if (blurredBlocks < minDetect)
+                {
+                    while (blurredBlocks < minDetect && !_stopRequested)
+                    {
+                        await WaitIfSequencePausedAsync(cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        await ManualFocusAsync(0, stepSize);
+                        await Task.Delay(delayTime * 5, cancellationToken);
+                    }
+                }
+
+                while (blurredBlocks > minDetect * 2 && !_stopRequested)
+                {
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    await ManualFocusAsync(1, stepSize);
+                    await Task.Delay(delayTime * 5, cancellationToken);
+                }
+
+                if (_stopRequested) return;
+
+                await ManualFocusAsync(0, stepSize);
+                focusStackStepVar = 0;
+                UpdateFocusStepVarLbl(focusStackStepVar);
+                await Task.Delay(delayTime, cancellationToken);
+                if (_stopRequested) return;
+
+                await DisplayBlurGraph(blurDataDict);
+
+                AppendTextToConsoleNL($"AutomaticFocusRoutine terninée");
+            }
+            finally
+            {
+                void HideStopButton()
+                {
+                    btn_stopAutomaticFocusCapture.Visible = false;
+                    btn_stopAutomaticFocusCapture.Enabled = false;
+                }
+
+                if (btn_stopAutomaticFocusCapture.InvokeRequired)
+                {
+                    btn_stopAutomaticFocusCapture.Invoke((Action)HideStopButton);
+                }
+                else
+                {
+                    HideStopButton();
                 }
             }
+        }
 
-            while (blurredBlocks > minDetect * 2 && !_stopRequested)
+        private IEnumerable<int> GetAutomaticFocusMaskThresholdCandidates(int originalThresh)
+        {
+            originalThresh = ClampMaskThreshold(originalThresh);
+
+            if (appSettings.MaskAlgorithmIndex == 0)
             {
-                await ManualFocusAsync(1, stepSize);
-                await Task.Delay(delayTime * 5);
+                return Enumerable.Range(0, 256).Select(offset => 255 - offset);
             }
 
-            await ManualFocusAsync(0, stepSize);
-            focusStackStepVar = 0;
-            UpdateFocusStepVarLbl(focusStackStepVar);
-            await Task.Delay(delayTime);
+            return Enumerable
+                .Range(0, originalThresh + 1)
+                .Select(offset => originalThresh - offset)
+                .Concat(Enumerable.Range(originalThresh + 1, 255 - originalThresh));
+        }
 
-            await DisplayBlurGraph(blurDataDict);
+        private bool IsMaskUsableForAutomaticFocus(Mat mask)
+        {
+            if (mask == null || mask.IsEmpty || IsMatAllBlack(mask))
+            {
+                return false;
+            }
 
-            AppendTextToConsoleNL($"AutomaticFocusRoutine terninée");
+            using var gray = new Mat();
+            if (mask.NumberOfChannels == 1)
+            {
+                mask.CopyTo(gray);
+            }
+            else
+            {
+                CvInvoke.CvtColor(
+                    mask,
+                    gray,
+                    mask.NumberOfChannels == 3
+                        ? Emgu.CV.CvEnum.ColorConversion.Bgr2Gray
+                        : Emgu.CV.CvEnum.ColorConversion.Bgra2Gray);
+            }
+
+            int whitePixels = CvInvoke.CountNonZero(gray);
+            int totalPixels = Math.Max(1, gray.Rows * gray.Cols);
+            double whiteRatio = whitePixels / (double)totalPixels;
+
+            return whiteRatio >= 0.003 && whiteRatio <= 0.45;
         }
 
         //public async Task AutomaticFocusRoutine()
@@ -773,9 +890,12 @@ namespace Aerolithe
 
 
 
-        public async Task AutomaticFocusThenCapture(int focusIterations)
+        public async Task AutomaticFocusThenCapture(int focusIterations, CancellationToken cancellationToken = default)
         {
             if (_stopRequested) return;
+
+            await WaitIfSequencePausedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
             int newStepSize = stepSize;
             Invoke(new Action(() =>
@@ -828,6 +948,9 @@ namespace Aerolithe
 
             for (int i = 0; i < focusIterations; i++)
             {
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (_stopRequested) return;
                 if (lbl_StackSerie.InvokeRequired)
                 {
@@ -842,6 +965,9 @@ namespace Aerolithe
                 // essayer de faire l'autofocus jusqu'à 3 fois, sinon on quitte
                 for (int j = 0; j <= 3; j++)
                 {
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     if (_stopRequested) return;
                     if (i == 0 && blurredBlocks < minDetect)
                     {
@@ -850,7 +976,7 @@ namespace Aerolithe
                         await ManualFocusAsync(1, stepSize);
                         focusStackStepVar = 0;
                         UpdateFocusStepVarLbl(focusStackStepVar);
-                        await Task.Delay(delayTime);
+                        await Task.Delay(delayTime, cancellationToken);
                     }
                     else
                     {
@@ -874,12 +1000,19 @@ namespace Aerolithe
                     }
                     try
                     {
+                        await WaitIfSequencePausedAsync(cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         await takePictureAsync();
                         AppendTextToConsoleNL("photo prise... onto the next :)");
                         //await miniaturesTcs.Task;
-                        await Task.Delay(400);
+                        await Task.Delay(600, cancellationToken);
+
+                        await WaitIfSequencePausedAsync(cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         await ManualFocusAsync(0, newStepSize);
-                        await Task.Delay(delayTime);
+                        await Task.Delay(delayTime, cancellationToken);
                         focusStackStepVar += 1;
                         UpdateFocusStepVarLbl(focusStackStepVar);
                         projet.FocusSerieIncrement += 1;

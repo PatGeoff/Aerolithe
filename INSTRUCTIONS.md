@@ -325,3 +325,120 @@ Comment valider que le travail est correct :
 - Si une capacité Nikon gèle complètement dans `device.GetEnum(...)` ou `device.GetUnsigned(...)`, le `try/catch` ne peut pas reprendre tant que l'appel natif ne retourne pas.
 - Dans ce cas, désactiver temporairement la capacité fautive dans `LoadCameraSettings()` et tester une lecture manuelle isolée avec la caméra connectée.
 - Ne pas remettre de `SetEnum` dans les méthodes `Get...`; ces méthodes doivent rester des lectures pures.
+
+## REV-0031-sequence-email-notifications
+
+- Ajout d'un service de notification courriel pour les fins de séquences photo.
+- Les destinataires de l'onglet `Settings/Messagerie` sont maintenant persistés dans `AppSettings.MessagingUsers`, incluant l'état coché/non coché de chaque checkbox.
+- Les notifications sont envoyées après:
+  - la routine totale;
+  - une série individuelle 5°;
+  - une série individuelle 25°;
+  - une série individuelle 45°.
+- La séquence de calibration/mesure n'envoie pas de notification courriel.
+- Quand le focus stack est actif pour la séquence, l'envoi attend la fin de la file de focus stack via `WaitForFocusStackQueueIdleAsync(...)` avant de composer le rapport.
+- Le rapport envoyé contient le nom du projet, le nom de la séquence, l'état final, la durée, l'état du focus stack, les compteurs de focus stacks réussis/échoués/en attente et la liste des focus stacks échoués.
+- La configuration SMTP est ajoutée dans `AppSettings`:
+  - `SmtpHost`
+  - `SmtpPort`
+  - `SmtpEnableSsl`
+  - `SmtpUser`
+  - `MailFrom`
+  - `SmtpPasswordProtected`
+- Le mot de passe SMTP, s'il est utilisé, doit être stocké via `SetSmtpPassword(...)`, qui le protège avec DPAPI pour l'utilisateur Windows courant.
+- Les erreurs d'envoi courriel sont loggées dans la console et ne doivent pas faire échouer la séquence photo.
+
+## REV-0032-messaging-layout-width
+
+- Ajustement du layout des destinataires dans `Settings/Messagerie`.
+- Les contrôles utilisateur du `flowlayoutPanel_Messagerie` utilisent maintenant la largeur disponible du panneau au lieu d'une largeur fixe.
+- Le `FlowLayoutPanel` est forcé en `TopDown` avec `WrapContents = false` pour obtenir une liste verticale propre.
+- La hauteur de chaque ligne destinataire reste fixe à `32 px`.
+- La largeur des lignes est recalculée lors du redimensionnement du panneau.
+
+## REV-0033-messaging-row-layout
+
+- Correction du layout interne des lignes destinataires dans `Settings/Messagerie`.
+- La hauteur de ligne passe à `40 px` pour éviter que le texte soit coupé verticalement.
+- Le libellé courriel est aligné à gauche, utilise `AutoEllipsis` et une police `Segoe UI 10 pt`.
+- Les colonnes checkbox/suppression sont réduites et stabilisées à `34 px`.
+- La checkbox est centrée dans sa cellule et le bouton de suppression reste centré sans agrandir la ligne.
+
+## REV-0034-messaging-delete-button-align
+
+- Correction de l'alignement du bouton de suppression dans `Settings/Messagerie`.
+- La hauteur réelle des lignes destinataires est harmonisée à `50 px` entre la création et le redimensionnement.
+- Le bouton de suppression utilise maintenant un texte `×` en `Segoe UI 11 pt`, avec `TextAlign = MiddleCenter`, padding nul et taille fixe `26 x 26`.
+- Objectif: centrer visuellement le `×` dans la cellule de suppression.
+
+## REV-0035-zero-photo-series-skip
+
+- Les textbox du nombre de photos dans `Caméra/Automation` acceptent maintenant la valeur `0`.
+- Une valeur `0` affiche `Série ignorée` au lieu de tenter de calculer un angle/diviseur.
+- `PrisePhotoSequenceAsync(...)` quitte proprement la série courante si son nombre d'images est `0`, ce qui évite la division par zéro.
+- Le calcul des paddings et la liste `listBox_paddingView` gèrent les séries à `0` en les affichant comme ignorées.
+- Objectif: permettre de bypasser une série et permettre ensuite de changer la valeur sans bloquer la saisie.
+
+## REV-0036-smtp-settings-form
+
+- Ajout d'un formulaire `SmtpSettingsForm` ouvert depuis `Messagerie/Réglages du serveur d'envoi`.
+- Le formulaire permet d'éditer manuellement:
+  - serveur SMTP;
+  - port;
+  - SSL/TLS;
+  - utilisateur SMTP;
+  - adresse expéditeur;
+  - mot de passe.
+- Le mot de passe SMTP est maintenant aussi disponible en clair via `AppSettings.SmtpPassword`, selon la préférence utilisateur.
+- `AppSettings.GetSmtpPassword()` privilégie `SmtpPassword` si rempli, puis retombe sur `SmtpPasswordProtected`.
+- Ajout d'un bouton `Tester` qui envoie un courriel SMTP de test à une adresse saisie.
+
+## REV-0037-manual-autocenter-reset
+
+- Correction du lancement manuel de l'auto-centrage après annulation d'une séquence.
+- Le bouton d'auto-centrage remet maintenant `_stopRequested = false` et `cancelAutoCentrage = false` avant de lancer `RoutineAutoCentrage()`.
+- Cause: `StopSequences()` laisse `_stopRequested = true` après une annulation; `RoutineAutoCentrage()` respecte ce flag et quittait donc immédiatement.
+- La routine totale semblait réparer le problème parce qu'elle appelle `ResetSequenceCancellationButton()`, qui remet `_stopRequested = false`.
+
+## REV-0038-smtp-form-polish
+
+- Ajustement visuel du formulaire `SmtpSettingsForm`.
+- Le libellé de sécurité utilise maintenant `Utiliser SSL/TLS` dans une ligne plus large pour éviter que le texte soit coupé.
+- Les boutons `Tester`, `Annuler` et `Sauvegarder` utilisent un style sombre cohérent avec l'application et des dimensions fixes.
+- Le champ mot de passe affiche le mot de passe enregistré avec des étoiles au chargement.
+- Lorsqu'on entre dans le champ mot de passe pour le modifier, le texte redevient visible pendant l'édition.
+- Après sauvegarde, le champ mot de passe redevient masqué.
+
+## REV-0039-smtp-form-font-size
+
+- Réduction locale des polices du formulaire `SmtpSettingsForm` à `Segoe UI 8.25 pt`.
+- Le formulaire ne dépend pas d'un setting global de police maison; il utilisait explicitement `Segoe UI 10 pt`.
+- Les lignes du formulaire, la largeur de la colonne des libellés et les boutons ont été resserrés pour mieux correspondre au reste de l'application.
+- Le scaling DPI Windows/WinForms reste appliqué par `ApplicationConfiguration.Initialize()`.
+
+## REV-0040-smtp-form-row-heights
+
+- Correction des hauteurs de rangées du formulaire `SmtpSettingsForm`.
+- Les six rangées de champs utilisent maintenant une hauteur fixe unique définie dans le `TableLayoutPanel`, au lieu d'ajouter des `RowStyle` dans `AddControlRow(...)`.
+- La rangée des boutons a maintenant sa propre hauteur fixe pour éviter que le texte des boutons soit coupé.
+- La checkbox `Utiliser SSL/TLS` utilise la même marge verticale que les champs texte pour garder un alignement uniforme.
+
+## REV-0041-smtp-buttons-height
+
+- Augmentation de la hauteur réelle des boutons du formulaire `SmtpSettingsForm` à `38 px`.
+- La rangée des boutons passe à `64 px` pour laisser assez d'espace au rendu texte avec le style `Flat`.
+- Suppression des hauteurs locales appliquées avant `StyleDialogButton(...)`, car elles étaient écrasées par le style commun.
+
+## REV-0042-smtp-buttons-width
+
+- Augmentation de la largeur des boutons du formulaire `SmtpSettingsForm`.
+- `Tester` et `Annuler` passent à `110 px`; `Sauvegarder` passe à `140 px`.
+- Objectif: éviter que le rendu texte soit coupé horizontalement avec le style `Flat` et le scaling DPI.
+
+## REV-0043-zero-series-and-focus-pause
+
+- Si le nombre de photos d'une série est `0`, la routine totale ignore maintenant cette série avant d'envoyer l'actuateur.
+- Une série à `0` n'exécute plus l'attente d'actuateur, le retour de table tournante, l'autofocus ou l'auto-centrage pour ce degré.
+- Les boutons de séries individuelles 5°, 25° et 45° appliquent la même règle et marquent la série comme `Ignoré`.
+- `AutomaticFocusRoutine(...)` accepte maintenant un `CancellationToken` optionnel et respecte la pause pendant ses boucles de recherche de masque et de focus.
+- `AutomaticFocusThenCapture(...)` accepte maintenant un `CancellationToken` optionnel et respecte la pause entre les images du focus stack et avant les mouvements de focus.

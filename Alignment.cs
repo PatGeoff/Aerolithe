@@ -199,9 +199,13 @@ namespace Aerolithe
 
             try
             {
-                if (!offsets.hasForeground)
+                var waitForMaskStart = DateTime.Now;
+                while (!offsets.hasForeground
+                       && !_stopRequested
+                       && !cancelAutoCentrage
+                       && (DateTime.Now - waitForMaskStart).TotalMilliseconds < 1200)
                 {
-                    await Task.Delay(200);
+                    await Task.Delay(100);
                 }
 
                 double kP = 0.3; // proportionnel
@@ -342,6 +346,8 @@ namespace Aerolithe
         private async Task RunAutoCentrageContinuPendantActuateurAsync(CancellationToken token)
         {
             AppendTextToConsoleNL("Auto-centrage continu pendant actuateur démarré");
+            BeginAutoCenterOffsetTracking();
+            cancelAutoCentrage = false;
 
             try
             {
@@ -349,7 +355,7 @@ namespace Aerolithe
                 {
                     if (offsets.hasForeground)
                     {
-                        await RoutineAutoCentrage(1000);
+                        await AutoCentrageStepPendantActuateurAsync();
                     }
                     else
                     {
@@ -368,6 +374,7 @@ namespace Aerolithe
             finally
             {
                 cancelAutoCentrage = true;
+                EndAutoCenterOffsetTracking();
                 udpSendLiftVerticalMotorData(0);
                 udpSendLiftHorizontalData(0);
                 udpSendCameraLinearMotorData(0);

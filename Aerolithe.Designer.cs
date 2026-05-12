@@ -337,6 +337,9 @@
             définirSiOnAppliqueLeMasqueToolStripMenuItem = new ToolStripMenuItem();
             validerSiOnFaitDuFocusStackingToolStripMenuItem = new ToolStripMenuItem();
             lancerLaPriseDePhotoToolStripMenuItem = new ToolStripMenuItem();
+            mEssagerieToolStripMenuItem = new ToolStripMenuItem();
+            toolStripMenuItem2 = new ToolStripMenuItem();
+            toolStripMenuItem1 = new ToolStripMenuItem();
             tableLayoutPanelPREFS = new TableLayoutPanel();
             panel11 = new Panel();
             tableLayoutPanel8 = new TableLayoutPanel();
@@ -1989,10 +1992,10 @@
             // 
             // tableLayoutPanel20
             // 
-            tableLayoutPanel20.ColumnCount = 1;
-            tableLayoutPanel20.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 99.99999F));
-            tableLayoutPanel20.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 11F));
-            tableLayoutPanel20.Controls.Add(btn_cancelPhotoShoot, 0, 0);
+            tableLayoutPanel20.ColumnCount = 2;
+            tableLayoutPanel20.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 73F));
+            tableLayoutPanel20.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel20.Controls.Add(btn_cancelPhotoShoot, 1, 0);
             tableLayoutPanel20.Dock = DockStyle.Fill;
             tableLayoutPanel20.Location = new Point(3, 153);
             tableLayoutPanel20.Name = "tableLayoutPanel20";
@@ -2005,17 +2008,15 @@
             // 
             btn_cancelPhotoShoot.BackColor = Color.FromArgb(30, 30, 30);
             btn_cancelPhotoShoot.Dock = DockStyle.Fill;
-            btn_cancelPhotoShoot.Enabled = false;
             btn_cancelPhotoShoot.FlatStyle = FlatStyle.Flat;
             btn_cancelPhotoShoot.ForeColor = Color.White;
-            btn_cancelPhotoShoot.Location = new Point(1, 1);
+            btn_cancelPhotoShoot.Location = new Point(74, 1);
             btn_cancelPhotoShoot.Margin = new Padding(1);
             btn_cancelPhotoShoot.Name = "btn_cancelPhotoShoot";
-            btn_cancelPhotoShoot.Size = new Size(504, 27);
+            btn_cancelPhotoShoot.Size = new Size(431, 27);
             btn_cancelPhotoShoot.TabIndex = 48;
             btn_cancelPhotoShoot.Text = "Cancellation";
             btn_cancelPhotoShoot.UseVisualStyleBackColor = false;
-            btn_cancelPhotoShoot.Visible = false;
             btn_cancelPhotoShoot.Click += btn_cancelPhotoShoot_Click;
             // 
             // listBox_paddingView
@@ -2158,7 +2159,7 @@
             txtBox_mesurements5deg.Name = "txtBox_mesurements5deg";
             txtBox_mesurements5deg.Size = new Size(431, 39);
             txtBox_mesurements5deg.TabIndex = 55;
-            txtBox_mesurements5deg.Text = "6";
+            txtBox_mesurements5deg.Text = "0";
             txtBox_mesurements5deg.TextAlign = HorizontalAlignment.Center;
             txtBox_mesurements5deg.TextChanged += txtBox_mesurements5deg_TextChanged;
             txtBox_mesurements5deg.KeyDown += txtBox_mesurements5deg_KeyDown;
@@ -3380,8 +3381,8 @@
             // 
             tabControl2.Controls.Add(tabPage9);
             tabControl2.Controls.Add(tabPage12);
-            tabControl2.Controls.Add(tabPage10);
             tabControl2.Controls.Add(tabPage8);
+            tabControl2.Controls.Add(tabPage10);
             tabControl2.Dock = DockStyle.Fill;
             tabControl2.Location = new Point(1, 1);
             tabControl2.Margin = new Padding(1);
@@ -4387,7 +4388,7 @@
             // tableLayoutPanel86
             // 
             tableLayoutPanel86.ColumnCount = 3;
-            tableLayoutPanel86.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125F));
+            tableLayoutPanel86.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 210F));
             tableLayoutPanel86.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F));
             tableLayoutPanel86.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel86.Controls.Add(textBox_nbrPhotosFS, 1, 0);
@@ -4406,7 +4407,7 @@
             textBox_nbrPhotosFS.BorderStyle = BorderStyle.FixedSingle;
             textBox_nbrPhotosFS.Dock = DockStyle.Fill;
             textBox_nbrPhotosFS.ForeColor = Color.White;
-            textBox_nbrPhotosFS.Location = new Point(125, 0);
+            textBox_nbrPhotosFS.Location = new Point(210, 0);
             textBox_nbrPhotosFS.Margin = new Padding(0);
             textBox_nbrPhotosFS.Name = "textBox_nbrPhotosFS";
             textBox_nbrPhotosFS.Size = new Size(40, 23);
@@ -4423,9 +4424,9 @@
             label60.ForeColor = Color.White;
             label60.Location = new Point(3, 0);
             label60.Name = "label60";
-            label60.Size = new Size(119, 27);
+            label60.Size = new Size(204, 27);
             label60.TabIndex = 1;
-            label60.Text = "Nbr de photo max";
+            label60.Text = "Nbr de photo max par focus stack";
             label60.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // tabPage8
@@ -4489,10 +4490,10 @@
             btn_LiveViewEnable.FlatStyle = FlatStyle.Flat;
             btn_LiveViewEnable.Font = new Font("Phosphor", 14F);
             btn_LiveViewEnable.ForeColor = Color.White;
-            btn_LiveViewEnable.Location = new Point(60, 0);
+            btn_LiveViewEnable.Location = new Point(66, 0);
             btn_LiveViewEnable.Margin = new Padding(0);
             btn_LiveViewEnable.Name = "btn_LiveViewEnable";
-            btn_LiveViewEnable.Size = new Size(31, 34);
+            btn_LiveViewEnable.Size = new Size(35, 34);
             btn_LiveViewEnable.TabIndex = 13;
             btn_LiveViewEnable.Text = "";
             btn_LiveViewEnable.UseVisualStyleBackColor = false;
@@ -4507,7 +4508,7 @@
             lbl_LiveViewEnable.Location = new Point(0, 0);
             lbl_LiveViewEnable.Margin = new Padding(0);
             lbl_LiveViewEnable.Name = "lbl_LiveViewEnable";
-            lbl_LiveViewEnable.Size = new Size(60, 34);
+            lbl_LiveViewEnable.Size = new Size(66, 34);
             lbl_LiveViewEnable.TabIndex = 10;
             lbl_LiveViewEnable.Text = "";
             lbl_LiveViewEnable.TextAlign = ContentAlignment.MiddleCenter;
@@ -4520,10 +4521,10 @@
             btn_saveImageForMesurementSequence.FlatStyle = FlatStyle.Flat;
             btn_saveImageForMesurementSequence.Font = new Font("Phosphor", 14F);
             btn_saveImageForMesurementSequence.ForeColor = Color.White;
-            btn_saveImageForMesurementSequence.Location = new Point(60, 0);
+            btn_saveImageForMesurementSequence.Location = new Point(66, 0);
             btn_saveImageForMesurementSequence.Margin = new Padding(0);
             btn_saveImageForMesurementSequence.Name = "btn_saveImageForMesurementSequence";
-            btn_saveImageForMesurementSequence.Size = new Size(31, 34);
+            btn_saveImageForMesurementSequence.Size = new Size(35, 34);
             btn_saveImageForMesurementSequence.TabIndex = 13;
             btn_saveImageForMesurementSequence.Text = "";
             btn_saveImageForMesurementSequence.UseVisualStyleBackColor = false;
@@ -4538,7 +4539,7 @@
             lbl_saveImageForMesurementSequence.Location = new Point(0, 0);
             lbl_saveImageForMesurementSequence.Margin = new Padding(0);
             lbl_saveImageForMesurementSequence.Name = "lbl_saveImageForMesurementSequence";
-            lbl_saveImageForMesurementSequence.Size = new Size(60, 34);
+            lbl_saveImageForMesurementSequence.Size = new Size(66, 34);
             lbl_saveImageForMesurementSequence.TabIndex = 10;
             lbl_saveImageForMesurementSequence.Text = "";
             lbl_saveImageForMesurementSequence.TextAlign = ContentAlignment.MiddleCenter;
@@ -4552,10 +4553,10 @@
             btn_SaveImageToDisk.FlatStyle = FlatStyle.Flat;
             btn_SaveImageToDisk.Font = new Font("Phosphor", 14F);
             btn_SaveImageToDisk.ForeColor = Color.White;
-            btn_SaveImageToDisk.Location = new Point(60, 0);
+            btn_SaveImageToDisk.Location = new Point(66, 0);
             btn_SaveImageToDisk.Margin = new Padding(0);
             btn_SaveImageToDisk.Name = "btn_SaveImageToDisk";
-            btn_SaveImageToDisk.Size = new Size(31, 34);
+            btn_SaveImageToDisk.Size = new Size(35, 34);
             btn_SaveImageToDisk.TabIndex = 12;
             btn_SaveImageToDisk.Text = "";
             btn_SaveImageToDisk.UseVisualStyleBackColor = false;
@@ -4570,7 +4571,7 @@
             lbl_saveImageTodisk.Location = new Point(0, 0);
             lbl_saveImageTodisk.Margin = new Padding(0);
             lbl_saveImageTodisk.Name = "lbl_saveImageTodisk";
-            lbl_saveImageTodisk.Size = new Size(60, 34);
+            lbl_saveImageTodisk.Size = new Size(66, 34);
             lbl_saveImageTodisk.TabIndex = 10;
             lbl_saveImageTodisk.Text = "";
             lbl_saveImageTodisk.TextAlign = ContentAlignment.MiddleCenter;
@@ -4581,7 +4582,7 @@
             picBox_LiveView_Main.Location = new Point(0, 0);
             picBox_LiveView_Main.Margin = new Padding(1);
             picBox_LiveView_Main.Name = "picBox_LiveView_Main";
-            picBox_LiveView_Main.Size = new Size(1386, 685);
+            picBox_LiveView_Main.Size = new Size(1376, 685);
             picBox_LiveView_Main.SizeMode = PictureBoxSizeMode.Zoom;
             picBox_LiveView_Main.TabIndex = 38;
             picBox_LiveView_Main.TabStop = false;
@@ -4593,7 +4594,7 @@
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(32, 32);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { QuitterToolStripMenuItem, imagesToolStripMenuItem, focusStackToolStripMenuItem, troubleshootToolStripMenuItem, workflowToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { QuitterToolStripMenuItem, imagesToolStripMenuItem, focusStackToolStripMenuItem, troubleshootToolStripMenuItem, workflowToolStripMenuItem, mEssagerieToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(2, 1, 0, 1);
@@ -4815,13 +4816,33 @@
             lancerLaPriseDePhotoToolStripMenuItem.Size = new Size(566, 22);
             lancerLaPriseDePhotoToolStripMenuItem.Text = "Lancer la prise de photo";
             // 
+            // mEssagerieToolStripMenuItem
+            // 
+            mEssagerieToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem2, toolStripMenuItem1 });
+            mEssagerieToolStripMenuItem.Name = "mEssagerieToolStripMenuItem";
+            mEssagerieToolStripMenuItem.Size = new Size(78, 22);
+            mEssagerieToolStripMenuItem.Text = "Messagerie";
+            // 
+            // toolStripMenuItem2
+            // 
+            toolStripMenuItem2.Name = "toolStripMenuItem2";
+            toolStripMenuItem2.Size = new Size(221, 22);
+            toolStripMenuItem2.Text = "Utilisateurs";
+            toolStripMenuItem2.Click += toolStripMenuItem2_Click;
+            // 
+            // toolStripMenuItem1
+            // 
+            toolStripMenuItem1.Name = "toolStripMenuItem1";
+            toolStripMenuItem1.Size = new Size(221, 22);
+            toolStripMenuItem1.Text = "Réglages du serveur d'envoi";
+            // 
             // tableLayoutPanelPREFS
             // 
             tableLayoutPanelPREFS.CellBorderStyle = TableLayoutPanelCellBorderStyle.Single;
             tableLayoutPanelPREFS.ColumnCount = 4;
             tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 538F));
             tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 103F));
+            tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 113F));
             tableLayoutPanelPREFS.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 464F));
             tableLayoutPanelPREFS.Controls.Add(tabControl1, 0, 0);
             tableLayoutPanelPREFS.Controls.Add(panel11, 1, 0);
@@ -4843,7 +4864,7 @@
             panel11.Location = new Point(541, 2);
             panel11.Margin = new Padding(1);
             panel11.Name = "panel11";
-            panel11.Size = new Size(1388, 724);
+            panel11.Size = new Size(1378, 724);
             panel11.TabIndex = 28;
             // 
             // tableLayoutPanel8
@@ -4860,7 +4881,7 @@
             tableLayoutPanel8.RowCount = 2;
             tableLayoutPanel8.RowStyles.Add(new RowStyle(SizeType.Absolute, 37F));
             tableLayoutPanel8.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel8.Size = new Size(1388, 724);
+            tableLayoutPanel8.Size = new Size(1378, 724);
             tableLayoutPanel8.TabIndex = 39;
             // 
             // tableLayoutPanel70
@@ -4885,7 +4906,7 @@
             tableLayoutPanel70.Name = "tableLayoutPanel70";
             tableLayoutPanel70.RowCount = 1;
             tableLayoutPanel70.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel70.Size = new Size(1382, 31);
+            tableLayoutPanel70.Size = new Size(1372, 31);
             tableLayoutPanel70.TabIndex = 39;
             // 
             // label48
@@ -4908,7 +4929,7 @@
             lbl_ttCurrentPos.AutoSize = true;
             lbl_ttCurrentPos.Dock = DockStyle.Fill;
             lbl_ttCurrentPos.ForeColor = Color.White;
-            lbl_ttCurrentPos.Location = new Point(976, 0);
+            lbl_ttCurrentPos.Location = new Point(966, 0);
             lbl_ttCurrentPos.Name = "lbl_ttCurrentPos";
             lbl_ttCurrentPos.Size = new Size(209, 31);
             lbl_ttCurrentPos.TabIndex = 38;
@@ -4934,7 +4955,7 @@
             lbl_actatorAngle_2.AutoSize = true;
             lbl_actatorAngle_2.Dock = DockStyle.Fill;
             lbl_actatorAngle_2.ForeColor = Color.White;
-            lbl_actatorAngle_2.Location = new Point(1191, 0);
+            lbl_actatorAngle_2.Location = new Point(1181, 0);
             lbl_actatorAngle_2.Name = "lbl_actatorAngle_2";
             lbl_actatorAngle_2.Size = new Size(156, 31);
             lbl_actatorAngle_2.TabIndex = 39;
@@ -4948,7 +4969,7 @@
             lbl_Centrage.ForeColor = Color.White;
             lbl_Centrage.Location = new Point(237, 0);
             lbl_Centrage.Name = "lbl_Centrage";
-            lbl_Centrage.Size = new Size(733, 31);
+            lbl_Centrage.Size = new Size(723, 31);
             lbl_Centrage.TabIndex = 44;
             lbl_Centrage.TextAlign = ContentAlignment.MiddleCenter;
             // 
@@ -4959,7 +4980,7 @@
             btn_WarningPing.FlatStyle = FlatStyle.Flat;
             btn_WarningPing.Font = new Font("Phosphor", 14F);
             btn_WarningPing.ForeColor = Color.Red;
-            btn_WarningPing.Location = new Point(1350, 0);
+            btn_WarningPing.Location = new Point(1340, 0);
             btn_WarningPing.Margin = new Padding(0);
             btn_WarningPing.Name = "btn_WarningPing";
             btn_WarningPing.Size = new Size(32, 31);
@@ -4975,7 +4996,7 @@
             pnl_DrawingLiveView.Location = new Point(1, 38);
             pnl_DrawingLiveView.Margin = new Padding(1);
             pnl_DrawingLiveView.Name = "pnl_DrawingLiveView";
-            pnl_DrawingLiveView.Size = new Size(1386, 685);
+            pnl_DrawingLiveView.Size = new Size(1376, 685);
             pnl_DrawingLiveView.TabIndex = 0;
             // 
             // panel12
@@ -5289,7 +5310,7 @@
             tableLayoutPanel55.Controls.Add(tableLayoutPanel50, 0, 12);
             tableLayoutPanel55.Controls.Add(tableLayoutPanel56, 0, 18);
             tableLayoutPanel55.Dock = DockStyle.Fill;
-            tableLayoutPanel55.Location = new Point(1934, 4);
+            tableLayoutPanel55.Location = new Point(1924, 4);
             tableLayoutPanel55.Name = "tableLayoutPanel55";
             tableLayoutPanel55.RowCount = 21;
             tableLayoutPanel55.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
@@ -5313,7 +5334,7 @@
             tableLayoutPanel55.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tableLayoutPanel55.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));
             tableLayoutPanel55.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel55.Size = new Size(97, 720);
+            tableLayoutPanel55.Size = new Size(107, 720);
             tableLayoutPanel55.TabIndex = 30;
             // 
             // tableLayoutPanel57
@@ -5330,7 +5351,7 @@
             tableLayoutPanel57.Name = "tableLayoutPanel57";
             tableLayoutPanel57.RowCount = 1;
             tableLayoutPanel57.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel57.Size = new Size(91, 34);
+            tableLayoutPanel57.Size = new Size(101, 34);
             tableLayoutPanel57.TabIndex = 18;
             // 
             // tableLayoutPanel60
@@ -5346,7 +5367,7 @@
             tableLayoutPanel60.Name = "tableLayoutPanel60";
             tableLayoutPanel60.RowCount = 1;
             tableLayoutPanel60.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel60.Size = new Size(91, 34);
+            tableLayoutPanel60.Size = new Size(101, 34);
             tableLayoutPanel60.TabIndex = 21;
             // 
             // tableLayoutPanel61
@@ -5362,7 +5383,7 @@
             tableLayoutPanel61.Name = "tableLayoutPanel61";
             tableLayoutPanel61.RowCount = 1;
             tableLayoutPanel61.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel61.Size = new Size(91, 34);
+            tableLayoutPanel61.Size = new Size(101, 34);
             tableLayoutPanel61.TabIndex = 22;
             // 
             // lbl_AutoCentrageActuator
@@ -5374,7 +5395,7 @@
             lbl_AutoCentrageActuator.Location = new Point(0, 0);
             lbl_AutoCentrageActuator.Margin = new Padding(0);
             lbl_AutoCentrageActuator.Name = "lbl_AutoCentrageActuator";
-            lbl_AutoCentrageActuator.Size = new Size(60, 34);
+            lbl_AutoCentrageActuator.Size = new Size(66, 34);
             lbl_AutoCentrageActuator.TabIndex = 15;
             lbl_AutoCentrageActuator.Text = "";
             lbl_AutoCentrageActuator.TextAlign = ContentAlignment.MiddleCenter;
@@ -5387,10 +5408,10 @@
             btn_AutoCentrageActuator.FlatStyle = FlatStyle.Flat;
             btn_AutoCentrageActuator.Font = new Font("Phosphor", 14F);
             btn_AutoCentrageActuator.ForeColor = Color.White;
-            btn_AutoCentrageActuator.Location = new Point(60, 0);
+            btn_AutoCentrageActuator.Location = new Point(66, 0);
             btn_AutoCentrageActuator.Margin = new Padding(0);
             btn_AutoCentrageActuator.Name = "btn_AutoCentrageActuator";
-            btn_AutoCentrageActuator.Size = new Size(31, 34);
+            btn_AutoCentrageActuator.Size = new Size(35, 34);
             btn_AutoCentrageActuator.TabIndex = 14;
             btn_AutoCentrageActuator.Text = "";
             btn_AutoCentrageActuator.UseVisualStyleBackColor = false;
@@ -5410,7 +5431,7 @@
             tableLayoutPanel59.Name = "tableLayoutPanel59";
             tableLayoutPanel59.RowCount = 1;
             tableLayoutPanel59.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel59.Size = new Size(91, 34);
+            tableLayoutPanel59.Size = new Size(101, 34);
             tableLayoutPanel59.TabIndex = 20;
             // 
             // tl_SaveMask
@@ -5426,7 +5447,7 @@
             tl_SaveMask.Name = "tl_SaveMask";
             tl_SaveMask.RowCount = 1;
             tl_SaveMask.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tl_SaveMask.Size = new Size(91, 34);
+            tl_SaveMask.Size = new Size(101, 34);
             tl_SaveMask.TabIndex = 19;
             // 
             // lbl_FocusStackEnable
@@ -5438,7 +5459,7 @@
             lbl_FocusStackEnable.Location = new Point(0, 0);
             lbl_FocusStackEnable.Margin = new Padding(0);
             lbl_FocusStackEnable.Name = "lbl_FocusStackEnable";
-            lbl_FocusStackEnable.Size = new Size(60, 34);
+            lbl_FocusStackEnable.Size = new Size(66, 34);
             lbl_FocusStackEnable.TabIndex = 13;
             lbl_FocusStackEnable.Text = "";
             lbl_FocusStackEnable.TextAlign = ContentAlignment.MiddleCenter;
@@ -5451,10 +5472,10 @@
             btn_focusStack.FlatStyle = FlatStyle.Flat;
             btn_focusStack.Font = new Font("Phosphor", 14F);
             btn_focusStack.ForeColor = Color.White;
-            btn_focusStack.Location = new Point(60, 0);
+            btn_focusStack.Location = new Point(66, 0);
             btn_focusStack.Margin = new Padding(0);
             btn_focusStack.Name = "btn_focusStack";
-            btn_focusStack.Size = new Size(31, 34);
+            btn_focusStack.Size = new Size(35, 34);
             btn_focusStack.TabIndex = 14;
             btn_focusStack.Text = "";
             btn_focusStack.UseVisualStyleBackColor = false;
@@ -5473,7 +5494,7 @@
             tableLayoutPanel58.Name = "tableLayoutPanel58";
             tableLayoutPanel58.RowCount = 1;
             tableLayoutPanel58.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel58.Size = new Size(91, 34);
+            tableLayoutPanel58.Size = new Size(101, 34);
             tableLayoutPanel58.TabIndex = 19;
             // 
             // btn_AutoCentrageAuto
@@ -5484,10 +5505,10 @@
             btn_AutoCentrageAuto.FlatStyle = FlatStyle.Flat;
             btn_AutoCentrageAuto.Font = new Font("Phosphor", 14F);
             btn_AutoCentrageAuto.ForeColor = Color.White;
-            btn_AutoCentrageAuto.Location = new Point(60, 0);
+            btn_AutoCentrageAuto.Location = new Point(66, 0);
             btn_AutoCentrageAuto.Margin = new Padding(0);
             btn_AutoCentrageAuto.Name = "btn_AutoCentrageAuto";
-            btn_AutoCentrageAuto.Size = new Size(31, 34);
+            btn_AutoCentrageAuto.Size = new Size(35, 34);
             btn_AutoCentrageAuto.TabIndex = 13;
             btn_AutoCentrageAuto.Text = "";
             btn_AutoCentrageAuto.UseVisualStyleBackColor = false;
@@ -5502,7 +5523,7 @@
             lbl_AutoCentrageAuto.Location = new Point(0, 0);
             lbl_AutoCentrageAuto.Margin = new Padding(0);
             lbl_AutoCentrageAuto.Name = "lbl_AutoCentrageAuto";
-            lbl_AutoCentrageAuto.Size = new Size(60, 34);
+            lbl_AutoCentrageAuto.Size = new Size(66, 34);
             lbl_AutoCentrageAuto.TabIndex = 11;
             lbl_AutoCentrageAuto.Text = "";
             lbl_AutoCentrageAuto.TextAlign = ContentAlignment.MiddleCenter;
@@ -5521,7 +5542,7 @@
             tl_ApplyMask.Name = "tl_ApplyMask";
             tl_ApplyMask.RowCount = 1;
             tl_ApplyMask.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tl_ApplyMask.Size = new Size(91, 34);
+            tl_ApplyMask.Size = new Size(101, 34);
             tl_ApplyMask.TabIndex = 18;
             // 
             // btn_applyMask
@@ -5532,10 +5553,10 @@
             btn_applyMask.FlatStyle = FlatStyle.Flat;
             btn_applyMask.Font = new Font("Phosphor", 14F);
             btn_applyMask.ForeColor = Color.White;
-            btn_applyMask.Location = new Point(60, 0);
+            btn_applyMask.Location = new Point(66, 0);
             btn_applyMask.Margin = new Padding(0);
             btn_applyMask.Name = "btn_applyMask";
-            btn_applyMask.Size = new Size(31, 34);
+            btn_applyMask.Size = new Size(35, 34);
             btn_applyMask.TabIndex = 12;
             btn_applyMask.Text = "";
             btn_applyMask.UseVisualStyleBackColor = false;
@@ -5550,7 +5571,7 @@
             lbl_applyMaskFS.Location = new Point(0, 0);
             lbl_applyMaskFS.Margin = new Padding(0);
             lbl_applyMaskFS.Name = "lbl_applyMaskFS";
-            lbl_applyMaskFS.Size = new Size(60, 34);
+            lbl_applyMaskFS.Size = new Size(66, 34);
             lbl_applyMaskFS.TabIndex = 10;
             lbl_applyMaskFS.Text = "";
             lbl_applyMaskFS.TextAlign = ContentAlignment.MiddleCenter;
@@ -5569,7 +5590,7 @@
             tl_FreezeMask.Name = "tl_FreezeMask";
             tl_FreezeMask.RowCount = 1;
             tl_FreezeMask.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tl_FreezeMask.Size = new Size(91, 34);
+            tl_FreezeMask.Size = new Size(101, 34);
             tl_FreezeMask.TabIndex = 20;
             // 
             // btn_freezeMask
@@ -5580,10 +5601,10 @@
             btn_freezeMask.FlatStyle = FlatStyle.Flat;
             btn_freezeMask.Font = new Font("Phosphor", 14F);
             btn_freezeMask.ForeColor = Color.White;
-            btn_freezeMask.Location = new Point(60, 0);
+            btn_freezeMask.Location = new Point(66, 0);
             btn_freezeMask.Margin = new Padding(0);
             btn_freezeMask.Name = "btn_freezeMask";
-            btn_freezeMask.Size = new Size(31, 34);
+            btn_freezeMask.Size = new Size(35, 34);
             btn_freezeMask.TabIndex = 16;
             btn_freezeMask.Text = "";
             btn_freezeMask.UseVisualStyleBackColor = false;
@@ -5598,7 +5619,7 @@
             lbl_FreezeMask.Location = new Point(0, 0);
             lbl_FreezeMask.Margin = new Padding(0);
             lbl_FreezeMask.Name = "lbl_FreezeMask";
-            lbl_FreezeMask.Size = new Size(60, 34);
+            lbl_FreezeMask.Size = new Size(66, 34);
             lbl_FreezeMask.TabIndex = 17;
             lbl_FreezeMask.Text = "";
             lbl_FreezeMask.TextAlign = ContentAlignment.MiddleCenter;
@@ -5616,7 +5637,7 @@
             tableLayoutPanel50.Name = "tableLayoutPanel50";
             tableLayoutPanel50.RowCount = 1;
             tableLayoutPanel50.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel50.Size = new Size(91, 34);
+            tableLayoutPanel50.Size = new Size(101, 34);
             tableLayoutPanel50.TabIndex = 21;
             // 
             // btn_saveImageForMesurements
@@ -5627,10 +5648,10 @@
             btn_saveImageForMesurements.FlatStyle = FlatStyle.Flat;
             btn_saveImageForMesurements.Font = new Font("Phosphor", 14F);
             btn_saveImageForMesurements.ForeColor = Color.White;
-            btn_saveImageForMesurements.Location = new Point(60, 0);
+            btn_saveImageForMesurements.Location = new Point(66, 0);
             btn_saveImageForMesurements.Margin = new Padding(0);
             btn_saveImageForMesurements.Name = "btn_saveImageForMesurements";
-            btn_saveImageForMesurements.Size = new Size(31, 34);
+            btn_saveImageForMesurements.Size = new Size(35, 34);
             btn_saveImageForMesurements.TabIndex = 19;
             btn_saveImageForMesurements.Text = "";
             btn_saveImageForMesurements.UseVisualStyleBackColor = false;
@@ -5645,7 +5666,7 @@
             lbl_saveImageForMesurements.Location = new Point(0, 0);
             lbl_saveImageForMesurements.Margin = new Padding(0);
             lbl_saveImageForMesurements.Name = "lbl_saveImageForMesurements";
-            lbl_saveImageForMesurements.Size = new Size(60, 34);
+            lbl_saveImageForMesurements.Size = new Size(66, 34);
             lbl_saveImageForMesurements.TabIndex = 18;
             lbl_saveImageForMesurements.Text = "";
             lbl_saveImageForMesurements.TextAlign = ContentAlignment.MiddleCenter;
@@ -5654,16 +5675,17 @@
             // 
             tableLayoutPanel56.ColumnCount = 3;
             tableLayoutPanel56.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
-            tableLayoutPanel56.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
-            tableLayoutPanel56.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+            tableLayoutPanel56.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35.3535347F));
+            tableLayoutPanel56.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 31.3131313F));
             tableLayoutPanel56.Controls.Add(lbl_blobCountLogo, 0, 0);
             tableLayoutPanel56.Controls.Add(btn_ShowSharpnessOverlay, 2, 0);
             tableLayoutPanel56.Controls.Add(lbl_blobCount, 1, 0);
+            tableLayoutPanel56.Dock = DockStyle.Fill;
             tableLayoutPanel56.Location = new Point(4, 400);
             tableLayoutPanel56.Name = "tableLayoutPanel56";
             tableLayoutPanel56.RowCount = 1;
             tableLayoutPanel56.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel56.Size = new Size(89, 30);
+            tableLayoutPanel56.Size = new Size(99, 30);
             tableLayoutPanel56.TabIndex = 23;
             // 
             // lbl_blobCountLogo
@@ -5675,7 +5697,7 @@
             lbl_blobCountLogo.Location = new Point(0, 0);
             lbl_blobCountLogo.Margin = new Padding(0);
             lbl_blobCountLogo.Name = "lbl_blobCountLogo";
-            lbl_blobCountLogo.Size = new Size(30, 30);
+            lbl_blobCountLogo.Size = new Size(33, 30);
             lbl_blobCountLogo.TabIndex = 47;
             lbl_blobCountLogo.Text = "";
             lbl_blobCountLogo.TextAlign = ContentAlignment.MiddleCenter;
@@ -5688,10 +5710,10 @@
             btn_ShowSharpnessOverlay.FlatStyle = FlatStyle.Flat;
             btn_ShowSharpnessOverlay.Font = new Font("Phosphor", 13F);
             btn_ShowSharpnessOverlay.ForeColor = Color.White;
-            btn_ShowSharpnessOverlay.Location = new Point(59, 0);
+            btn_ShowSharpnessOverlay.Location = new Point(67, 0);
             btn_ShowSharpnessOverlay.Margin = new Padding(0);
             btn_ShowSharpnessOverlay.Name = "btn_ShowSharpnessOverlay";
-            btn_ShowSharpnessOverlay.Size = new Size(30, 30);
+            btn_ShowSharpnessOverlay.Size = new Size(32, 30);
             btn_ShowSharpnessOverlay.TabIndex = 46;
             btn_ShowSharpnessOverlay.Text = "";
             btn_ShowSharpnessOverlay.UseVisualStyleBackColor = false;
@@ -5703,10 +5725,10 @@
             lbl_blobCount.Dock = DockStyle.Fill;
             lbl_blobCount.Font = new Font("Segoe UI", 11F);
             lbl_blobCount.ForeColor = Color.White;
-            lbl_blobCount.Location = new Point(30, 0);
+            lbl_blobCount.Location = new Point(33, 0);
             lbl_blobCount.Margin = new Padding(0);
             lbl_blobCount.Name = "lbl_blobCount";
-            lbl_blobCount.Size = new Size(29, 30);
+            lbl_blobCount.Size = new Size(34, 30);
             lbl_blobCount.TabIndex = 41;
             lbl_blobCount.TextAlign = ContentAlignment.MiddleCenter;
             // 
@@ -6757,5 +6779,8 @@
         private Button btn_enableNetworkConsoleMess;
         private Button button1;
         private Button button3;
+        private ToolStripMenuItem mEssagerieToolStripMenuItem;
+        private ToolStripMenuItem toolStripMenuItem1;
+        private ToolStripMenuItem toolStripMenuItem2;
     }
 }

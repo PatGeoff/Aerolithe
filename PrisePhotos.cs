@@ -124,6 +124,7 @@ namespace Aerolithe
                 catch (Exception ex)
                 {
                     _stopRequested = true;
+                    _lastSequenceErrorMessage = ex.Message;
                     AppendTextToConsoleNL($"Erreur à * SequencePrisePhotoTotale:  {ex.Message}");
                     ShowSequenceErrorMessage(ex);
                     return;
@@ -191,6 +192,14 @@ namespace Aerolithe
         {
             // serie = projet.Serie = 0, 1 ou 2
             int angle = angleIndexes[projet.Serie];
+            int imageCount = GetPhotoCountForCurrentSerie();
+            if (imageCount == 0)
+            {
+                AppendTextToConsoleNL($"Série {projet.Serie + 1} ({angle}°) ignorée: nombre de photos à 0. Actuateur et auto-centrage non exécutés.");
+                UpdateSequenceStatusLabels(angle, 0, 0);
+                return;
+            }
+
             AppendTextToConsoleNL($"actuator {angle}");
             await UdpSendActuatorMessageAsync($"actuator {angle}");
             if (_stopRequested) return;
@@ -218,6 +227,14 @@ namespace Aerolithe
             if (_stopRequested) return;
 
             AppendTextToConsoleNL($"Séquence {+1} terminée");
+        }
+
+        private int GetPhotoCountForCurrentSerie()
+        {
+            int[] imageCounts = { appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg };
+            return projet.Serie >= 0 && projet.Serie < imageCounts.Length
+                ? Math.Max(0, imageCounts[projet.Serie])
+                : 0;
         }
 
         private async Task SequenceTotaleImageMesuresAsync(CancellationToken cancellationToken)
@@ -397,6 +414,12 @@ namespace Aerolithe
             _stopwatch.Start();
             _ = UpdateTimerAsync(cancellationToken); // Timer en parallèle
 
+            serieId = new int[] { appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg };
+            if (serieId[projet.Serie] == 0)
+            {
+                AppendTextToConsoleNL($"Série {projet.Serie + 1} ignorée: nombre de photos à 0.");
+                return;
+            }
 
             await WaitIfSequencePausedAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -418,8 +441,6 @@ namespace Aerolithe
             await Task.Delay(800, cancellationToken);
 
             int[] paddingNbr = { appSettings.Padding5Deg, appSettings.Padding25Deg, appSettings.Padding45Deg };
-            serieId = new int[] { appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg };
-
 
             int divider = 0;
             try
@@ -566,13 +587,13 @@ namespace Aerolithe
                             await WaitIfSequencePausedAsync(cancellationToken);
                             cancellationToken.ThrowIfCancellationRequested();
 
-                            await AutomaticFocusRoutine();
+                            await AutomaticFocusRoutine(cancellationToken);
                             if (_stopRequested) return;
 
                             await WaitIfSequencePausedAsync(cancellationToken);
                             cancellationToken.ThrowIfCancellationRequested();
 
-                            await AutomaticFocusThenCapture(delta);
+                            await AutomaticFocusThenCapture(delta, cancellationToken);
 
                             AppendTextToConsoleNL("Focus Stack lancé");
 

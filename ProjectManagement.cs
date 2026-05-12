@@ -19,6 +19,7 @@ using System.Runtime.InteropServices;
 using Microsoft.VisualBasic;
 using System.Collections.Concurrent;
 using System.DirectoryServices.ActiveDirectory;
+using System.Security.Cryptography;
 
 namespace Aerolithe
 {
@@ -286,7 +287,7 @@ namespace Aerolithe
             int pad25 = int.Parse(txtBox_seqPad2.Text);
             int pad45 = int.Parse(txtBox_seqPad3.Text);
 
-            int pad5_final = pad5 + nbr5 - 1;  // genre 20 images de 0 à 19
+            int pad5_final = nbr5 > 0 ? pad5 + nbr5 - 1 : pad5 - 1;  // genre 20 images de 0 à 19
 
             int pad25_initial;
             if (recalculateFromImageCounts || (pad25 == appSettings.Padding25Deg && pad5 != appSettings.Padding5Deg))
@@ -299,7 +300,7 @@ namespace Aerolithe
             }
 
 
-            int pad25_final = pad25_initial + nbr25 - 1; // genre 20 images de 20 à 39
+            int pad25_final = nbr25 > 0 ? pad25_initial + nbr25 - 1 : pad25_initial - 1; // genre 20 images de 20 à 39
 
             int pad45_initial;
             if (recalculateFromImageCounts || (pad45 == appSettings.Padding45Deg && (pad5 != appSettings.Padding5Deg || pad25 != appSettings.Padding25Deg))) 
@@ -312,7 +313,7 @@ namespace Aerolithe
                 pad45_initial = Math.Max(pad45, pad25_final + 1);
             }
 
-            int pad45_final = pad45_initial + nbr45 - 1;
+            int pad45_final = nbr45 > 0 ? pad45_initial + nbr45 - 1 : pad45_initial - 1;
 
                         
             // === UI ===
@@ -337,13 +338,19 @@ namespace Aerolithe
 
             SavePrefsSettings();
 
-            string str = $"Angle 5° :     image_{pad5}.jpg  à image_{pad5_final}.jpg";
+            string str = nbr5 > 0
+                ? $"Angle 5° :     image_{pad5}.jpg  à image_{pad5_final}.jpg"
+                : "Angle 5° :     série ignorée";
             listBox_paddingView.Items.Add(str);
             listBox_paddingView.Items.Add("");
-            str = $"Angle 25° :   image_{pad25_initial}.jpg à image_{pad25_final}.jpg";
+            str = nbr25 > 0
+                ? $"Angle 25° :   image_{pad25_initial}.jpg à image_{pad25_final}.jpg"
+                : "Angle 25° :   série ignorée";
             listBox_paddingView.Items.Add(str);
             listBox_paddingView.Items.Add("");
-            str = $"Angle 45° :   image_{pad45_initial}.jpg à image_{pad45_final}.jpg";
+            str = nbr45 > 0
+                ? $"Angle 45° :   image_{pad45_initial}.jpg à image_{pad45_final}.jpg"
+                : "Angle 45° :   série ignorée";
             listBox_paddingView.Items.Add(str);
 
         }
@@ -647,61 +654,168 @@ namespace Aerolithe
 
         }
 
-        private void CreateUser(string userName)
+        private void LoadMessagingUsersInUi()
+        {
+            flowlayoutPanel_Messagerie.Controls.Clear();
+
+            foreach (var user in appSettings.MessagingUsers)
+            {
+                CreateUser(user.Email, user.Send, saveSettings: false);
+            }
+
+            ResizeMessagingUserPanels();
+        }
+
+        private void InitializeMessagingPanelLayout()
+        {
+            flowlayoutPanel_Messagerie.FlowDirection = FlowDirection.TopDown;
+            flowlayoutPanel_Messagerie.WrapContents = false;
+            flowlayoutPanel_Messagerie.Resize += (s, e) => ResizeMessagingUserPanels();
+        }
+
+        private int GetMessagingUserPanelWidth()
+        {
+            int scrollbarPadding = flowlayoutPanel_Messagerie.VerticalScroll.Visible
+                ? SystemInformation.VerticalScrollBarWidth
+                : 0;
+
+            return Math.Max(100, flowlayoutPanel_Messagerie.ClientSize.Width - scrollbarPadding - 8);
+        }
+
+        private void ResizeMessagingUserPanels()
+        {
+            int width = GetMessagingUserPanelWidth();
+
+            foreach (Control control in flowlayoutPanel_Messagerie.Controls)
+            {
+                control.Width = width;
+                control.Height = 50;
+            }
+        }
+
+        private void SaveMessagingUsersFromUi()
+        {
+            var users = new List<MessagingUserSetting>();
+
+            foreach (Panel panel in flowlayoutPanel_Messagerie.Controls.OfType<Panel>())
+            {
+                var checkBox = panel.Controls
+                    .OfType<TableLayoutPanel>()
+                    .SelectMany(tbl => tbl.Controls.OfType<CheckBox>())
+                    .FirstOrDefault();
+
+                var label = panel.Controls
+                    .OfType<TableLayoutPanel>()
+                    .SelectMany(tbl => tbl.Controls.OfType<Label>())
+                    .FirstOrDefault();
+
+                if (label == null || string.IsNullOrWhiteSpace(label.Text))
+                {
+                    continue;
+                }
+
+                users.Add(new MessagingUserSetting
+                {
+                    Email = label.Text.Trim(),
+                    Send = checkBox?.Checked ?? true
+                });
+            }
+
+            appSettings.MessagingUsers = users
+                .GroupBy(user => user.Email, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList();
+
+            appSettings.Save();
+        }
+
+        private void CreateUser(string userName, bool send = true, bool saveSettings = true)
         {
             string _userName = userName ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(_userName))
+            {
+                return;
+            }
+
+            if (flowlayoutPanel_Messagerie.Controls
+                .OfType<Panel>()
+                .SelectMany(panel => panel.Controls.OfType<TableLayoutPanel>())
+                .SelectMany(tbl => tbl.Controls.OfType<Label>())
+                .Any(label => string.Equals(label.Text.Trim(), _userName.Trim(), StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
             Panel panel = new Panel
             {
-                Size = new Size(432, 26),
+                Width = GetMessagingUserPanelWidth(),
+                Height = 50,
+                Margin = new Padding(3, 4, 3, 0),
+                Padding = new Padding(0),
+                BackColor = Color.FromArgb(32, 32, 32),
                 BorderStyle = BorderStyle.FixedSingle
             };
 
             TableLayoutPanel tbl = new TableLayoutPanel
             {
                 ColumnCount = 3,
-                Dock = DockStyle.Fill
+                RowCount = 1,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
 
 
-            // Largeur des colonnes : 26 | (reste) | 26
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 26));   // Col 0 : 26 px
+            // Largeur des colonnes : checkbox | texte | suppression
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));   // Col 0 : checkbox
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));   // Col 1 : 100% du reste
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 26));   // Col 2 : 26 px
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));   // Col 2 : suppression
 
-            // Hauteur de la (seule) ligne : 26 px
-            tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
+            // Hauteur de la (seule) ligne.
+            tbl.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             panel.Controls.Add(tbl);
 
             CheckBox ckb = new CheckBox
             {
-                Checked = true,
+                Checked = send,
                 Text = "",
-                Padding = new Padding(5)
+                AutoSize = false,
+                CheckAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
+            ckb.CheckedChanged += (s, e) => SaveMessagingUsersFromUi();
 
             Label lbl = new Label
             {
                 Text = _userName,
-                TextAlign = ContentAlignment.MiddleCenter,
+                TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = Color.White,
                 Dock = DockStyle.Fill,
-                Font = new Font(FontFamily.GenericSansSerif, 12)
+                AutoEllipsis = true,
+                Margin = new Padding(0),
+                Padding = new Padding(20, 0, 8, 1),
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point)
             };
 
             Button dB = new Button
             {
-
-                BackgroundImage = Properties.Resources.echec,
-                BackgroundImageLayout = ImageLayout.Zoom,
-                Size = new Size(12, 12),
+                Size = new Size(36, 36),
                 AutoSize = false,
-                Dock = DockStyle.None,                 // ✅ ne pas remplir la cellule
-                Anchor = AnchorStyles.None,            // ✅ centré automatiquement dans la cellule
-                Margin = new Padding(0),               // évite un décalage
+                Dock = DockStyle.Right,
+                Anchor = AnchorStyles.None,
+                Margin = new Padding(0),
+                Padding = new Padding(0),
                 FlatStyle = FlatStyle.Flat,
-                UseVisualStyleBackColor = false
-
+                UseVisualStyleBackColor = false,
+                UseCompatibleTextRendering = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Phosphor", 11F, FontStyle.Regular, GraphicsUnit.Point),
+                Text = "",
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(32, 32, 32)
             };
 
             dB.FlatAppearance.BorderSize = 0;
@@ -722,6 +836,7 @@ namespace Aerolithe
                     {
                         flowlayoutPanel_Messagerie.Controls.Remove(panel);
                         panel.Dispose();
+                        SaveMessagingUsersFromUi();
 
                     }
                     catch (Exception ex)
@@ -736,6 +851,12 @@ namespace Aerolithe
             tbl.Controls.Add(dB, 2, 0);
 
             flowlayoutPanel_Messagerie.Controls.Add(panel);
+            ResizeMessagingUserPanels();
+
+            if (saveSettings)
+            {
+                SaveMessagingUsersFromUi();
+            }
         }
     }
 
@@ -995,11 +1116,69 @@ namespace Aerolithe
 
         public bool AutoCentrage { get; set; } = true;
 
-        public int ThumbnailWidth { get; set; } = 190;
+        public int ThumbnailWidth { get; set; } = 210;
 
         public int ThumbnailHeight { get; set; } = 150;
 
         public List<MessagingUserSetting> MessagingUsers { get; set; } = new();
+
+        public string SmtpHost { get; set; } = string.Empty;
+
+        public int SmtpPort { get; set; } = 587;
+
+        public bool SmtpEnableSsl { get; set; } = true;
+
+        public string SmtpUser { get; set; } = string.Empty;
+
+        public string MailFrom { get; set; } = string.Empty;
+
+        public string SmtpPassword { get; set; } = string.Empty;
+
+        public string SmtpPasswordProtected { get; set; } = string.Empty;
+
+        public void SetSmtpPassword(string password)
+        {
+            if (string.IsNullOrEmpty(password))
+            {
+                SmtpPasswordProtected = string.Empty;
+                return;
+            }
+
+            byte[] protectedBytes = ProtectedData.Protect(
+                Encoding.UTF8.GetBytes(password),
+                optionalEntropy: null,
+                DataProtectionScope.CurrentUser);
+
+            SmtpPasswordProtected = Convert.ToBase64String(protectedBytes);
+        }
+
+        public string GetSmtpPassword()
+        {
+            if (!string.IsNullOrEmpty(SmtpPassword))
+            {
+                return SmtpPassword;
+            }
+
+            if (string.IsNullOrWhiteSpace(SmtpPasswordProtected))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                byte[] protectedBytes = Convert.FromBase64String(SmtpPasswordProtected);
+                byte[] unprotectedBytes = ProtectedData.Unprotect(
+                    protectedBytes,
+                    optionalEntropy: null,
+                    DataProtectionScope.CurrentUser);
+
+                return Encoding.UTF8.GetString(unprotectedBytes);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
 
         public AppSettings Load()
         {
