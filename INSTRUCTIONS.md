@@ -442,3 +442,40 @@ Comment valider que le travail est correct :
 - Les boutons de séries individuelles 5°, 25° et 45° appliquent la même règle et marquent la série comme `Ignoré`.
 - `AutomaticFocusRoutine(...)` accepte maintenant un `CancellationToken` optionnel et respecte la pause pendant ses boucles de recherche de masque et de focus.
 - `AutomaticFocusThenCapture(...)` accepte maintenant un `CancellationToken` optionnel et respecte la pause entre les images du focus stack et avant les mouvements de focus.
+
+## REV-0044-lift-xy-pad
+
+- Ajout du contrôle custom `LiftXYPadControl`.
+- Le pad X/Y est ajouté dans `tableLayoutPanel39`, colonne 1, à droite du trackbar vertical de l'onglet `Élévateur`.
+- Le mouvement horizontal du pad utilise la même plage que `trkBar_LiftHorizontal` et envoie `udpSendLiftHorizontalData(value * -5)`.
+- Le mouvement vertical du pad utilise la même plage que `trkBar_LiftVertical` et envoie `udpSendLiftVerticalMotorData(value * 100)`.
+- Au relâchement de la souris, le pad revient au centre, remet les deux trackbars à `0`, envoie les deux vitesses à `0` et redemande la position verticale via `stepmotor readData`.
+- `displayVerticalLiftData()` écrit maintenant les positions verticales dans la console, car les anciens labels de position verticale ne sont plus présents dans le Designer courant.
+
+## REV-0045-lift-switch-diagnostics
+
+- Ajout d'un diagnostic de switchs dans l'onglet `Élévateur`.
+- Si `tableLayoutPanel37` est vide au démarrage, huit boutons sont créés automatiquement: quatre lectures ESP32 et quatre états mémorisés Aérolithe.
+- Les boutons nommés `btn_Esp*`, `btn_Aero*` ou `btn_Aerolithe*` dans `tableLayoutPanel37` sont branchés automatiquement au même diagnostic.
+- Au clic, Aérolithe envoie `stepmotor switchState` au lift horizontal et au lift vertical, attend brièvement les réponses UDP, puis écrit deux lignes dans la console:
+  - `(Esp32) Switch Verticale Max/Min, Switch Horizontale Gauche/Droite`;
+  - `(Aerolithe) Switch Verticale Max/Min, Switch Horizontale Gauche/Droite`.
+- `StepperSwitchState` est maintenant interprété selon le câblage `INPUT_PULLUP`: `0` signifie switch pesée (`True`), `1` signifie relâchée (`False`).
+- Les messages UDP `FarLimitSwitch...` et `NearLimitSwitch...` sont séparés selon l'adresse source: le lift horizontal met à jour les états horizontaux, tandis que le rail caméra garde ses états existants.
+
+## REV-0046-lift-switch-buttons
+
+- Retrait de la création automatique des huit boutons de diagnostic de switchs.
+- Le diagnostic utilise maintenant seulement les boutons existants nommés `btn_HorizontalLiftSwitches` et `btn_VerticalLiftSwitches`.
+- `btn_HorizontalLiftSwitches` envoie `stepmotor switchState` au lift horizontal, puis affiche seulement:
+  - `(Esp32) Switch Horizontale Gauche/Droite`;
+  - `(Aerolithe) Switch Horizontale Gauche/Droite`.
+- `btn_VerticalLiftSwitches` envoie `stepmotor switchState` au lift vertical, puis affiche seulement:
+  - `(Esp32) Switch Verticale Max/Min`;
+  - `(Aerolithe) Switch Verticale Max/Min`.
+
+## REV-0047-vertical-switch-button-designer
+
+- Correction du bouton Designer `btn_VerticalLiftSwitches`.
+- Le Designer n'utilise plus `this.btn_VerticalLiftSwitches`; il utilise `btn_VerticalLiftSwitches`, comme les autres contrôles générés.
+- Ajout du champ `public Button btn_VerticalLiftSwitches;` dans `Aerolithe.Designer.cs`, comme pour `btn_HorizontalLiftSwitches`.

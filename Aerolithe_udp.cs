@@ -262,7 +262,7 @@ namespace Aerolithe
                         {
                             AppendTextToConsoleNL($"UDP reçu de {result.RemoteEndPoint}: {message}");
                         }
-                        CheckMessage(message);
+                        CheckMessage(message, result.RemoteEndPoint);
                     }
                 }
                 catch (ObjectDisposedException) when (_shutdownStarted)
@@ -349,18 +349,30 @@ namespace Aerolithe
 
 
         }
-        private async Task CheckMessage(string message)
+        private void CheckMessage(string message, IPEndPoint? remoteEndPoint)
         {
             ////AppendTextToConsoleNL("là");
             //AppendTextToConsoleNL("Message Reçu: " + message);
             #region liftVerticalMotor
             if (message.Contains("Lift Moteur Vertical: TopLimitPressed"))
             {
+                _liftVerticalMaxSwitchPressed = true;
                 AppendTextToConsoleNL("Lift Moteur Vertical: TopLimitPressed");
+            }
+            if (message.Contains("Lift Moteur Vertical: TopLimitReleased"))
+            {
+                _liftVerticalMaxSwitchPressed = false;
+                AppendTextToConsoleNL("Lift Moteur Vertical: TopLimitReleased");
             }
             if (message.Contains("Lift Moteur Vertical: BottomLimitPressed"))
             {
+                _liftVerticalMinSwitchPressed = true;
                 AppendTextToConsoleNL("Lift Moteur Vertical: BottomLimitPressed");
+            }
+            if (message.Contains("Lift Moteur Vertical: BottomLimitReleased"))
+            {
+                _liftVerticalMinSwitchPressed = false;
+                AppendTextToConsoleNL("Lift Moteur Vertical: BottomLimitReleased");
             }
             if (message.Contains("Stepper lift data:"))
             {
@@ -397,6 +409,8 @@ namespace Aerolithe
                 }
             }
             // ESP32
+            bool fromHorizontalLift = IsMessageFrom(remoteEndPoint, scissorLiftIpAddress);
+            bool fromVerticalLift = IsMessageFrom(remoteEndPoint, liftVerticalIpAddress);
 
             //if (message.Contains("Message de Table Tournante: Position atteinte"))
             //{
@@ -409,29 +423,93 @@ namespace Aerolithe
 
             if (message.Contains("FarLimitSwitchPressed"))
             {
-                cameraRailFarLimitSwitchPressed = true;
-                AppendTextToConsoleNL("FarLimitSwitchPressed = True");
+                if (fromHorizontalLift)
+                {
+                    AppendTextToConsoleNL("Lift Horizontal - Droite (FarLimitSwitchPressed) = True");
+                }
+                else if (fromVerticalLift)
+                {
+                    _liftVerticalMaxSwitchPressed = true;
+                    AppendTextToConsoleNL("Lift Vertical - Max (FarLimitSwitchPressed) = True");
+                }
+                else
+                {
+                    cameraRailFarLimitSwitchPressed = true;
+                    AppendTextToConsoleNL("Caméra linéaire - FarLimitSwitchPressed = True");
+                }
             }
             if (message.Contains("FarLimitSwitchReleased"))
             {
-                cameraRailFarLimitSwitchPressed = false;
-                AppendTextToConsoleNL("FarLimitSwitchPressed = False");
+                if (fromHorizontalLift)
+                {
+                    AppendTextToConsoleNL("Lift Horizontal - Droite (FarLimitSwitchPressed) = False");
+                }
+                else if (fromVerticalLift)
+                {
+                    _liftVerticalMaxSwitchPressed = false;
+                    AppendTextToConsoleNL("Lift Vertical - Max (FarLimitSwitchPressed) = False");
+                }
+                else
+                {
+                    cameraRailFarLimitSwitchPressed = false;
+                    AppendTextToConsoleNL("Caméra linéaire - FarLimitSwitchPressed = False");
+                }
             }
             if (message.Contains("NearLimitSwitchPressed"))
             {
-                cameraRailNearLimitSwitchPressed = true;
-                AppendTextToConsoleNL("NearLimitSwitchPressed = True");
+                if (fromHorizontalLift)
+                {
+                    AppendTextToConsoleNL("Lift Horizontal - Gauche (NearLimitSwitchPressed) = True");
+                }
+                else if (fromVerticalLift)
+                {
+                    _liftVerticalMinSwitchPressed = true;
+                    AppendTextToConsoleNL("Lift Vertical - Min (NearLimitSwitchPressed) = True");
+                }
+                else
+                {
+                    cameraRailNearLimitSwitchPressed = true;
+                    AppendTextToConsoleNL("Caméra linéaire - Près (NearLimitSwitchPressed) = True");
+                }
             }
             if (message.Contains("NearLimitSwitchReleased"))
             {
-                cameraRailNearLimitSwitchPressed = false;
-                AppendTextToConsoleNL("NearLimitSwitchPressed = False");
+                if (fromHorizontalLift)
+                {
+                    AppendTextToConsoleNL("Lift Horizontal - Gauche (NearLimitSwitchPressed) = False");
+                }
+                else if (fromVerticalLift)
+                {
+                    _liftVerticalMinSwitchPressed = false;
+                    AppendTextToConsoleNL("Lift Vertical - Min (NearLimitSwitchPressed) = False");
+                }
+                else
+                {
+                    cameraRailNearLimitSwitchPressed = false;
+                    AppendTextToConsoleNL("Caméra linéaire - Loin (NearLimitSwitchPressed) = False");
+                }
             }
-            if (message.Contains("StepperSwitchState"))
+            if (TryParseStepperSwitchState(message, out bool nearPressed, out bool farPressed))
             {
-                string[] msg = message.Split(",");
-                cameraRailNearLimitSwitchPressed = (msg[1] == "0") ? false : true;
-
+                if (fromHorizontalLift)
+                {
+                    _espLiftHorizontalLeftSwitchPressed = nearPressed;
+                    _espLiftHorizontalRightSwitchPressed = farPressed;
+                    _liftHorizontalSwitchStateTcs?.TrySetResult(true);
+                }
+                else if (fromVerticalLift)
+                {
+                    _espLiftVerticalMinSwitchPressed = nearPressed;
+                    _espLiftVerticalMaxSwitchPressed = farPressed;
+                    _liftVerticalMinSwitchPressed = nearPressed;
+                    _liftVerticalMaxSwitchPressed = farPressed;
+                    _liftVerticalSwitchStateTcs?.TrySetResult(true);
+                }
+                else
+                {
+                    cameraRailNearLimitSwitchPressed = nearPressed;
+                    cameraRailFarLimitSwitchPressed = farPressed;
+                }
             }
 
             #endregion
@@ -454,6 +532,49 @@ namespace Aerolithe
 
             #endregion
 
+        }
+
+        private static bool IsMessageFrom(IPEndPoint? remoteEndPoint, IPAddress expectedAddress)
+        {
+            return remoteEndPoint?.Address.Equals(expectedAddress) == true;
+        }
+
+        private static bool TryParseStepperSwitchState(string message, out bool nearPressed, out bool farPressed)
+        {
+            nearPressed = false;
+            farPressed = false;
+
+            if (!message.Contains("StepperSwitchState", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string[] parts = message.Split(",");
+            if (parts.Length < 3)
+            {
+                return false;
+            }
+
+            return TryParseInputPullupSwitchValue(parts[1], out nearPressed)
+                && TryParseInputPullupSwitchValue(parts[2], out farPressed);
+        }
+
+        private static bool TryParseInputPullupSwitchValue(string value, out bool pressed)
+        {
+            string normalizedValue = value.Trim();
+            if (normalizedValue == "0")
+            {
+                pressed = true;
+                return true;
+            }
+
+            if (normalizedValue == "1")
+            {
+                pressed = false;
+                return true;
+            }
+
+            return bool.TryParse(normalizedValue, out pressed);
         }
         private async Task CheckOSCMessage(string message)
         {
@@ -544,31 +665,16 @@ namespace Aerolithe
 
         private void displayVerticalLiftData()
         {
-            //AppendTextToConsoleNL(
-            //    $"Lift Vertical\n    - Position actuelle: {appSettings.VerticalLiftCurrentPos}\n    - Position maximale: {appSettings.VerticalLiftMaxPos}\n    - Position définie par défaut: {appSettings.VerticalLiftDefaultPos}"
-            //);
-
-            if (lbl_VerticalLiftPosition.InvokeRequired)
-            {
-                lbl_VerticalLiftPosition.Invoke((MethodInvoker)(() =>
-                {
-                    lbl_VerticalLiftPosition.Text = "Position:      " + appSettings.VerticalLiftCurrentPos.ToString();
-                    lbl_VerticalLiftMaxPos.Text = "Maximum:         " + appSettings.VerticalLiftMaxPos.ToString();
-                    lbl_VerticalLiftDefaultPos.Text = "Défaut:      " + appSettings.VerticalLiftDefaultPos.ToString();
-                }));
-            }
-            else
-            {
-                lbl_VerticalLiftPosition.Text = "Position:  " + appSettings.VerticalLiftCurrentPos.ToString();
-                lbl_VerticalLiftMaxPos.Text = "Maximum: " + appSettings.VerticalLiftMaxPos.ToString();
-                lbl_VerticalLiftDefaultPos.Text = "Défaut: " + appSettings.VerticalLiftDefaultPos.ToString();
-            }
+            AppendTextToConsoleNL(
+                $"Lift Vertical - Position: {appSettings.VerticalLiftCurrentPos}, " +
+                $"Maximum: {appSettings.VerticalLiftMaxPos}, " +
+                $"Défaut: {appSettings.VerticalLiftDefaultPos}");
         }
 
         private async Task GetLinearSwitchesStateFromLinear()
         {
             await UdpSendCameraLinearMessageAsync("stepmotor switchState");
-            AppendTextToConsoleNL($"NearLimitSwitchPressed = {cameraRailNearLimitSwitchPressed}, cameraRailFarLimitSwitchPressed = {cameraRailFarLimitSwitchPressed}");
+            AppendTextToConsoleNL($"Caméra linéaire - NearLimitSwitchPressed = {cameraRailNearLimitSwitchPressed}, FarLimitSwitchPressed = {cameraRailFarLimitSwitchPressed}");
 
         }
 

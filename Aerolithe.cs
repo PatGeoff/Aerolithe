@@ -31,7 +31,7 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public const string UiRevision = "REV-0043-zero-series-and-focus-pause";
+        public const string UiRevision = "REV-0047-vertical-switch-button-designer";
         private string _windowTitleBase = "Aucun projet";
 
         // THIS IP ADDRESS 192.168.2.4 //
@@ -87,6 +87,14 @@ namespace Aerolithe
         private readonly Color _automaticFocusRoutineNormalBackColor = Color.FromArgb(30, 30, 30);
         private readonly Color _automaticFocusRoutineCancelBackColor = Color.FromArgb(100, 80, 30, 30);
         private CancellationTokenSource? _manualActuatorAutoCenterCts;
+        private bool _liftVerticalMaxSwitchPressed;
+        private bool _liftVerticalMinSwitchPressed;
+        private bool? _espLiftVerticalMaxSwitchPressed;
+        private bool? _espLiftVerticalMinSwitchPressed;
+        private bool? _espLiftHorizontalLeftSwitchPressed;
+        private bool? _espLiftHorizontalRightSwitchPressed;
+        private TaskCompletionSource<bool>? _liftVerticalSwitchStateTcs;
+        private TaskCompletionSource<bool>? _liftHorizontalSwitchStateTcs;
         //private string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MyResources\\Models", "u2net.onnx");
 
         private int[] serieId = [];
@@ -133,6 +141,7 @@ namespace Aerolithe
             Program.StartupLog("Aerolithe constructor: InitializeComponent starting.");
             InitializeComponent();
             Program.StartupLog("Aerolithe constructor: InitializeComponent completed.");
+            InitializeLiftXYPad();
             InitializeMessagingPanelLayout();
             SetMainWindowTitle();
             fichierToolStripMenuItem1.Click += quitterAerolitheToolStripMenuItem_Click;
@@ -923,6 +932,130 @@ namespace Aerolithe
         #endregion
 
         #region ÉLÉVATEUR TAB
+
+        private void InitializeLiftXYPad()
+        {
+            var liftPad = new LiftXYPadControl
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(4, 1, 1, -15),
+                HorizontalMinimum = trkBar_LiftHorizontal.Minimum,
+                HorizontalMaximum = trkBar_LiftHorizontal.Maximum,
+                VerticalMinimum = trkBar_LiftVertical.Minimum,
+                VerticalMaximum = trkBar_LiftVertical.Maximum
+            };
+
+            liftPad.PadChanged += LiftXYPad_PadChanged;
+            liftPad.PadReleased += LiftXYPad_PadReleased;
+
+            tableLayoutPanel39.Controls.Add(liftPad, 2, 0);
+        }
+
+        private async void HorizontalLiftSwitchesButton_Click(object? sender, EventArgs e)
+        {
+            await RequestHorizontalLiftSwitchDiagnosticsAsync();
+        }
+
+        private async void VerticalLiftSwitchesButton_Click(object? sender, EventArgs e)
+        {
+            await RequestVerticalLiftSwitchDiagnosticsAsync();
+        }
+
+        private async Task RequestHorizontalLiftSwitchDiagnosticsAsync()
+        {
+            _liftHorizontalSwitchStateTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task horizontalStateTask = _liftHorizontalSwitchStateTcs.Task;
+
+            try
+            {
+                await UdpSendLiftHorizontalMessageAsync("stepmotor switchState");
+                await Task.WhenAny(horizontalStateTask, Task.Delay(800));
+            }
+            finally
+            {
+                AppendHorizontalLiftSwitchDiagnosticReport();
+
+                if (ReferenceEquals(_liftHorizontalSwitchStateTcs?.Task, horizontalStateTask))
+                {
+                    _liftHorizontalSwitchStateTcs = null;
+                }
+            }
+        }
+
+        private async Task RequestVerticalLiftSwitchDiagnosticsAsync()
+        {
+            _liftVerticalSwitchStateTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task verticalStateTask = _liftVerticalSwitchStateTcs.Task;
+
+            try
+            {
+                await UdpSendLiftVerticalMessageAsync("stepmotor switchState");
+                await Task.WhenAny(verticalStateTask, Task.Delay(800));
+            }
+            finally
+            {
+                AppendVerticalLiftSwitchDiagnosticReport();
+
+                if (ReferenceEquals(_liftVerticalSwitchStateTcs?.Task, verticalStateTask))
+                {
+                    _liftVerticalSwitchStateTcs = null;
+                }
+            }
+        }
+
+        private void AppendHorizontalLiftSwitchDiagnosticReport()
+        {
+            AppendTextToConsoleNL(
+                $"(Esp32) Switch Horizontale Gauche = {FormatSwitchState(_espLiftHorizontalLeftSwitchPressed)}, " +
+                $"Switch Horizontale Droite = {FormatSwitchState(_espLiftHorizontalRightSwitchPressed)}");
+        }
+
+        private void AppendVerticalLiftSwitchDiagnosticReport()
+        {
+            AppendTextToConsoleNL(
+                $"(Esp32) Switch Verticale Max = {FormatSwitchState(_espLiftVerticalMaxSwitchPressed)}, " +
+                $"Switch Verticale Min = {FormatSwitchState(_espLiftVerticalMinSwitchPressed)}");
+
+            AppendTextToConsoleNL(
+                $"(Aerolithe) Switch Verticale Max = {_liftVerticalMaxSwitchPressed}, " +
+                $"Switch Verticale Min = {_liftVerticalMinSwitchPressed}");
+        }
+
+        private static string FormatSwitchState(bool? state)
+        {
+            return state.HasValue ? state.Value.ToString() : "Inconnu";
+        }
+
+        private void LiftXYPad_PadChanged(object? sender, LiftXYPadChangedEventArgs e)
+        {
+            trkBar_LiftHorizontal.Value = Math.Clamp(e.HorizontalValue, trkBar_LiftHorizontal.Minimum, trkBar_LiftHorizontal.Maximum);
+            trkBar_LiftVertical.Value = Math.Clamp(e.VerticalValue, trkBar_LiftVertical.Minimum, trkBar_LiftVertical.Maximum);
+
+            int horizontalSpeed = trkBar_LiftHorizontal.Value * -5;
+            if (horizontalSpeed != lastHorizontalValue)
+            {
+                udpSendLiftHorizontalData(horizontalSpeed);
+                lastHorizontalValue = horizontalSpeed;
+            }
+
+            int verticalSpeed = trkBar_LiftVertical.Value * 100;
+            if (verticalSpeed != lastVerticalValue)
+            {
+                udpSendLiftVerticalMotorData(verticalSpeed);
+                lastVerticalValue = verticalSpeed;
+            }
+        }
+
+        private void LiftXYPad_PadReleased(object? sender, EventArgs e)
+        {
+            trkBar_LiftHorizontal.Value = 0;
+            trkBar_LiftVertical.Value = 0;
+            udpSendLiftHorizontalData(0);
+            udpSendLiftVerticalMotorData(0);
+            UdpSendLiftVerticalMessageAsync("stepmotor readData");
+            lastHorizontalValue = 0;
+            lastVerticalValue = 0;
+        }
 
 
         private void btn_printLiftPositionConsole_Click(object sender, EventArgs e)
@@ -3147,11 +3280,17 @@ namespace Aerolithe
         private int lastHorizontalValue = -1;
         private int lastVerticalValue = -1;
 
-
+        private int? _previousStepperCameraMotorValue = null;
 
         private void stepperCameraMotor_trkbar_Scroll(object sender, EventArgs e)
         {
-            udpSendCameraLinearMotorData(stepperCameraMotor_trkbar.Value * 100);
+            int currentValue = stepperCameraMotor_trkbar.Value;
+
+            if (currentValue != _previousStepperCameraMotorValue)
+            {
+                _previousStepperCameraMotorValue = currentValue;
+                udpSendCameraLinearMotorData(currentValue * 1000);
+            }
         }
 
         private void stepperCameraMotor_trkbar_MouseUp(object sender, MouseEventArgs e)
