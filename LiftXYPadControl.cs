@@ -153,7 +153,7 @@ namespace Aerolithe
                 e.Graphics,
                 $"{HorizontalValue}, {VerticalValue}",
                 Font,
-                new Rectangle(pad.Left + 6, pad.Bottom - 24, pad.Width - 12, 20),
+                new Rectangle(pad.Left + 6, pad.Bottom - 34, pad.Width - 12, 30),
                 Color.FromArgb(180, 180, 180),
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }

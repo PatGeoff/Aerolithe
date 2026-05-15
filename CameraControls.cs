@@ -25,6 +25,8 @@ namespace Aerolithe
         private Size panelSize = new Size(190, 150);
         private readonly SemaphoreSlim _nikonOperationLock = new(1, 1);
         private volatile bool _nikonOperationInProgress;
+        private static readonly TimeSpan NikonDeviceReadyTimeout = TimeSpan.FromSeconds(8);
+        private static readonly TimeSpan NikonBusyRetryDelay = TimeSpan.FromMilliseconds(250);
 
 
 
@@ -81,7 +83,11 @@ namespace Aerolithe
             return Task.CompletedTask;
         }
 
-        private async Task RunExclusiveNikonOperationAsync(Func<Task> action, bool pauseLiveView = false)
+        private async Task RunExclusiveNikonOperationAsync(
+            Func<Task> action,
+            bool pauseLiveView = false,
+            bool waitUntilReadyBefore = true,
+            bool waitUntilReadyAfter = true)
         {
             await _nikonOperationLock.WaitAsync();
 
@@ -104,7 +110,17 @@ namespace Aerolithe
                     });
                 }
 
+                if (waitUntilReadyBefore)
+                {
+                    await WaitUntilNikonDeviceReadyAsync(NikonDeviceReadyTimeout);
+                }
+
                 await InvokeOnUIAsync(this, action);
+
+                if (waitUntilReadyAfter)
+                {
+                    await WaitUntilNikonDeviceReadyAsync(NikonDeviceReadyTimeout);
+                }
             }
             finally
             {
@@ -126,6 +142,53 @@ namespace Aerolithe
                 {
                     _nikonOperationInProgress = false;
                     _nikonOperationLock.Release();
+                }
+            }
+        }
+
+        private async Task WaitUntilNikonDeviceReadyAsync(TimeSpan timeout)
+        {
+            DateTime deadline = DateTime.UtcNow.Add(timeout);
+
+            while (DateTime.UtcNow < deadline)
+            {
+                try
+                {
+                    await InvokeOnUIAsync(this, () =>
+                    {
+                        device.Start(eNkMAIDCapability.kNkMAIDCapability_DeviceReady);
+                    });
+                    return;
+                }
+                catch (NikonException ex) when (IsNikonDeviceBusy(ex))
+                {
+                    await Task.Delay(NikonBusyRetryDelay);
+                }
+            }
+
+            throw new TimeoutException("Timeout en attente que la Nikon soit prête.");
+        }
+
+        private static bool IsNikonDeviceBusy(NikonException ex)
+        {
+            return ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy
+                || ex.Message.Contains("33353", StringComparison.OrdinalIgnoreCase)
+                || ex.Message.Contains("busy", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task ExecuteNikonCommandWithBusyRetryAsync(Action action, string operationName, int maxAttempts = 12)
+        {
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    action();
+                    return;
+                }
+                catch (NikonException ex) when (IsNikonDeviceBusy(ex) && attempt < maxAttempts)
+                {
+                    AppendTextToConsoleNL($"{operationName}: Nikon occupée, nouvel essai {attempt + 1}/{maxAttempts}.");
+                    await Task.Delay(NikonBusyRetryDelay);
                 }
             }
         }
@@ -186,6 +249,11 @@ namespace Aerolithe
 
         public async Task takePictureAsync()
         {
+            await RunExclusiveNikonOperationAsync(TakePictureCoreAsync);
+        }
+
+        private async Task TakePictureCoreAsync()
+        {
             if (imageReadyTcs != null)
             {
                 throw new InvalidOperationException("Une capture est déjà en cours.");
@@ -200,12 +268,11 @@ namespace Aerolithe
             {
                 timing.StartTimer();
 
-                await InvokeOnUIAsync(this, () =>
-                {
-                    AppendTextToConsoleNL($"[Thread takePictureAsync] Thread# {Thread.CurrentThread.ManagedThreadId} -> UI? {(!this.InvokeRequired).ToString()}");
-                    device.Capture();
-                    AppendTextToConsoleNL("Capture de l'image par la Nikon ...");
-                });
+                AppendTextToConsoleNL($"[Thread takePictureAsync] Thread# {Thread.CurrentThread.ManagedThreadId} -> UI? {(!this.InvokeRequired).ToString()}");
+                await ExecuteNikonCommandWithBusyRetryAsync(
+                    () => device.Capture(),
+                    "Capture Nikon");
+                AppendTextToConsoleNL("Capture de l'image par la Nikon ...");
 
                 var completedTask = await Task.WhenAny(
                     currentImageReadyTcs.Task,
@@ -223,10 +290,9 @@ namespace Aerolithe
 
                 await currentImageReadyTcs.Task;
             }
-            catch (NikonException ex) when (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
+            catch (NikonException ex) when (IsNikonDeviceBusy(ex))
             {
-                AppendTextToConsoleNL(ex.Message);
-                await Task.Delay(200);
+                AppendTextToConsoleNL("Capture Nikon abandonnée: " + ex.Message);
                 throw;
             }
             catch (Exception)
@@ -1102,20 +1168,26 @@ namespace Aerolithe
 
         private async Task ManualFocusAsync(int up, double newFocusValue)
         {
-            await RunExclusiveNikonOperationAsync(() =>
+            await RunExclusiveNikonOperationAsync(async () =>
             {
                 driveStep.Value = newFocusValue;
-                device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
+                await ExecuteNikonCommandWithBusyRetryAsync(
+                    () => device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep),
+                    "Réglage step focus Nikon");
 
                 try
                 {
                     if (up == 1)
                     {
-                        device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
+                        await ExecuteNikonCommandWithBusyRetryAsync(
+                            () => device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity),
+                            "Focus manuel Nikon");
                     }
                     else
                     {
-                        device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
+                        await ExecuteNikonCommandWithBusyRetryAsync(
+                            () => device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest),
+                            "Focus manuel Nikon");
                     }
                 }
                 catch (Exception ex)
@@ -1123,9 +1195,7 @@ namespace Aerolithe
                     AppendTextToConsoleNL(ex.Message);
                     throw;
                 }
-
-                return Task.CompletedTask;
-            });
+            }, waitUntilReadyBefore: false, waitUntilReadyAfter: false);
         }
 
         private void device_CaptureComplete(NikonDevice sender, int data)

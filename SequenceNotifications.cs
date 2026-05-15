@@ -11,6 +11,12 @@ namespace Aerolithe
         {
             try
             {
+                if (_manualSequenceCancellationRequested)
+                {
+                    AppendTextToConsoleNL("Notification courriel ignoree: sequence annulee manuellement.");
+                    return;
+                }
+
                 if (focusStackWasEnabled)
                 {
                     await WaitForFocusStackQueueIdleAsync(TimeSpan.FromMinutes(20));

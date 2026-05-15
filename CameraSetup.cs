@@ -41,6 +41,7 @@ namespace Aerolithe
         public bool maskFreeze = false;
         public bool liveViewStatus = false;
         private bool _isInitializingCameraSettings = false;
+        private bool _isSyncingShutterTimeComboBoxes = false;
 
         private Mat maskMatLive;       // remplace maskBitmapLive
         private readonly object _maskLock = new object(); // si tu veux un lock simple
@@ -590,6 +591,7 @@ namespace Aerolithe
         {
             NikonEnum exposureTime = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed);
             PopulateEnumComboBox(comboBox_shutterTime, exposureTime);
+            PopulateEnumComboBox(comboBox_shutterTime_2, exposureTime);
         }
 
         private void GetLiveViewSize()

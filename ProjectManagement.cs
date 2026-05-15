@@ -193,6 +193,9 @@ namespace Aerolithe
                 maxNbrPicturesAllowed = projet.MaxPicturesAllowed;
                 if (maxNbrPicturesAllowed == 0) maxNbrPicturesAllowed = 15;
                 textBox_nbrPhotosFS.Text = maxNbrPicturesAllowed.ToString();
+                UpdateMaxImagesFSButton();
+                UpdateDriveStepSettingsButton();
+                ApplyFocusStackDenoiseToUi();
                 txtBox_mesurements5deg.Text = projet.Mesurements5deg.ToString();
                 txtBox_mesurements25deg.Text = projet.Mesurements25deg.ToString();
                 txtBox_mesurements45deg.Text = projet.Mesurements45deg.ToString();
@@ -582,37 +585,56 @@ namespace Aerolithe
             toolTip.ShowAlways = true;
 
             // ToolTips spécifiques
-            toolTip.SetToolTip(textBox_FocusIterations, "Nombre de steps effectués d'un côté ou l'autre à partir de la position après l'autofocus");
-            toolTip.SetToolTip(textBox_FocusFreqSpeed, "Délai en millisecondes entre chaque focus.");
-            toolTip.SetToolTip(lbl_ResBlurDetect, "Résolution de la netteté, généralement autour de 100.");
-            toolTip.SetToolTip(lbl_BlockAmountBlurDetet, "Grosseur des carrés de détection, les valeurs étant 16,32,64 ou 128");
-            toolTip.SetToolTip(textBox_minDetect, "Seuil minimum de détections pour considérer qu'une image a une partie nette.");
-            toolTip.SetToolTip(textBox_nbrPhotosFS, "Nombre maximal de photos prises lors d'un focus stack");
-            toolTip.SetToolTip(lbl_FreezeMask, "Freeze le masque ci-haut");
+            toolTip.SetToolTip(textBox_FocusIterations, "Nombre de steps effectués d'un côté ou l'autre à partir de la position après l'autofocus.\nAugenter si on diminue le drivestep.\nDéfaut: 24");
+            toolTip.SetToolTip(textBox_FocusFreqSpeed, "Délai en millisecondes entre chaque focus\nDéfaut: 75ms.");
+            toolTip.SetToolTip(lbl_ResBlurDetect, "Résolution de la netteté.\nDéfaut: 100");
+            toolTip.SetToolTip(lbl_BlockAmountBlurDetet, "Grosseur des carrés de détection, les valeurs étant 16,32,64 ou 128\nDéfaut: 32");
+            toolTip.SetToolTip(textBox_minDetect, "Seuil minimum de détections pour considérer qu'une image a une partie nette.\nDéfaut: 5");
+            toolTip.SetToolTip(textBox_nbrPhotosFS, "Nombre maximal de photos prises lors d'un focus stack.\nDéfaut: 30");
+            toolTip.SetToolTip(txtBox_DriveStep, "Valeur du drivestep de la caméra.\nDéfaut: 30");
+            toolTip.SetToolTip(btn_maxImagesFS, "Nombre maximal de photos prises lors d'un focus stack.\nPlus il y a de photos, plus il faut diminuer le drivestep\nCliquer pour modifier.");
+            toolTip.SetToolTip(lbl_maxImagesFS, "Nombre maximal de photos prises lors d'un focus stack.\nPlus il y a de photos, plus il faut diminuer le drivestep\nCliquer pour modifier.");
+            
+
+            string driveStepToolTip = "DriveStep: steps que la lentille fait à chaque photo de Focus Stack\nPlus la valeur est grande, moins de photos de focus stack devront être prises\nCliquer pour modifier.";
+            var driveStepButton = FindControlByName<System.Windows.Forms.Button>("btn_goToDriveStepSettings");
+            var driveStepIcon = FindControlByName<Label>("lbl_driveStepIcon");
+            if (driveStepButton != null) toolTip.SetToolTip(driveStepButton, driveStepToolTip);
+            if (driveStepIcon != null) toolTip.SetToolTip(driveStepIcon, driveStepToolTip);
+            string focusStackDenoiseToolTip = "Denoise de focus-stack.exe pour --denoise.\n0 garde plus de détail et de bruit; 1 applique le denoise par défaut.";
+            var focusStackDenoiseTrackBar = FindControlByName<System.Windows.Forms.TrackBar>("trackBar_FSDenoise");
+            var focusStackDenoiseLabel = FindControlByName<Label>("lbl_FocusStackDenoise");
+            if (focusStackDenoiseTrackBar != null) toolTip.SetToolTip(focusStackDenoiseTrackBar, focusStackDenoiseToolTip);
+            if (focusStackDenoiseLabel != null) toolTip.SetToolTip(focusStackDenoiseLabel, focusStackDenoiseToolTip);
+            toolTip.SetToolTip(lbl_FreezeMask, "Freeze le masque ci-haut"); 
             toolTip.SetToolTip(btn_freezeMask, "Freeze le masque ci-haut");
             toolTip.SetToolTip(lbl_FocusStackEnable, "Active le Focus Stacking");
             toolTip.SetToolTip(btn_focusStack, "Active le Focus Stacking");
             toolTip.SetToolTip(lbl_applyMaskFS, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
             toolTip.SetToolTip(btn_applyMask, "Applique le masque à chaque image et la sauvegarde ainsi dans ../images/focusstack/focusstack_A ou focusstack_B");
-            toolTip.SetToolTip(btn_SaveImageToDisk, "Sauvegarde des image sur disque. Essentiel");
-            toolTip.SetToolTip(lbl_saveImageTodisk, "Sauvegarde des image sur disque. Essentiel");
+            //toolTip.SetToolTip(btn_SaveImageToDisk, "Sauvegarde des image sur disque. Essentiel");
+            //toolTip.SetToolTip(lbl_saveImageTodisk, "Sauvegarde des image sur disque. Essentiel");
             string measurementsFolderPath = projet.GetMesurementsFolderpath();
             string measurementsDestination = string.IsNullOrWhiteSpace(measurementsFolderPath)
                 ? "le dossier de mesures du projet ouvert"
                 : measurementsFolderPath;
-            toolTip.SetToolTip(btn_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {measurementsDestination}\" ");
-            toolTip.SetToolTip(lbl_saveImageForMesurements, $"Permet la sauvegarde D'UNE image de pour la mesure mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {measurementsDestination}\" ");
+            toolTip.SetToolTip(btn_saveImageForMesurements, $"Permet la sauvegarde D'UNE image pour calibration mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {measurementsDestination}\" ");
+            toolTip.SetToolTip(lbl_saveImageForMesurements, $"Permet la sauvegarde D'UNE image pour calibration mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {measurementsDestination}\" ");
             toolTip.SetToolTip(lbl_LiveViewEnable, "Active/Désactive le Live View");
             toolTip.SetToolTip(btn_LiveViewEnable, "Active/Désactive le Live View");
-            toolTip.SetToolTip(lbl_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure durant 'Prise de photos en séquence, la total'\nIndépendant de 'Séquence Images pour volume'.\nLes images se retrouveront dans {measurementsDestination}");
-            toolTip.SetToolTip(btn_saveImageForMesurementSequence, $"Sauvegarde automatique DES images pour mesure durant 'Prise de photos en séquence, la total'\nIndépendant de 'Séquence Images pour volume'.\nLes images se retrouveront dans {measurementsDestination}");
+            toolTip.SetToolTip(lbl_saveImageForMesurementSequence, $"Sauvegarde une image de calibration sans masque au début de chaque focus stack.");
+            toolTip.SetToolTip(btn_saveImageForMesurementSequence, $"Sauvegarde une image de calibration sans masque au début de chaque focus stack.");
             toolTip.SetToolTip(btn_AutoCentrageAuto, "Centrage Automatique de l'objet avant chaque série. * Recommandé *");
             toolTip.SetToolTip(lbl_AutoCentrageAuto, "Centrage Automatique de l'objet avant chaque série. * Recommandé *");
             toolTip.SetToolTip(lbl_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
             toolTip.SetToolTip(btn_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
+            toolTip.SetToolTip(btn_CalibrationAutoCentrage, "Désactive temporairement l'auto-centrage pendant la séquence de photos de calibration.");
             toolTip.SetToolTip(lbl_blobCount, "Affiche les parties nettes dans le LiveView");
             toolTip.SetToolTip(btn_ShowSharpnessOverlay, "Affiche les parties nettes dans le LiveView");
-            toolTip.SetToolTip(lbl_blobCountLogo, "Affiche les parties nettes dans le LiveView");
+            toolTip.SetToolTip(lbl_blobCountLogo, "Affiche les parties nettes dans le LiveView"); 
+            toolTip.SetToolTip(btn_queryTurntablePos, "Demande à la table tournante d'afficher sa position dans la console");
+            toolTip.SetToolTip(btn_HorizontalLiftSwitches, "Demande au controlleur du moteur horizontal du lift de donner l'état de ses switch");
+            toolTip.SetToolTip(btn_VerticalLiftSwitches, "Demande au controlleur du moteur vertical du lift de donner l'état de ses switch");
 
 
         }
@@ -891,6 +913,8 @@ namespace Aerolithe
 
         public bool FocusStackEnabled   { get; set; } = true;
 
+        public double FocusStackDenoise { get; set; } = 1.0;
+
         public bool SaveImageForMesurements { get; set; } = true;
 
         public bool AutoCentrageActuator { get; set; } = false;
@@ -1115,6 +1139,8 @@ namespace Aerolithe
         public int MaskAlgorithmIndex { get; set; } = 0;
 
         public bool AutoCentrage { get; set; } = true;
+
+        public bool CalibrationAutoCentrage { get; set; } = true;
 
         public int ThumbnailWidth { get; set; } = 210;
 

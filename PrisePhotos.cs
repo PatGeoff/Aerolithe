@@ -80,7 +80,7 @@ namespace Aerolithe
 
         }
  
-        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken)
+        private async Task SequencePrisePhotoTotale(CancellationToken cancellationToken, bool promptAfterInitialFiveDegreeMove = false)
         {
             AppendTextToConsoleNL("SequencePrisePhotoTotale");
             AppendTextToConsoleNL($"projet.Serie = {projet.Serie}, projet.RotationSerieIncrement = {projet.RotationSerieIncrement}, projet.Cote = {projet.Cote}");
@@ -119,7 +119,13 @@ namespace Aerolithe
                     }
                     SavePrefsSettings();
                     // i = (0-2), angle = (5, 25, 45), rotation = (0 à x) mais pas 0-360, plutôt 0 à 4096/nombre de photos
-                    await SequencePrisePhotoIndividuelleActuateurAsync(cancellationToken);
+                    await SequencePrisePhotoIndividuelleActuateurAsync(
+                        cancellationToken,
+                        promptAfterInitialFiveDegreeMove && startingSerie == 0 && i == 0);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -134,6 +140,8 @@ namespace Aerolithe
 
         private void ShowSequenceErrorMessage(Exception ex)
         {
+            if (_manualSequenceCancellationRequested) return;
+
             int serieAffichee = projet.Serie + 1;
             int angle = projet.Serie >= 0 && projet.Serie < angleIndexes.Length ? angleIndexes[projet.Serie] : -1;
             int[] paddingNbr = { appSettings.Padding5Deg, appSettings.Padding25Deg, appSettings.Padding45Deg };
@@ -165,6 +173,8 @@ namespace Aerolithe
 
         private void ShowMeasurementSequenceErrorMessage(Exception ex)
         {
+            if (_manualSequenceCancellationRequested) return;
+
             string angle = projet.ForcedMesurementActuatorAngle?.ToString() ?? "?";
             string index = projet.ForcedMesurementIndex.HasValue ? (projet.ForcedMesurementIndex.Value + 1).ToString() : "?";
 
@@ -188,7 +198,7 @@ namespace Aerolithe
             }
         }
 
-        private async Task SequencePrisePhotoIndividuelleActuateurAsync(CancellationToken ct)
+        private async Task SequencePrisePhotoIndividuelleActuateurAsync(CancellationToken ct, bool promptAfterActuatorMoveToFiveDegrees = false)
         {
             // serie = projet.Serie = 0, 1 ou 2
             int angle = angleIndexes[projet.Serie];
@@ -200,6 +210,14 @@ namespace Aerolithe
                 return;
             }
 
+            bool shouldPromptAfterActuatorMove = false;
+            if (promptAfterActuatorMoveToFiveDegrees && angle == 5)
+            {
+                double angleBeforeMove = await RequestActuatorAngleAsync(TimeSpan.FromSeconds(2), ct) ?? actuatorAngle;
+                shouldPromptAfterActuatorMove = !IsActuatorNearTarget(angleBeforeMove, 5);
+                AppendTextToConsoleNL($"Angle actuateur avant routine totale: {angleBeforeMove:0.##}°");
+            }
+
             AppendTextToConsoleNL($"actuator {angle}");
             await UdpSendActuatorMessageAsync($"actuator {angle}");
             if (_stopRequested) return;
@@ -207,8 +225,19 @@ namespace Aerolithe
             await WaitIfSequencePausedAsync(ct);
             ct.ThrowIfCancellationRequested();
 
-            await WaitForActuator(angle, ct);
+            bool actuatorReachedTarget = await WaitForActuator(angle, ct);
             if (_stopRequested) return;
+
+            if (shouldPromptAfterActuatorMove && actuatorReachedTarget)
+            {
+                AppendTextToConsoleNL("Routine totale en pause après positionnement de l'actuateur à 5°.", Color.Orange);
+                bool continueSequence = await ShowTotalSequenceReadyPromptAsync(ct);
+                if (!continueSequence)
+                {
+                    StopSequences();
+                    throw new OperationCanceledException(ct);
+                }
+            }
 
             await WaitIfSequencePausedAsync(ct);
             ct.ThrowIfCancellationRequested();

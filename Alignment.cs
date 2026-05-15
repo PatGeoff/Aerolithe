@@ -131,9 +131,15 @@ namespace Aerolithe
         private async Task RoutineLineareReculerHorsCadre()
         {
             bool commandSent = false;
-            await GetLinearSwitchesStateFromLinear();
-            while (!cancelAutoCentrage && !_stopRequested && !cameraRailFarLimitSwitchPressed)
+            while (!cancelAutoCentrage && !_stopRequested)
             {
+                var switchState = await RequestCameraLinearSwitchStateAsync(250);
+                if (switchState.FarPressed)
+                {
+                    udpSendCameraLinearMotorData(0);
+                    break;
+                }
+
                 // offsets est mis à jour par LiveViewTimer_Tick en parallèle
                 if (offsets.hasBlackOnBorder)
                 {
@@ -157,11 +163,16 @@ namespace Aerolithe
             AppendTextToConsoleNL("RoutineCalibrationLinearNearest");
             AppendTextToConsoleNL($"cancelAutoCentrage = {cancelAutoCentrage}, stopRequested = {_stopRequested}, offsets.hasBlackOnBorder = {offsets.hasBlackOnBorder}");
             bool commandSent = false;
-            await GetLinearSwitchesStateFromLinear();
-            await Task.Delay(200);
 
-            while (!cancelAutoCentrage && !_stopRequested && !cameraRailNearLimitSwitchPressed)
+            while (!cancelAutoCentrage && !_stopRequested)
             {
+                var switchState = await RequestCameraLinearSwitchStateAsync(250);
+                if (switchState.NearPressed)
+                {
+                    udpSendCameraLinearMotorData(0);
+                    break;
+                }
+
                 // offsets est mis à jour par LiveViewTimer_Tick en parallèle
                 if (!offsets.hasBlackOnBorder)
                 {

@@ -74,28 +74,12 @@ namespace Aerolithe
             {
                 await Task.Delay(200);
 
-                bool focusCompleted = false;
-                int essai = 0;
+                await ExecuteNikonCommandWithBusyRetryAsync(
+                    () => device.Start(eNkMAIDCapability.kNkMAIDCapability_AutoFocus),
+                    "Autofocus Nikon");
 
-                while (!focusCompleted)
-                {
-                    try
-                    {
-                        device.Start(eNkMAIDCapability.kNkMAIDCapability_AutoFocus);
-                        focusCompleted = true;
-                        focusStackStepVar = 0;
-                        UpdateFocusStepVarLbl(focusStackStepVar);
-                    }
-                    catch (NikonException ex) when (ex.ErrorCode == eNkMAIDResult.kNkMAIDResult_DeviceBusy)
-                    {
-                        AppendTextToConsoleNL(ex.Message);
-                        await Task.Delay(200);
-                        continue;
-                    }
-
-                    essai += 1;
-                    if (essai > 10) break;
-                }
+                focusStackStepVar = 0;
+                UpdateFocusStepVarLbl(focusStackStepVar);
             }, pauseLiveView: true);
 
             //focusStackStepVar = 0;
@@ -962,14 +946,16 @@ namespace Aerolithe
                 }
                 AppendTextToConsoleNL("blurredBlocks = " + blurredBlocks.ToString() + "  minDetect = " + minDetect.ToString());
 
-                // essayer de faire l'autofocus jusqu'à 3 fois, sinon on quitte
-                for (int j = 0; j <= 3; j++)
+                // Au départ seulement, on tente de revenir dans une zone utilisable.
+                // Ensuite, la routine doit prendre le nombre de photos calculé, même si
+                // le compteur de netteté varie pendant le balayage.
+                for (int j = 0; i == 0 && j <= 3; j++)
                 {
                     await WaitIfSequencePausedAsync(cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
 
                     if (_stopRequested) return;
-                    if (i == 0 && blurredBlocks < minDetect)
+                    if (blurredBlocks < minDetect)
                     {
                         // Reculer de 1 pour revenir au point net
                         Debug.WriteLine($"Ajustement du focus pour atteindre {minDetect}. En ce moment blurredBlocks = {blurredBlocks}");
@@ -985,51 +971,60 @@ namespace Aerolithe
                 }
 
 
-                if (blurredBlocks >= minDetect)
+                if (i == 0 && blurredBlocks < minDetect)
                 {
-                    if (_stopRequested)
-                    {
-                        Invoke(new Action(() =>
-                        {
-                            MessageBox.Show("Capture automatique interrompue.");
-                            btn_stopAutomaticFocusCapture.Visible = false;
-                            btn_stopAutomaticFocusCapture.Enabled = false;
-                        }));
-
-                        return;
-                    }
-                    try
-                    {
-                        await WaitIfSequencePausedAsync(cancellationToken);
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        await takePictureAsync();
-                        AppendTextToConsoleNL("photo prise... onto the next :)");
-                        //await miniaturesTcs.Task;
-                        await Task.Delay(600, cancellationToken);
-
-                        await WaitIfSequencePausedAsync(cancellationToken);
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        await ManualFocusAsync(0, newStepSize);
-                        await Task.Delay(delayTime, cancellationToken);
-                        focusStackStepVar += 1;
-                        UpdateFocusStepVarLbl(focusStackStepVar);
-                        projet.FocusSerieIncrement += 1;
-                        SavePrefsSettings();
-                    }
-                    catch (Exception e)
-                    {
-                        AppendTextToConsoleNL(e.Message);
-                        _stopRequested = true;
-                        throw;
-                    }
-                    Debug.WriteLine("itération " + i.ToString() + " blurredBLocks: " + blurredBlocks.ToString());
+                    AppendTextToConsoleNL("Capture focus stack annulée: impossible de retrouver une zone nette au départ. blurredBlocks = " + blurredBlocks.ToString() + " et minDetect = " + minDetect.ToString());
+                    _stopRequested = true;
+                    return;
                 }
-                else
+
+                if (!await WaitForFocusStackSharpnessAsync(cancellationToken))
                 {
-                    AppendTextToConsoleNL("On a un problème de comparaison entre \n         blurredBlocks = " + blurredBlocks.ToString() + " et  minDetect = " + minDetect.ToString());
+                    AppendTextToConsoleNL(
+                        $"Focus stack arrêté avant la photo {i + 1}/{focusIterations}: netteté insuffisante " +
+                        $"(blurredBlocks = {blurredBlocks}, minDetect = {minDetect}).");
+                    break;
                 }
+
+                if (_stopRequested)
+                {
+                    Invoke(new Action(() =>
+                    {
+                        MessageBox.Show("Capture automatique interrompue.");
+                        btn_stopAutomaticFocusCapture.Visible = false;
+                        btn_stopAutomaticFocusCapture.Enabled = false;
+                    }));
+
+                    return;
+                }
+
+                try
+                {
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    await takePictureAsync();
+                    AppendTextToConsoleNL("photo prise... onto the next :)");
+                    await Task.Delay(600, cancellationToken);
+
+                    await WaitIfSequencePausedAsync(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    await ManualFocusAsync(0, newStepSize);
+                    await Task.Delay(delayTime, cancellationToken);
+                    focusStackStepVar += 1;
+                    UpdateFocusStepVarLbl(focusStackStepVar);
+                    projet.FocusSerieIncrement += 1;
+                    SavePrefsSettings();
+                }
+                catch (Exception e)
+                {
+                    AppendTextToConsoleNL(e.Message);
+                    _stopRequested = true;
+                    throw;
+                }
+
+                Debug.WriteLine("itération " + i.ToString() + " blurredBLocks: " + blurredBlocks.ToString());
 
 
                 iterationsCompletees += 1;
@@ -1046,6 +1041,41 @@ namespace Aerolithe
                 }));
             }
 
+        }
+
+        private async Task<bool> WaitForFocusStackSharpnessAsync(CancellationToken cancellationToken)
+        {
+            int stableSharpSamples = 0;
+            int sampleDelayMs = Math.Max(150, delayTime);
+            DateTime deadline = DateTime.UtcNow.AddMilliseconds(Math.Max(700, sampleDelayMs * 4));
+
+            while (DateTime.UtcNow < deadline)
+            {
+                await WaitIfSequencePausedAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (_stopRequested)
+                {
+                    return false;
+                }
+
+                if (blurredBlocks >= minDetect)
+                {
+                    stableSharpSamples++;
+                    if (stableSharpSamples >= 2)
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    stableSharpSamples = 0;
+                }
+
+                await Task.Delay(sampleDelayMs, cancellationToken);
+            }
+
+            return false;
         }
 
     }

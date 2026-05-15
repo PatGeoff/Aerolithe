@@ -69,6 +69,7 @@ namespace Aerolithe
         private static readonly Color SequencePausedButtonBackColor = Color.FromArgb(110, 70, 20);
         private readonly Dictionary<System.Windows.Forms.Button, Color> _sequencePauseButtonBackColors = new();
         private string _lastSequenceErrorMessage = string.Empty;
+        private volatile bool _manualSequenceCancellationRequested;
         private TableLayoutPanel? _volumeSequenceActionsPanel;
         private TableLayoutPanel? _totalSequenceActionsPanel;
         private System.Windows.Forms.Button? _volumePauseResumeButton;
@@ -87,8 +88,9 @@ namespace Aerolithe
         private readonly Color _automaticFocusRoutineNormalBackColor = Color.FromArgb(30, 30, 30);
         private readonly Color _automaticFocusRoutineCancelBackColor = Color.FromArgb(100, 80, 30, 30);
         private CancellationTokenSource? _manualActuatorAutoCenterCts;
-        private bool _liftVerticalMaxSwitchPressed;
-        private bool _liftVerticalMinSwitchPressed;
+        private readonly object _calibrationAutoCentrageOverrideLock = new();
+        private bool? _calibrationAutoCentrageSavedAuto;
+        private bool? _calibrationAutoCentrageSavedActuator;
         private bool? _espLiftVerticalMaxSwitchPressed;
         private bool? _espLiftVerticalMinSwitchPressed;
         private bool? _espLiftHorizontalLeftSwitchPressed;
@@ -104,6 +106,7 @@ namespace Aerolithe
         private UdpClient udpClientOSC;
         private TaskCompletionSource<int> _turntablePositionTcs;
         private TaskCompletionSource<int> _linearPositionTcs;
+        private TaskCompletionSource<(bool NearPressed, bool FarPressed)>? _linearSwitchStateTcs;
         private TaskCompletionSource<double> _actuatorAngleTcs;
         private CancellationTokenSource tokenSource;
 
@@ -184,6 +187,9 @@ namespace Aerolithe
 
             InitializeSequenceActionControls();
             UpdateNetworkConsoleMessagesButton();
+            btn_maxImagesFS.Click += btn_maxImagesFS_Click;
+            AttachDriveStepSettingsButton();
+            AttachFocusStackDenoiseControls();
             timing = new Timing();
 
             // Positionnement de la fenêtre au départ
@@ -327,11 +333,15 @@ namespace Aerolithe
             InitializeMaskShrinkSettings();
             InitializeMaskAlgorithmDropdown();
             btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
-            btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
+            //btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
             btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
             btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
             btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
+            btn_CalibrationAutoCentrage.Text = appSettings.CalibrationAutoCentrage ? "" : "";
             btn_ShowSharpnessOverlay.Text = projet.ViewSharpnessOverlay ? "" : "";
+            UpdateMaxImagesFSButton();
+            UpdateDriveStepSettingsButton();
+            ApplyFocusStackDenoiseToUi();
         }
 
         private static bool IsRunningInDesigner()
@@ -523,6 +533,106 @@ namespace Aerolithe
             }
         }
 
+        private T? FindControlByName<T>(string name) where T : Control
+        {
+            return Controls.Find(name, searchAllChildren: true).OfType<T>().FirstOrDefault();
+        }
+
+        private void AttachDriveStepSettingsButton()
+        {
+            var button = FindControlByName<System.Windows.Forms.Button>("btn_goToDriveStepSettings");
+            if (button == null) return;
+
+            button.Click -= btn_goToDriveStepSettings_Click;
+            button.Click += btn_goToDriveStepSettings_Click;
+            UpdateDriveStepSettingsButton();
+        }
+
+        private void UpdateDriveStepSettingsButton()
+        {
+            var button = FindControlByName<System.Windows.Forms.Button>("btn_goToDriveStepSettings");
+            if (button == null) return;
+
+            if (int.TryParse(txtBox_DriveStep.Text, out int value))
+            {
+                button.Text = value.ToString();
+                return;
+            }
+
+            button.Text = projet.StepSize.ToString();
+        }
+
+        private void btn_goToDriveStepSettings_Click(object? sender, EventArgs e)
+        {
+            tabControl1.SelectedTab = tabPage3;
+            tabControl4.SelectedTab = tabPage16;
+
+            txtBox_DriveStep.Focus();
+            txtBox_DriveStep.SelectAll();
+        }
+
+        private void AttachFocusStackDenoiseControls()
+        {
+            var trackBar = FindControlByName<System.Windows.Forms.TrackBar>("trackBar_FSDenoise");
+            if (trackBar == null) return;
+
+            trackBar.Scroll -= trackBar_FSDenoise_Scroll;
+            trackBar.ValueChanged -= trackBar_FSDenoise_Scroll;
+            trackBar.Scroll += trackBar_FSDenoise_Scroll;
+            trackBar.ValueChanged += trackBar_FSDenoise_Scroll;
+            ApplyFocusStackDenoiseToUi();
+        }
+
+        private void ApplyFocusStackDenoiseToUi()
+        {
+            var trackBar = FindControlByName<System.Windows.Forms.TrackBar>("trackBar_FSDenoise");
+            if (trackBar != null)
+            {
+                int range = Math.Max(1, trackBar.Maximum - trackBar.Minimum);
+                int value = trackBar.Minimum + (int)Math.Round(ClampFocusStackDenoise(projet.FocusStackDenoise) * range);
+                trackBar.Value = Math.Max(trackBar.Minimum, Math.Min(trackBar.Maximum, value));
+            }
+
+            UpdateFocusStackDenoiseLabel();
+        }
+
+        private double GetFocusStackDenoiseFromUi()
+        {
+            var trackBar = FindControlByName<System.Windows.Forms.TrackBar>("trackBar_FSDenoise");
+            if (trackBar == null)
+            {
+                return ClampFocusStackDenoise(projet.FocusStackDenoise);
+            }
+
+            int range = Math.Max(1, trackBar.Maximum - trackBar.Minimum);
+            return ClampFocusStackDenoise((trackBar.Value - trackBar.Minimum) / (double)range);
+        }
+
+        private static double ClampFocusStackDenoise(double value)
+        {
+            if (double.IsNaN(value)) return 1.0;
+            return Math.Max(0.0, Math.Min(1.0, value));
+        }
+
+        private void UpdateFocusStackDenoiseLabel()
+        {
+            var label = FindControlByName<Label>("lbl_FocusStackDenoise");
+            if (label == null) return;
+
+            label.Text = GetFocusStackDenoiseFromUi().ToString("0.00", CultureInfo.InvariantCulture);
+        }
+
+        private void trackBar_FSDenoise_Scroll(object? sender, EventArgs e)
+        {
+            projet.FocusStackDenoise = GetFocusStackDenoiseFromUi();
+            UpdateFocusStackDenoiseLabel();
+
+            if (!string.IsNullOrWhiteSpace(appSettings?.ProjectPath))
+            {
+                projet.Save(appSettings.ProjectPath);
+            }
+        }
+
         private async Task WaitIfSequencePausedAsync(CancellationToken cancellationToken)
         {
             while (true)
@@ -537,6 +647,140 @@ namespace Aerolithe
                 using var registration = cancellationToken.Register(() => resumeTcs.TrySetCanceled(cancellationToken));
                 await resumeTcs.Task;
             }
+        }
+
+        private async Task<double?> RequestActuatorAngleAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            var angleTcs = new TaskCompletionSource<double>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _actuatorAngleTcs = angleTcs;
+
+            await SendActuatorAngleRequestAsync();
+
+            Task completedTask = await Task.WhenAny(angleTcs.Task, Task.Delay(timeout, cancellationToken));
+            if (completedTask == angleTcs.Task)
+            {
+                return await angleTcs.Task;
+            }
+
+            AppendTextToConsoleNL("Lecture de l'angle actuateur non reçue avant timeout.");
+            cancellationToken.ThrowIfCancellationRequested();
+            return null;
+        }
+
+        private static bool IsActuatorNearTarget(double angle, double target)
+        {
+            const double delta = 3;
+            return Math.Abs(angle - target) <= delta;
+        }
+
+        private async Task<bool> ShowTotalSequenceReadyPromptAsync(CancellationToken cancellationToken)
+        {
+            var promptTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Form? promptForm = null;
+
+            void showPrompt()
+            {
+                if (IsDisposed)
+                {
+                    promptTcs.TrySetResult(false);
+                    return;
+                }
+
+                promptForm = new Form
+                {
+                    Text = "Routine totale en pause",
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    MinimizeBox = false,
+                    MaximizeBox = false,
+                    ShowInTaskbar = false,
+                    TopMost = true,
+                    ClientSize = new Size(460, 150)
+                };
+
+                var label = new Label
+                {
+                    Text = "L'actuateur est rendu à 5°.\r\nAjuste le threshold, le masque ou le centrage au besoin, puis continue la routine.",
+                    Dock = DockStyle.Top,
+                    Height = 82,
+                    Padding = new Padding(14, 14, 14, 6),
+                    TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+                };
+
+                var buttonsPanel = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Bottom,
+                    Height = 52,
+                    FlowDirection = FlowDirection.RightToLeft,
+                    Padding = new Padding(10),
+                    WrapContents = false
+                };
+
+                var continueButton = new System.Windows.Forms.Button
+                {
+                    Text = "Continuer",
+                    Width = 120,
+                    Height = 30
+                };
+
+                var cancelButton = new System.Windows.Forms.Button
+                {
+                    Text = "Annuler",
+                    Width = 120,
+                    Height = 30
+                };
+
+                continueButton.Click += (_, __) =>
+                {
+                    promptTcs.TrySetResult(true);
+                    promptForm.Close();
+                };
+
+                cancelButton.Click += (_, __) =>
+                {
+                    promptTcs.TrySetResult(false);
+                    promptForm.Close();
+                };
+
+                promptForm.FormClosed += (_, __) =>
+                {
+                    promptTcs.TrySetResult(false);
+                    promptForm.Dispose();
+                };
+
+                buttonsPanel.Controls.Add(continueButton);
+                buttonsPanel.Controls.Add(cancelButton);
+                promptForm.Controls.Add(label);
+                promptForm.Controls.Add(buttonsPanel);
+                promptForm.AcceptButton = continueButton;
+                promptForm.CancelButton = cancelButton;
+
+                promptForm.Show(this);
+                promptForm.Activate();
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(showPrompt));
+            }
+            else
+            {
+                showPrompt();
+            }
+
+            using var registration = cancellationToken.Register(() =>
+            {
+                promptTcs.TrySetCanceled(cancellationToken);
+                try
+                {
+                    BeginInvoke(new Action(() => promptForm?.Close()));
+                }
+                catch
+                {
+                }
+            });
+
+            return await promptTcs.Task;
         }
 
         private bool ApplyBundledPhosphorFontToControls()
@@ -874,7 +1118,7 @@ namespace Aerolithe
         }
         private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
         {
-            AppendTextToConsoleNL("getTurntablePosFromWaveshare");
+            AppendTextToConsoleNL("Demande la position de la table tournante au micro-controlleur");
             try
             {
                 int? requestedPosition = await RequestTurntablePositionAsync(TimeSpan.FromSeconds(2));
@@ -1015,10 +1259,6 @@ namespace Aerolithe
             AppendTextToConsoleNL(
                 $"(Esp32) Switch Verticale Max = {FormatSwitchState(_espLiftVerticalMaxSwitchPressed)}, " +
                 $"Switch Verticale Min = {FormatSwitchState(_espLiftVerticalMinSwitchPressed)}");
-
-            AppendTextToConsoleNL(
-                $"(Aerolithe) Switch Verticale Max = {_liftVerticalMaxSwitchPressed}, " +
-                $"Switch Verticale Min = {_liftVerticalMinSwitchPressed}");
         }
 
         private static string FormatSwitchState(bool? state)
@@ -1701,7 +1941,14 @@ namespace Aerolithe
 
         private void comboBox_shutterTime_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (_isInitializingCameraSettings || device == null || comboBox_shutterTime.SelectedIndex < 0) return;
+            if (_isInitializingCameraSettings || _isSyncingShutterTimeComboBoxes || device == null) return;
+
+            if (sender is not System.Windows.Forms.ComboBox sourceComboBox || sourceComboBox.SelectedIndex < 0)
+            {
+                return;
+            }
+
+            SyncShutterTimeComboBoxes(sourceComboBox);
 
             NikonEnum expoMode = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ExposureMode);
             if (expoMode.Index != 3)
@@ -1711,10 +1958,32 @@ namespace Aerolithe
             else
             {
                 NikonEnum exposureTime = device.GetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed);
-                exposureTime.Index = comboBox_shutterTime.SelectedIndex;
+                exposureTime.Index = sourceComboBox.SelectedIndex;
                 device.SetEnum(eNkMAIDCapability.kNkMAIDCapability_ShutterSpeed, exposureTime);
             }
 
+        }
+
+        private void SyncShutterTimeComboBoxes(System.Windows.Forms.ComboBox sourceComboBox)
+        {
+            var targetComboBox = ReferenceEquals(sourceComboBox, comboBox_shutterTime)
+                ? comboBox_shutterTime_2
+                : comboBox_shutterTime;
+
+            if (targetComboBox.SelectedIndex == sourceComboBox.SelectedIndex)
+            {
+                return;
+            }
+
+            _isSyncingShutterTimeComboBoxes = true;
+            try
+            {
+                targetComboBox.SelectedIndex = sourceComboBox.SelectedIndex;
+            }
+            finally
+            {
+                _isSyncingShutterTimeComboBoxes = false;
+            }
         }
 
 
@@ -1835,7 +2104,7 @@ namespace Aerolithe
                 try
                 {
                     tokenSource = new CancellationTokenSource();
-                    await SequencePrisePhotoTotale(tokenSource.Token);
+                    await SequencePrisePhotoTotale(tokenSource.Token, promptAfterInitialFiveDegreeMove: true);
                     if (_stopRequested)
                     {
                         status = "Échoué";
@@ -1919,6 +2188,7 @@ namespace Aerolithe
                 SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: true);
                 try
                 {
+                    BeginCalibrationAutoCentrageOverride();
                     tokenSource = new CancellationTokenSource();
                     await SequenceTotaleImageMesuresAsync(tokenSource.Token);
                 }
@@ -1934,6 +2204,7 @@ namespace Aerolithe
                 }
                 finally
                 {
+                    RestoreCalibrationAutoCentrageOverride();
                     SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
                 }
             });
@@ -2272,6 +2543,7 @@ namespace Aerolithe
 
         private void StopSequences()
         {
+            _manualSequenceCancellationRequested = true;
             maskFreeze = false;
             btn_freezeMask.Text = "";
 
@@ -2280,6 +2552,7 @@ namespace Aerolithe
             tokenSource?.Cancel();
             _cts?.Cancel();
             _stopRequested = true;
+            RestoreCalibrationAutoCentrageOverride();
             SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
             SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
             SetPhotoShootCancellationButtonVisible(false);
@@ -2304,6 +2577,7 @@ namespace Aerolithe
         private void ResetSequenceCancellationButton()
         {
             _stopRequested = false;
+            _manualSequenceCancellationRequested = false;
             if (btn_stopAutomaticFocusCapture.InvokeRequired)
             {
                 btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
@@ -2685,6 +2959,11 @@ namespace Aerolithe
 
 
         private void tableLayoutPanel41_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void tableLayoutPanel55_Paint(object sender, PaintEventArgs e)
         {
 
         }
@@ -3137,6 +3416,7 @@ namespace Aerolithe
         private void txtBox_DriveStep_TextChanged(object sender, EventArgs e)
         {
             txtBox_DriveStep.ForeColor = Color.Gray;
+            UpdateDriveStepSettingsButton();
         }
 
         private void txtBox_DriveStep_KeyDown(object sender, KeyEventArgs e)
@@ -3150,6 +3430,7 @@ namespace Aerolithe
                     stepSize = value;
                     projet.StepSize = stepSize;
                     projet.Save(appSettings.ProjectPath);
+                    UpdateDriveStepSettingsButton();
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
@@ -3264,10 +3545,27 @@ namespace Aerolithe
                     maxNbrPicturesAllowed = value;
                     projet.MaxPicturesAllowed = maxNbrPicturesAllowed;
                     projet.Save(appSettings.ProjectPath);
+                    UpdateMaxImagesFSButton();
                 }
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
             }
+        }
+
+        private void UpdateMaxImagesFSButton()
+        {
+            if (btn_maxImagesFS == null) return;
+
+            btn_maxImagesFS.Text = maxNbrPicturesAllowed.ToString();
+        }
+
+        private void btn_maxImagesFS_Click(object? sender, EventArgs e)
+        {
+            tabControl1.SelectedTab = tabPage7;
+            tabControl2.SelectedTab = tabPage10;
+
+            textBox_nbrPhotosFS.Focus();
+            textBox_nbrPhotosFS.SelectAll();
         }
 
         private void btn_consoleScrollToCaret_Click(object sender, EventArgs e)
@@ -3489,6 +3787,7 @@ namespace Aerolithe
             try { _manualActuatorAutoCenterCts?.Cancel(); } catch { }
             try { tokenSource?.Cancel(); } catch { }
             try { _cts?.Cancel(); } catch { }
+            try { RestoreCalibrationAutoCentrageOverride(); } catch { }
             try { SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false); } catch { }
             try { SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false); } catch { }
 
@@ -3799,12 +4098,7 @@ namespace Aerolithe
             appSettings.Save();
         }
 
-        private void btn_SaveImageToDisk_Click(object sender, EventArgs e)
-        {
-            projet.SaveImageToDisk = !projet.SaveImageToDisk;
-            btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
-            SavePrefsSettings();
-        }
+       
 
         private async void btn_LiveViewEnable_Click(object sender, EventArgs e)
         {
@@ -3932,6 +4226,77 @@ namespace Aerolithe
             SavePrefsSettings();
         }
 
+        private void btn_CalibrationAutoCentrage_Click(object sender, EventArgs e)
+        {
+            appSettings.CalibrationAutoCentrage = !appSettings.CalibrationAutoCentrage;
+            btn_CalibrationAutoCentrage.Text = appSettings.CalibrationAutoCentrage ? "" : "";
+            appSettings.Save();
+        }
+
+        private void BeginCalibrationAutoCentrageOverride()
+        {
+            if (!appSettings.CalibrationAutoCentrage)
+            {
+                return;
+            }
+
+            lock (_calibrationAutoCentrageOverrideLock)
+            {
+                if (_calibrationAutoCentrageSavedAuto.HasValue || _calibrationAutoCentrageSavedActuator.HasValue)
+                {
+                    return;
+                }
+
+                _calibrationAutoCentrageSavedAuto = projet.AutoCentrage;
+                _calibrationAutoCentrageSavedActuator = projet.AutoCentrageActuator;
+            }
+
+            SetAutoCentrageState(autoCentrage: false, autoCentrageActuator: false);
+            AppendTextToConsoleNL("Auto-centrage désactivé temporairement pour la séquence de photos de calibration.");
+        }
+
+        private void RestoreCalibrationAutoCentrageOverride()
+        {
+            bool? autoCentrage;
+            bool? autoCentrageActuator;
+
+            lock (_calibrationAutoCentrageOverrideLock)
+            {
+                autoCentrage = _calibrationAutoCentrageSavedAuto;
+                autoCentrageActuator = _calibrationAutoCentrageSavedActuator;
+                _calibrationAutoCentrageSavedAuto = null;
+                _calibrationAutoCentrageSavedActuator = null;
+            }
+
+            if (!autoCentrage.HasValue || !autoCentrageActuator.HasValue)
+            {
+                return;
+            }
+
+            SetAutoCentrageState(autoCentrage.Value, autoCentrageActuator.Value);
+            AppendTextToConsoleNL("Auto-centrage restauré après la séquence de photos de calibration.");
+        }
+
+        private void SetAutoCentrageState(bool autoCentrage, bool autoCentrageActuator)
+        {
+            void applyState()
+            {
+                projet.AutoCentrage = autoCentrage;
+                projet.AutoCentrageActuator = autoCentrageActuator;
+                btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
+                btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
+            }
+
+            if (InvokeRequired)
+            {
+                Invoke(new Action(applyState));
+            }
+            else
+            {
+                applyState();
+            }
+        }
+
         private void effacerToutesLesImagesEtFocusToolStripMenuItem_Click(object sender, EventArgs e)
         {
             try
@@ -3991,6 +4356,18 @@ namespace Aerolithe
         {
             tabControl1.SelectTab("TabPage7");
             tabControl2.SelectTab("TabPage8");
+        }
+
+        private void btn_GoAutomationPage_1_Click(object sender, EventArgs e)
+        {
+            tabControl1.SelectTab("TabPage3");
+            tabControl4.SelectTab("TabPage18");
+        }
+
+        private void btn_GoAutomationPage_2_Click(object sender, EventArgs e)
+        {
+            tabControl1.SelectTab("TabPage3");
+            tabControl4.SelectTab("TabPage18");
         }
     }
 }

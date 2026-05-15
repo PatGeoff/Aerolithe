@@ -61,7 +61,7 @@ namespace Aerolithe
 
         public async Task UdpSendActuatorMessageAsync(string message)
         {
-            AppendTextToConsoleNL("UdpSendActuatorMessageAsync");
+            AppendNetworkConsoleMessage($"UDP envoyé à Actuator ({actuatorIpAddress}:{actuatorPort}): {message}");
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -125,7 +125,7 @@ namespace Aerolithe
 
         private async Task UdpSendTurnTableMessageAsync(string message)
         {
-            AppendTextToConsoleNL("UdpSendTurnTableMessageAsync");
+            AppendNetworkConsoleMessage($"UDP envoyé à Table tournante ({turntableIpAddress}:{turntablePort}): {message}");
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -147,6 +147,7 @@ namespace Aerolithe
 
         public async Task UdpSendCameraLinearMessageAsync(string message)
         {
+            AppendNetworkConsoleMessage($"UDP envoyé à Caméra linéaire ({stepperCameraIpAddress}:{stepperCameraPort}): {message}");
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -163,6 +164,7 @@ namespace Aerolithe
 
         public async Task UdpSendLiftVerticalMessageAsync(string message)
         {
+            AppendNetworkConsoleMessage($"UDP envoyé à Lift vertical ({liftVerticalIpAddress}:{liftVerticalPort}): {message}");
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -187,6 +189,7 @@ namespace Aerolithe
 
         public async Task UdpSendLiftHorizontalMessageAsync(string message)
         {
+            AppendNetworkConsoleMessage($"UDP envoyé à Lift horizontal ({scissorLiftIpAddress}:{scissorLiftPort}): {message}");
             try
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
@@ -199,6 +202,14 @@ namespace Aerolithe
             catch (Exception ex)
             {
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void AppendNetworkConsoleMessage(string message)
+        {
+            if (_networkConsoleMessagesEnabled)
+            {
+                AppendTextToConsoleNL(message);
             }
         }
 
@@ -356,22 +367,18 @@ namespace Aerolithe
             #region liftVerticalMotor
             if (message.Contains("Lift Moteur Vertical: TopLimitPressed"))
             {
-                _liftVerticalMaxSwitchPressed = true;
                 AppendTextToConsoleNL("Lift Moteur Vertical: TopLimitPressed");
             }
             if (message.Contains("Lift Moteur Vertical: TopLimitReleased"))
             {
-                _liftVerticalMaxSwitchPressed = false;
                 AppendTextToConsoleNL("Lift Moteur Vertical: TopLimitReleased");
             }
             if (message.Contains("Lift Moteur Vertical: BottomLimitPressed"))
             {
-                _liftVerticalMinSwitchPressed = true;
                 AppendTextToConsoleNL("Lift Moteur Vertical: BottomLimitPressed");
             }
             if (message.Contains("Lift Moteur Vertical: BottomLimitReleased"))
             {
-                _liftVerticalMinSwitchPressed = false;
                 AppendTextToConsoleNL("Lift Moteur Vertical: BottomLimitReleased");
             }
             if (message.Contains("Stepper lift data:"))
@@ -429,7 +436,6 @@ namespace Aerolithe
                 }
                 else if (fromVerticalLift)
                 {
-                    _liftVerticalMaxSwitchPressed = true;
                     AppendTextToConsoleNL("Lift Vertical - Max (FarLimitSwitchPressed) = True");
                 }
                 else
@@ -446,7 +452,6 @@ namespace Aerolithe
                 }
                 else if (fromVerticalLift)
                 {
-                    _liftVerticalMaxSwitchPressed = false;
                     AppendTextToConsoleNL("Lift Vertical - Max (FarLimitSwitchPressed) = False");
                 }
                 else
@@ -463,7 +468,6 @@ namespace Aerolithe
                 }
                 else if (fromVerticalLift)
                 {
-                    _liftVerticalMinSwitchPressed = true;
                     AppendTextToConsoleNL("Lift Vertical - Min (NearLimitSwitchPressed) = True");
                 }
                 else
@@ -480,7 +484,6 @@ namespace Aerolithe
                 }
                 else if (fromVerticalLift)
                 {
-                    _liftVerticalMinSwitchPressed = false;
                     AppendTextToConsoleNL("Lift Vertical - Min (NearLimitSwitchPressed) = False");
                 }
                 else
@@ -501,14 +504,13 @@ namespace Aerolithe
                 {
                     _espLiftVerticalMinSwitchPressed = nearPressed;
                     _espLiftVerticalMaxSwitchPressed = farPressed;
-                    _liftVerticalMinSwitchPressed = nearPressed;
-                    _liftVerticalMaxSwitchPressed = farPressed;
                     _liftVerticalSwitchStateTcs?.TrySetResult(true);
                 }
                 else
                 {
                     cameraRailNearLimitSwitchPressed = nearPressed;
                     cameraRailFarLimitSwitchPressed = farPressed;
+                    _linearSwitchStateTcs?.TrySetResult((nearPressed, farPressed));
                 }
             }
 
@@ -671,10 +673,41 @@ namespace Aerolithe
                 $"Défaut: {appSettings.VerticalLiftDefaultPos}");
         }
 
+        private async Task<(bool NearPressed, bool FarPressed, bool Received)> RequestCameraLinearSwitchStateAsync(int timeoutMs = 800)
+        {
+            _linearSwitchStateTcs = new TaskCompletionSource<(bool NearPressed, bool FarPressed)>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task<(bool NearPressed, bool FarPressed)> switchStateTask = _linearSwitchStateTcs.Task;
+
+            try
+            {
+                await UdpSendCameraLinearMessageAsync("stepmotor switchState");
+                Task completedTask = await Task.WhenAny(switchStateTask, Task.Delay(timeoutMs));
+
+                if (completedTask == switchStateTask)
+                {
+                    var switchState = await switchStateTask;
+                    return (switchState.NearPressed, switchState.FarPressed, true);
+                }
+
+                return (cameraRailNearLimitSwitchPressed, cameraRailFarLimitSwitchPressed, false);
+            }
+            finally
+            {
+                if (ReferenceEquals(_linearSwitchStateTcs?.Task, switchStateTask))
+                {
+                    _linearSwitchStateTcs = null;
+                }
+            }
+        }
+
         private async Task GetLinearSwitchesStateFromLinear()
         {
-            await UdpSendCameraLinearMessageAsync("stepmotor switchState");
-            AppendTextToConsoleNL($"Caméra linéaire - NearLimitSwitchPressed = {cameraRailNearLimitSwitchPressed}, FarLimitSwitchPressed = {cameraRailFarLimitSwitchPressed}");
+            var switchState = await RequestCameraLinearSwitchStateAsync();
+            string source = switchState.Received ? "réponse ESP32" : "dernier état connu (timeout)";
+
+            AppendTextToConsoleNL(
+                $"Caméra linéaire ({source}) - NearLimitSwitchPressed = {switchState.NearPressed}, " +
+                $"FarLimitSwitchPressed = {switchState.FarPressed}");
 
         }
 

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -479,7 +480,9 @@ namespace Aerolithe
                 return false;
             }
 
-            string args = $" --output=\"{outputImage}\" " + string.Join(" ", imagePaths.Select(p => $"\"{p}\""));
+            string denoise = ClampFocusStackDenoise(projet.FocusStackDenoise).ToString("0.###", CultureInfo.InvariantCulture);
+            string args = $" --denoise={denoise} --output=\"{outputImage}\" " + string.Join(" ", imagePaths.Select(p => $"\"{p}\""));
+            AppendTextToConsoleNL($"focus-stack.exe --denoise={denoise}");
 
             ProcessStartInfo psi = new ProcessStartInfo
             {
