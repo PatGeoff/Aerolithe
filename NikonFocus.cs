@@ -126,20 +126,20 @@ namespace Aerolithe
 
             formsPlot = new ScottPlot.WinForms.FormsPlot { Dock = DockStyle.Fill };
 
-            if (tabControl3.InvokeRequired)
+            if (aerolitheTabControl5.InvokeRequired)
             {
-                tabControl3.Invoke(new Action(() =>
+                aerolitheTabControl5.Invoke(new Action(() =>
                 {
-                    tabControl3.TabPages["tabPage15"].Controls.Clear();
-                    tabControl3.TabPages["tabPage15"].Controls.Add(formsPlot);
-                    tabControl3.SelectedTab = tabControl3.TabPages["tabPage15"];
+                    aerolitheTabControl5.TabPages["tabPage2"].Controls.Clear();
+                    aerolitheTabControl5.TabPages["tabPage2"].Controls.Add(formsPlot);
+                    aerolitheTabControl5.SelectedTab = aerolitheTabControl5.TabPages["tabPage2"];
                 }));
             }
             else
             {
-                tabControl3.TabPages["tabPage15"].Controls.Clear();
-                tabControl3.TabPages["tabPage15"].Controls.Add(formsPlot);
-                tabControl3.SelectedTab = tabControl3.TabPages["tabPage15"];
+                aerolitheTabControl5.TabPages["tabPage2"].Controls.Clear();
+                aerolitheTabControl5.TabPages["tabPage2"].Controls.Add(formsPlot);
+                aerolitheTabControl5.SelectedTab = aerolitheTabControl5.TabPages["tabPage2"];
             }
 
 
@@ -443,9 +443,31 @@ namespace Aerolithe
                 }
 
 
+                RepairProjectSaveTargetIfPossible();
+                if (string.IsNullOrWhiteSpace(appSettings?.ProjectPath)
+                    || string.IsNullOrWhiteSpace(projet?.ImageFolderPath)
+                    || string.IsNullOrWhiteSpace(projet?.ImageNameBase))
+                {
+                    AppendTextToConsoleNL("AutomaticFocusRoutine: aucun projet valide n'est chargé. Sauvegarde du masque impossible.");
+                    MessageBox.Show(
+                        this,
+                        "Veuillez ouvrir ou créer un projet avant de lancer la routine de focus automatique.",
+                        "Projet manquant",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                string maskOutputPath = projet.GetMaskFullImagePath();
+                if (string.IsNullOrWhiteSpace(maskOutputPath))
+                {
+                    AppendTextToConsoleNL("AutomaticFocusRoutine: chemin de masque invalide. Sauvegarde du masque impossible.");
+                    return;
+                }
+
                 // ====== SAUVEGARDE DU MASQUE ======
                 // Source volontaire: ce qui est affiché dans picBox_liveMaskLum au moment de la sauvegarde.
-                await SaveDisplayedMaskAsPngAsync(projet.GetMaskFullImagePath());
+                await SaveDisplayedMaskAsPngAsync(maskOutputPath);
 
 
 
@@ -1037,7 +1059,9 @@ namespace Aerolithe
             {
                 Invoke(new Action(() =>
                 {
-                    tabControl4.SelectedTab = tabPage17;
+                    aerolitheTabControl2.SelectTab("tabPage20");
+                    aerolitheTabControl3.SelectTab("tabPage26");
+                    //tabControl4.SelectedTab = tabPage17;
                 }));
             }
 

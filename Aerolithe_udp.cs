@@ -35,6 +35,8 @@ namespace Aerolithe
         private System.Timers.Timer _oscTimer;
         private string _lastOscMessage;
         private CancellationTokenSource? _actuatorAnglePollingCts;
+        private readonly object _autoCenterCommandLock = new();
+        private Task? _autoCenterCommandTask;
 
 
         public void InitializeUdpClient()
@@ -213,6 +215,14 @@ namespace Aerolithe
             }
         }
 
+        private void AppendOscConsoleMessage(string message)
+        {
+            if (_oscConsoleMessagesEnabled)
+            {
+                AppendTextToConsoleNL(message);
+            }
+        }
+
         public async Task udpSendCameraLinearMotorData(int vitesse, int position) // valeurs 
         {
             string message = $"stepmotor moveto {vitesse},{position}";
@@ -315,8 +325,9 @@ namespace Aerolithe
                             var arguments = string.Join(", ", args.Select(a => a.ToString()));
 
                             string message = oscMessage.Address + "#" + arguments;
-                            CheckOSCMessage(message);
-                            //AppendTextToConsoleNL(message);
+                            AppendOscConsoleMessage($"OSC reçu de {result.RemoteEndPoint}: {message}");
+
+                            _ = CheckOSCMessage(message);
                         }
                     }
                 }
@@ -580,89 +591,222 @@ namespace Aerolithe
         }
         private async Task CheckOSCMessage(string message)
         {
-
-            #region OSC
-
-            if (message.Contains("OSC"))
+            try
             {
-                //AppendTextToConsoleNL(message);
-                string[] parts = message.Split('#');
-                string address = parts[0].Split("/")[1];
-
-                string[] args = parts[1].Split(",");
-                string firstArg = args[0];
-                string secondArg = "";
-                if (args.Length > 1)
+                string[] parts = message.Split('#', 2);
+                if (parts.Length == 0 || string.IsNullOrWhiteSpace(parts[0]))
                 {
-                    secondArg = args[1];
+                    return;
                 }
 
+                string address = parts[0]
+                    .Trim()
+                    .Trim('/')
+                    .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                    .LastOrDefault() ?? string.Empty;
 
-                switch (address)
+                string normalizedAddress = address.Trim().ToLowerInvariant();
+                string[] args = parts.Length > 1
+                    ? parts[1].Split(',', StringSplitOptions.TrimEntries)
+                    : Array.Empty<string>();
+
+                string firstArg = args.Length > 0 ? args[0] : "0";
+                string secondArg = args.Length > 1 ? args[1] : "0";
+
+                int firstValue = ParseOscInt(firstArg);
+                int secondValue = ParseOscInt(secondArg);
+
+                AppendOscConsoleMessage($"OSC traité: {address}, args='{string.Join(", ", args)}'");
+
+                if (!IsOscAutoCenterCommand(normalizedAddress)
+                    && !IsOscCalibrationCommand(normalizedAddress))
+                {
+                    await StopAutoCenterBeforeManualCommandAsync();
+                }
+
+                switch (normalizedAddress)
                 {
                     case "camera_osc_centrage_btn":
-                        await RoutineAutoCentrage();
+                    case "camera_osc_autocentrage_btn":
+                    case "camera_osc_auto_centrage_btn":
+                        AppendOscConsoleMessage("OSC: auto-centrage demandé.");
+                        btn_LiftAutoCenterRoutine_Click(this, EventArgs.Empty);
                         break;
+
+                    case "camera_osc_calibration_btn":
+                    case "camera_osc_auto_calibration_btn":
+                    case "camera_osc_autocalibration_btn":
+                    case "camera_osc_auto_calibration":
+                        AppendOscConsoleMessage("OSC: calibration automatique demandée.");
+                        _stopRequested = false;
+                        cancelAutoCentrage = false;
+                        await RunAutoCenterCommandAsync(() => RoutineCalibration());
+                        break;
+
                     case "camera_osc_autofocus_btn":
-                        await NikonAutofocus();
+                    case "camera_osc_autofocus":
+                    case "autofocus":
+                        AppendOscConsoleMessage("OSC: autofocus demandé.");
+                        await nikonDoFocus();
                         break;
+
                     case "camera_osc_motor_fader":
-                        udpSendCameraLinearMotorData(int.Parse(firstArg) * 2000);
+                        await udpSendCameraLinearMotorData(firstValue * 2000);
                         break;
+
                     case "btn_drivestep":
-                        driveStep.Value = double.Parse(firstArg);
+                        driveStep.Value = double.Parse(firstArg, CultureInfo.InvariantCulture);
                         device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep);
                         break;
+
                     case "btn_camera_osc_drivestep":
-                        if (int.Parse(firstArg) > 0)
+                        if (firstValue > 0)
                         {
                             device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity);
                         }
-                        else if (int.Parse(firstArg) < 0)
+                        else if (firstValue < 0)
                         {
                             device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest);
                         }
                         break;
+
                     case "lift_osc_horizontal_fader":
-                        await udpSendLiftHorizontalData(int.Parse(firstArg) * 10);
+                        await udpSendLiftHorizontalData(firstValue * 10);
                         break;
-                    case "lift_Nema23_osc_fader":
-                        await udpSendLiftVerticalMotorData(int.Parse(firstArg) * 2000);
+
+                    case "lift_nema23_osc_fader":
+                        await udpSendLiftVerticalMotorData(firstValue * 2000);
                         break;
-                    case "lift_JogWheel_osc_fader":
-                        await udpSendLiftVerticalMotorData(int.Parse(secondArg) * 2000);
-                        await udpSendLiftHorizontalData(int.Parse(firstArg) * 10);
+
+                    case "lift_jogwheel_osc_fader":
+                        await udpSendLiftVerticalMotorData(secondValue * 2000);
+                        await udpSendLiftHorizontalData(firstValue * 10);
                         break;
-                    case "tableTournante_osc_fader":
+
+                    case "tabletournante_osc_fader":
                         await UdpSendTurnTableMessageAsync($"turntable,{firstArg},{turntableSpeed}");
                         break;
+
                     case "actuator_osc_5_btn":
                         await UdpSendActuatorMessageAsync("actuator 5");
                         break;
+
                     case "actuator_osc_25_btn":
                         await UdpSendActuatorMessageAsync("actuator 25");
                         break;
+
                     case "actuator_osc_45_btn":
                         await UdpSendActuatorMessageAsync("actuator 45");
                         break;
+
                     case "actuator_osc_up_btn":
                         await UdpSendActuatorMessageAsync("actuator up");
                         break;
+
                     case "actuator_osc_down_btn":
                         await UdpSendActuatorMessageAsync("actuator down");
                         break;
+
                     case "actuator_osc_stop_btn":
                         await UdpSendActuatorMessageAsync("actuator stop");
                         break;
-                    default: break;
 
+                    default:
+                        AppendOscConsoleMessage($"OSC ignoré: adresse inconnue '{address}', args='{string.Join(", ", args)}'");
+                        break;
                 }
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur OSC: {ex.Message}");
+            }
+        }
 
-
+        private static int ParseOscInt(string value)
+        {
+            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int intValue))
+            {
+                return intValue;
             }
 
+            if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleValue))
+            {
+                return (int)Math.Round(doubleValue);
+            }
 
-            #endregion
+            return 0;
+        }
+
+        private static bool IsOscAutoCenterCommand(string normalizedAddress)
+        {
+            return normalizedAddress == "camera_osc_centrage_btn"
+                || normalizedAddress == "camera_osc_autocentrage_btn"
+                || normalizedAddress == "camera_osc_auto_centrage_btn";
+        }
+
+        private static bool IsOscCalibrationCommand(string normalizedAddress)
+        {
+            return normalizedAddress == "camera_osc_calibration_btn"
+                || normalizedAddress == "camera_osc_auto_calibration_btn"
+                || normalizedAddress == "camera_osc_autocalibration_btn"
+                || normalizedAddress == "camera_osc_auto_calibration";
+        }
+
+        private async Task RunAutoCenterCommandAsync(Func<Task> action)
+        {
+            Task task;
+            lock (_autoCenterCommandLock)
+            {
+                if (_autoCenterCommandTask is { IsCompleted: false })
+                {
+                    AppendOscConsoleMessage("OSC: auto-centrage déjà en cours, commande ignorée.");
+                    return;
+                }
+
+                task = action();
+                _autoCenterCommandTask = task;
+            }
+
+            try
+            {
+                await task;
+            }
+            finally
+            {
+                lock (_autoCenterCommandLock)
+                {
+                    if (ReferenceEquals(_autoCenterCommandTask, task))
+                    {
+                        _autoCenterCommandTask = null;
+                    }
+                }
+            }
+        }
+
+        private async Task StopAutoCenterBeforeManualCommandAsync()
+        {
+            Task? autoCenterTask;
+            lock (_autoCenterCommandLock)
+            {
+                autoCenterTask = _autoCenterCommandTask;
+            }
+
+            if (autoCenterTask == null || autoCenterTask.IsCompleted)
+            {
+                return;
+            }
+
+            AppendOscConsoleMessage("OSC: commande manuelle reçue, annulation de l'auto-centrage en cours.");
+            cancelAutoCentrage = true;
+
+            try
+            {
+                await autoCenterTask;
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur arrêt auto-centrage OSC: {ex.Message}");
+            }
         }
 
         private void displayVerticalLiftData()

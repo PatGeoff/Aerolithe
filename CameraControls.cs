@@ -1016,6 +1016,12 @@ namespace Aerolithe
 
         public async Task SaveMaskAsPngNoTransparency(Mat maskSrc, string outputPathPng)
         {
+            if (string.IsNullOrWhiteSpace(outputPathPng))
+            {
+                AppendTextToConsoleNL("ERREUR (PNG masque): chemin de sortie vide.");
+                return;
+            }
+
             if (maskSrc == null || maskSrc.IsEmpty)
             {
                 AppendTextToConsoleNL("ERREUR (PNG masque): Mat source nul ou vide.");
@@ -1170,30 +1176,61 @@ namespace Aerolithe
         {
             await RunExclusiveNikonOperationAsync(async () =>
             {
-                driveStep.Value = newFocusValue;
-                await ExecuteNikonCommandWithBusyRetryAsync(
-                    () => device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep),
-                    "Réglage step focus Nikon");
-
-                try
+                if (driveStep == null)
                 {
-                    if (up == 1)
-                    {
-                        await ExecuteNikonCommandWithBusyRetryAsync(
-                            () => device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity),
-                            "Focus manuel Nikon");
-                    }
-                    else
-                    {
-                        await ExecuteNikonCommandWithBusyRetryAsync(
-                            () => device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest),
-                            "Focus manuel Nikon");
-                    }
+                    driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);
                 }
-                catch (Exception ex)
+
+                double minStep = Math.Max(1, driveStep.Min);
+                double maxStep = Math.Max(minStep, driveStep.Max);
+                double remainingSteps = Math.Max(0, newFocusValue);
+
+                if (remainingSteps <= 0)
                 {
-                    AppendTextToConsoleNL(ex.Message);
-                    throw;
+                    AppendTextToConsoleNL($"Focus manuel ignoré: steps={newFocusValue}");
+                    return;
+                }
+
+                if (remainingSteps > maxStep)
+                {
+                    AppendTextToConsoleNL($"Focus manuel: déplacement {remainingSteps} découpé en commandes max {maxStep}.");
+                }
+
+                while (remainingSteps > 0)
+                {
+                    double currentStep = Math.Min(remainingSteps, maxStep);
+                    if (currentStep < minStep)
+                    {
+                        currentStep = minStep;
+                    }
+
+                    driveStep.Value = currentStep;
+                    await ExecuteNikonCommandWithBusyRetryAsync(
+                        () => device.SetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep, driveStep),
+                        $"Réglage step focus Nikon ({currentStep})");
+
+                    try
+                    {
+                        if (up == 1)
+                        {
+                            await ExecuteNikonCommandWithBusyRetryAsync(
+                                () => device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_ClosestToInfinity),
+                                "Focus manuel Nikon");
+                        }
+                        else
+                        {
+                            await ExecuteNikonCommandWithBusyRetryAsync(
+                                () => device.SetUnsigned(eNkMAIDCapability.kNkMAIDCapability_MFDrive, (uint)eNkMAIDMFDrive.kNkMAIDMFDrive_InfinityToClosest),
+                                "Focus manuel Nikon");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTextToConsoleNL(ex.Message);
+                        throw;
+                    }
+
+                    remainingSteps -= currentStep;
                 }
             }, waitUntilReadyBefore: false, waitUntilReadyAfter: false);
         }

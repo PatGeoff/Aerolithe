@@ -632,10 +632,20 @@ namespace Aerolithe
             toolTip.SetToolTip(lbl_blobCount, "Affiche les parties nettes dans le LiveView");
             toolTip.SetToolTip(btn_ShowSharpnessOverlay, "Affiche les parties nettes dans le LiveView");
             toolTip.SetToolTip(lbl_blobCountLogo, "Affiche les parties nettes dans le LiveView"); 
-            toolTip.SetToolTip(btn_queryTurntablePos, "Demande à la table tournante d'afficher sa position dans la console");
             toolTip.SetToolTip(btn_HorizontalLiftSwitches, "Demande au controlleur du moteur horizontal du lift de donner l'état de ses switch");
             toolTip.SetToolTip(btn_VerticalLiftSwitches, "Demande au controlleur du moteur vertical du lift de donner l'état de ses switch");
+            
+            toolTip.SetToolTip(btn_enableOscConsoleMessage, "Affiche les messages OSC");
+            toolTip.SetToolTip(btn_enableNetworkConsoleMess, "Affiche les messages de réseau");
+            toolTip.SetToolTip(btn_consoleScrollToCaret, "Gèle le défilement");
+            toolTip.SetToolTip(btn_getActuatorAngle, "Demande l'angle de l'actuateur");
 
+            toolTip.SetToolTip(btn_getActuatorAngle, "Demande l'angle de l'actuateur");
+            toolTip.SetToolTip(btn_GetSwtichesState, "Demande l'état des switch.\nActiver les messages réseau dans la console");
+      
+            toolTip.SetToolTip(btn_TestAutoCenterActuator, "Autocentrage mais juste ici en mode manuel");
+
+            toolTip.SetToolTip(label44, "Autocentrage mais juste ici en mode manuel");
 
         }
 
@@ -721,10 +731,10 @@ namespace Aerolithe
 
             foreach (Panel panel in flowlayoutPanel_Messagerie.Controls.OfType<Panel>())
             {
-                var checkBox = panel.Controls
+                var sendButton = panel.Controls
                     .OfType<TableLayoutPanel>()
-                    .SelectMany(tbl => tbl.Controls.OfType<CheckBox>())
-                    .FirstOrDefault();
+                    .SelectMany(tbl => tbl.Controls.OfType<Button>())
+                    .FirstOrDefault(button => button.Tag is MessagingUserSendToggleState);
 
                 var label = panel.Controls
                     .OfType<TableLayoutPanel>()
@@ -739,7 +749,7 @@ namespace Aerolithe
                 users.Add(new MessagingUserSetting
                 {
                     Email = label.Text.Trim(),
-                    Send = checkBox?.Checked ?? true
+                    Send = sendButton?.Tag is MessagingUserSendToggleState state ? state.Send : true
                 });
             }
 
@@ -788,27 +798,46 @@ namespace Aerolithe
             };
 
 
-            // Largeur des colonnes : checkbox | texte | suppression
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));   // Col 0 : checkbox
+            // Largeur des colonnes : envoi | texte | suppression
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 36));   // Col 0 : envoi
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));   // Col 1 : 100% du reste
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));   // Col 2 : suppression
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 36));   // Col 2 : suppression
 
             // Hauteur de la (seule) ligne.
             tbl.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             panel.Controls.Add(tbl);
 
-            CheckBox ckb = new CheckBox
+            Button sendButton = new Button
             {
-                Checked = send,
-                Text = "",
                 AutoSize = false,
-                CheckAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0),
-                Padding = new Padding(0)
+                Padding = new Padding(0),
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false,
+                UseCompatibleTextRendering = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Phosphor", 14F, FontStyle.Regular, GraphicsUnit.Point),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(35, 35, 35),
+                Tag = new MessagingUserSendToggleState(send)
             };
-            ckb.CheckedChanged += (s, e) => SaveMessagingUsersFromUi();
+            sendButton.FlatAppearance.BorderSize = 0;
+            sendButton.FlatAppearance.BorderColor = Color.Black;
+            UpdateMessagingSendButton(sendButton);
+            sendButton.Click += (s, e) =>
+            {
+                if (sendButton.Tag is not MessagingUserSendToggleState state)
+                {
+                    state = new MessagingUserSendToggleState(true);
+                    sendButton.Tag = state;
+                }
+
+                state.Send = !state.Send;
+                UpdateMessagingSendButton(sendButton);
+                SaveMessagingUsersFromUi();
+            };
 
             Label lbl = new Label
             {
@@ -834,7 +863,7 @@ namespace Aerolithe
                 UseVisualStyleBackColor = false,
                 UseCompatibleTextRendering = false,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Phosphor", 11F, FontStyle.Regular, GraphicsUnit.Point),
+                Font = new Font("Phosphor", 14F, FontStyle.Regular, GraphicsUnit.Point),
                 Text = "",
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(32, 32, 32)
@@ -868,7 +897,7 @@ namespace Aerolithe
                 }
             };
 
-            tbl.Controls.Add(ckb, 0, 0);
+            tbl.Controls.Add(sendButton, 0, 0);
             tbl.Controls.Add(lbl, 1, 0);
             tbl.Controls.Add(dB, 2, 0);
 
@@ -879,6 +908,23 @@ namespace Aerolithe
             {
                 SaveMessagingUsersFromUi();
             }
+        }
+
+        private static void UpdateMessagingSendButton(Button button)
+        {
+            bool send = button.Tag is MessagingUserSendToggleState state && state.Send;
+            button.Text = send ? "" : "";
+            button.ForeColor = send ? Color.White : SystemColors.WindowFrame;
+        }
+
+        private sealed class MessagingUserSendToggleState
+        {
+            public MessagingUserSendToggleState(bool send)
+            {
+                Send = send;
+            }
+
+            public bool Send { get; set; }
         }
     }
 
@@ -974,6 +1020,11 @@ namespace Aerolithe
 
         public string GetTempImageFolderPath()
         {
+            if (string.IsNullOrWhiteSpace(ImageFolderPath))
+            {
+                return string.Empty;
+            }
+
             // ex: C:\Projet\images\GrosseRoche_2\49
             string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
             return Path.Combine(ImageFolderPath, coteFolder, RotationSerieIncrement.ToString("D2"));
@@ -981,6 +1032,11 @@ namespace Aerolithe
 
         public string GetImageFolderPathNoFS()
         {
+            if (string.IsNullOrWhiteSpace(ImageFolderPath))
+            {
+                return string.Empty;
+            }
+
             string coteFolder = (Cote == 0) ? "serie_A" : "serie_B";
             return Path.Combine(ImageFolderPath, "noFS", coteFolder);
         }
@@ -1003,9 +1059,15 @@ namespace Aerolithe
 
         public string GetFocusStackPath()
         {
+            string focusStackRootPath = GetFocusStackRootPath();
+            if (string.IsNullOrWhiteSpace(focusStackRootPath))
+            {
+                return string.Empty;
+            }
+
             // ex: C:\Projet\images\focusStack_A
             string coteFolder = (Cote == 0) ? "focusStack_A" : "focusStack_B";
-            return Path.Combine(GetFocusStackRootPath(), coteFolder);
+            return Path.Combine(focusStackRootPath, coteFolder);
         }
 
         public string GetFocusStackImageFullPath()
@@ -1019,9 +1081,15 @@ namespace Aerolithe
 
         public string GetMaskFolderPath()
         {
+            string focusStackRootPath = GetFocusStackRootPath();
+            if (string.IsNullOrWhiteSpace(focusStackRootPath))
+            {
+                return string.Empty;
+            }
+
             // ex: C:\Projet\images\masques_focusStack_A
             string coteFolder = (Cote == 0) ? "masques_A" : "masques_B";
-            return Path.Combine(GetFocusStackRootPath(), coteFolder);
+            return Path.Combine(focusStackRootPath, coteFolder);
             //return ImageFolderPath;
         }
 
@@ -1034,11 +1102,22 @@ namespace Aerolithe
 
         public string GetMaskFullImagePath()
         {
-            return Path.Combine(GetMaskFolderPath(), GetMaskImageName());
+            string maskFolderPath = GetMaskFolderPath();
+            if (string.IsNullOrWhiteSpace(maskFolderPath))
+            {
+                return string.Empty;
+            }
+
+            return Path.Combine(maskFolderPath, GetMaskImageName());
         }
 
         public string GetFocusStackRootPath()
         {
+            if (string.IsNullOrWhiteSpace(ImageFolderPath))
+            {
+                return string.Empty;
+            }
+
             if (string.IsNullOrWhiteSpace(FocusStackFolderName))
             {
                 return Path.Combine(ImageFolderPath, "focusStack");

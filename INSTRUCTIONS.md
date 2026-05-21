@@ -479,3 +479,17 @@ Comment valider que le travail est correct :
 - Correction du bouton Designer `btn_VerticalLiftSwitches`.
 - Le Designer n'utilise plus `this.btn_VerticalLiftSwitches`; il utilise `btn_VerticalLiftSwitches`, comme les autres contrôles générés.
 - Ajout du champ `public Button btn_VerticalLiftSwitches;` dans `Aerolithe.Designer.cs`, comme pour `btn_HorizontalLiftSwitches`.
+
+## REV-0048-autocenter-fresh-offsets
+
+- Stabilisation de l'auto-centrage entre les séries photo et après annulation.
+- `RoutineAutoCentrage(...)` accepte maintenant un `CancellationToken` et le respecte pendant l'attente de masque, les délais de mouvement et la sortie de cadre.
+- Les auto-centrages lancés par les séquences passent maintenant le token de la séquence, afin qu'une annulation arrête aussi la routine d'auto-centrage en cours.
+- `StopSequences()` annule aussi l'auto-centrage manuel/actuateur en cours et met `cancelAutoCentrage = true`.
+- Les boutons manuels d'actuateur remettent `_stopRequested = false` et `cancelAutoCentrage = false` avant de démarrer, pour éviter qu'une annulation précédente bloque le mode manuel.
+- Le flag global `cancelAutoCentrage` n'est plus remis à `true` à la fin normale de l'auto-centrage continu pendant mouvement d'actuateur, car cela pouvait annuler une routine suivante.
+- Ajout d'une version interne `_autoCenterOffsetsVersion` pour les offsets de centrage.
+- Au début de chaque `RoutineAutoCentrage(...)`, les offsets sont réinitialisés et la routine attend une nouvelle frame LiveView fraîche avant de bouger les moteurs.
+- Objectif: éviter que la deuxième série utilise les offsets/masques de la série précédente ou démarre trop tôt après le mouvement d'actuateur + autofocus.
+- Le timeout d'attente d'une nouvelle frame valide est maintenant `3000 ms`.
+- Quand le masque LiveView devient vide/noir, les offsets sont remis à zéro et leur version est incrémentée pour distinguer une frame reçue sans objet d'une frame pas encore traitée.

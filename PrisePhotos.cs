@@ -363,7 +363,11 @@ namespace Aerolithe
 
                     try
                     {
-                        await RoutineAutoCentrage();
+                        await RoutineAutoCentrage(cancellationToken: cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -561,7 +565,11 @@ namespace Aerolithe
 
                     try
                     {
-                        await RoutineAutoCentrage();
+                        await RoutineAutoCentrage(cancellationToken: cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {

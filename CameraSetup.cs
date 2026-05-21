@@ -17,6 +17,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
@@ -269,6 +270,7 @@ namespace Aerolithe
                             offsets.hasBlackOnBorder = false;
                             offsets.hasForeground = false;
                             offsets.boundingBox = Rectangle.Empty;
+                            Interlocked.Increment(ref _autoCenterOffsetsVersion);
                         }
 
                         try

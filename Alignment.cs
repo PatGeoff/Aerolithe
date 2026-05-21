@@ -15,6 +15,7 @@ namespace Aerolithe
     {
         public bool calculerCentre = false;
         private int _autoCenterOffsetTrackingRequests = 0;
+        private long _autoCenterOffsetsVersion = 0;
         private OffsetsData offsets = new OffsetsData();
         bool cancelAutoCentrage = false;
         bool cameraRailFarLimitSwitchPressed = false;
@@ -89,6 +90,7 @@ namespace Aerolithe
                     offsets.offsetY = 0;
                     offsets.hasBlackOnBorder = false; // ou renommer en hasFgOnBorder
                     offsets.hasForeground = false;
+                    Interlocked.Increment(ref _autoCenterOffsetsVersion);
                 }
                 else
                 {
@@ -103,8 +105,19 @@ namespace Aerolithe
                     offsets.hasBlackOnBorder = hasFgOnBorder; // garde le champ existant
                     offsets.hasForeground = true;
                     offsets.boundingBox = Rectangle.FromLTRB(minX, minY, maxX + 1, maxY + 1);
+                    Interlocked.Increment(ref _autoCenterOffsetsVersion);
                 }
             });
+        }
+
+        private void ResetAutoCenterOffsets()
+        {
+            offsets.offsetX = 0;
+            offsets.offsetY = 0;
+            offsets.hasBlackOnBorder = false;
+            offsets.hasForeground = false;
+            offsets.boundingBox = Rectangle.Empty;
+            Interlocked.Increment(ref _autoCenterOffsetsVersion);
         }
 
         private void BeginAutoCenterOffsetTracking()
@@ -128,11 +141,12 @@ namespace Aerolithe
         }
 
 
-        private async Task RoutineLineareReculerHorsCadre()
+        private async Task RoutineLineareReculerHorsCadre(CancellationToken cancellationToken = default)
         {
             bool commandSent = false;
-            while (!cancelAutoCentrage && !_stopRequested)
+            while (!cancelAutoCentrage && !_stopRequested && !cancellationToken.IsCancellationRequested)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var switchState = await RequestCameraLinearSwitchStateAsync(250);
                 if (switchState.FarPressed)
                 {
@@ -155,7 +169,7 @@ namespace Aerolithe
                     break;
                 }
 
-                await Task.Delay(50); // Libère le thread UI et laisse LiveViewTimer tourner
+                await Task.Delay(50, cancellationToken); // Libère le thread UI et laisse LiveViewTimer tourner
             }
         }
         private async Task RoutineCalibrationLineareNearest()
@@ -197,7 +211,7 @@ namespace Aerolithe
             AppendTextToConsoleNL("RoutineCalibrationLinearNearest terminée");
         }
 
-        private async Task RoutineAutoCentrage(int timeoutMs = 5000)
+        private async Task RoutineAutoCentrage(int timeoutMs = 5000, CancellationToken cancellationToken = default)
         {
             //if (!offsets.hasBlackOnBorder && !cancelAutoCentrage) {
 
@@ -210,13 +224,17 @@ namespace Aerolithe
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                long startOffsetsVersion = Interlocked.Read(ref _autoCenterOffsetsVersion);
+                ResetAutoCenterOffsets();
                 var waitForMaskStart = DateTime.Now;
-                while (!offsets.hasForeground
+                while ((Interlocked.Read(ref _autoCenterOffsetsVersion) <= startOffsetsVersion || !offsets.hasForeground)
                        && !_stopRequested
                        && !cancelAutoCentrage
-                       && (DateTime.Now - waitForMaskStart).TotalMilliseconds < 1200)
+                       && !cancellationToken.IsCancellationRequested
+                       && (DateTime.Now - waitForMaskStart).TotalMilliseconds < 3000)
                 {
-                    await Task.Delay(100);
+                    await Task.Delay(100, cancellationToken);
                 }
 
                 double kP = 0.3; // proportionnel
@@ -233,6 +251,7 @@ namespace Aerolithe
 
                 while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs && !cancelAutoCentrage && !_stopRequested)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
 
 
                     // Debug.WriteLine("Routine Auto Centrage démarrée");
@@ -270,9 +289,9 @@ namespace Aerolithe
 
                     Debug.WriteLine($"Move Y: {stepY} (offsetY={offsetY})");
 
-                    if (offsets.hasBlackOnBorder) await RoutineLineareReculerHorsCadre();
+                    if (offsets.hasBlackOnBorder) await RoutineLineareReculerHorsCadre(cancellationToken);
 
-                    await Task.Delay(delayMs);
+                    await Task.Delay(delayMs, cancellationToken);
                 }
             }
             finally
@@ -288,8 +307,9 @@ namespace Aerolithe
 
         }
 
-        private async Task AutoCentrageStepPendantActuateurAsync()
+        private async Task AutoCentrageStepPendantActuateurAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!offsets.hasForeground) return;
 
             const double tolerance = 20.0;
@@ -318,10 +338,10 @@ namespace Aerolithe
 
             if (offsets.hasBlackOnBorder)
             {
-                await RoutineLineareReculerHorsCadre();
+                await RoutineLineareReculerHorsCadre(cancellationToken);
             }
 
-            await Task.Delay(450);
+            await Task.Delay(450, cancellationToken);
             udpSendLiftVerticalMotorData(0);
             udpSendLiftHorizontalData(0);
             udpSendCameraLinearMotorData(0);
@@ -366,7 +386,7 @@ namespace Aerolithe
                 {
                     if (offsets.hasForeground)
                     {
-                        await AutoCentrageStepPendantActuateurAsync();
+                        await AutoCentrageStepPendantActuateurAsync(token);
                     }
                     else
                     {
@@ -384,7 +404,6 @@ namespace Aerolithe
             }
             finally
             {
-                cancelAutoCentrage = true;
                 EndAutoCenterOffsetTracking();
                 udpSendLiftVerticalMotorData(0);
                 udpSendLiftHorizontalData(0);

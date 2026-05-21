@@ -31,7 +31,7 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public const string UiRevision = "REV-0047-vertical-switch-button-designer";
+        public const string UiRevision = "REV-0048-autocenter-fresh-offsets";
         private string _windowTitleBase = "Aucun projet";
 
         // THIS IP ADDRESS 192.168.2.4 //
@@ -61,6 +61,7 @@ namespace Aerolithe
         private CancellationTokenSource _autoPingCts;
         private volatile bool _shutdownStarted;
         private bool _networkConsoleMessagesEnabled;
+        private bool _oscConsoleMessagesEnabled;
         private PrivateFontCollection? _bundledPhosphorFonts;
         private readonly object _sequencePauseLock = new();
         private bool _sequencePaused;
@@ -187,6 +188,7 @@ namespace Aerolithe
 
             InitializeSequenceActionControls();
             UpdateNetworkConsoleMessagesButton();
+            UpdateOscConsoleMessagesButton();
             btn_maxImagesFS.Click += btn_maxImagesFS_Click;
             AttachDriveStepSettingsButton();
             AttachFocusStackDenoiseControls();
@@ -564,8 +566,8 @@ namespace Aerolithe
 
         private void btn_goToDriveStepSettings_Click(object? sender, EventArgs e)
         {
-            tabControl1.SelectedTab = tabPage3;
-            tabControl4.SelectedTab = tabPage16;
+            aerolitheTabControl2.SelectedTab = tabPage20;
+            aerolitheTabControl3.SelectedTab = tabPage26;
 
             txtBox_DriveStep.Focus();
             txtBox_DriveStep.SelectAll();
@@ -1030,11 +1032,6 @@ namespace Aerolithe
         }
 
 
-        private void btn_imageFond_Click(object sender, EventArgs e)
-        {
-            tabControl1.SelectedIndex = 6;
-            tabControl2.SelectedIndex = 4;
-        }
 
 
 
@@ -1357,11 +1354,20 @@ namespace Aerolithe
         {
             _stopRequested = false;
             cancelAutoCentrage = false;
-            calculerCentre = true;
             Task.Run(async () =>
             {
-                await Task.Delay(400); // délai avant la routine
-                await RoutineAutoCentrage();
+                try
+                {
+                    await Task.Delay(400); // délai avant la routine
+                    await RoutineAutoCentrage();
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL($"Erreur auto-centrage manuel: {ex.Message}", Color.Red);
+                }
             });
         }
 
@@ -1397,18 +1403,24 @@ namespace Aerolithe
 
         private void btn_actuator_5_Click(object sender, EventArgs e)
         {
+            _stopRequested = false;
+            cancelAutoCentrage = false;
             UdpSendActuatorMessageAsync("actuator 5");
             StartManualActuatorAutoCenterTracking(5);
         }
 
         private void btn_actuator_25_Click(object sender, EventArgs e)
         {
+            _stopRequested = false;
+            cancelAutoCentrage = false;
             UdpSendActuatorMessageAsync("actuator 25");
             StartManualActuatorAutoCenterTracking(25);
         }
 
         private void btn_actuator_45_Click(object sender, EventArgs e)
         {
+            _stopRequested = false;
+            cancelAutoCentrage = false;
             UdpSendActuatorMessageAsync("actuator 45");
             StartManualActuatorAutoCenterTracking(45);
         }
@@ -2551,6 +2563,8 @@ namespace Aerolithe
 
             tokenSource?.Cancel();
             _cts?.Cancel();
+            _manualActuatorAutoCenterCts?.Cancel();
+            cancelAutoCentrage = true;
             _stopRequested = true;
             RestoreCalibrationAutoCentrageOverride();
             SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
@@ -2938,6 +2952,7 @@ namespace Aerolithe
         private void btn_stopActuatorMoving_Click(object sender, EventArgs e)
         {
             _manualActuatorAutoCenterCts?.Cancel();
+            cancelAutoCentrage = true;
             UdpSendActuatorMessageAsync("actuator stop");
         }
 
@@ -3155,11 +3170,7 @@ namespace Aerolithe
             }
         }
 
-        private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            //AppendTextToConsoleNL("Selected index = " + tabControl1.SelectedIndex.ToString());
-            if (tabControl1.SelectedIndex == 3) Task.Run(async () => await getTurntablePosFromWaveshare());
-        }
+       
 
         private void btn_reculeTTdeg_Click(object sender, EventArgs e)
         {
@@ -3236,7 +3247,7 @@ namespace Aerolithe
 
         private void btn_nextAutoFocustackCapture_Click(object sender, EventArgs e)
         {
-            tabControl4.SelectedTab = tabPage16;
+            //tabControl4.SelectedTab = tabPage16;
             IncrementImgSeq();
             AvanceTableTournateDeg();
         }
@@ -3561,8 +3572,10 @@ namespace Aerolithe
 
         private void btn_maxImagesFS_Click(object? sender, EventArgs e)
         {
-            tabControl1.SelectedTab = tabPage7;
-            tabControl2.SelectedTab = tabPage10;
+            aerolitheTabControl2.SelectTab("tabPage25");
+            aerolitheTabControl4.SelectTab("tabPage32");
+            //tabControl1.SelectedTab = tabPage7;
+            //tabControl2.SelectedTab = tabPage10;
 
             textBox_nbrPhotosFS.Focus();
             textBox_nbrPhotosFS.SelectAll();
@@ -3755,8 +3768,10 @@ namespace Aerolithe
 
         private async void btn_WarningPing_Click(object sender, EventArgs e)
         {
-            tabControl1.SelectedTab = tabPage7;
-            tabControl2.SelectedTab = tabPage12;
+            //tabControl1.SelectedTab = tabPage7;
+            //tabControl2.SelectedTab = tabPage12;
+            aerolitheTabControl2.SelectTab("tabPage25");
+            aerolitheTabControl4.SelectTab("tabPage30");
             await PingAll();
         }
 
@@ -3887,8 +3902,10 @@ namespace Aerolithe
 
         private void RepriseSpecifiqueToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            tabControl1.SelectedTab = tabPage3;
-            tabControl4.SelectedTab = tabPage18;
+            //tabControl1.SelectedTab = tabPage3;
+            //tabControl4.SelectedTab = tabPage18;
+            aerolitheTabControl2.SelectTab("tabPage20");
+            aerolitheTabControl3.SelectTab("tabPage28");
 
             //    _autoPingCts?.Cancel();
 
@@ -4352,22 +4369,40 @@ namespace Aerolithe
                 : Color.FromArgb(100, 100, 100);
         }
 
+        private void btn_enableOscConsoleMessage_Click(object sender, EventArgs e)
+        {
+            _oscConsoleMessagesEnabled = !_oscConsoleMessagesEnabled;
+            UpdateOscConsoleMessagesButton();
+        }
+
+        private void UpdateOscConsoleMessagesButton()
+        {
+            btn_enableOscConsoleMessage.ForeColor = _oscConsoleMessagesEnabled
+                ? Color.White
+                : Color.FromArgb(100, 100, 100);
+        }
+
         private void toolStripMenuItem2_Click(object sender, EventArgs e)
         {
-            tabControl1.SelectTab("TabPage7");
-            tabControl2.SelectTab("TabPage8");
+            //tabControl1.SelectTab("TabPage7");
+            //tabControl2.SelectTab("TabPage8");
         }
 
         private void btn_GoAutomationPage_1_Click(object sender, EventArgs e)
         {
-            tabControl1.SelectTab("TabPage3");
-            tabControl4.SelectTab("TabPage18");
+            //tabControl1.SelectTab("TabPage3");
+            //tabControl4.SelectTab("TabPage18");
+            aerolitheTabControl2.SelectTab("tabPage20");
+            aerolitheTabControl3.SelectTab("tabPage28");
+
         }
 
         private void btn_GoAutomationPage_2_Click(object sender, EventArgs e)
         {
-            tabControl1.SelectTab("TabPage3");
-            tabControl4.SelectTab("TabPage18");
+            //tabControl1.SelectTab("TabPage3");
+            //tabControl4.SelectTab("TabPage18");
+            aerolitheTabControl2.SelectTab("tabPage20");
+            aerolitheTabControl3.SelectTab("tabPage28");
         }
     }
 }
