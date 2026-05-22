@@ -37,6 +37,8 @@ namespace Aerolithe
         private CancellationTokenSource? _actuatorAnglePollingCts;
         private readonly object _autoCenterCommandLock = new();
         private Task? _autoCenterCommandTask;
+        private readonly object _deviceStatusProbeLock = new();
+        private readonly Dictionary<IPAddress, TaskCompletionSource<bool>> _deviceStatusProbes = new();
 
 
         public void InitializeUdpClient()
@@ -69,6 +71,17 @@ namespace Aerolithe
                 byte[] bytes = Encoding.UTF8.GetBytes(message);
                 using (UdpClient client = new UdpClient()) // Use a new UdpClient for sending
                 {
+                    if (ShouldSendActuatorSpeedBeforeCommand(message))
+                    {
+                        int speed = ClampActuatorSpeed(appSettings.ActuatorSpeed);
+                        appSettings.ActuatorSpeed = speed;
+                        string speedMessage = $"actuator speed, {speed.ToString(CultureInfo.InvariantCulture)}";
+                        byte[] speedBytes = Encoding.UTF8.GetBytes(speedMessage);
+                        AppendNetworkConsoleMessage($"UDP envoyé à Actuator ({actuatorIpAddress}:{actuatorPort}): {speedMessage}");
+                        await client.SendAsync(speedBytes, speedBytes.Length, new IPEndPoint(actuatorIpAddress, actuatorPort));
+                        await Task.Delay(75);
+                    }
+
                     await client.SendAsync(bytes, bytes.Length, new IPEndPoint(actuatorIpAddress, actuatorPort));
                 }
 
@@ -78,6 +91,16 @@ namespace Aerolithe
             {
                 MessageBox.Show($"Error sending UDP message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private static bool ShouldSendActuatorSpeedBeforeCommand(string message)
+        {
+            if (!message.StartsWith("actuator", StringComparison.OrdinalIgnoreCase)) return false;
+            if (message.StartsWith("actuator angle", StringComparison.OrdinalIgnoreCase)) return false;
+            if (message.StartsWith("actuator speed", StringComparison.OrdinalIgnoreCase)) return false;
+            if (message.StartsWith("actuator stop", StringComparison.OrdinalIgnoreCase)) return false;
+            if (message.StartsWith("actuator calibration", StringComparison.OrdinalIgnoreCase)) return false;
+            return true;
         }
 
         private async Task SendActuatorAngleRequestAsync()
@@ -283,6 +306,7 @@ namespace Aerolithe
                         {
                             AppendTextToConsoleNL($"UDP reçu de {result.RemoteEndPoint}: {message}");
                         }
+                        TryCompleteDeviceStatusProbe(message, result.RemoteEndPoint);
                         CheckMessage(message, result.RemoteEndPoint);
                     }
                 }
@@ -552,6 +576,31 @@ namespace Aerolithe
             return remoteEndPoint?.Address.Equals(expectedAddress) == true;
         }
 
+        private void TryCompleteDeviceStatusProbe(string message, IPEndPoint? remoteEndPoint)
+        {
+            if (remoteEndPoint == null)
+            {
+                return;
+            }
+
+            bool isStatusResponse =
+                message.Contains("ok esp32", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("status ok", StringComparison.OrdinalIgnoreCase);
+
+            if (!isStatusResponse)
+            {
+                return;
+            }
+
+            lock (_deviceStatusProbeLock)
+            {
+                if (_deviceStatusProbes.TryGetValue(remoteEndPoint.Address, out var probe))
+                {
+                    probe.TrySetResult(true);
+                }
+            }
+        }
+
         private static bool TryParseStepperSwitchState(string message, out bool nearPressed, out bool farPressed)
         {
             nearPressed = false;
@@ -619,9 +668,10 @@ namespace Aerolithe
                 AppendOscConsoleMessage($"OSC traité: {address}, args='{string.Join(", ", args)}'");
 
                 if (!IsOscAutoCenterCommand(normalizedAddress)
+                    && !IsOscActuatorMoveCommand(normalizedAddress)
                     && !IsOscCalibrationCommand(normalizedAddress))
                 {
-                    await StopAutoCenterBeforeManualCommandAsync();
+                    RequestStopAutoCenterBeforeManualCommand();
                 }
 
                 switch (normalizedAddress)
@@ -689,22 +739,27 @@ namespace Aerolithe
 
                     case "actuator_osc_5_btn":
                         await UdpSendActuatorMessageAsync("actuator 5");
+                        StartManualActuatorAutoCenterTracking(5);
                         break;
 
                     case "actuator_osc_25_btn":
                         await UdpSendActuatorMessageAsync("actuator 25");
+                        StartManualActuatorAutoCenterTracking(25);
                         break;
 
                     case "actuator_osc_45_btn":
                         await UdpSendActuatorMessageAsync("actuator 45");
+                        StartManualActuatorAutoCenterTracking(45);
                         break;
 
                     case "actuator_osc_up_btn":
                         await UdpSendActuatorMessageAsync("actuator up");
+                        StartManualActuatorAutoCenterTracking();
                         break;
 
                     case "actuator_osc_down_btn":
                         await UdpSendActuatorMessageAsync("actuator down");
+                        StartManualActuatorAutoCenterTracking();
                         break;
 
                     case "actuator_osc_stop_btn":
@@ -752,6 +807,15 @@ namespace Aerolithe
                 || normalizedAddress == "camera_osc_auto_calibration";
         }
 
+        private static bool IsOscActuatorMoveCommand(string normalizedAddress)
+        {
+            return normalizedAddress == "actuator_osc_5_btn"
+                || normalizedAddress == "actuator_osc_25_btn"
+                || normalizedAddress == "actuator_osc_45_btn"
+                || normalizedAddress == "actuator_osc_up_btn"
+                || normalizedAddress == "actuator_osc_down_btn";
+        }
+
         private async Task RunAutoCenterCommandAsync(Func<Task> action)
         {
             Task task;
@@ -783,7 +847,7 @@ namespace Aerolithe
             }
         }
 
-        private async Task StopAutoCenterBeforeManualCommandAsync()
+        private void RequestStopAutoCenterBeforeManualCommand()
         {
             Task? autoCenterTask;
             lock (_autoCenterCommandLock)
@@ -798,15 +862,6 @@ namespace Aerolithe
 
             AppendOscConsoleMessage("OSC: commande manuelle reçue, annulation de l'auto-centrage en cours.");
             cancelAutoCentrage = true;
-
-            try
-            {
-                await autoCenterTask;
-            }
-            catch (Exception ex)
-            {
-                AppendTextToConsoleNL($"Erreur arrêt auto-centrage OSC: {ex.Message}");
-            }
         }
 
         private void displayVerticalLiftData()
@@ -997,6 +1052,67 @@ namespace Aerolithe
             }
         }
 
+        private bool UpdateNetworkPingState(string deviceName, bool pingOk)
+        {
+            return pingOk;
+        }
+
+        private int GetDeviceUdpPort(string deviceName)
+        {
+            return deviceName switch
+            {
+                "Stepper Camera" => stepperCameraPort,
+                "Turntable" => turntablePort,
+                "Actuator" => actuatorPort,
+                "Lift Vertical" => liftVerticalPort,
+                "Scissor Lift" => scissorLiftPort,
+                _ => localPort
+            };
+        }
+
+        private async Task<bool> ProbeDeviceStatusAsync(string deviceName, IPAddress address, int timeoutMs = 300, int attempts = 2)
+        {
+            var probe = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            lock (_deviceStatusProbeLock)
+            {
+                _deviceStatusProbes[address] = probe;
+            }
+
+            try
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes("status");
+                var endPoint = new IPEndPoint(address, GetDeviceUdpPort(deviceName));
+
+                for (int attempt = 0; attempt < attempts; attempt++)
+                {
+                    await udpClient.SendAsync(bytes, bytes.Length, endPoint);
+
+                    Task completedTask = await Task.WhenAny(probe.Task, Task.Delay(timeoutMs));
+                    if (completedTask == probe.Task && await probe.Task)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                lock (_deviceStatusProbeLock)
+                {
+                    if (_deviceStatusProbes.TryGetValue(address, out var currentProbe) && ReferenceEquals(currentProbe, probe))
+                    {
+                        _deviceStatusProbes.Remove(address);
+                    }
+                }
+            }
+        }
+
         // === Met à jour le bouton d'alerte selon l'état global ===
         private void UpdateWarningButton(bool allConnected)
         {
@@ -1021,9 +1137,10 @@ namespace Aerolithe
         {
             var tasks = devices.Select(async dev =>
             {
-                bool ok = await PingHostAsync(dev.Address, timeoutMs: 1000); // garde le timeout similaire
-                UpdateStatusLabel(dev.Name, ok);
-                return new KeyValuePair<string, bool>(dev.Name, ok);
+                bool udpOk = await ProbeDeviceStatusAsync(dev.Name, dev.Address);
+                bool isConnected = UpdateNetworkPingState(dev.Name, udpOk);
+                UpdateStatusLabel(dev.Name, isConnected);
+                return new KeyValuePair<string, bool>(dev.Name, isConnected);
             }).ToArray();
 
             KeyValuePair<string, bool>[] results = await Task.WhenAll(tasks);

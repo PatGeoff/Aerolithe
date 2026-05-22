@@ -15,6 +15,7 @@ namespace Aerolithe
         public int FocusStackFailed { get; set; }
         public int FocusStackPendingOrRunning { get; set; }
         public string ErrorMessage { get; set; } = string.Empty;
+        public List<SequencePhotoSeriesStats> PhotoSeriesStats { get; } = new();
         public List<FocusStackNotificationItem> FocusStackFailures { get; } = new();
 
         public string Subject
@@ -40,6 +41,28 @@ namespace Aerolithe
             sb.AppendLine($"Duree: {Duration:hh\\:mm\\:ss}");
             sb.AppendLine();
             sb.AppendLine($"Focus stack active: {(FocusStackEnabled ? "Oui" : "Non")}");
+
+            if (PhotoSeriesStats.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Photos par serie:");
+                foreach (var serie in PhotoSeriesStats.OrderBy(s => s.Serie))
+                {
+                    if (serie.Ignored)
+                    {
+                        sb.AppendLine($"- Serie {serie.Serie} ({serie.Angle} deg): serie ignoree");
+                        continue;
+                    }
+
+                    string failedText = serie.Failed == 0
+                        ? "0 echec"
+                        : serie.Failed == 1
+                            ? "1 echec"
+                            : $"{serie.Failed} echecs";
+
+                    sb.AppendLine($"- Serie {serie.Serie} ({serie.Angle} deg): {serie.Succeeded} photos reussies, {failedText}");
+                }
+            }
 
             if (FocusStackEnabled)
             {
@@ -75,5 +98,15 @@ namespace Aerolithe
         public int Elevation { get; set; }
         public int Rotation { get; set; }
         public string FileName { get; set; } = string.Empty;
+    }
+
+    public sealed class SequencePhotoSeriesStats
+    {
+        public int Serie { get; set; }
+        public int Angle { get; set; }
+        public int Planned { get; set; }
+        public int Succeeded { get; set; }
+        public int Failed { get; set; }
+        public bool Ignored { get; set; }
     }
 }

@@ -205,6 +205,7 @@ namespace Aerolithe
             int imageCount = GetPhotoCountForCurrentSerie();
             if (imageCount == 0)
             {
+                RegisterSequencePhotoSeries(projet.Serie, angle, 0, ignored: true);
                 AppendTextToConsoleNL($"Série {projet.Serie + 1} ({angle}°) ignorée: nombre de photos à 0. Actuateur et auto-centrage non exécutés.");
                 UpdateSequenceStatusLabels(angle, 0, 0);
                 return;
@@ -450,9 +451,12 @@ namespace Aerolithe
             serieId = new int[] { appSettings.NbrImg5Deg, appSettings.NbrImg25Deg, appSettings.NbrImg45Deg };
             if (serieId[projet.Serie] == 0)
             {
+                RegisterSequencePhotoSeries(projet.Serie, angleIndexes[projet.Serie], 0, ignored: true);
                 AppendTextToConsoleNL($"Série {projet.Serie + 1} ignorée: nombre de photos à 0.");
                 return;
             }
+
+            RegisterSequencePhotoSeries(projet.Serie, angleIndexes[projet.Serie], serieId[projet.Serie], ignored: false);
 
             await WaitIfSequencePausedAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -690,6 +694,7 @@ namespace Aerolithe
                         //}
 
                     }
+                    MarkSequencePhotoSucceeded(projet.Serie, angleIndexes[projet.Serie]);
                     //AppendTextToConsoleNL("Séquence #" + (i+1).ToString() + " terminée");
                     if (i < serieId[projet.Serie] - 1)
                     {
@@ -709,8 +714,13 @@ namespace Aerolithe
 
                 }
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
+                MarkSequencePhotoFailed(projet.Serie, angleIndexes[projet.Serie]);
                 AppendTextToConsoleNL($" Erreur dans la séquence : {ex.Message}");
                 throw;
             }

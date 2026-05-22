@@ -493,3 +493,172 @@ Comment valider que le travail est correct :
 - Objectif: éviter que la deuxième série utilise les offsets/masques de la série précédente ou démarre trop tôt après le mouvement d'actuateur + autofocus.
 - Le timeout d'attente d'une nouvelle frame valide est maintenant `3000 ms`.
 - Quand le masque LiveView devient vide/noir, les offsets sont remis à zéro et leur version est incrémentée pour distinguer une frame reçue sans objet d'une frame pas encore traitée.
+
+## REV-0049-actuator-autocenter-faster
+
+- Accélération prudente de l'auto-centrage pendant les montées/descentes de l'actuateur.
+- Le pulse de correction dans `AutoCentrageStepPendantActuateurAsync(...)` passe de `450 ms` à `250 ms`.
+- La pause entre deux corrections continues pendant mouvement d'actuateur passe de `100 ms` à `50 ms`.
+- `WaitForActuator(...)` relit maintenant l'angle actuateur aux `250 ms` au lieu de `500 ms`.
+- Le polling UDP automatique après une commande actuateur demande aussi l'angle aux `250 ms` au lieu de `400 ms`.
+- La tolérance de centrage pendant mouvement reste large (`20 px`) et l'auto-centrage final précis reste exécuté à la position atteinte.
+
+## REV-0050-captured-mask-registration
+
+- Correction du masque appliqué aux images sans focus stack.
+- `device_ImageReady(...)` reconstruit maintenant en priorité un masque depuis le JPEG capturé avant d'appeler `ApplyMask(...)`.
+- Objectif: éviter qu'un masque sauvegardé ou live plus ancien soit appliqué à une photo prise après un léger déplacement d'auto-centrage.
+- Le masque sauvegardé puis le masque live restent utilisés seulement en fallback si le masque reconstruit depuis la capture est indisponible.
+
+## REV-0051-mask-shrink-project-sync
+
+- Renforcement de la synchronisation des valeurs de contraction du masque à l'ouverture d'un projet existant.
+- Les trackbars `trackBar_maskShrink1` et `trackBar_maskShrink2` sont maintenant branchés sur `ValueChanged` en plus de `Scroll`, pour couvrir les changements programmatiques, clavier ou molette.
+- `GetCurrentMaskShrink()` lit d'abord la valeur courante du trackbar de l'algorithme actif, avec fallback vers les valeurs du projet.
+- Objectif: éviter que la séquence utilise une contraction de masque désynchronisée jusqu'à ce que l'utilisateur bouge manuellement le slider.
+
+## REV-0052-actuator-speed-setting
+
+- Ajout de `ActuatorSpeed` dans `AppSettings`, valeur par défaut `500`.
+- `textBox_VitesseActuateur` charge cette valeur au démarrage et la sauvegarde sur `Enter` ou perte de focus.
+- La vitesse est bornée entre `150` et `1023`.
+- Avant chaque commande de mouvement actuateur (`5`, `25`, `45`, `custom`, `up`, `down`), Aérolithe envoie automatiquement `actuator speed, {ActuatorSpeed}` à l'ESP32.
+- Les commandes `actuator angle`, `actuator stop`, `actuator speed` et `actuator calibration` ne sont pas préfixées par la vitesse.
+- Le firmware `/Users/tech/Documents/Arduino/Aerolithe/Aerolithe_Actuateur` accepte `actuator speed, N`, borne la PWM entre `150` et `1023`, et applique une rampe PWM pour les déplacements vers angle cible.
+- Les commandes manuelles `actuator up/down` utilisent la vitesse plafonnée directement, sans découpage par paliers côté application.
+
+## REV-0053-actuator-startup-speed
+
+- Le firmware actuateur démarre maintenant avec `actuatorMaxPwm = 1000`, pour que le retour initial vers `0.0` degré se fasse à vitesse maximale par défaut.
+- Le mouvement automatique de démarrage ESP32 cible `0.0` degré au lieu de `5.0`.
+- Suppression de la descélération PWM près de la cible: les déplacements vers angle cible utilisent maintenant la vitesse configurée constante, avec seulement la rampe d'accélération existante.
+
+## REV-0054-network-ping-tolerance
+
+- L'onglet Réseau tolère maintenant les pertes ponctuelles: un appareil passe à `NON Connecté` seulement après 3 pings échoués consécutifs.
+- Le polling d'angle actuateur revient à un rythme plus calme après commande (`400 ms`) et pendant `WaitForActuator(...)` (`500 ms`).
+- Après `actuator speed, X`, Aérolithe attend `75 ms` avant d'envoyer la commande actuateur réelle, pour éviter deux paquets UDP trop collés.
+
+## REV-0055-actuator-autocenter-adaptive-lift
+
+- `AutoCentrageStepPendantActuateurAsync(...)` utilise maintenant une correction verticale plus forte pendant les mouvements d'actuateur.
+- Le gain proportionnel pendant actuateur passe de `kP = 0.3` à `kP = 0.35`.
+- Le plafond horizontal reste à `maxStepX = 40`.
+- Le plafond vertical passe à `maxStepY = 80`, donc la commande `udpSendLiftVerticalMotorData(stepY * 100)` peut atteindre `8000` au lieu de `4000`.
+- La tolérance reste `20 px` et la durée d'impulsion reste `250 ms`.
+- Rollback si ça oscille ou dépasse trop: remettre `kP = 0.3` et `maxStepY = 40`, ou revenir à un seul plafond commun `maxStep = 40` pour X/Y.
+
+## REV-0056-actuator-autocenter-vertical-gain
+
+- Après analyse de `/Users/tech/Downloads/IMG_7423.MOV`, le décrochage entre `11 s` et `15 s` vient d'un retard vertical: vers `13 s`, l'offset Y atteint environ `107 px` alors que le masque est encore présent, puis le masque est perdu vers `15.5 s`.
+- `AutoCentrageStepPendantActuateurAsync(...)` sépare maintenant les gains X/Y: `kPX = 0.35`, `kPY = 0.65`.
+- Le plafond vertical passe de `maxStepY = 80` à `maxStepY = 90`; la commande verticale peut donc atteindre `9000`.
+- Pour un offset Y d'environ `107 px`, la commande verticale passe d'environ `3700` à environ `6900`.
+- Rollback si oscillation ou surcorrection: remettre `kPY = 0.35` et `maxStepY = 80`, ou revenir à la REV-0055.
+
+## REV-0057-osc-no-autocenter-wait
+
+- Les commandes OSC manuelles n'attendent plus la fin d'une tâche d'auto-centrage avant d'être exécutées.
+- Avant REV-0057, `CheckOSCMessage(...)` appelait `await StopAutoCenterBeforeManualCommandAsync()` pour toute commande OSC qui n'était pas auto-centrage/calibration, ce qui pouvait introduire un délai de 1-2 secondes.
+- Maintenant, une commande OSC manuelle demande seulement `cancelAutoCentrage = true` et continue immédiatement vers l'envoi de la commande.
+- L'onglet Réseau redevient strict: un appareil affiche `NON Connecté` selon le résultat du ping courant, sans tolérance de 3 échecs consécutifs.
+- Rollback si nécessaire: réintroduire l'attente explicite de la tâche d'auto-centrage, mais seulement pour les commandes qui doivent vraiment être sérialisées avec l'auto-centrage.
+
+## REV-0058-network-udp-status
+
+- L'onglet Réseau n'utilise plus le ping ICMP pour les ESP32, car les commandes UDP peuvent fonctionner même si les microcontrôleurs ne répondent pas au ping.
+- `PingAllDevicesAsync()` envoie maintenant la commande UDP applicative `status` à chaque microcontrôleur, sur son port réel.
+- `ListenForMessages()` complète le test Réseau quand une réponse `ok esp32` ou `status ok` revient depuis l'adresse IP attendue.
+- Le statut `Connecté` reflète donc la communication utilisée par Aérolithe pour piloter les appareils, pas seulement la réponse ICMP.
+- Rollback si nécessaire: revenir à `PingHostAsync(...)`, mais cela peut réafficher `NON Connecté` même quand les commandes UDP fonctionnent.
+
+## REV-0059-network-udp-status-retry
+
+- Confirmation firmware: les ESP32 Stepper Camera, Lift Vertical, Lift Horizontal et Actuateur répondent `ok esp32` à `status`; la Table Tournante répond `waveshare --> status ok`.
+- Le test Réseau envoie maintenant `status`, attend `300 ms`, réessaie une deuxième fois si aucune réponse acceptée n'est reçue, puis déclare `Connecté` ou `NON Connecté`.
+- Le délai maximal de verdict par appareil est donc environ `600 ms`, tout en restant basé sur la communication UDP réelle.
+- Rollback si nécessaire: augmenter `timeoutMs` ou `attempts` dans `ProbeDeviceStatusAsync(...)`, sans revenir au ping ICMP.
+
+## REV-0060-actuator-autocenter-vertical-catchup
+
+- Objectif: éviter que l'objet sorte du cadre pendant les mouvements d'actuateur quand le lift vertical ne rattrape pas assez vite.
+- `AutoCentrageStepPendantActuateurAsync(...)` garde une correction verticale douce près du centre, puis ajoute un gain de rattrapage quand `abs(offsetY) > 55 px`.
+- Le plafond utile vertical est ramené à `firmwareEffectiveMaxStepY = 60`, car le firmware du lift vertical limite `stepmotor movespeed` à `6000`; envoyer `9000` ne donnait donc pas plus de vitesse réelle.
+- Pendant l'auto-centrage continu d'actuateur, le lift vertical n'est plus arrêté après chaque impulsion de correction: il continue entre deux mesures jusqu'à la prochaine correction ou jusqu'au retour dans la tolérance.
+- Le lift horizontal et le rail linéaire sont toujours arrêtés après la courte impulsion de correction pour éviter une dérive latérale.
+- Rollback si ça dépasse ou oscille verticalement: dans `AutoCentrageStepPendantActuateurAsync(...)`, remettre le calcul direct `Math.Abs(offsetY) * 0.65`, remettre `maxStepY = 90`, et rétablir l'arrêt vertical après le `Task.Delay(250, cancellationToken)`.
+
+## REV-0061-vertical-lift-speed-8000
+
+- Firmware lift vertical: dans `/Users/tech/Documents/Arduino/Aerolithe/Aerolithe_Lift_Vertical/stepper.cpp`, `maxSpeed` passe de `6000` à `8000`.
+- Application: `CalculateActuatorVerticalStep(...)` ajuste `firmwareEffectiveMaxStepY` de `60` à `80`, pour que `udpSendLiftVerticalMotorData(stepY * 100)` puisse réellement demander jusqu'à `8000`.
+- Objectif: donner plus de vitesse verticale au lift pendant l'auto-centrage d'actuateur, sans enlever complètement la limite de sécurité firmware.
+- Rollback si pertes de pas, vibration ou dépassement vertical: remettre `maxSpeed = 6000` dans le firmware lift vertical et `firmwareEffectiveMaxStepY = 60` dans `Alignment.cs`.
+
+## REV-0062-osc-actuator-autocenter-timeout
+
+- Les commandes OSC actuateur depuis l'iPad (`actuator_osc_5_btn`, `25`, `45`, `up`, `down`) lancent maintenant le même suivi `StartManualActuatorAutoCenterTracking(...)` que les boutons locaux de l'application.
+- Les commandes OSC actuateur de mouvement ne demandent plus l'annulation de l'auto-centrage avant l'envoi de la commande; seul `actuator_osc_stop_btn` conserve le comportement d'arrêt.
+- `WaitForActuator(...)` n'utilise plus un timeout fixe de `10000 ms`: le délai est calculé selon l'écart d'angle courant/cible avec `CalculateActuatorWaitTimeoutMs(...)`, entre `10000 ms` et `40000 ms`.
+- Objectif: éviter qu'une longue descente, par exemple `45° -> 5°`, arrête l'auto-centrage vers le milieu du déplacement avant que l'actuateur atteigne sa cible.
+- Rollback si l'attente devient trop longue: remettre `int timeoutMs = 10000;` dans `WaitForActuator(...)` et retirer les appels `StartManualActuatorAutoCenterTracking(...)` des cas OSC actuateur.
+
+## REV-0063-actuator-final-autofocus-delay
+
+- Après que `WaitForActuator(...)` considère la cible atteinte, Aérolithe attend maintenant `2000 ms` avant de lancer l'autofocus final.
+- Ce délai s'applique seulement à l'autofocus final après position atteinte, pas à l'autofocus de récupération déclenché quand le blob est perdu pendant le mouvement.
+- Objectif: laisser l'actuateur finir de se stabiliser mécaniquement quand il entre dans la tolérance de position avant de refaire le focus.
+- Rollback si le délai ralentit trop les séquences: retirer `await Task.Delay(2000, cancellationToken);` juste avant `TryAutofocusPendantActuateurAsync(...)` dans le bloc `Autofocus final à la position d'actuateur atteinte`.
+
+## REV-0064-actuator-final-delay-only-after-move
+
+- `WaitForActuator(...)` lit maintenant l'angle actuateur au début de l'attente avec `RequestActuatorAngleAsync(...)`.
+- Si l'actuateur est déjà dans la tolérance de la cible au début, le délai de `2000 ms` avant l'autofocus final est ignoré.
+- Si l'actuateur n'était pas déjà dans la tolérance, le délai de `2000 ms` reste appliqué avant l'autofocus final.
+- `CalculateActuatorWaitTimeoutMs(...)` utilise maintenant l'angle initial lu au début de `WaitForActuator(...)` pour calculer le timeout selon la distance réelle à parcourir.
+- Objectif: ne pas ralentir le début d'une séquence quand l'actuateur est déjà à la bonne position, par exemple déjà à `5°`.
+- Rollback si la lecture initiale cause un délai indésirable: revenir à `CalculateActuatorWaitTimeoutMs(target)` basé sur `actuatorAngle` et appliquer le `Task.Delay(2000, ...)` sans condition.
+
+## REV-0065-form-title-info-menu
+
+- Le titre de la fenêtre principale n'affiche plus la révision; il affiche seulement le projet/titre courant.
+- Ajout dans le Designer de l'item `infoRevisionToolStripMenuItem` dans le menu `Fichier`, juste au-dessus de `Quitter Aérolithe`.
+- L'item affiche la révision et la date du REV: `REV-0065-form-title-info-menu - 2026-05-22`.
+- Un clic sur l'item `Info` ouvre une boîte d'information avec `UiRevision` et `UiRevisionDate`.
+- Rollback si nécessaire: remettre `Text = $"{_windowTitleBase} | {UiRevision}";` dans `SetMainWindowTitle(...)` et retirer `infoRevisionToolStripMenuItem` du Designer.
+
+## REV-0066-about-submenu
+
+- Dans le menu `Fichier`, l'item `Info` devient `À propos`.
+- La révision et la date ne sont plus affichées directement dans l'item parent et n'ouvrent plus de boîte modale.
+- `À propos` contient maintenant un sous-menu désactivé dont le texte est `REV-0066-about-submenu - 2026-05-22`.
+- Les items Designer sont `aProposToolStripMenuItem` et `revisionToolStripMenuItem`.
+- Rollback si nécessaire: remettre l'item direct `Info - REV-...` avec le handler de clic `infoRevisionToolStripMenuItem_Click(...)`.
+
+## REV-0067-actuator-autocenter-fresh-angle
+
+- `WaitForActuator(...)` utilise maintenant une lecture fraîche via `RequestActuatorAngleAsync(...)` dans chaque itération avant de décider que la cible est atteinte.
+- Objectif: éviter qu'une ancienne valeur de `actuatorAngle` fasse croire que l'actuateur est déjà à `45°` ou `5°`, ce qui arrêtait immédiatement l'auto-centrage pendant le mouvement.
+- Quand `btn_AutoCentrageActuator` est activé pendant un mouvement, l'application lance maintenant `StartManualActuatorAutoCenterTracking()` immédiatement.
+- Quand `btn_AutoCentrageActuator` est désactivé, l'application annule le suivi manuel et envoie `0` aux moteurs lift vertical, lift horizontal et rail linéaire.
+- Le sous-menu `À propos` affiche maintenant `REV-0067-actuator-autocenter-fresh-angle - 2026-05-22`.
+- Rollback si nécessaire: remettre `await SendActuatorAngleRequestAsync();` puis la vérification sur `actuatorAngle` dans `WaitForActuator(...)`, et retirer le démarrage/arrêt de suivi dans `btn_AutoCentrageActuator_Click(...)`.
+
+## REV-0068-total-sequence-prompt-dark
+
+- La boîte de pause `Routine totale en pause` utilise maintenant un fond `Color.FromArgb(40, 40, 40)`.
+- La boîte est centrée à l'écran avec `FormStartPosition.CenterScreen`.
+- La bordure système est remplacée par une bordure blanche de 1 px via `FormBorderStyle.None`, `BackColor = Color.White` et `Padding = new Padding(1)`.
+- Le texte est blanc et les boutons `Continuer` / `Annuler` sont harmonisés avec le style sombre de l'application.
+- Le sous-menu `À propos` affiche maintenant `REV-0068-total-sequence-prompt-dark - 2026-05-22`.
+- Rollback si nécessaire: revenir à `FormBorderStyle.FixedDialog`, `StartPosition.CenterParent`, retirer le panneau sombre et rétablir les styles par défaut des labels/boutons.
+
+## REV-0069-email-photo-series-stats
+
+- Le rapport courriel inclut maintenant une section `Photos par serie`, indépendante des statistiques de focus stack.
+- Chaque série y indique les photos de rotation complétées: photos réussies, échecs, ou `serie ignoree` si le nombre de photos de la série est `0`.
+- `SequencePhotoSeriesStats` a été ajouté au rapport pour conserver `Serie`, `Angle`, `Planned`, `Succeeded`, `Failed` et `Ignored`.
+- `PrisePhotoSequenceAsync(...)` marque une photo de série comme réussie après la capture/focus stack lancé avec succès pour une position de table tournante.
+- En cas d'erreur pendant une série, le premier échec de la série est ajouté au rapport.
+- Le sous-menu `À propos` affiche maintenant `REV-0069-email-photo-series-stats - 2026-05-22`.
+- Rollback si nécessaire: retirer `SequencePhotoSeriesStats`, les appels `RegisterSequencePhotoSeries(...)`, `MarkSequencePhotoSucceeded(...)`, `MarkSequencePhotoFailed(...)`, et la section `Photos par serie` dans `SequenceNotificationReport.BuildBody()`.

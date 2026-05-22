@@ -313,9 +313,9 @@ namespace Aerolithe
             if (!offsets.hasForeground) return;
 
             const double tolerance = 20.0;
-            const double kP = 0.3;
+            const double kPX = 0.35;
             const int minStep = 2;
-            const int maxStep = 40;
+            const int maxStepX = 40;
 
             var offsetX = offsets.offsetX;
             var offsetY = offsets.offsetY;
@@ -328,11 +328,11 @@ namespace Aerolithe
                 return;
             }
 
-            int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * kP, minStep, maxStep);
+            int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * kPX, minStep, maxStepX);
             int stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
             udpSendLiftHorizontalData(stepX);
 
-            int dynamicStepY = (int)Math.Clamp(Math.Abs(offsetY) * kP, minStep, maxStep);
+            int dynamicStepY = CalculateActuatorVerticalStep(Math.Abs(offsetY), minStep);
             int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
             udpSendLiftVerticalMotorData(stepY * 100);
 
@@ -341,10 +341,25 @@ namespace Aerolithe
                 await RoutineLineareReculerHorsCadre(cancellationToken);
             }
 
-            await Task.Delay(450, cancellationToken);
-            udpSendLiftVerticalMotorData(0);
+            await Task.Delay(150, cancellationToken);
             udpSendLiftHorizontalData(0);
             udpSendCameraLinearMotorData(0);
+        }
+
+        private static int CalculateActuatorVerticalStep(double absOffsetY, int minStep)
+        {
+            const double baseGain = 0.65;
+            const double catchUpThreshold = 55.0;
+            const double catchUpGain = 1.15;
+            const int firmwareEffectiveMaxStepY = 80;
+
+            double step = absOffsetY * baseGain;
+            if (absOffsetY > catchUpThreshold)
+            {
+                step += (absOffsetY - catchUpThreshold) * catchUpGain;
+            }
+
+            return (int)Math.Clamp(step, minStep, firmwareEffectiveMaxStepY);
         }
 
         private bool AutoCentrageActuateurDansTolerance(double tolerance = 20.0)
@@ -396,7 +411,7 @@ namespace Aerolithe
                         await Task.Delay(150, token);
                     }
 
-                    await Task.Delay(100, token);
+                    await Task.Delay(50, token);
                 }
             }
             catch (OperationCanceledException)

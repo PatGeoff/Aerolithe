@@ -1221,6 +1221,8 @@ namespace Aerolithe
 
         public bool CalibrationAutoCentrage { get; set; } = true;
 
+        public int ActuatorSpeed { get; set; } = 500;
+
         public int ThumbnailWidth { get; set; } = 210;
 
         public int ThumbnailHeight { get; set; } = 150;

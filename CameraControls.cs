@@ -382,17 +382,32 @@ namespace Aerolithe
                                     string savedMaskPath = projet.GetMaskFullImagePath();
                                     try
                                     {
-                                        if (File.Exists(savedMaskPath))
-                                        {
-                                            registeredMask = LoadSavedMaskAsGrayMat(savedMaskPath);
-                                            AppendTextToConsoleNL("Masque sauvegardé appliqué à l'image : " + savedMaskPath);
-                                        }
+                                        registeredMask = await BuildRegisteredMaskFromCapturedJpegAsync(image.Buffer, maskThreshold);
+                                        AppendTextToConsoleNL("Masque reconstruit depuis l'image capturée pour éviter un décalage.");
                                     }
                                     catch (Exception ex)
                                     {
-                                        AppendTextToConsoleNL("Masque sauvegardé non disponible, utilisation du masque live: " + ex.Message);
+                                        AppendTextToConsoleNL("Masque capturé non disponible, fallback vers masque sauvegardé/live: " + ex.Message);
                                         registeredMask?.Dispose();
                                         registeredMask = null;
+                                    }
+
+                                    if (registeredMask == null)
+                                    {
+                                        try
+                                        {
+                                            if (File.Exists(savedMaskPath))
+                                            {
+                                                registeredMask = LoadSavedMaskAsGrayMat(savedMaskPath);
+                                                AppendTextToConsoleNL("Masque sauvegardé appliqué à l'image : " + savedMaskPath);
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            AppendTextToConsoleNL("Masque sauvegardé non disponible, utilisation du masque live: " + ex.Message);
+                                            registeredMask?.Dispose();
+                                            registeredMask = null;
+                                        }
                                     }
 
                                     if (registeredMask == null)

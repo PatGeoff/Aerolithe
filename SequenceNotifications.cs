@@ -98,6 +98,22 @@ namespace Aerolithe
                 }
             }
 
+            lock (_sequencePhotoStatsLock)
+            {
+                foreach (var serie in _sequencePhotoStats.OrderBy(stat => stat.Serie))
+                {
+                    report.PhotoSeriesStats.Add(new SequencePhotoSeriesStats
+                    {
+                        Serie = serie.Serie,
+                        Angle = serie.Angle,
+                        Planned = serie.Planned,
+                        Succeeded = serie.Succeeded,
+                        Failed = serie.Failed,
+                        Ignored = serie.Ignored
+                    });
+                }
+            }
+
             return report;
         }
 
@@ -135,6 +151,62 @@ namespace Aerolithe
             {
                 clearReports();
             }
+        }
+
+        private void ResetSequencePhotoNotificationTracking()
+        {
+            lock (_sequencePhotoStatsLock)
+            {
+                _sequencePhotoStats.Clear();
+            }
+        }
+
+        private void RegisterSequencePhotoSeries(int serieIndex, int angle, int planned, bool ignored)
+        {
+            lock (_sequencePhotoStatsLock)
+            {
+                var stats = GetOrCreateSequencePhotoSeriesStats(serieIndex, angle);
+                stats.Planned = planned;
+                stats.Ignored = ignored;
+            }
+        }
+
+        private void MarkSequencePhotoSucceeded(int serieIndex, int angle)
+        {
+            lock (_sequencePhotoStatsLock)
+            {
+                var stats = GetOrCreateSequencePhotoSeriesStats(serieIndex, angle);
+                stats.Ignored = false;
+                stats.Succeeded++;
+            }
+        }
+
+        private void MarkSequencePhotoFailed(int serieIndex, int angle)
+        {
+            lock (_sequencePhotoStatsLock)
+            {
+                var stats = GetOrCreateSequencePhotoSeriesStats(serieIndex, angle);
+                stats.Ignored = false;
+                stats.Failed++;
+            }
+        }
+
+        private SequencePhotoSeriesStats GetOrCreateSequencePhotoSeriesStats(int serieIndex, int angle)
+        {
+            int serieNumber = serieIndex + 1;
+            var stats = _sequencePhotoStats.FirstOrDefault(item => item.Serie == serieNumber);
+            if (stats != null)
+            {
+                return stats;
+            }
+
+            stats = new SequencePhotoSeriesStats
+            {
+                Serie = serieNumber,
+                Angle = angle
+            };
+            _sequencePhotoStats.Add(stats);
+            return stats;
         }
     }
 }

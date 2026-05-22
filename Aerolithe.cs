@@ -31,7 +31,8 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public const string UiRevision = "REV-0048-autocenter-fresh-offsets";
+        public const string UiRevision = "REV-0069-email-photo-series-stats";
+        public const string UiRevisionDate = "2026-05-22";
         private string _windowTitleBase = "Aucun projet";
 
         // THIS IP ADDRESS 192.168.2.4 //
@@ -76,6 +77,9 @@ namespace Aerolithe
         private System.Windows.Forms.Button? _volumePauseResumeButton;
         private System.Windows.Forms.Button? _totalPauseResumeButton;
         private bool _isInitializingMaskShrinkSettings;
+        private bool _isInitializingActuatorSpeed;
+        private readonly object _sequencePhotoStatsLock = new();
+        private readonly List<SequencePhotoSeriesStats> _sequencePhotoStats = new();
 
 
         public bool stackedImageInBuffer = false;
@@ -145,6 +149,7 @@ namespace Aerolithe
             Program.StartupLog("Aerolithe constructor: InitializeComponent starting.");
             InitializeComponent();
             Program.StartupLog("Aerolithe constructor: InitializeComponent completed.");
+            InitializeActuatorSpeedEvents();
             InitializeLiftXYPad();
             InitializeMessagingPanelLayout();
             SetMainWindowTitle();
@@ -344,6 +349,7 @@ namespace Aerolithe
             UpdateMaxImagesFSButton();
             UpdateDriveStepSettingsButton();
             ApplyFocusStackDenoiseToUi();
+            ApplyActuatorSpeedToUi();
         }
 
         private static bool IsRunningInDesigner()
@@ -691,13 +697,21 @@ namespace Aerolithe
                 promptForm = new Form
                 {
                     Text = "Routine totale en pause",
-                    StartPosition = FormStartPosition.CenterParent,
-                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    StartPosition = FormStartPosition.CenterScreen,
+                    FormBorderStyle = FormBorderStyle.None,
                     MinimizeBox = false,
                     MaximizeBox = false,
                     ShowInTaskbar = false,
                     TopMost = true,
+                    BackColor = Color.White,
+                    Padding = new Padding(1),
                     ClientSize = new Size(460, 150)
+                };
+
+                var contentPanel = new Panel
+                {
+                    Dock = DockStyle.Fill,
+                    BackColor = Color.FromArgb(40, 40, 40)
                 };
 
                 var label = new Label
@@ -706,6 +720,8 @@ namespace Aerolithe
                     Dock = DockStyle.Top,
                     Height = 82,
                     Padding = new Padding(14, 14, 14, 6),
+                    BackColor = Color.FromArgb(40, 40, 40),
+                    ForeColor = Color.White,
                     TextAlign = System.Drawing.ContentAlignment.MiddleLeft
                 };
 
@@ -715,22 +731,31 @@ namespace Aerolithe
                     Height = 52,
                     FlowDirection = FlowDirection.RightToLeft,
                     Padding = new Padding(10),
-                    WrapContents = false
+                    WrapContents = false,
+                    BackColor = Color.FromArgb(40, 40, 40)
                 };
 
                 var continueButton = new System.Windows.Forms.Button
                 {
                     Text = "Continuer",
                     Width = 120,
-                    Height = 30
+                    Height = 30,
+                    BackColor = Color.FromArgb(55, 55, 55),
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat
                 };
+                continueButton.FlatAppearance.BorderColor = Color.White;
 
                 var cancelButton = new System.Windows.Forms.Button
                 {
                     Text = "Annuler",
                     Width = 120,
-                    Height = 30
+                    Height = 30,
+                    BackColor = Color.FromArgb(55, 55, 55),
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat
                 };
+                cancelButton.FlatAppearance.BorderColor = Color.White;
 
                 continueButton.Click += (_, __) =>
                 {
@@ -752,8 +777,9 @@ namespace Aerolithe
 
                 buttonsPanel.Controls.Add(continueButton);
                 buttonsPanel.Controls.Add(cancelButton);
-                promptForm.Controls.Add(label);
-                promptForm.Controls.Add(buttonsPanel);
+                contentPanel.Controls.Add(label);
+                contentPanel.Controls.Add(buttonsPanel);
+                promptForm.Controls.Add(contentPanel);
                 promptForm.AcceptButton = continueButton;
                 promptForm.CancelButton = cancelButton;
 
@@ -938,6 +964,72 @@ namespace Aerolithe
             return Math.Max(trackBar_maskShrink1.Minimum, Math.Min(trackBar_maskShrink1.Maximum, value));
         }
 
+        private int ClampActuatorSpeed(int value)
+        {
+            return Math.Clamp(value, 150, 1023);
+        }
+
+        private void InitializeActuatorSpeedEvents()
+        {
+            textBox_VitesseActuateur.TextChanged -= textBox_VitesseActuateur_TextChanged;
+            textBox_VitesseActuateur.KeyDown -= textBox_VitesseActuateur_KeyDown;
+            textBox_VitesseActuateur.Leave -= textBox_VitesseActuateur_Leave;
+
+            textBox_VitesseActuateur.TextChanged += textBox_VitesseActuateur_TextChanged;
+            textBox_VitesseActuateur.KeyDown += textBox_VitesseActuateur_KeyDown;
+            textBox_VitesseActuateur.Leave += textBox_VitesseActuateur_Leave;
+        }
+
+        private void ApplyActuatorSpeedToUi()
+        {
+            _isInitializingActuatorSpeed = true;
+            int speed = ClampActuatorSpeed(appSettings.ActuatorSpeed);
+            appSettings.ActuatorSpeed = speed;
+            textBox_VitesseActuateur.Text = speed.ToString(CultureInfo.InvariantCulture);
+            textBox_VitesseActuateur.ForeColor = Color.White;
+            _isInitializingActuatorSpeed = false;
+        }
+
+        private bool TryApplyActuatorSpeedFromUi(bool showMessage)
+        {
+            if (!int.TryParse(textBox_VitesseActuateur.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int speed))
+            {
+                if (showMessage)
+                {
+                    MessageBox.Show("SVP entrer une vitesse d'actuateur valide entre 150 et 1023.");
+                }
+
+                ApplyActuatorSpeedToUi();
+                return false;
+            }
+
+            speed = ClampActuatorSpeed(speed);
+            appSettings.ActuatorSpeed = speed;
+            textBox_VitesseActuateur.Text = speed.ToString(CultureInfo.InvariantCulture);
+            textBox_VitesseActuateur.ForeColor = Color.White;
+            appSettings.Save();
+            return true;
+        }
+
+        private void textBox_VitesseActuateur_TextChanged(object? sender, EventArgs e)
+        {
+            if (_isInitializingActuatorSpeed) return;
+            textBox_VitesseActuateur.ForeColor = Color.Gray;
+        }
+
+        private void textBox_VitesseActuateur_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter) return;
+
+            TryApplyActuatorSpeedFromUi(showMessage: true);
+            e.SuppressKeyPress = true;
+        }
+
+        private void textBox_VitesseActuateur_Leave(object? sender, EventArgs e)
+        {
+            TryApplyActuatorSpeedFromUi(showMessage: false);
+        }
+
         private int GetMaskThresholdSetting(int algorithmIndex)
         {
             return algorithmIndex switch
@@ -1011,15 +1103,35 @@ namespace Aerolithe
 
             trackBar_maskShrink1.Scroll -= trackBar_maskShrink_Scroll;
             trackBar_maskShrink2.Scroll -= trackBar_maskShrink_Scroll;
+            trackBar_maskShrink1.ValueChanged -= trackBar_maskShrink_Scroll;
+            trackBar_maskShrink2.ValueChanged -= trackBar_maskShrink_Scroll;
             trackBar_maskShrink1.Scroll += trackBar_maskShrink_Scroll;
             trackBar_maskShrink2.Scroll += trackBar_maskShrink_Scroll;
+            trackBar_maskShrink1.ValueChanged += trackBar_maskShrink_Scroll;
+            trackBar_maskShrink2.ValueChanged += trackBar_maskShrink_Scroll;
 
             _isInitializingMaskShrinkSettings = false;
         }
 
         private int GetCurrentMaskShrink()
         {
-            return ClampMaskShrink(GetMaskShrinkSetting(appSettings.MaskAlgorithmIndex));
+            try
+            {
+                System.Windows.Forms.TrackBar trackBar = appSettings.MaskAlgorithmIndex == 1
+                    ? trackBar_maskShrink2
+                    : trackBar_maskShrink1;
+
+                if (trackBar.InvokeRequired)
+                {
+                    return (int)trackBar.Invoke(new Func<int>(() => ClampMaskShrink(trackBar.Value)));
+                }
+
+                return ClampMaskShrink(trackBar.Value);
+            }
+            catch
+            {
+                return ClampMaskShrink(GetMaskShrinkSetting(appSettings.MaskAlgorithmIndex));
+            }
         }
 
 
@@ -1494,7 +1606,9 @@ namespace Aerolithe
         {
             AppendTextToConsoleNL("WaitForActuator");
             double delta = 3;
-            int timeoutMs = 10000;
+            double initialActuatorAngle = await RequestActuatorAngleAsync(TimeSpan.FromMilliseconds(800), cancellationToken) ?? actuatorAngle;
+            bool actuatorAlreadyWithinTolerance = Math.Abs(initialActuatorAngle - target) <= delta;
+            int timeoutMs = CalculateActuatorWaitTimeoutMs(target, initialActuatorAngle);
             DateTime startTime = DateTime.Now;
             CancellationTokenSource? actuatorAutoCenterCts = null;
             Task? actuatorAutoCenterTask = null;
@@ -1516,7 +1630,7 @@ namespace Aerolithe
                     await WaitIfSequencePausedAsync(cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    await SendActuatorAngleRequestAsync();
+                    double currentActuatorAngle = await RequestActuatorAngleAsync(TimeSpan.FromMilliseconds(800), cancellationToken) ?? actuatorAngle;
 
                     if (ShouldAutoCenterDuringActuatorMove())
                     {
@@ -1542,14 +1656,14 @@ namespace Aerolithe
                     }
 
                     // Vérifie si on est dans la plage cible
-                    if (Math.Abs(actuatorAngle - target) <= delta)
+                    if (Math.Abs(currentActuatorAngle - target) <= delta)
                     {
-                        AppendTextToConsoleNL($"Actuateur dans la plage : {actuatorAngle} (cible {target})");
+                        AppendTextToConsoleNL($"Actuateur dans la plage : {currentActuatorAngle} (cible {target})");
                         targetReached = true;
                         break;
                     }
 
-                    await Task.Delay(500, cancellationToken); // Aligné avec la fréquence d'update
+                    await Task.Delay(500, cancellationToken);
                 }
             }
             finally
@@ -1575,6 +1689,10 @@ namespace Aerolithe
                     if (blobSeenDuringMove)
                     {
                         AppendTextToConsoleNL("Autofocus final à la position d'actuateur atteinte");
+                        if (!actuatorAlreadyWithinTolerance)
+                        {
+                            await Task.Delay(2000, cancellationToken);
+                        }
                         await TryAutofocusPendantActuateurAsync(cancellationToken);
                     }
 
@@ -1619,6 +1737,12 @@ namespace Aerolithe
         private bool ShouldAutoCenterDuringActuatorMove()
         {
             return projet.AutoCentrageActuator || _testAutoCenterActuatorEnabled;
+        }
+
+        private int CalculateActuatorWaitTimeoutMs(double target, double currentAngle)
+        {
+            double angleDistance = Math.Abs(currentAngle - target);
+            return Math.Clamp((int)Math.Round(5000 + angleDistance * 750), 10000, 40000);
         }
 
         private async Task SendActuatorTargetAsync(double target)
@@ -2107,6 +2231,7 @@ namespace Aerolithe
             bool focusStackWasEnabled = projet.FocusStackEnabled;
             _lastSequenceErrorMessage = string.Empty;
             ResetFocusStackNotificationTracking();
+            ResetSequencePhotoNotificationTracking();
 
             Task.Run(async () =>
             {
@@ -2255,6 +2380,7 @@ namespace Aerolithe
             DateTime startedAt = DateTime.Now;
             bool focusStackWasEnabled = projet.FocusStackEnabled;
             ResetFocusStackNotificationTracking();
+            ResetSequencePhotoNotificationTracking();
 
             Task.Run(async () =>
             {
@@ -2266,6 +2392,7 @@ namespace Aerolithe
                     if (GetPhotoCountForCurrentSerie() == 0)
                     {
                         status = "Ignoré";
+                        RegisterSequencePhotoSeries(projet.Serie, 5, 0, ignored: true);
                         AppendTextToConsoleNL("Série 5° ignorée: nombre de photos à 0. Actuateur et auto-centrage non exécutés.");
                         UpdateSequenceStatusLabels(5, 0, 0);
                         return;
@@ -2338,6 +2465,7 @@ namespace Aerolithe
             DateTime startedAt = DateTime.Now;
             bool focusStackWasEnabled = projet.FocusStackEnabled;
             ResetFocusStackNotificationTracking();
+            ResetSequencePhotoNotificationTracking();
 
             Task.Run(async () =>
             {
@@ -2349,6 +2477,7 @@ namespace Aerolithe
                     if (GetPhotoCountForCurrentSerie() == 0)
                     {
                         status = "Ignoré";
+                        RegisterSequencePhotoSeries(projet.Serie, 25, 0, ignored: true);
                         AppendTextToConsoleNL("Série 25° ignorée: nombre de photos à 0. Actuateur et auto-centrage non exécutés.");
                         UpdateSequenceStatusLabels(25, 0, 0);
                         return;
@@ -2448,6 +2577,7 @@ namespace Aerolithe
             DateTime startedAt = DateTime.Now;
             bool focusStackWasEnabled = projet.FocusStackEnabled;
             ResetFocusStackNotificationTracking();
+            ResetSequencePhotoNotificationTracking();
 
             Task.Run(async () =>
             {
@@ -2459,6 +2589,7 @@ namespace Aerolithe
                     if (GetPhotoCountForCurrentSerie() == 0)
                     {
                         status = "Ignoré";
+                        RegisterSequencePhotoSeries(projet.Serie, 45, 0, ignored: true);
                         AppendTextToConsoleNL("Série 45° ignorée: nombre de photos à 0. Actuateur et auto-centrage non exécutés.");
                         UpdateSequenceStatusLabels(45, 0, 0);
                         return;
@@ -3112,25 +3243,7 @@ namespace Aerolithe
             MakeFocusStack();
         }
 
-        private void btn_goToFSFolder_Click(object sender, EventArgs e)
-        {
-            if (!string.IsNullOrEmpty(focusStackOutputPath))
-            {
-                string folderPath = Path.GetDirectoryName(focusStackOutputPath);
-                if (Directory.Exists(folderPath))
-                {
-                    Process.Start("explorer.exe", folderPath);
-                }
-                else
-                {
-                    MessageBox.Show("Le dossier de destination n'existe pas.");
-                }
-            }
-            else
-            {
-                MessageBox.Show("Aucun chemin de sortie défini.");
-            }
-        }
+
 
         private void picBox_FocusStackedImage_Click(object sender, EventArgs e)
         {
@@ -3170,7 +3283,7 @@ namespace Aerolithe
             }
         }
 
-       
+
 
         private void btn_reculeTTdeg_Click(object sender, EventArgs e)
         {
@@ -4115,7 +4228,7 @@ namespace Aerolithe
             appSettings.Save();
         }
 
-       
+
 
         private async void btn_LiveViewEnable_Click(object sender, EventArgs e)
         {
@@ -4152,7 +4265,7 @@ namespace Aerolithe
                 _windowTitleBase = baseTitle;
             }
 
-            Text = $"{_windowTitleBase} | {UiRevision}";
+            Text = _windowTitleBase;
         }
 
         private void txtBox_mesurements5deg_TextChanged(object sender, EventArgs e)
@@ -4241,6 +4354,21 @@ namespace Aerolithe
             projet.AutoCentrageActuator = !projet.AutoCentrageActuator;
             btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
             SavePrefsSettings();
+
+            if (projet.AutoCentrageActuator)
+            {
+                _stopRequested = false;
+                cancelAutoCentrage = false;
+                StartManualActuatorAutoCenterTracking();
+            }
+            else
+            {
+                _manualActuatorAutoCenterCts?.Cancel();
+                cancelAutoCentrage = true;
+                udpSendLiftVerticalMotorData(0);
+                udpSendLiftHorizontalData(0);
+                udpSendCameraLinearMotorData(0);
+            }
         }
 
         private void btn_CalibrationAutoCentrage_Click(object sender, EventArgs e)
@@ -4403,6 +4531,35 @@ namespace Aerolithe
             //tabControl4.SelectTab("TabPage18");
             aerolitheTabControl2.SelectTab("tabPage20");
             aerolitheTabControl3.SelectTab("tabPage28");
+        }
+        public void GoToFSFolder()
+        {
+            if (!string.IsNullOrEmpty(focusStackOutputPath))
+            {
+                string folderPath = Path.GetDirectoryName(focusStackOutputPath);
+                if (Directory.Exists(folderPath))
+                {
+                    Process.Start("explorer.exe", folderPath);
+                }
+                else
+                {
+                    MessageBox.Show("Le dossier de destination n'existe pas.");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Aucun chemin de sortie défini.");
+            }
+        }
+
+        private void btn_goToFSFolder_Click(object sender, EventArgs e)
+        {
+            GoToFSFolder();
+        }
+
+        private void btn_GoToFSFolder2_Click(object sender, EventArgs e)
+        {
+            GoToFSFolder();
         }
     }
 }
