@@ -758,7 +758,7 @@ namespace Aerolithe
             int checkInterval = 250,
             CancellationToken cancellationToken = default)
         {
-            AppendTextToConsoleNL("WaitForTurntablePositionAsync");
+            AppendNetworkConsoleMessage("WaitForTurntablePositionAsync");
 
             var startTime = DateTime.UtcNow;
 
@@ -772,21 +772,21 @@ namespace Aerolithe
                 // Vérifie la position actuelle
                 if (Math.Abs(turntablePosition - targetPos) <= tolerance)
                 {
-                    AppendTextToConsoleNL($"Position atteinte : {turntablePosition}/4096 (cible : {targetPos}/4096)");
+                    AppendNetworkConsoleMessage($"Position atteinte : {turntablePosition}/4096 (cible : {targetPos}/4096)");
                     return true;
                 }
 
                 int? reportedPosition = await RequestTurntablePositionAsync(TimeSpan.FromMilliseconds(500));
                 if (reportedPosition.HasValue && Math.Abs(reportedPosition.Value - targetPos) <= tolerance)
                 {
-                    AppendTextToConsoleNL($"Position atteinte : {reportedPosition.Value}/4096 (cible : {targetPos}/4096)");
+                    AppendNetworkConsoleMessage($"Position atteinte : {reportedPosition.Value}/4096 (cible : {targetPos}/4096)");
                     return true;
                 }
 
                 await Task.Delay(checkInterval, cancellationToken);
             }
 
-            AppendTextToConsoleNL($"Timeout : position actuelle {turntablePosition}/4096, cible {targetPos}/4096");
+            AppendNetworkConsoleMessage($"Timeout : position actuelle {turntablePosition}/4096, cible {targetPos}/4096");
             return false;
         }
 

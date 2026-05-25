@@ -983,6 +983,8 @@ namespace Aerolithe
 
         public int MaskShrink_2 { get; set; } = 1;
 
+        public int MaskShrink_3 { get; set; } = 1;
+
         // --- Méthodes utilitaires ---
         public string GetImageFullPath()
         {

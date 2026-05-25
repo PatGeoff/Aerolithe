@@ -522,9 +522,9 @@ namespace Aerolithe
 
             byte[] jpegSnapshot = imageView.JpegBuffer.ToArray();
             IEnumerable<int> thresholdCandidates = GetAutomaticFocusMaskThresholdCandidates(originalThresh);
-            bool[] invertCandidates = appSettings.MaskAlgorithmIndex == 0
-                ? new[] { false }
-                : new[] { false, true };
+            bool[] invertCandidates = appSettings.MaskAlgorithmIndex == 1
+                ? new[] { false, true }
+                : new[] { false };
 
             foreach (int t in thresholdCandidates)
             {

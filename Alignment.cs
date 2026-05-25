@@ -432,18 +432,33 @@ namespace Aerolithe
             try
             {
 
-                if (isCalibrating) return;
-                isCalibrating = true;
-                await nikonDoFocus();
-                await RoutineAutoCentrage();
-                await RoutineCalibrationLineareNearest();
-                await nikonDoFocus();
-                if (offsets.hasBlackOnBorder)
-                {
-                    await RoutineLineareReculerHorsCadre();
-                    await nikonDoFocus();
-                }
-                await RoutineAutoCentrage();
+	                if (isCalibrating) return;
+	                isCalibrating = true;
+	                await nikonDoFocus();
+	                if (ShouldRunAutoCentrageDuringCalibration())
+	                {
+	                    await RoutineAutoCentrage();
+	                }
+	                else
+	                {
+	                    AppendTextToConsoleNL("Auto-centrage de calibration ignoré: désactivé dans Caméra/Automation.");
+	                }
+
+	                await RoutineCalibrationLineareNearest();
+	                await nikonDoFocus();
+	                if (offsets.hasBlackOnBorder)
+	                {
+	                    await RoutineLineareReculerHorsCadre();
+	                    await nikonDoFocus();
+	                }
+	                if (ShouldRunAutoCentrageDuringCalibration())
+	                {
+	                    await RoutineAutoCentrage();
+	                }
+	                else
+	                {
+	                    AppendTextToConsoleNL("Auto-centrage final de calibration ignoré: désactivé dans Caméra/Automation.");
+	                }
             }
             catch (Exception ex)
             {
@@ -454,9 +469,14 @@ namespace Aerolithe
                 isCalibrating = false;
             }
 
-        }
+	        }
 
-        public class OffsetsData
+	        private bool ShouldRunAutoCentrageDuringCalibration()
+	        {
+	            return !appSettings.CalibrationAutoCentrage;
+	        }
+	
+	        public class OffsetsData
         {
             public double offsetX;
             public double offsetY;

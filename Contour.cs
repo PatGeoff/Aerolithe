@@ -67,6 +67,7 @@ namespace Aerolithe
         {
             return appSettings.MaskAlgorithmIndex switch
             {
+                2 => await AdaptiveBackgroundMaskFromBytesMat(jpegBuffer, threshold, invert),
                 1 => await EdgeAssistedBrightnessMaskFromBytesMat(jpegBuffer, threshold, invert),
                 _ => await CorrectedBrightnessMaskFromBytesMat(jpegBuffer, threshold, invert),
             };
@@ -262,6 +263,88 @@ namespace Aerolithe
                 CvInvoke.MorphologyEx(combined, combined, MorphOp.Open, kOpen, new Point(-1, -1), 1, BorderType.Reflect, default);
 
                 return SolidMaskFromBestComponent(combined, w, h);
+            });
+        }
+
+        private async Task<Mat> AdaptiveBackgroundMaskFromBytesMat(
+            byte[] jpegBuffer,
+            int threshold = 100,
+            bool invert = false)
+        {
+            if (jpegBuffer == null || jpegBuffer.Length == 0)
+                throw new ArgumentException("jpegBuffer est nul ou vide.", nameof(jpegBuffer));
+
+            return await Task.Run(() =>
+            {
+                using var color = new Mat();
+                CvInvoke.Imdecode(jpegBuffer, ImreadModes.Color, color);
+                if (color.IsEmpty)
+                    throw new InvalidOperationException("Échec du décodage JPEG.");
+
+                int h = color.Rows;
+                int w = color.Cols;
+
+                using var lab = new Mat();
+                CvInvoke.CvtColor(color, lab, ColorConversion.Bgr2Lab);
+
+                int border = Math.Max(8, (int)Math.Round(Math.Min(w, h) * 0.04));
+                border = Math.Min(border, Math.Max(1, Math.Min(w, h) / 4));
+
+                using var borderMask = Mat.Zeros(h, w, DepthType.Cv8U, 1);
+                CvInvoke.Rectangle(borderMask, new Rectangle(0, 0, w, border), new MCvScalar(255), -1);
+                CvInvoke.Rectangle(borderMask, new Rectangle(0, h - border, w, border), new MCvScalar(255), -1);
+                CvInvoke.Rectangle(borderMask, new Rectangle(0, 0, border, h), new MCvScalar(255), -1);
+                CvInvoke.Rectangle(borderMask, new Rectangle(w - border, 0, border, h), new MCvScalar(255), -1);
+
+                MCvScalar background = CvInvoke.Mean(lab, borderMask);
+
+                using var channels = new VectorOfMat();
+                CvInvoke.Split(lab, channels);
+                using var lDiff = new Mat();
+                using var aDiff = new Mat();
+                using var bDiff = new Mat();
+                CvInvoke.AbsDiff(channels[0], new ScalarArray(background.V0), lDiff);
+                CvInvoke.AbsDiff(channels[1], new ScalarArray(background.V1), aDiff);
+                CvInvoke.AbsDiff(channels[2], new ScalarArray(background.V2), bDiff);
+
+                using var colorDistance = new Mat();
+                CvInvoke.AddWeighted(lDiff, 1.0, aDiff, 1.2, 0.0, colorDistance);
+                CvInvoke.AddWeighted(colorDistance, 1.0, bDiff, 1.2, 0.0, colorDistance);
+
+                using var candidate = new Mat();
+                if (threshold < 0)
+                {
+                    CvInvoke.Threshold(colorDistance, candidate, 0, 255, ThresholdType.Binary | ThresholdType.Otsu);
+                }
+                else
+                {
+                    threshold = Math.Max(0, Math.Min(255, threshold));
+                    double distanceThreshold = Math.Max(8.0, Math.Min(95.0, 10.0 + threshold * 0.45));
+                    CvInvoke.Threshold(colorDistance, candidate, distanceThreshold, 255, ThresholdType.Binary);
+                }
+
+                CvInvoke.Rectangle(candidate, new Rectangle(0, 0, w, border), new MCvScalar(0), -1);
+                CvInvoke.Rectangle(candidate, new Rectangle(0, h - border, w, border), new MCvScalar(0), -1);
+                CvInvoke.Rectangle(candidate, new Rectangle(0, 0, border, h), new MCvScalar(0), -1);
+                CvInvoke.Rectangle(candidate, new Rectangle(w - border, 0, border, h), new MCvScalar(0), -1);
+
+                int openKernelSize = Math.Max(3, (int)Math.Round(Math.Max(w, h) * 0.004));
+                openKernelSize = Math.Min(openKernelSize, 13);
+                if ((openKernelSize & 1) == 0) openKernelSize++;
+
+                int closeKernelSize = Math.Max(9, (int)Math.Round(Math.Max(w, h) * 0.014));
+                closeKernelSize = Math.Min(closeKernelSize, 39);
+                if ((closeKernelSize & 1) == 0) closeKernelSize++;
+
+                using var kOpen = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(openKernelSize, openKernelSize), new Point(-1, -1));
+                using var kClose = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(closeKernelSize, closeKernelSize), new Point(-1, -1));
+                CvInvoke.MorphologyEx(candidate, candidate, MorphOp.Open, kOpen, new Point(-1, -1), 1, BorderType.Reflect, default);
+                CvInvoke.MorphologyEx(candidate, candidate, MorphOp.Close, kClose, new Point(-1, -1), 2, BorderType.Reflect, default);
+
+                using var solid = SolidMaskFromBestComponent(candidate, w, h);
+                if (invert) CvInvoke.BitwiseNot(solid, solid);
+
+                return solid.Clone();
             });
         }
 

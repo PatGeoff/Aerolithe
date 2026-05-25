@@ -947,9 +947,11 @@ namespace Aerolithe
 
             txtBox_DefaultMaskThresh.Text = ClampMaskThreshold(appSettings.ThreshVal_1).ToString();
             txtBox_DefaultMaskThresh2.Text = ClampMaskThreshold(appSettings.ThreshVal_2).ToString();
+            txtBox_DefaultMaskThresh3.Text = ClampMaskThreshold(appSettings.ThreshVal_3).ToString();
 
             txtBox_DefaultMaskThresh.ForeColor = Color.White;
             txtBox_DefaultMaskThresh2.ForeColor = Color.White;
+            txtBox_DefaultMaskThresh3.ForeColor = Color.White;
 
             _isInitializingMaskThresholds = false;
         }
@@ -1034,6 +1036,7 @@ namespace Aerolithe
         {
             return algorithmIndex switch
             {
+                2 => appSettings.ThreshVal_3,
                 1 => appSettings.ThreshVal_2,
                 _ => appSettings.ThreshVal_1,
             };
@@ -1043,6 +1046,7 @@ namespace Aerolithe
         {
             return algorithmIndex switch
             {
+                2 => projet.MaskShrink_3,
                 1 => projet.MaskShrink_2,
                 _ => projet.MaskShrink_1,
             };
@@ -1054,6 +1058,11 @@ namespace Aerolithe
 
             switch (algorithmIndex)
             {
+                case 2:
+                    appSettings.ThreshVal_3 = value;
+                    txtBox_DefaultMaskThresh3.Text = value.ToString();
+                    txtBox_DefaultMaskThresh3.ForeColor = Color.White;
+                    break;
                 case 1:
                     appSettings.ThreshVal_2 = value;
                     txtBox_DefaultMaskThresh2.Text = value.ToString();
@@ -1074,6 +1083,11 @@ namespace Aerolithe
 
             switch (algorithmIndex)
             {
+                case 2:
+                    projet.MaskShrink_3 = value;
+                    trackBar_maskShrink3.Value = value;
+                    lbl_maskShrink3.Text = value.ToString();
+                    break;
                 case 1:
                     projet.MaskShrink_2 = value;
                     trackBar_maskShrink2.Value = value;
@@ -1100,15 +1114,20 @@ namespace Aerolithe
 
             SetMaskShrinkSetting(0, projet.MaskShrink_1);
             SetMaskShrinkSetting(1, projet.MaskShrink_2);
+            SetMaskShrinkSetting(2, projet.MaskShrink_3);
 
             trackBar_maskShrink1.Scroll -= trackBar_maskShrink_Scroll;
             trackBar_maskShrink2.Scroll -= trackBar_maskShrink_Scroll;
+            trackBar_maskShrink3.Scroll -= trackBar_maskShrink_Scroll;
             trackBar_maskShrink1.ValueChanged -= trackBar_maskShrink_Scroll;
             trackBar_maskShrink2.ValueChanged -= trackBar_maskShrink_Scroll;
+            trackBar_maskShrink3.ValueChanged -= trackBar_maskShrink_Scroll;
             trackBar_maskShrink1.Scroll += trackBar_maskShrink_Scroll;
             trackBar_maskShrink2.Scroll += trackBar_maskShrink_Scroll;
+            trackBar_maskShrink3.Scroll += trackBar_maskShrink_Scroll;
             trackBar_maskShrink1.ValueChanged += trackBar_maskShrink_Scroll;
             trackBar_maskShrink2.ValueChanged += trackBar_maskShrink_Scroll;
+            trackBar_maskShrink3.ValueChanged += trackBar_maskShrink_Scroll;
 
             _isInitializingMaskShrinkSettings = false;
         }
@@ -1117,9 +1136,12 @@ namespace Aerolithe
         {
             try
             {
-                System.Windows.Forms.TrackBar trackBar = appSettings.MaskAlgorithmIndex == 1
-                    ? trackBar_maskShrink2
-                    : trackBar_maskShrink1;
+                System.Windows.Forms.TrackBar trackBar = appSettings.MaskAlgorithmIndex switch
+                {
+                    2 => trackBar_maskShrink3,
+                    1 => trackBar_maskShrink2,
+                    _ => trackBar_maskShrink1,
+                };
 
                 if (trackBar.InvokeRequired)
                 {
@@ -1196,14 +1218,14 @@ namespace Aerolithe
 
         private void TurnTableRotation(int position) // Envoie la valeur au ESP32
         {
-            AppendTextToConsoleNL("Aero: turnTablePosition = " + turntablePosition.ToString());
+            AppendNetworkConsoleMessage("Aero: turnTablePosition = " + turntablePosition.ToString());
             string message = "turntable," + position.ToString() + "," + turntableSpeed;
             if (trkBar_turntable.InvokeRequired)
             {
                 trkBar_turntable.Invoke(new Action(() => trkBar_turntable.Value = turntablePosition));
             }
 
-            AppendTextToConsoleNL("Aero --> Table Tournate: " + message);
+            AppendNetworkConsoleMessage("Aero --> Table Tournate: " + message);
             Task.Run(async () => await UdpSendTurnTableMessageAsync(message));
         }
 
@@ -1227,13 +1249,13 @@ namespace Aerolithe
         }
         private async Task getTurntablePosFromWaveshare()  // Demande la position et attend une réponse du waveshare avant de continuer. 
         {
-            AppendTextToConsoleNL("Demande la position de la table tournante au micro-controlleur");
+            AppendNetworkConsoleMessage("Demande la position de la table tournante au micro-controlleur");
             try
             {
                 int? requestedPosition = await RequestTurntablePositionAsync(TimeSpan.FromSeconds(2));
                 if (!requestedPosition.HasValue)
                 {
-                    AppendTextToConsoleNL("Table tournante: aucune réponse de position.");
+                    AppendNetworkConsoleMessage("Table tournante: aucune réponse de position.");
                     return;
                 }
 
@@ -3173,6 +3195,10 @@ namespace Aerolithe
             {
                 SetMaskShrinkSetting(1, trackBar_maskShrink2.Value);
             }
+            else if (sender == trackBar_maskShrink3)
+            {
+                SetMaskShrinkSetting(2, trackBar_maskShrink3.Value);
+            }
             else
             {
                 SetMaskShrinkSetting(0, trackBar_maskShrink1.Value);
@@ -3189,6 +3215,7 @@ namespace Aerolithe
             ApplyMaskThresholdForSelectedAlgorithm();
             SetMaskShrinkSetting(0, projet.MaskShrink_1);
             SetMaskShrinkSetting(1, projet.MaskShrink_2);
+            SetMaskShrinkSetting(2, projet.MaskShrink_3);
             appSettings.Save();
 
             if (maskFreeze)
@@ -4198,7 +4225,9 @@ namespace Aerolithe
             {
                 if (sender is System.Windows.Forms.TextBox textBox && int.TryParse(textBox.Text, out int value))
                 {
-                    int algorithmIndex = textBox == txtBox_DefaultMaskThresh2 ? 1 : 0;
+                    int algorithmIndex = textBox == txtBox_DefaultMaskThresh3
+                        ? 2
+                        : textBox == txtBox_DefaultMaskThresh2 ? 1 : 0;
 
                     SetMaskThresholdSetting(algorithmIndex, value);
                     if (comboBox_MaskAlgorithm.SelectedIndex == algorithmIndex)

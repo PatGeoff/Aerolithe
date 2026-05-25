@@ -242,10 +242,15 @@
             flowlayoutPanel_Messagerie = new FlowLayoutPanel();
             tableLayoutPanel79 = new TableLayoutPanel();
             tableLayoutPanel52 = new TableLayoutPanel();
+            lbl_maskShrink3 = new Label();
             lbl_maskShrink2 = new Label();
             lbl_maskShrink1 = new Label();
+            trackBar_maskShrink3 = new TrackBar();
             trackBar_maskShrink2 = new TrackBar();
             trackBar_maskShrink1 = new TrackBar();
+            labelMaskAdaptiveContraction = new Label();
+            labelMaskAdaptiveName = new Label();
+            txtBox_DefaultMaskThresh3 = new TextBox();
             label47 = new Label();
             label16 = new Label();
             txtBox_DefaultMaskThresh2 = new TextBox();
@@ -489,6 +494,7 @@
             tableLayoutPanel9.SuspendLayout();
             tableLayoutPanel79.SuspendLayout();
             tableLayoutPanel52.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)trackBar_maskShrink3).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBar_maskShrink2).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBar_maskShrink1).BeginInit();
             tableLayoutPanel84.SuspendLayout();
@@ -3779,7 +3785,7 @@
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
-            tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 72F));
+            tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 104F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             tableLayoutPanel79.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel79.Size = new Size(516, 636);
@@ -3795,10 +3801,15 @@
             tableLayoutPanel52.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel52.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 213F));
             tableLayoutPanel52.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
+            tableLayoutPanel52.Controls.Add(lbl_maskShrink3, 5, 2);
             tableLayoutPanel52.Controls.Add(lbl_maskShrink2, 5, 1);
             tableLayoutPanel52.Controls.Add(lbl_maskShrink1, 5, 0);
+            tableLayoutPanel52.Controls.Add(trackBar_maskShrink3, 4, 2);
             tableLayoutPanel52.Controls.Add(trackBar_maskShrink2, 4, 1);
             tableLayoutPanel52.Controls.Add(trackBar_maskShrink1, 4, 0);
+            tableLayoutPanel52.Controls.Add(labelMaskAdaptiveContraction, 3, 2);
+            tableLayoutPanel52.Controls.Add(labelMaskAdaptiveName, 0, 2);
+            tableLayoutPanel52.Controls.Add(txtBox_DefaultMaskThresh3, 1, 2);
             tableLayoutPanel52.Controls.Add(label47, 3, 0);
             tableLayoutPanel52.Controls.Add(label16, 0, 0);
             tableLayoutPanel52.Controls.Add(txtBox_DefaultMaskThresh2, 1, 1);
@@ -3808,11 +3819,23 @@
             tableLayoutPanel52.Dock = DockStyle.Fill;
             tableLayoutPanel52.Location = new Point(3, 231);
             tableLayoutPanel52.Name = "tableLayoutPanel52";
-            tableLayoutPanel52.RowCount = 2;
-            tableLayoutPanel52.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel52.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel52.Size = new Size(510, 66);
+            tableLayoutPanel52.RowCount = 3;
+            tableLayoutPanel52.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel52.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel52.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel52.Size = new Size(510, 98);
             tableLayoutPanel52.TabIndex = 6;
+            // 
+            // lbl_maskShrink3
+            // 
+            lbl_maskShrink3.AutoSize = true;
+            lbl_maskShrink3.Dock = DockStyle.Fill;
+            lbl_maskShrink3.ForeColor = Color.White;
+            lbl_maskShrink3.Location = new Point(482, 65);
+            lbl_maskShrink3.Name = "lbl_maskShrink3";
+            lbl_maskShrink3.Size = new Size(24, 32);
+            lbl_maskShrink3.TabIndex = 51;
+            lbl_maskShrink3.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // lbl_maskShrink2
             // 
@@ -3821,7 +3844,7 @@
             lbl_maskShrink2.ForeColor = Color.White;
             lbl_maskShrink2.Location = new Point(482, 33);
             lbl_maskShrink2.Name = "lbl_maskShrink2";
-            lbl_maskShrink2.Size = new Size(24, 32);
+            lbl_maskShrink2.Size = new Size(24, 31);
             lbl_maskShrink2.TabIndex = 47;
             lbl_maskShrink2.TextAlign = ContentAlignment.MiddleCenter;
             // 
@@ -3836,6 +3859,20 @@
             lbl_maskShrink1.TabIndex = 46;
             lbl_maskShrink1.TextAlign = ContentAlignment.MiddleCenter;
             // 
+            // trackBar_maskShrink3
+            // 
+            trackBar_maskShrink3.AutoSize = false;
+            trackBar_maskShrink3.BackColor = Color.FromArgb(40, 40, 40);
+            trackBar_maskShrink3.Dock = DockStyle.Fill;
+            trackBar_maskShrink3.Location = new Point(268, 68);
+            trackBar_maskShrink3.Maximum = 120;
+            trackBar_maskShrink3.Name = "trackBar_maskShrink3";
+            trackBar_maskShrink3.Size = new Size(207, 26);
+            trackBar_maskShrink3.TabIndex = 50;
+            trackBar_maskShrink3.TickFrequency = 0;
+            trackBar_maskShrink3.TickStyle = TickStyle.None;
+            trackBar_maskShrink3.Value = 3;
+            // 
             // trackBar_maskShrink2
             // 
             trackBar_maskShrink2.AutoSize = false;
@@ -3844,7 +3881,7 @@
             trackBar_maskShrink2.Location = new Point(268, 36);
             trackBar_maskShrink2.Maximum = 120;
             trackBar_maskShrink2.Name = "trackBar_maskShrink2";
-            trackBar_maskShrink2.Size = new Size(207, 26);
+            trackBar_maskShrink2.Size = new Size(207, 25);
             trackBar_maskShrink2.TabIndex = 45;
             trackBar_maskShrink2.TickFrequency = 0;
             trackBar_maskShrink2.TickStyle = TickStyle.None;
@@ -3863,6 +3900,48 @@
             trackBar_maskShrink1.TickFrequency = 0;
             trackBar_maskShrink1.TickStyle = TickStyle.None;
             trackBar_maskShrink1.Value = 3;
+            // 
+            // labelMaskAdaptiveContraction
+            // 
+            labelMaskAdaptiveContraction.AutoSize = true;
+            labelMaskAdaptiveContraction.Dock = DockStyle.Fill;
+            labelMaskAdaptiveContraction.ForeColor = Color.White;
+            labelMaskAdaptiveContraction.Location = new Point(167, 65);
+            labelMaskAdaptiveContraction.Name = "labelMaskAdaptiveContraction";
+            labelMaskAdaptiveContraction.Size = new Size(94, 32);
+            labelMaskAdaptiveContraction.TabIndex = 49;
+            labelMaskAdaptiveContraction.Text = "Contraction";
+            labelMaskAdaptiveContraction.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // labelMaskAdaptiveName
+            // 
+            labelMaskAdaptiveName.AutoSize = true;
+            labelMaskAdaptiveName.Dock = DockStyle.Fill;
+            labelMaskAdaptiveName.ForeColor = Color.White;
+            labelMaskAdaptiveName.Location = new Point(4, 65);
+            labelMaskAdaptiveName.Name = "labelMaskAdaptiveName";
+            labelMaskAdaptiveName.Size = new Size(104, 32);
+            labelMaskAdaptiveName.TabIndex = 48;
+            labelMaskAdaptiveName.Text = "Fond adaptatif";
+            labelMaskAdaptiveName.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // txtBox_DefaultMaskThresh3
+            // 
+            txtBox_DefaultMaskThresh3.BackColor = Color.FromArgb(40, 40, 40);
+            txtBox_DefaultMaskThresh3.BorderStyle = BorderStyle.None;
+            txtBox_DefaultMaskThresh3.Dock = DockStyle.Fill;
+            txtBox_DefaultMaskThresh3.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            txtBox_DefaultMaskThresh3.ForeColor = Color.White;
+            txtBox_DefaultMaskThresh3.Location = new Point(112, 71);
+            txtBox_DefaultMaskThresh3.Margin = new Padding(0, 6, 0, 6);
+            txtBox_DefaultMaskThresh3.Multiline = true;
+            txtBox_DefaultMaskThresh3.Name = "txtBox_DefaultMaskThresh3";
+            txtBox_DefaultMaskThresh3.Size = new Size(46, 20);
+            txtBox_DefaultMaskThresh3.TabIndex = 52;
+            txtBox_DefaultMaskThresh3.Text = "20";
+            txtBox_DefaultMaskThresh3.TextAlign = HorizontalAlignment.Center;
+            txtBox_DefaultMaskThresh3.TextChanged += txtBox_DefaultMaskThresh_TextChanged;
+            txtBox_DefaultMaskThresh3.KeyDown += txtBox_DefaultMaskThresh_KeyDown;
             // 
             // label47
             // 
@@ -3899,7 +3978,7 @@
             txtBox_DefaultMaskThresh2.Margin = new Padding(0, 6, 0, 6);
             txtBox_DefaultMaskThresh2.Multiline = true;
             txtBox_DefaultMaskThresh2.Name = "txtBox_DefaultMaskThresh2";
-            txtBox_DefaultMaskThresh2.Size = new Size(46, 20);
+            txtBox_DefaultMaskThresh2.Size = new Size(46, 19);
             txtBox_DefaultMaskThresh2.TabIndex = 6;
             txtBox_DefaultMaskThresh2.Text = "3";
             txtBox_DefaultMaskThresh2.TextAlign = HorizontalAlignment.Center;
@@ -3913,7 +3992,7 @@
             label_DefaultMaskThresh2.ForeColor = Color.White;
             label_DefaultMaskThresh2.Location = new Point(4, 33);
             label_DefaultMaskThresh2.Name = "label_DefaultMaskThresh2";
-            label_DefaultMaskThresh2.Size = new Size(104, 32);
+            label_DefaultMaskThresh2.Size = new Size(104, 31);
             label_DefaultMaskThresh2.TabIndex = 7;
             label_DefaultMaskThresh2.Text = "Brillant";
             label_DefaultMaskThresh2.TextAlign = ContentAlignment.MiddleLeft;
@@ -3925,7 +4004,7 @@
             label54.ForeColor = Color.White;
             label54.Location = new Point(167, 33);
             label54.Name = "label54";
-            label54.Size = new Size(94, 32);
+            label54.Size = new Size(94, 31);
             label54.TabIndex = 8;
             label54.Text = "Contraction";
             label54.TextAlign = ContentAlignment.MiddleCenter;
@@ -5122,7 +5201,7 @@
             comboBox_MaskAlgorithm.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBox_MaskAlgorithm.ForeColor = Color.White;
             comboBox_MaskAlgorithm.FormattingEnabled = true;
-            comboBox_MaskAlgorithm.Items.AddRange(new object[] { "Mat et semi-mat", "Réfléchissant" });
+            comboBox_MaskAlgorithm.Items.AddRange(new object[] { "Mat et semi-mat", "Réfléchissant", "Fond adaptatif" });
             comboBox_MaskAlgorithm.Location = new Point(84, 3);
             comboBox_MaskAlgorithm.Name = "comboBox_MaskAlgorithm";
             comboBox_MaskAlgorithm.Size = new Size(369, 23);
@@ -6440,6 +6519,7 @@
             tableLayoutPanel79.ResumeLayout(false);
             tableLayoutPanel52.ResumeLayout(false);
             tableLayoutPanel52.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trackBar_maskShrink3).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBar_maskShrink2).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBar_maskShrink1).EndInit();
             tableLayoutPanel84.ResumeLayout(false);
@@ -6878,10 +6958,15 @@
         private TrackBar trackBar2;
         private TrackBar trackBar_maskShrink1;
         private TrackBar trackBar_maskShrink2;
+        private TrackBar trackBar_maskShrink3;
         private Label label47;
         private Label label54;
         private Label lbl_maskShrink2;
         private Label lbl_maskShrink1;
+        private Label lbl_maskShrink3;
+        private Label labelMaskAdaptiveContraction;
+        private Label labelMaskAdaptiveName;
+        private TextBox txtBox_DefaultMaskThresh3;
         private TableLayoutPanel tableLayoutPanel64;
         private TableLayoutPanel tableLayoutPanel68;
         private Button btn_AutomaticMFocus;
