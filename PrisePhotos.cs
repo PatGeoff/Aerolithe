@@ -628,8 +628,28 @@ namespace Aerolithe
                             await WaitIfSequencePausedAsync(cancellationToken);
                             cancellationToken.ThrowIfCancellationRequested();
 
-                            await AutomaticFocusRoutine(cancellationToken);
+                            AutomaticFocusResult focusResult = await AutomaticFocusRoutine(cancellationToken);
                             if (_stopRequested) return;
+
+                            if (focusResult == AutomaticFocusResult.Cancelled)
+                            {
+                                return;
+                            }
+
+                            if (focusResult == AutomaticFocusResult.MaskUnavailable)
+                            {
+                                MarkSequencePhotoFailed(projet.Serie, angleIndexes[projet.Serie]);
+                                AppendTextToConsoleNL($"Rotation {i + 1}/{serieId[projet.Serie]} à {degresActuelTableTournante}° ignorée: masque stable indisponible.");
+
+                                if (i < serieId[projet.Serie] - 1)
+                                {
+                                    await WaitIfSequencePausedAsync(cancellationToken);
+                                    cancellationToken.ThrowIfCancellationRequested();
+                                    await IncrementImgSeq();
+                                }
+
+                                continue;
+                            }
 
                             await WaitIfSequencePausedAsync(cancellationToken);
                             cancellationToken.ThrowIfCancellationRequested();
