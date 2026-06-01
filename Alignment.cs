@@ -473,7 +473,7 @@ namespace Aerolithe
 
 	        private bool ShouldRunAutoCentrageDuringCalibration()
 	        {
-	            return !appSettings.CalibrationAutoCentrage;
+	            return appSettings.CalibrationAutoCentrage;
 	        }
 	
 	        public class OffsetsData

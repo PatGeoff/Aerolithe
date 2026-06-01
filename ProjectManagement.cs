@@ -71,6 +71,9 @@ namespace Aerolithe
                     lbl_focusStackOutputDest.Text = projet.GetFocusStackPath();
                     string nom = Path.GetFileName(appSettings.ProjectPath).Split('.')[0];
                     projet.ImageNameBase = nom;
+                    projet.Cote = 0;
+                    ToggleCote(projet.Cote);
+                    ResetSerieIncrementAndName();
                     string name = appSettings.ProjectPath;
                     SetMainWindowTitle(name);
 
@@ -628,7 +631,7 @@ namespace Aerolithe
             toolTip.SetToolTip(lbl_AutoCentrageAuto, "Centrage Automatique de l'objet avant chaque série. * Recommandé *");
             toolTip.SetToolTip(lbl_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
             toolTip.SetToolTip(btn_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
-            toolTip.SetToolTip(btn_CalibrationAutoCentrage, "Désactive temporairement l'auto-centrage pendant la séquence de photos de calibration.");
+            toolTip.SetToolTip(btn_CalibrationAutoCentrage, "Active l'auto-centrage pendant la séquence de photos de calibration.");
             toolTip.SetToolTip(lbl_blobCount, "Affiche les parties nettes dans le LiveView");
             toolTip.SetToolTip(btn_ShowSharpnessOverlay, "Affiche les parties nettes dans le LiveView");
             toolTip.SetToolTip(lbl_blobCountLogo, "Affiche les parties nettes dans le LiveView"); 

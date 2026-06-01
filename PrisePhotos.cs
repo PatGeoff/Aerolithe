@@ -504,9 +504,21 @@ namespace Aerolithe
             try
             {
                 int paddingDepart = paddingNbr[projet.Serie];
-                int localStartIndex = projet.RotationSerieIncrement > paddingDepart
-                    ? projet.RotationSerieIncrement - paddingDepart
-                    : 0;
+                bool useSpecificResumeOverride =
+                    _specificResumeLocalRotationOverride.HasValue &&
+                    _specificResumeImageNumberOverride.HasValue &&
+                    _specificResumeLocalRotationOverride.Value >= 0 &&
+                    _specificResumeLocalRotationOverride.Value < serieId[projet.Serie];
+
+                int localStartIndex = useSpecificResumeOverride
+                    ? _specificResumeLocalRotationOverride!.Value
+                    : projet.RotationSerieIncrement > paddingDepart
+                        ? projet.RotationSerieIncrement - paddingDepart
+                        : 0;
+
+                int imageNumberStart = useSpecificResumeOverride
+                    ? _specificResumeImageNumberOverride!.Value
+                    : paddingDepart + localStartIndex;
 
                 // i est l'index physique local de rotation. RotationSerieIncrement reste le numéro global pour nommer/sauver.
                 for (int i = localStartIndex; i <= serieId[projet.Serie] - 1; i++)
@@ -514,7 +526,7 @@ namespace Aerolithe
                     await WaitIfSequencePausedAsync(cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    projet.RotationSerieIncrement = paddingDepart + i;
+                    projet.RotationSerieIncrement = imageNumberStart + (i - localStartIndex);
                     SavePrefsSettings();
 
 
@@ -658,7 +670,7 @@ namespace Aerolithe
 
                             AppendTextToConsoleNL("Focus Stack lancé");
 
-                            _ = Task.Run(() => MakeFocusStackSerie());
+                            _ = RunMakeFocusStackSerieAsync();
 
 
                             if (flowLayoutPanel1.InvokeRequired)
@@ -826,6 +838,18 @@ namespace Aerolithe
                 _stopwatch.Start();
 
             return Task.CompletedTask;
+        }
+
+        private async Task RunMakeFocusStackSerieAsync()
+        {
+            try
+            {
+                await Task.Run(() => MakeFocusStackSerie());
+            }
+            catch (Exception ex)
+            {
+                BeginInvoke((Action)(() => AppendTextToConsoleNL("Erreur FocusStack: " + ex.Message)));
+            }
         }
 
         private Task StopTimer()

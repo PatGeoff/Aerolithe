@@ -15,6 +15,7 @@ namespace Aerolithe
     {
         private List<FocusStackTaskInfo> taskInfos = new List<FocusStackTaskInfo>();
         private FocusStackTaskInfo? taskInfo;
+        private const double TurntableStepsPerRotation = 4096.0;
 
         public FocusStackReportControl()
         {
@@ -42,7 +43,7 @@ namespace Aerolithe
 
             lbl_Serie.Text = taskInfo.Serie.ToString();
             lbl_Elevation.Text = taskInfo.Elevation.ToString() + "°";
-            lbl_Rotation.Text = taskInfo.Rotation.ToString() + "°";
+            lbl_Rotation.Text = FormatTurntableRotationDegrees(taskInfo.Rotation);
 
             richTextBox_PicReport.SelectionColor = Color.White;
             richTextBox_PicReport.AppendText(prefix);
@@ -70,6 +71,12 @@ namespace Aerolithe
             richTextBox_PicReport.SelectionColor = Color.White;
             richTextBox_PicReport.Refresh();
             richTextBox_PicReport.ScrollToCaret();
+        }
+
+        private static string FormatTurntableRotationDegrees(double rotationSteps)
+        {
+            double degrees = rotationSteps / TurntableStepsPerRotation * 360.0;
+            return Math.Round(degrees).ToString("0") + "°";
         }
 
         private async void btn_RepriseRoutine_Click(object sender, EventArgs e)

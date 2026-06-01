@@ -80,6 +80,8 @@ namespace Aerolithe
         private bool _isInitializingActuatorSpeed;
         private readonly object _sequencePhotoStatsLock = new();
         private readonly List<SequencePhotoSeriesStats> _sequencePhotoStats = new();
+        private int? _specificResumeLocalRotationOverride;
+        private int? _specificResumeImageNumberOverride;
 
 
         public bool stackedImageInBuffer = false;
@@ -3997,30 +3999,44 @@ namespace Aerolithe
         private async void repriseDerniereSequence_Click(object sender, EventArgs e)
         {
             _autoPingCts?.Cancel();
+            _specificResumeLocalRotationOverride = null;
+            _specificResumeImageNumberOverride = null;
             if (projet.Serie < 0) projet.Serie = 0;
+            if (projet.Serie >= angleIndexes.Length) projet.Serie = angleIndexes.Length - 1;
 
             string cote = lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
 
-            DialogResult result = MessageBox.Show(
-                $"Reprendre à partir de la dernière séquence réussie?\nSérie {projet.Serie}\nAngle {angleIndexes[projet.Serie]}\nCôté {projet.Cote}\nRotation {projet.RotationSerieIncrement}",
-                "Confirmation",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question
-            );
-
-            if (result == DialogResult.Yes)
+            if (ConfirmResumeLastSuccessfulSequence(cote))
             {
                 if (!await ConfirmNetworkBeforeSequenceAsync()) return;
 
                 lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
                 lbl_ElevSerie.Text = angleIndexes[projet.Serie].ToString();
+                ResetSequenceCancellationButton();
 
                 Task.Run(async () =>
                 {
-                    tokenSource = new CancellationTokenSource();
-                    // projet.Serie = 0, 1 ou 2
-                    //await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
-                    await SequencePrisePhotoTotale(tokenSource.Token);
+                    SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: true);
+                    try
+                    {
+                        tokenSource = new CancellationTokenSource();
+                        await SequencePrisePhotoTotale(tokenSource.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        AppendTextToConsoleNL("Reprise à partir de la dernière séquence réussie annulée.");
+                    }
+                    catch (Exception ex)
+                    {
+                        _stopRequested = true;
+                        _lastSequenceErrorMessage = ex.Message;
+                        AppendTextToConsoleNL($"Erreur reprise dernière séquence: {ex.Message}");
+                        ShowSequenceErrorMessage(ex);
+                    }
+                    finally
+                    {
+                        SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
+                    }
                 });
             }
 
@@ -4040,69 +4056,278 @@ namespace Aerolithe
 
 
 
-        private void RepriseSpecifiqueToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void RepriseSpecifiqueToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //tabControl1.SelectedTab = tabPage3;
-            //tabControl4.SelectedTab = tabPage18;
             aerolitheTabControl2.SelectTab("tabPage20");
             aerolitheTabControl3.SelectTab("tabPage28");
 
-            //    _autoPingCts?.Cancel();
+            _autoPingCts?.Cancel();
 
-            //    // Valeurs par défaut proposées = valeurs actuelles de 'projet'
-            //    string serieStr = Interaction.InputBox(
-            //        "Entrer la Série (0 (= 5°)\n1 (= 25°)\n2 (= 45°)) :",
-            //        "Paramètre - Série",
-            //        projet.Serie.ToString());
+            if (!TryPromptSpecificResumeValues(out int serie, out int cote, out int rotation, out int imageNumber))
+            {
+                return;
+            }
 
-            //    if (string.IsNullOrWhiteSpace(serieStr)) return; // Annulé
-            //    if (!int.TryParse(serieStr, out int serie) || serie < 0 || serie > 2)
-            //    {
-            //        MessageBox.Show("Série invalide.\nEntrer 0, 1 ou 2", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //        return;
-            //    }
+            DialogResult result = MessageBox.Show(
+                $"Reprendre la séquence à partir de ces paramètres?\nSérie {serie} ({angleIndexes[serie]}°)\nCôté {(cote == 0 ? "A" : "B")}\nNo rotation {rotation}\nImage focus stack {GetFocusStackPreviewImageName(imageNumber)}",
+                "Confirmation",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
 
+            if (result != DialogResult.Yes) return;
+            if (!await ConfirmNetworkBeforeSequenceAsync()) return;
 
-            //    string coteStr = Interaction.InputBox(
-            //        "Entrer le Côté (A ou B) :",
-            //        "Paramètre - Côté",
-            //        (projet.Cote == 0 ? "A" : "B"));
+            projet.Serie = serie;
+            projet.Cote = cote;
+            projet.RotationSerieIncrement = imageNumber;
+            projet.FocusSerieIncrement = 0;
+            _specificResumeLocalRotationOverride = rotation;
+            _specificResumeImageNumberOverride = imageNumber;
 
-            //    if (string.IsNullOrWhiteSpace(coteStr)) return; // Annulé
-            //    coteStr = coteStr.Trim().ToUpperInvariant();
-            //    int cote = coteStr == "A" ? 0 : (coteStr == "B" ? 1 : -1);
-            //    if (cote == -1)
-            //    {
-            //        MessageBox.Show("Côté invalide. Valeurs permises : A ou B.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //        return;
-            //    }
+            ToggleCote(projet.Cote);
+            lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
+            lbl_ElevSerie.Text = angleIndexes[projet.Serie].ToString(CultureInfo.InvariantCulture);
+            DisplayPathsInUI();
+            SavePrefsSettings();
+            ResetSequenceCancellationButton();
 
+            Task.Run(async () =>
+            {
+                SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: true);
+                try
+                {
+                    tokenSource = new CancellationTokenSource();
+                    await SequencePrisePhotoTotale(tokenSource.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    AppendTextToConsoleNL("Reprise à partir d'un endroit spécifique annulée.");
+                }
+                catch (Exception ex)
+                {
+                    _stopRequested = true;
+                    _lastSequenceErrorMessage = ex.Message;
+                    AppendTextToConsoleNL($"Erreur reprise spécifique: {ex.Message}");
+                    ShowSequenceErrorMessage(ex);
+                }
+                finally
+                {
+                    _specificResumeLocalRotationOverride = null;
+                    _specificResumeImageNumberOverride = null;
+                    SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
+                }
+            });
+        }
 
-            //    string rotationStr = Interaction.InputBox(
-            //        "Entrer le numéro du dossier à partir duquel débuter\nSe référer possiblement au dernier ou à l'avant dernier dossier de photos réussies\nEx: 49",
-            //        "Paramètre - Rotation",
-            //        projet.RotationSerieIncrement.ToString());
+        private bool TryPromptSpecificResumeValues(out int serie, out int cote, out int rotation, out int imageNumber)
+        {
+            serie = projet.Serie;
+            cote = projet.Cote;
+            rotation = projet.RotationSerieIncrement;
+            imageNumber = projet.RotationSerieIncrement;
 
-            //    if (string.IsNullOrWhiteSpace(rotationStr)) return; // Annulé
-            //    if (!int.TryParse(rotationStr, out int rotation))
-            //    {
-            //        MessageBox.Show("Rotation invalide.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //        return;
-            //    }
+            using Form prompt = new Form
+            {
+                Text = "Reprise à partir d'un endroit spécifique",
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                ShowInTaskbar = false,
+                BackColor = Color.FromArgb(40, 40, 40),
+                ForeColor = Color.White,
+                ClientSize = new Size(440, 365)
+            };
 
-            //    // Mise à jour du modèle et de l'UI
-            //    projet.Serie = serie;
-            //    projet.Cote = cote;
-            //    projet.RotationSerieIncrement = rotation;
+            var layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12),
+                BackColor = Color.FromArgb(40, 40, 40),
+                ForeColor = Color.White,
+                ColumnCount = 2,
+                RowCount = 8
+            };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
 
-            //    lbl_CoteSerie.Text = projet.Cote == 0 ? "A" : "B";
-            //    lbl_ElevSerie.Text = angleIndexes[projet.Serie].ToString();
+            int GetPhotoCountForSerie(int serieIndex)
+            {
+                return serieIndex switch
+                {
+                    0 => appSettings.NbrImg5Deg,
+                    1 => appSettings.NbrImg25Deg,
+                    2 => appSettings.NbrImg45Deg,
+                    _ => 0
+                };
+            }
 
-            //    Task.Run(async () =>
-            //    {
-            //        tokenSource = new CancellationTokenSource();
-            //        await SequencePrisePhotoTotale(tokenSource.Token, projet.Serie, projet.RotationSerieIncrement);
-            //    });
+            int GetDefaultRotationForSerie(int serieIndex)
+            {
+                int photoCount = GetPhotoCountForSerie(serieIndex);
+                if (photoCount <= 0) return 0;
+
+                int localRotation = projet.RotationSerieIncrement - GetPaddingForSerie(serieIndex);
+                return localRotation >= 0 && localRotation < photoCount
+                    ? localRotation
+                    : photoCount / 2;
+            }
+
+            int GetPaddingForSerie(int serieIndex)
+            {
+                return serieIndex switch
+                {
+                    0 => appSettings.Padding5Deg,
+                    1 => appSettings.Padding25Deg,
+                    2 => appSettings.Padding45Deg,
+                    _ => 0
+                };
+            }
+
+            var cmbSerie = new System.Windows.Forms.ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, BackColor = Color.FromArgb(40, 40, 40), ForeColor = Color.White };
+            cmbSerie.Items.AddRange(new object[] { "0", "1", "2" });
+            int initialSerie = projet.Serie >= 0 && projet.Serie < angleIndexes.Length ? projet.Serie : 0;
+            cmbSerie.SelectedIndex = initialSerie;
+            var cmbCote = new System.Windows.Forms.ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, BackColor = Color.FromArgb(40, 40, 40), ForeColor = Color.White };
+            cmbCote.Items.AddRange(new object[] { "A", "B" });
+            cmbCote.SelectedIndex = projet.Cote == 0 ? 0 : 1;
+            var txtRotation = new System.Windows.Forms.TextBox { Dock = DockStyle.Fill, Text = GetDefaultRotationForSerie(initialSerie).ToString(CultureInfo.InvariantCulture), BackColor = Color.FromArgb(40, 40, 40), ForeColor = Color.White };
+            var txtImageNumber = new System.Windows.Forms.TextBox { Dock = DockStyle.Fill, Text = Math.Max(0, projet.RotationSerieIncrement).ToString(CultureInfo.InvariantCulture), BackColor = Color.FromArgb(40, 40, 40), ForeColor = Color.White };
+            var lblSerieInfo = new Label { Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White };
+            var lblImageName = new Label { Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White };
+
+            var btnOk = new System.Windows.Forms.Button { Text = "OK", DialogResult = DialogResult.OK, Dock = DockStyle.Fill, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            var btnCancel = new System.Windows.Forms.Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Dock = DockStyle.Fill, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            var buttons = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(40, 40, 40), ColumnCount = 3, RowCount = 1, Padding = new Padding(0, 8, 0, 0) };
+            buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
+            buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
+            buttons.Controls.Add(btnCancel, 1, 0);
+            buttons.Controls.Add(btnOk, 2, 0);
+
+            layout.Controls.Add(new Label { Text = "Série (0, 1, 2)", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 0);
+            layout.Controls.Add(cmbSerie, 1, 0);
+            layout.Controls.Add(new Label { Text = "Côté", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 1);
+            layout.Controls.Add(cmbCote, 1, 1);
+            layout.Controls.Add(lblSerieInfo, 0, 2);
+            layout.SetColumnSpan(lblSerieInfo, 2);
+            layout.Controls.Add(new Label { Text = "No rotation", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 3);
+            layout.Controls.Add(txtRotation, 1, 3);
+            layout.Controls.Add(new Label { Text = "Entrer le numéro de rotation, pas l'angle.", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 4);
+            layout.SetColumnSpan(layout.GetControlFromPosition(0, 4), 2);
+            layout.Controls.Add(new Label { Text = "No image FS", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 5);
+            layout.Controls.Add(txtImageNumber, 1, 5);
+            layout.Controls.Add(lblImageName, 0, 6);
+            layout.SetColumnSpan(lblImageName, 2);
+            layout.Controls.Add(buttons, 0, 7);
+            layout.SetColumnSpan(buttons, 2);
+
+            prompt.Controls.Add(layout);
+            prompt.AcceptButton = btnOk;
+            prompt.CancelButton = btnCancel;
+
+            void updateSerieInfo()
+            {
+                int serieIndex = cmbSerie.SelectedIndex;
+                if (serieIndex < 0 || serieIndex >= angleIndexes.Length)
+                {
+                    lblSerieInfo.Text = "Série invalide.";
+                    return;
+                }
+
+                int photoCount = GetPhotoCountForSerie(serieIndex);
+                string stepText = photoCount > 0
+                    ? (360.0 / photoCount).ToString("0.#", CultureInfo.InvariantCulture) + "°"
+                    : "n/a";
+
+                string rotationText = string.Empty;
+                if (photoCount > 0
+                    && int.TryParse(txtRotation.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rotationIndex)
+                    && rotationIndex >= 0)
+                {
+                    if (rotationIndex < photoCount)
+                    {
+                        string rotationDegrees = (rotationIndex * 360.0 / photoCount).ToString("0.#", CultureInfo.InvariantCulture);
+                        rotationText = $" No rotation {rotationIndex} = {rotationDegrees}°.";
+                    }
+                    else
+                    {
+                        rotationText = $" No rotation max: {photoCount - 1}.";
+                    }
+                }
+
+                lblSerieInfo.Text = $"{photoCount} photos pour cette série. {stepText} entre rotations.{rotationText}";
+                lblImageName.Text = int.TryParse(txtImageNumber.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int imageNumberIndex)
+                    && imageNumberIndex >= 0
+                    ? $"Image focus stack: {GetFocusStackPreviewImageName(imageNumberIndex)}"
+                    : "Image focus stack: n/a";
+            }
+
+            cmbSerie.SelectedIndexChanged += (_, __) =>
+            {
+                int serieIndex = cmbSerie.SelectedIndex;
+                int photoCount = GetPhotoCountForSerie(serieIndex);
+                if (photoCount > 0
+                    && int.TryParse(txtRotation.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rotationIndex)
+                    && rotationIndex >= photoCount)
+                {
+                    txtRotation.Text = (photoCount / 2).ToString(CultureInfo.InvariantCulture);
+                }
+
+                updateSerieInfo();
+            };
+            txtRotation.TextChanged += (_, __) => updateSerieInfo();
+            txtImageNumber.TextChanged += (_, __) => updateSerieInfo();
+            updateSerieInfo();
+
+            while (prompt.ShowDialog(this) == DialogResult.OK)
+            {
+                serie = cmbSerie.SelectedIndex;
+                if (serie < 0 || serie >= angleIndexes.Length)
+                {
+                    MessageBox.Show(this, "Série invalide. Choisir 0, 1 ou 2.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
+                }
+
+                cote = cmbCote.SelectedIndex == 0 ? 0 : 1;
+
+                if (!int.TryParse(txtRotation.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out rotation) || rotation < 0)
+                {
+                    MessageBox.Show(this, "Numéro de rotation invalide. Entrer un nombre entier positif.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
+                }
+
+                int photoCount = GetPhotoCountForSerie(serie);
+                if (photoCount <= 0)
+                {
+                    MessageBox.Show(this, "Nombre de photos invalide pour cette série.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
+                }
+
+                if (rotation >= photoCount)
+                {
+                    MessageBox.Show(this, $"Numéro de rotation invalide. Pour cette série, entrer une valeur entre 0 et {photoCount - 1}.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
+                }
+
+                if (!int.TryParse(txtImageNumber.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out imageNumber) || imageNumber < 0)
+                {
+                    MessageBox.Show(this, "Numéro d'image focus stack invalide. Entrer un nombre entier positif.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
 
@@ -4287,6 +4512,82 @@ namespace Aerolithe
 
         }
 
+        private bool ConfirmResumeLastSuccessfulSequence(string cote)
+        {
+            using Form prompt = new Form
+            {
+                Text = "Confirmation",
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                ShowInTaskbar = false,
+                BackColor = Color.FromArgb(40, 40, 40),
+                ForeColor = Color.White,
+                ClientSize = new Size(390, 235)
+            };
+
+            var layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(14),
+                BackColor = Color.FromArgb(40, 40, 40),
+                ForeColor = Color.White,
+                ColumnCount = 2,
+                RowCount = 6
+            };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
+
+            var title = new Label
+            {
+                Text = "Reprendre à partir de la dernière séquence réussie?",
+                Dock = DockStyle.Fill,
+                ForeColor = Color.White,
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+            };
+
+            var btnOk = new System.Windows.Forms.Button { Text = "OK", DialogResult = DialogResult.OK, Width = 90, Height = 30, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            var btnCancel = new System.Windows.Forms.Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 90, Height = 30, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, BackColor = Color.FromArgb(40, 40, 40), Padding = new Padding(0, 6, 0, 0) };
+            buttons.Controls.Add(btnOk);
+            buttons.Controls.Add(btnCancel);
+
+            layout.Controls.Add(title, 0, 0);
+            layout.SetColumnSpan(title, 2);
+            layout.Controls.Add(new Label { Text = "Côté", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 1);
+            layout.Controls.Add(new Label { Text = cote, Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 1, 1);
+            layout.Controls.Add(new Label { Text = "Série", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 2);
+            layout.Controls.Add(new Label { Text = $"{projet.Serie} ({angleIndexes[projet.Serie]}°)", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 1, 2);
+            layout.Controls.Add(new Label { Text = "Rotation", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 3);
+            layout.Controls.Add(new Label { Text = projet.RotationSerieIncrement.ToString(CultureInfo.InvariantCulture), Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 1, 3);
+            layout.Controls.Add(new Label { Text = "Image focus stack", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 4);
+            layout.Controls.Add(new Label { Text = GetFocusStackPreviewImageName(projet.RotationSerieIncrement), Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 1, 4);
+            layout.Controls.Add(buttons, 0, 5);
+            layout.SetColumnSpan(buttons, 2);
+
+            prompt.Controls.Add(layout);
+            prompt.AcceptButton = btnOk;
+            prompt.CancelButton = btnCancel;
+
+            return prompt.ShowDialog(this) == DialogResult.OK;
+        }
+
+        private string GetFocusStackPreviewImageName(int rotation)
+        {
+            string imageNameBase = string.IsNullOrWhiteSpace(projet.ImageNameBase)
+                ? "Image"
+                : projet.ImageNameBase;
+
+            return $"{imageNameBase}_{rotation:D2}";
+        }
+
         private void SetMainWindowTitle(string? baseTitle = null)
         {
             if (!string.IsNullOrWhiteSpace(baseTitle))
@@ -4409,7 +4710,7 @@ namespace Aerolithe
 
         private void BeginCalibrationAutoCentrageOverride()
         {
-            if (!appSettings.CalibrationAutoCentrage)
+            if (appSettings.CalibrationAutoCentrage)
             {
                 return;
             }
@@ -4426,7 +4727,7 @@ namespace Aerolithe
             }
 
             SetAutoCentrageState(autoCentrage: false, autoCentrageActuator: false);
-            AppendTextToConsoleNL("Auto-centrage désactivé temporairement pour la séquence de photos de calibration.");
+            AppendTextToConsoleNL("Auto-centrage de calibration désactivé temporairement.");
         }
 
         private void RestoreCalibrationAutoCentrageOverride()

@@ -144,6 +144,18 @@ namespace Aerolithe
             string folderPath = projet.GetTempImageFolderPath();
             string[] extensions = { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
 
+            if (string.IsNullOrWhiteSpace(folderPath))
+            {
+                this.BeginInvoke((Action)(() => AppendTextToConsoleNL("FocusStack: dossier temporaire invalide.")));
+                return Task.CompletedTask;
+            }
+
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+                this.BeginInvoke((Action)(() => AppendTextToConsoleNL("FocusStack: dossier temporaire créé car il était absent: " + folderPath)));
+            }
+
             var imageFiles = Directory.GetFiles(folderPath)
                                       .Where(file => extensions.Contains(Path.GetExtension(file).ToLower()))
                                       .ToArray();
