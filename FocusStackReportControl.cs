@@ -20,6 +20,9 @@ namespace Aerolithe
         public FocusStackReportControl()
         {
             InitializeComponent();
+            Aerolithe.Instance.ApplyBundledPhosphorFontToControl(this);
+            ConfigureFocusStackActionButton(btn_RepriseRoutine);
+            ConfigureFocusStackActionButton(btn_ReprendreFocusStack);
         }
 
         public void SetTaskInfo(FocusStackTaskInfo info)
@@ -30,47 +33,42 @@ namespace Aerolithe
 
         private void UpdateDisplay()
         {
-            richTextBox_PicReport.Clear();
-
             if (taskInfo == null)
             {
-                richTextBox_PicReport.SelectionColor = Color.LightGray;
-                richTextBox_PicReport.AppendText(" La file d'attente est vide.");
+                lbl_PicReport.ForeColor = Color.LightGray;
+                lbl_PicReport.Text = "La file d'attente est vide.";
+                lbl_Status.Text = string.Empty;
                 return;
             }
 
-            string prefix = $"📷 {taskInfo.Filename}\t  — Statut :  ";
-
-            lbl_Serie.Text = taskInfo.Serie.ToString();
+            lbl_Serie.Text = taskInfo.Cote;
             lbl_Elevation.Text = taskInfo.Elevation.ToString() + "°";
             lbl_Rotation.Text = FormatTurntableRotationDegrees(taskInfo.Rotation);
-
-            richTextBox_PicReport.SelectionColor = Color.White;
-            richTextBox_PicReport.AppendText(prefix);
+            lbl_ImageNumber.Text = taskInfo.ImageNumber.ToString();
+            lbl_PicReport.ForeColor = taskInfo.IsRetry ? Color.LightSkyBlue : Color.White;
+            lbl_PicReport.BackColor = taskInfo.IsRetry ? Color.FromArgb(22, 48, 58) : Color.FromArgb(40, 40, 40);
+            lbl_PicReport.Text = taskInfo.IsRetry ? "Reprise - " + taskInfo.Filename : taskInfo.Filename;
 
             switch (taskInfo.Status)
             {
                 case "Terminé":
-                    richTextBox_PicReport.SelectionColor = Color.LimeGreen;
+                    lbl_Status.ForeColor = Color.LimeGreen;
                     break;
                 case "En cours":
-                    richTextBox_PicReport.SelectionColor = Color.Orange;
+                    lbl_Status.ForeColor = Color.Orange;
                     break;
                 case "Erreur":
-                    richTextBox_PicReport.SelectionColor = Color.Red;
+                    lbl_Status.ForeColor = Color.Red;
                     break;
                 case "En attente":
-                    richTextBox_PicReport.SelectionColor = Color.DeepSkyBlue;
+                    lbl_Status.ForeColor = Color.DeepSkyBlue;
                     break;
                 default:
-                    richTextBox_PicReport.SelectionColor = Color.White;
+                    lbl_Status.ForeColor = Color.White;
                     break;
             }
 
-            richTextBox_PicReport.AppendText(taskInfo.Status + "\n");
-            richTextBox_PicReport.SelectionColor = Color.White;
-            richTextBox_PicReport.Refresh();
-            richTextBox_PicReport.ScrollToCaret();
+            lbl_Status.Text = taskInfo.Status;
         }
 
         private static string FormatTurntableRotationDegrees(double rotationSteps)
@@ -79,61 +77,65 @@ namespace Aerolithe
             return Math.Round(degrees).ToString("0") + "°";
         }
 
+        private static void ConfigureFocusStackActionButton(Button button)
+        {
+            button.UseCompatibleTextRendering = true;
+            button.TextAlign = ContentAlignment.MiddleCenter;
+            button.Paint -= FocusStackActionButton_Paint;
+            button.Paint += FocusStackActionButton_Paint;
+        }
+
+        private static void FocusStackActionButton_Paint(object? sender, PaintEventArgs e)
+        {
+            if (sender is not Button button)
+            {
+                return;
+            }
+
+            e.Graphics.Clear(button.BackColor);
+
+            using Pen borderPen = new Pen(Color.FromArgb(64, 64, 64));
+            Rectangle border = new Rectangle(0, 0, button.Width - 1, button.Height - 1);
+            e.Graphics.DrawRectangle(borderPen, border);
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                button.Text,
+                button.Font,
+                button.ClientRectangle,
+                Color.White,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
+
         private async void btn_RepriseRoutine_Click(object sender, EventArgs e)
         {
-
-            using (var dialog = new RepriseDialogForm())
-            {
-                var result = dialog.ShowDialog();
-                int choix = dialog.ChoixUtilisateur;
-
-                switch (choix)
-                {
-                    case 0:
-                        // Cette série seulement
-                        await ReprendreUneSerieRatee();
-                        break;
-                    case 1:
-                        // Toutes les séries ratées
-                        ReprendreToutesLesSeriesRatees();
-                        break;
-                    case 2:
-                        // Annuler
-                        break;
-                }
-            }
+            if (taskInfo == null) return;
+            await Aerolithe.Instance.ReprendrePrisePhotoFocusStackAsync(taskInfo);
         }
-        private async Task ReprendreUneSerieRatee()
+
+        private async void btn_ReprendreFocusStack_Click(object sender, EventArgs e)
         {
             if (taskInfo == null) return;
-
-            switch (taskInfo.Serie)
-            {
-                case "0":
-                    await Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
-                    await Aerolithe.Instance.WaitForActuator(5);
-                    break;
-                case "1":
-                    await Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
-                    break;
-                case "2":
-                    await Aerolithe.Instance.UdpSendActuatorMessageAsync("actuator 5");
-                    break;
-            }
-            
-        }
-        private void ReprendreToutesLesSeriesRatees()
-        {
-
+            await Aerolithe.Instance.ReprendreFocusStackSeulementAsync(taskInfo);
         }
     }
 
     public class FocusStackTaskInfo
     {
+        public Guid TaskId { get; set; }
         public string Serie { get; set; } = string.Empty;
         public double Elevation { get; set; }
         public double Rotation { get; set; }
+        public int RotationSerieIncrement { get; set; }
+        public int ImageNumber { get; set; }
+        public int CoteIndex { get; set; }
+        public string Cote { get; set; } = string.Empty;
+        public string[] ImagePaths { get; set; } = Array.Empty<string>();
+        public string OutputPath { get; set; } = string.Empty;
+        public string MaskPath { get; set; } = string.Empty;
+        public bool ApplyMask { get; set; }
         public string Filename { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+        public bool IsRetry { get; set; }
     }
 }

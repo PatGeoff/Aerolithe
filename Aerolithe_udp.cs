@@ -688,7 +688,7 @@ namespace Aerolithe
                     case "camera_osc_autocalibration_btn":
                     case "camera_osc_auto_calibration":
                         AppendOscConsoleMessage("OSC: calibration automatique demandée.");
-                        _stopRequested = false;
+                        ClearSequenceStop("OSC calibration automatique");
                         cancelAutoCentrage = false;
                         await RunAutoCenterCommandAsync(() => RoutineCalibration());
                         break;

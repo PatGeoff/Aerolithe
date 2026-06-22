@@ -68,7 +68,7 @@ namespace Aerolithe
             catch (Exception ex)
             {
                 AppendTextToConsoleNL($"Erreur dans EssayerPrendrePhotoAsync :: takePictureAsync avec {ex.Message}");
-                _stopRequested = true;
+                RequestSequenceStop("EssayerPrendrePhotoAsync: " + ex.Message);
                 throw;
             }
             
@@ -96,14 +96,7 @@ namespace Aerolithe
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Au début de chaque loop on s'assure que le maskFreeze soit false
-                maskFreeze = false;
-                if (btn_freezeMask.InvokeRequired)
-                {
-                    btn_freezeMask.Invoke(new Action(() =>
-                    {
-                        btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
-                    }));
-                }
+                SetMaskFreeze(false);
 
                 if (_stopRequested) return;
 
@@ -129,7 +122,7 @@ namespace Aerolithe
                 }
                 catch (Exception ex)
                 {
-                    _stopRequested = true;
+                    RequestSequenceStop("SequencePrisePhotoTotale: " + ex.Message);
                     _lastSequenceErrorMessage = ex.Message;
                     AppendTextToConsoleNL($"Erreur à * SequencePrisePhotoTotale:  {ex.Message}");
                     ShowSequenceErrorMessage(ex);
@@ -154,21 +147,7 @@ namespace Aerolithe
             string message = $"Une erreur est survenue à la série {serieAffichee} ({angle}°), rotation {rotationAffichee}." +
                 $"{Environment.NewLine}{Environment.NewLine}Message d'erreur: {ex.Message}";
 
-            void showMessage() => MessageBox.Show(
-                this,
-                message,
-                "Erreur pendant la séquence",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-
-            if (InvokeRequired)
-            {
-                Invoke(new Action(showMessage));
-            }
-            else
-            {
-                showMessage();
-            }
+            AppendTextToConsoleNL(message, Color.Red);
         }
 
         private void ShowMeasurementSequenceErrorMessage(Exception ex)
@@ -181,21 +160,7 @@ namespace Aerolithe
             string message = $"Une erreur est survenue pendant la séquence d'images de mesure à {angle}°, image {index}." +
                 $"{Environment.NewLine}{Environment.NewLine}Message d'erreur: {ex.Message}";
 
-            void showMessage() => MessageBox.Show(
-                this,
-                message,
-                "Erreur pendant les images de mesure",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-
-            if (InvokeRequired)
-            {
-                Invoke(new Action(showMessage));
-            }
-            else
-            {
-                showMessage();
-            }
+            AppendTextToConsoleNL(message, Color.Red);
         }
 
         private async Task SequencePrisePhotoIndividuelleActuateurAsync(CancellationToken ct, bool promptAfterActuatorMoveToFiveDegrees = false)
@@ -331,11 +296,8 @@ namespace Aerolithe
                 await WaitIfSequencePausedAsync(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                await UdpSendTurnTableMessageAsync($"turntable,{turntableTarget},{turntableSpeed}");
-                if (_stopRequested) return;
-
-                await WaitForTurntablePositionAsync(turntableTarget, cancellationToken: cancellationToken);
-                if (_stopRequested) return;
+                bool turntableReached = await MoveTurntableIfNeededAsync(turntableTarget, cancellationToken);
+                if (_stopRequested || !turntableReached) return;
 
                 await WaitIfSequencePausedAsync(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
@@ -352,7 +314,7 @@ namespace Aerolithe
                     catch (Exception ex)
                     {
                         AppendTextToConsoleNL($"Erreur PriseImagesMesurePourActuateurAsync :: NikonDoFocus: {ex.Message}");
-                        _stopRequested = true;
+                        RequestSequenceStop("PriseImagesMesurePourActuateurAsync NikonDoFocus: " + ex.Message);
                         throw;
                     }
 
@@ -373,7 +335,7 @@ namespace Aerolithe
                     catch (Exception ex)
                     {
                         AppendTextToConsoleNL($"Erreur PriseImagesMesurePourActuateurAsync :: RoutineAutoCentrage: {ex.Message}");
-                        _stopRequested = true;
+                        RequestSequenceStop("PriseImagesMesurePourActuateurAsync RoutineAutoCentrage: " + ex.Message);
                         throw;
                     }
 
@@ -393,7 +355,7 @@ namespace Aerolithe
                 catch (Exception ex)
                 {
                     AppendTextToConsoleNL($"Erreur PriseImagesMesurePourActuateurAsync :: SaveMesurementImage: {ex.Message}");
-                    _stopRequested = true;
+                    RequestSequenceStop("PriseImagesMesurePourActuateurAsync SaveMesurementImage: " + ex.Message);
                     throw;
                 }
                 finally
@@ -431,14 +393,7 @@ namespace Aerolithe
 
                 return;
             }
-            maskFreeze = false;
-            if (btn_freezeMask.InvokeRequired)
-            {
-                btn_freezeMask.Invoke(new Action(() =>
-                {
-                    btn_freezeMask.Invoke(() => btn_freezeMask.Text = "");
-                }));
-            }
+            SetMaskFreeze(false);
 
             //if (appSettings.ProjectPath == null)
             //{
@@ -534,14 +489,7 @@ namespace Aerolithe
 
                     if (_stopRequested) return;
 
-                    maskFreeze = false;
-                    if (btn_freezeMask.InvokeRequired)
-                    {
-                        btn_freezeMask.Invoke(new Action(() =>
-                        {
-                            btn_freezeMask.Invoke(() => btn_freezeMask.Text = maskFreeze ? "" : "");
-                        }));
-                    }
+                    SetMaskFreeze(false);
 
 
                     int degresActuelTableTournante = i * divider;
@@ -550,11 +498,8 @@ namespace Aerolithe
                     await WaitIfSequencePausedAsync(cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    await UdpSendTurnTableMessageAsync($"turntable,{degresActuelTableTournante},{turntableSpeed}");
-
-                    if (_stopRequested) return;
-
-                    await WaitForTurntablePositionAsync(degresActuelTableTournante, cancellationToken: cancellationToken);
+                    bool turntableReached = await MoveTurntableIfNeededAsync(degresActuelTableTournante, cancellationToken);
+                    if (_stopRequested || !turntableReached) return;
                     cancellationToken.ThrowIfCancellationRequested();
                    
 
@@ -568,7 +513,7 @@ namespace Aerolithe
                     catch (Exception ex)
                     {
                         AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: NikonDoFocus: {ex.Message}");
-                        _stopRequested = true;
+                        RequestSequenceStop("PrisePhotoSequenceAsync NikonDoFocus: " + ex.Message);
                         throw;
                     }
 
@@ -590,7 +535,7 @@ namespace Aerolithe
                     catch (Exception ex)
                     {
                         AppendTextToConsoleNL($"Erreur PrisePhotoSequenceAsync :: RoutineAutoCentrage: {ex.Message}");
-                        _stopRequested = true;
+                        RequestSequenceStop("PrisePhotoSequenceAsync RoutineAutoCentrage: " + ex.Message);
                         throw;
                     }
 
@@ -640,18 +585,68 @@ namespace Aerolithe
                             await WaitIfSequencePausedAsync(cancellationToken);
                             cancellationToken.ThrowIfCancellationRequested();
 
-                            AutomaticFocusResult focusResult = await AutomaticFocusRoutine(cancellationToken);
-                            if (_stopRequested) return;
-
-                            if (focusResult == AutomaticFocusResult.Cancelled)
+                            bool focusStackCaptured = false;
+                            bool skipRotationAlreadyHandled = false;
+                            try
                             {
-                                return;
+                                for (int focusAttempt = 1; focusAttempt <= 2; focusAttempt++)
+                                {
+                                    if (focusAttempt == 2)
+                                    {
+                                        ApplyTemporaryBlurThresholdForRetry();
+                                    }
+
+                                    AutomaticFocusResult focusResult = await AutomaticFocusRoutine(cancellationToken);
+                                    if (_stopRequested) return;
+
+                                    if (focusResult == AutomaticFocusResult.Cancelled)
+                                    {
+                                        return;
+                                    }
+
+                                    if (focusResult == AutomaticFocusResult.MaskUnavailable)
+                                    {
+                                        MarkSequencePhotoFailed(projet.Serie, angleIndexes[projet.Serie]);
+                                        AppendTextToConsoleNL($"Rotation {i + 1}/{serieId[projet.Serie]} à {degresActuelTableTournante}° ignorée: masque stable indisponible.");
+
+                                        if (i < serieId[projet.Serie] - 1)
+                                        {
+                                            await WaitIfSequencePausedAsync(cancellationToken);
+                                            cancellationToken.ThrowIfCancellationRequested();
+                                            await IncrementImgSeq();
+                                        }
+
+                                        focusStackCaptured = false;
+                                        skipRotationAlreadyHandled = true;
+                                        break;
+                                    }
+
+                                    await WaitIfSequencePausedAsync(cancellationToken);
+                                    cancellationToken.ThrowIfCancellationRequested();
+
+                                    focusStackCaptured = await AutomaticFocusThenCapture(delta, cancellationToken);
+                                    if (focusStackCaptured)
+                                    {
+                                        break;
+                                    }
+
+                                    AppendTextToConsoleNL($"Capture focus stack échouée à la rotation {i + 1}/{serieId[projet.Serie]} après l'essai {focusAttempt}/2.", Color.Orange);
+                                }
+                            }
+                            finally
+                            {
+                                ClearTemporaryBlurThresholdOverride();
                             }
 
-                            if (focusResult == AutomaticFocusResult.MaskUnavailable)
+                            if (skipRotationAlreadyHandled)
+                            {
+                                continue;
+                            }
+
+                            if (!focusStackCaptured)
                             {
                                 MarkSequencePhotoFailed(projet.Serie, angleIndexes[projet.Serie]);
-                                AppendTextToConsoleNL($"Rotation {i + 1}/{serieId[projet.Serie]} à {degresActuelTableTournante}° ignorée: masque stable indisponible.");
+                                AppendTextToConsoleNL($"Rotation {i + 1}/{serieId[projet.Serie]} à {degresActuelTableTournante}° ignorée après 2 essais de focus stack.", Color.Red);
 
                                 if (i < serieId[projet.Serie] - 1)
                                 {
@@ -663,11 +658,6 @@ namespace Aerolithe
                                 continue;
                             }
 
-                            await WaitIfSequencePausedAsync(cancellationToken);
-                            cancellationToken.ThrowIfCancellationRequested();
-
-                            await AutomaticFocusThenCapture(delta, cancellationToken);
-
                             AppendTextToConsoleNL("Focus Stack lancé");
 
                             _ = RunMakeFocusStackSerieAsync();
@@ -675,7 +665,7 @@ namespace Aerolithe
 
                             if (flowLayoutPanel1.InvokeRequired)
                             {
-                                flowLayoutPanel1.Invoke(new Action(() => { flowLayoutPanel1.Controls.Clear(); }));
+                                flowLayoutPanel1.Invoke(new Action(ClearThumbnailControls));
                             }
                         }
                         catch (Exception e)
@@ -782,14 +772,14 @@ namespace Aerolithe
                 if (_stopRequested) return false;
 
                 // Vérifie la position actuelle
-                if (Math.Abs(turntablePosition - targetPos) <= tolerance)
+                if (IsTurntableAtPosition(turntablePosition, targetPos, tolerance))
                 {
                     AppendNetworkConsoleMessage($"Position atteinte : {turntablePosition}/4096 (cible : {targetPos}/4096)");
                     return true;
                 }
 
                 int? reportedPosition = await RequestTurntablePositionAsync(TimeSpan.FromMilliseconds(500));
-                if (reportedPosition.HasValue && Math.Abs(reportedPosition.Value - targetPos) <= tolerance)
+                if (reportedPosition.HasValue && IsTurntableAtPosition(reportedPosition.Value, targetPos, tolerance))
                 {
                     AppendNetworkConsoleMessage($"Position atteinte : {reportedPosition.Value}/4096 (cible : {targetPos}/4096)");
                     return true;
@@ -800,6 +790,47 @@ namespace Aerolithe
 
             AppendNetworkConsoleMessage($"Timeout : position actuelle {turntablePosition}/4096, cible {targetPos}/4096");
             return false;
+        }
+
+        private async Task<bool> MoveTurntableIfNeededAsync(
+            int targetPos,
+            CancellationToken cancellationToken,
+            int tolerance = 80)
+        {
+            await WaitIfSequencePausedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (_stopRequested) return false;
+
+            if (IsTurntableAtPosition(turntablePosition, targetPos, tolerance))
+            {
+                AppendNetworkConsoleMessage($"Table tournante déjà à la cible : {turntablePosition}/4096 (cible : {targetPos}/4096)");
+                return true;
+            }
+
+            int? reportedPosition = await RequestTurntablePositionAsync(TimeSpan.FromMilliseconds(500));
+            if (reportedPosition.HasValue && IsTurntableAtPosition(reportedPosition.Value, targetPos, tolerance))
+            {
+                AppendNetworkConsoleMessage($"Table tournante déjà à la cible : {reportedPosition.Value}/4096 (cible : {targetPos}/4096)");
+                return true;
+            }
+
+            await UdpSendTurnTableMessageAsync($"turntable,{targetPos},{turntableSpeed}");
+            if (_stopRequested) return false;
+
+            return await WaitForTurntablePositionAsync(targetPos, tolerance: tolerance, cancellationToken: cancellationToken);
+        }
+
+        private static bool IsTurntableAtPosition(int currentPos, int targetPos, int tolerance)
+        {
+            const int fullTurn = 4096;
+
+            int normalizedCurrent = ((currentPos % fullTurn) + fullTurn) % fullTurn;
+            int normalizedTarget = ((targetPos % fullTurn) + fullTurn) % fullTurn;
+            int directDistance = Math.Abs(normalizedCurrent - normalizedTarget);
+            int wrappedDistance = fullTurn - directDistance;
+
+            return Math.Min(directDistance, wrappedDistance) <= tolerance;
         }
 
         private async Task UpdateTimerAsync(CancellationToken token)
@@ -833,11 +864,27 @@ namespace Aerolithe
         private Task PauseTimer()
         {
             if (_stopwatch.IsRunning)
+            {
                 _stopwatch.Stop();
+            }
             else
+            {
+                EnsureStandaloneTimerUpdateLoop();
                 _stopwatch.Start();
+            }
 
             return Task.CompletedTask;
+        }
+
+        private void EnsureStandaloneTimerUpdateLoop()
+        {
+            if (_cts != null && !_cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _cts = new CancellationTokenSource();
+            _ = UpdateTimerAsync(_cts.Token);
         }
 
         private async Task RunMakeFocusStackSerieAsync()
@@ -860,11 +907,11 @@ namespace Aerolithe
             // Mise à jour du label via Invoke pour thread-safe
             if (lbl_timer.InvokeRequired)
             {
-                lbl_timer.Invoke((Action)(() => lbl_timer.Text = ""));
+                lbl_timer.Invoke((Action)(() => lbl_timer.Text = "00h 00m 00s"));
             }
             else
             {
-                lbl_timer.Text = "";
+                lbl_timer.Text = "00h 00m 00s";
             }
 
             return Task.CompletedTask;

@@ -316,11 +316,14 @@ namespace Aerolithe
             const double kPX = 0.35;
             const int minStep = 2;
             const int maxStepX = 40;
+            const double verticalCorrectionDeadband = 5.0;
+            const int firmwareEffectiveMaxVerticalSpeed = 8000;
 
             var offsetX = offsets.offsetX;
             var offsetY = offsets.offsetY;
+            int feedForwardSpeedY = CalculateActuatorVerticalFeedForwardSpeed();
 
-            if (AutoCentrageActuateurDansTolerance(tolerance))
+            if (AutoCentrageActuateurDansTolerance(tolerance) && feedForwardSpeedY == 0)
             {
                 udpSendLiftVerticalMotorData(0);
                 udpSendLiftHorizontalData(0);
@@ -328,13 +331,24 @@ namespace Aerolithe
                 return;
             }
 
-            int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * kPX, minStep, maxStepX);
-            int stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
+            int stepX = 0;
+            if (Math.Abs(offsetX) > tolerance)
+            {
+                int dynamicStepX = (int)Math.Clamp(Math.Abs(offsetX) * kPX, minStep, maxStepX);
+                stepX = offsetX > 0 ? dynamicStepX : -dynamicStepX;
+            }
             udpSendLiftHorizontalData(stepX);
 
-            int dynamicStepY = CalculateActuatorVerticalStep(Math.Abs(offsetY), minStep);
-            int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
-            udpSendLiftVerticalMotorData(stepY * 100);
+            int correctionSpeedY = 0;
+            if (Math.Abs(offsetY) > verticalCorrectionDeadband)
+            {
+                int dynamicStepY = CalculateActuatorVerticalStep(Math.Abs(offsetY), minStep);
+                int stepY = offsetY > 0 ? dynamicStepY : -dynamicStepY;
+                correctionSpeedY = stepY * 100;
+            }
+
+            int speedY = Math.Clamp(feedForwardSpeedY + correctionSpeedY, -firmwareEffectiveMaxVerticalSpeed, firmwareEffectiveMaxVerticalSpeed);
+            udpSendLiftVerticalMotorData(speedY);
 
             if (offsets.hasBlackOnBorder)
             {
@@ -360,6 +374,60 @@ namespace Aerolithe
             }
 
             return (int)Math.Clamp(step, minStep, firmwareEffectiveMaxStepY);
+        }
+
+        private const int ActuatorAutoCenterFeedForwardVerticalSign = 1;
+        private const int ActuatorAutoCenterFeedForwardCruiseSpeed = 2200;
+        private const int ActuatorAutoCenterFeedForwardMinSpeed = 900;
+        private const double ActuatorAutoCenterFeedForwardStopAngle = 2.5;
+        private const double ActuatorAutoCenterFeedForwardSlowdownAngle = 8.0;
+
+        private void BeginActuatorAutoCenterFeedForward(double startAngle, double targetAngle)
+        {
+            lock (_actuatorAutoCenterFeedForwardLock)
+            {
+                _actuatorAutoCenterStartAngle = startAngle;
+                _actuatorAutoCenterTargetAngle = targetAngle;
+            }
+        }
+
+        private void ClearActuatorAutoCenterFeedForward()
+        {
+            lock (_actuatorAutoCenterFeedForwardLock)
+            {
+                _actuatorAutoCenterStartAngle = null;
+                _actuatorAutoCenterTargetAngle = null;
+            }
+        }
+
+        private int CalculateActuatorVerticalFeedForwardSpeed()
+        {
+            double? startAngle;
+            double? targetAngle;
+
+            lock (_actuatorAutoCenterFeedForwardLock)
+            {
+                startAngle = _actuatorAutoCenterStartAngle;
+                targetAngle = _actuatorAutoCenterTargetAngle;
+            }
+
+            if (!startAngle.HasValue || !targetAngle.HasValue) return 0;
+
+            double totalDelta = targetAngle.Value - startAngle.Value;
+            if (Math.Abs(totalDelta) < 1.0) return 0;
+
+            double remaining = Math.Abs(targetAngle.Value - actuatorAngle);
+            if (remaining <= ActuatorAutoCenterFeedForwardStopAngle) return 0;
+
+            double slowdownFactor = remaining < ActuatorAutoCenterFeedForwardSlowdownAngle
+                ? Math.Clamp(remaining / ActuatorAutoCenterFeedForwardSlowdownAngle, 0.35, 1.0)
+                : 1.0;
+
+            int speed = (int)Math.Round(ActuatorAutoCenterFeedForwardCruiseSpeed * slowdownFactor);
+            speed = Math.Max(speed, ActuatorAutoCenterFeedForwardMinSpeed);
+
+            int direction = Math.Sign(totalDelta) * ActuatorAutoCenterFeedForwardVerticalSign;
+            return direction * speed;
         }
 
         private bool AutoCentrageActuateurDansTolerance(double tolerance = 20.0)

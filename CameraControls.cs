@@ -23,6 +23,7 @@ namespace Aerolithe
         private TaskCompletionSource<int>? captureCompleteTcs;
         private TaskCompletionSource<bool>? miniaturesTcs;
         private Size panelSize = new Size(190, 150);
+        private readonly ToolTip _thumbnailToolTip = new();
         private readonly SemaphoreSlim _nikonOperationLock = new(1, 1);
         private volatile bool _nikonOperationInProgress;
         private static readonly TimeSpan NikonDeviceReadyTimeout = TimeSpan.FromSeconds(8);
@@ -133,6 +134,7 @@ namespace Aerolithe
                             if (device != null && projet.LiveViewEnabled && !device.LiveViewEnabled)
                             {
                                 device.LiveViewEnabled = true;
+                                MarkLiveViewActivity();
                                 liveViewTimer.Start();
                             }
                         });
@@ -156,7 +158,13 @@ namespace Aerolithe
                 {
                     await InvokeOnUIAsync(this, () =>
                     {
-                        device.Start(eNkMAIDCapability.kNkMAIDCapability_DeviceReady);
+                        var currentDevice = device;
+                        if (currentDevice == null)
+                        {
+                            return;
+                        }
+
+                        currentDevice.Start(eNkMAIDCapability.kNkMAIDCapability_DeviceReady);
                     });
                     return;
                 }
@@ -187,7 +195,7 @@ namespace Aerolithe
                 }
                 catch (NikonException ex) when (IsNikonDeviceBusy(ex) && attempt < maxAttempts)
                 {
-                    AppendTextToConsoleNL($"{operationName}: Nikon occupée, nouvel essai {attempt + 1}/{maxAttempts}.");
+                    AppendTextToConsoleNL($"{operationName}: Nikon occupée après l'essai {attempt}/{maxAttempts}; nouvelle tentative.");
                     await Task.Delay(NikonBusyRetryDelay);
                 }
             }
@@ -236,7 +244,7 @@ namespace Aerolithe
             }
             catch (Exception ex)
             {
-                _stopRequested = true;
+                RequestSequenceStop("takePictureAsyncSimple: " + ex.Message);
                 AppendTextToConsoleNL($"Erreur takePictureAsyncSimple: {ex.Message}");
                 MessageBox.Show(
                     this,
@@ -254,6 +262,11 @@ namespace Aerolithe
 
         private async Task TakePictureCoreAsync()
         {
+            if (device == null)
+            {
+                throw new InvalidOperationException("Aucune Nikon n'est connectée.");
+            }
+
             if (imageReadyTcs != null)
             {
                 throw new InvalidOperationException("Une capture est déjà en cours.");
@@ -266,6 +279,7 @@ namespace Aerolithe
 
             try
             {
+                MarkLiveViewActivity();
                 timing.StartTimer();
 
                 AppendTextToConsoleNL($"[Thread takePictureAsync] Thread# {Thread.CurrentThread.ManagedThreadId} -> UI? {(!this.InvokeRequired).ToString()}");
@@ -684,8 +698,7 @@ namespace Aerolithe
                             }
                         }
 
-                        flowLayoutPanel1.Controls.Remove(borderPanel);
-                        borderPanel.Dispose();
+                        RemoveAndDisposeThumbnailControl(borderPanel);
                     };
 
 
@@ -721,8 +734,8 @@ namespace Aerolithe
                     };
 
 
-                    new ToolTip().SetToolTip(label, nomImageModifie);
-                    new ToolTip().SetToolTip(pictureBox, imagePath);
+                    _thumbnailToolTip.SetToolTip(label, nomImageModifie);
+                    _thumbnailToolTip.SetToolTip(pictureBox, imagePath);
 
 
                     pictureBox.Click += (sender, e) =>
@@ -769,6 +782,40 @@ namespace Aerolithe
             }
 
           
+        }
+
+        private void ClearThumbnailControls()
+        {
+            foreach (Control control in flowLayoutPanel1.Controls.Cast<Control>().ToArray())
+            {
+                RemoveAndDisposeThumbnailControl(control);
+            }
+        }
+
+        private void RemoveAndDisposeThumbnailControl(Control control)
+        {
+            if (control.Parent != null)
+            {
+                control.Parent.Controls.Remove(control);
+            }
+
+            DisposeThumbnailResources(control);
+            control.Dispose();
+        }
+
+        private static void DisposeThumbnailResources(Control control)
+        {
+            foreach (Control child in control.Controls.Cast<Control>().ToArray())
+            {
+                DisposeThumbnailResources(child);
+            }
+
+            if (control is PictureBox pictureBox)
+            {
+                Image? image = pictureBox.Image;
+                pictureBox.Image = null;
+                image?.Dispose();
+            }
         }
 
         private static int GetThumbnailHeaderHeight(Size size)
@@ -1019,7 +1066,7 @@ namespace Aerolithe
             {
                 Debug.Write(ex.Message);
                 AppendTextToConsoleNL($"Erreur SaveMesurementImage :: takePictureAsync:  {ex.Message}");
-                _stopRequested = true;
+                RequestSequenceStop("SaveMesurementImage takePictureAsync: " + ex.Message);
                 throw;
             }
 
@@ -1191,6 +1238,11 @@ namespace Aerolithe
         {
             await RunExclusiveNikonOperationAsync(async () =>
             {
+                if (device == null)
+                {
+                    throw new InvalidOperationException("Aucune Nikon n'est connectée.");
+                }
+
                 if (driveStep == null)
                 {
                     driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);

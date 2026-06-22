@@ -22,20 +22,30 @@ namespace Aerolithe
 
         public AerolitheTabControl()
         {
-            ConfigureTabControl();
-            MinimumSize = new Size(0, _tabHeight + 8);
-            DoubleBuffered = true;
-            SetStyle(
-                ControlStyles.AllPaintingInWmPaint
-                | ControlStyles.OptimizedDoubleBuffer
-                | ControlStyles.ResizeRedraw,
-                true);
+            if (!IsInDesigner)
+            {
+                ConfigureTabControl();
+                MinimumSize = new Size(0, _tabHeight + 8);
+                DoubleBuffered = true;
+                SetStyle(
+                    ControlStyles.AllPaintingInWmPaint
+                    | ControlStyles.OptimizedDoubleBuffer
+                    | ControlStyles.ResizeRedraw,
+                    true);
+            }
         }
 
         private bool IsInDesigner
         {
             get
             {
+                string processName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+
+                if (!processName.Equals("Aerolithe", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
                 if (LicenseManager.UsageMode == LicenseUsageMode.Designtime || DesignMode || Site?.DesignMode == true)
                 {
                     return true;
@@ -49,6 +59,12 @@ namespace Aerolithe
                     }
                 }
 
+                if (processName.Contains("devenv", StringComparison.OrdinalIgnoreCase) ||
+                    processName.Contains("DesignToolsServer", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
                 return false;
             }
         }
@@ -57,49 +73,55 @@ namespace Aerolithe
         public Color TabBackColor
         {
             get => _tabBackColor;
-            set { _tabBackColor = value; Invalidate(); }
+            set { _tabBackColor = value; if (!IsInDesigner) Invalidate(); }
         }
 
         [Category("Aerolithe")]
         public Color SelectedTabBackColor
         {
             get => _selectedTabBackColor;
-            set { _selectedTabBackColor = value; Invalidate(); }
+            set { _selectedTabBackColor = value; if (!IsInDesigner) Invalidate(); }
         }
 
         [Category("Aerolithe")]
         public Color TabHoverBackColor
         {
             get => _tabHoverBackColor;
-            set { _tabHoverBackColor = value; Invalidate(); }
+            set { _tabHoverBackColor = value; if (!IsInDesigner) Invalidate(); }
         }
 
         [Category("Aerolithe")]
         public Color TabBorderColor
         {
             get => _tabBorderColor;
-            set { _tabBorderColor = value; Invalidate(); }
+            set { _tabBorderColor = value; if (!IsInDesigner) Invalidate(); }
         }
 
         [Category("Aerolithe")]
         public Color TabTextColor
         {
             get => _tabTextColor;
-            set { _tabTextColor = value; Invalidate(); }
+            set { _tabTextColor = value; if (!IsInDesigner) Invalidate(); }
         }
 
         [Category("Aerolithe")]
         public Color SelectedTabTextColor
         {
             get => _selectedTabTextColor;
-            set { _selectedTabTextColor = value; Invalidate(); }
+            set { _selectedTabTextColor = value; if (!IsInDesigner) Invalidate(); }
         }
 
         [Category("Aerolithe")]
         public Color PageBackColor
         {
             get => _pageBackColor;
-            set { _pageBackColor = value; ApplyPageBackColor(); Invalidate(); }
+            set
+            {
+                _pageBackColor = value;
+                if (IsInDesigner) return;
+                ApplyPageBackColor();
+                Invalidate();
+            }
         }
 
         [Category("Aerolithe")]
@@ -110,6 +132,7 @@ namespace Aerolithe
             set
             {
                 _tabHeight = Math.Max(24, value);
+                if (IsInDesigner) return;
                 MinimumSize = new Size(MinimumSize.Width, _tabHeight + 8);
                 RefreshTabLayout();
             }
@@ -122,6 +145,11 @@ namespace Aerolithe
             {
                 int height = Math.Max(24, value.Height);
                 _tabHeight = height;
+                if (IsInDesigner)
+                {
+                    base.ItemSize = value;
+                    return;
+                }
                 MinimumSize = new Size(MinimumSize.Width, _tabHeight + 8);
                 base.ItemSize = new Size(Math.Max(MinimumTabWidth, value.Width), _tabHeight);
                 ApplyNativeItemSize(base.ItemSize);
@@ -134,28 +162,24 @@ namespace Aerolithe
         public bool ShowTabBorders
         {
             get => _showTabBorders;
-            set { _showTabBorders = value; Invalidate(); }
+            set { _showTabBorders = value; if (!IsInDesigner) Invalidate(); }
         }
 
         protected override void OnCreateControl()
         {
             base.OnCreateControl();
+            if (IsInDesigner) return;
             ConfigureTabControl();
             ApplyPageBackColor();
-            if (!IsInDesigner)
-            {
-                RefreshTabLayout();
-            }
+            RefreshTabLayout();
         }
 
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            if (IsInDesigner) return;
             ConfigureTabControl();
-            if (!IsInDesigner)
-            {
-                RefreshTabLayout();
-            }
+            RefreshTabLayout();
         }
 
         protected override void OnParentChanged(EventArgs e)
@@ -197,7 +221,7 @@ namespace Aerolithe
         protected override void OnControlAdded(ControlEventArgs e)
         {
             base.OnControlAdded(e);
-            if (e.Control is TabPage page)
+            if (!IsInDesigner && e.Control is TabPage page)
             {
                 page.BackColor = _pageBackColor;
             }
@@ -228,12 +252,14 @@ namespace Aerolithe
         protected override void OnSelectedIndexChanged(EventArgs e)
         {
             base.OnSelectedIndexChanged(e);
+            if (IsInDesigner) return;
             Invalidate();
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+            if (IsInDesigner) return;
             int hovered = GetTabIndexAt(e.Location);
             if (hovered == _hoveredIndex) return;
 
@@ -246,6 +272,7 @@ namespace Aerolithe
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
+            if (IsInDesigner) return;
             if (_hoveredIndex < 0) return;
 
             int previousHovered = _hoveredIndex;
@@ -255,6 +282,12 @@ namespace Aerolithe
 
         protected override void OnDrawItem(DrawItemEventArgs e)
         {
+            if (IsInDesigner)
+            {
+                base.OnDrawItem(e);
+                return;
+            }
+
             if (e.Index < 0 || e.Index >= TabPages.Count)
             {
                 return;
@@ -348,6 +381,7 @@ namespace Aerolithe
 
         private void ApplyPageBackColor()
         {
+            if (IsInDesigner) return;
             foreach (TabPage page in TabPages)
             {
                 page.BackColor = _pageBackColor;
@@ -356,6 +390,11 @@ namespace Aerolithe
 
         private void ConfigureTabControl()
         {
+            if (IsInDesigner)
+            {
+                return;
+            }
+
             DrawMode = TabDrawMode.OwnerDrawFixed;
             SizeMode = TabSizeMode.Fixed;
             Multiline = true;

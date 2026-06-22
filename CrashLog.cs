@@ -49,34 +49,6 @@ namespace Aerolithe
             return "Crash log unavailable: unable to write to any configured log directory.";
         }
 
-        public static void WriteEvent(string message)
-        {
-            try
-            {
-                lock (SyncRoot)
-                {
-                    foreach (string directory in GetCandidateLogDirectories())
-                    {
-                        try
-                        {
-                            Directory.CreateDirectory(directory);
-                            string path = Path.Combine(directory, $"aerolithe-events-{DateTime.Now:yyyy-MM-dd}.log");
-                            File.AppendAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}", Encoding.UTF8);
-                            return;
-                        }
-                        catch
-                        {
-                            // Continue vers le prochain emplacement de secours.
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // Le diagnostic ne doit jamais empecher l'application de fonctionner.
-            }
-        }
-
         private static IEnumerable<string> GetCandidateLogDirectories()
         {
             yield return LogDirectory;

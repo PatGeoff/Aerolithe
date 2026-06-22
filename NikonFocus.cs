@@ -32,12 +32,47 @@ namespace Aerolithe
         public int stepSize = 0;
         public int delta = 0;
         int maxNbrPicturesAllowed = 15;
+        private double? _temporaryBlurThresholdOverride;
+        private const double FocusStackRetryBlurThresholdReduction = 20.0;
 
         private enum AutomaticFocusResult
         {
             Success,
             MaskUnavailable,
             Cancelled
+        }
+
+        private double GetConfiguredBlurThreshold()
+        {
+            if (trackBar_blurThreshold.InvokeRequired)
+            {
+                return (int)trackBar_blurThreshold.Invoke(new Func<int>(() => trackBar_blurThreshold.Value));
+            }
+
+            return trackBar_blurThreshold.Value;
+        }
+
+        private double GetEffectiveBlurThreshold()
+        {
+            return _temporaryBlurThresholdOverride ?? GetConfiguredBlurThreshold();
+        }
+
+        private void ApplyTemporaryBlurThresholdForRetry()
+        {
+            double configuredThreshold = GetConfiguredBlurThreshold();
+            double reducedThreshold = Math.Max(0, configuredThreshold - FocusStackRetryBlurThresholdReduction);
+            _temporaryBlurThresholdOverride = reducedThreshold;
+            blurThreshold = reducedThreshold;
+            AppendTextToConsoleNL($"Deuxième essai focus stack: blurThreshold temporaire {configuredThreshold:0} -> {reducedThreshold:0}.");
+        }
+
+        private void ClearTemporaryBlurThresholdOverride()
+        {
+            if (!_temporaryBlurThresholdOverride.HasValue) return;
+
+            _temporaryBlurThresholdOverride = null;
+            blurThreshold = GetConfiguredBlurThreshold();
+            AppendTextToConsoleNL($"blurThreshold restauré à {blurThreshold:0}.");
         }
 
         public async Task nikonDoFocus()
@@ -61,6 +96,7 @@ namespace Aerolithe
                     {
                         device.LiveViewEnabled = true;
                         await Task.Delay(100);
+                        MarkLiveViewActivity();
                         liveViewTimer.Start();
                     }
                 }
@@ -859,9 +895,9 @@ namespace Aerolithe
 
 
 
-        public async Task AutomaticFocusThenCapture(int focusIterations, CancellationToken cancellationToken = default)
+        public async Task<bool> AutomaticFocusThenCapture(int focusIterations, CancellationToken cancellationToken = default)
         {
-            if (_stopRequested) return;
+            if (_stopRequested) return false;
 
             await WaitIfSequencePausedAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -920,7 +956,7 @@ namespace Aerolithe
                 await WaitIfSequencePausedAsync(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (_stopRequested) return;
+                if (_stopRequested) return false;
                 if (lbl_StackSerie.InvokeRequired)
                 {
 
@@ -939,7 +975,7 @@ namespace Aerolithe
                     await WaitIfSequencePausedAsync(cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    if (_stopRequested) return;
+                    if (_stopRequested) return false;
                     if (blurredBlocks < minDetect)
                     {
                         // Reculer de 1 pour revenir au point net
@@ -959,8 +995,7 @@ namespace Aerolithe
                 if (i == 0 && blurredBlocks < minDetect)
                 {
                     AppendTextToConsoleNL("Capture focus stack annulée: impossible de retrouver une zone nette au départ. blurredBlocks = " + blurredBlocks.ToString() + " et minDetect = " + minDetect.ToString());
-                    _stopRequested = true;
-                    return;
+                    return false;
                 }
 
                 if (!await WaitForFocusStackSharpnessAsync(cancellationToken))
@@ -975,12 +1010,11 @@ namespace Aerolithe
                 {
                     Invoke(new Action(() =>
                     {
-                        MessageBox.Show("Capture automatique interrompue.");
                         btn_stopAutomaticFocusCapture.Visible = false;
                         btn_stopAutomaticFocusCapture.Enabled = false;
                     }));
 
-                    return;
+                    return false;
                 }
 
                 try
@@ -1005,7 +1039,7 @@ namespace Aerolithe
                 catch (Exception e)
                 {
                     AppendTextToConsoleNL(e.Message);
-                    _stopRequested = true;
+                    RequestSequenceStop("AutomaticFocusThenCapture: " + e.Message);
                     throw;
                 }
 
@@ -1028,6 +1062,7 @@ namespace Aerolithe
                 }));
             }
 
+            return iterationsCompletees > 0;
         }
 
         private async Task<bool> WaitForFocusStackSharpnessAsync(CancellationToken cancellationToken)

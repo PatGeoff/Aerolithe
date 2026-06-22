@@ -43,6 +43,7 @@ namespace Aerolithe
         public bool liveViewStatus = false;
         private bool _isInitializingCameraSettings = false;
         private bool _isSyncingShutterTimeComboBoxes = false;
+        private static readonly TimeSpan LiveViewRestartDelay = TimeSpan.FromMilliseconds(600);
 
         private Mat maskMatLive;       // remplace maskBitmapLive
         private readonly object _maskLock = new object(); // si tu veux un lock simple
@@ -59,6 +60,22 @@ namespace Aerolithe
         private bool isProcessing = false;
         private byte[] lutData;
         private float lastGammaValue = -1;
+
+        private static Bitmap CreateCameraOfflineBitmap()
+        {
+            return new Bitmap(Properties.Resources.camera_offline);
+        }
+
+        private static void ReplacePictureBoxImage(PictureBox pictureBox, Image? image)
+        {
+            var previous = pictureBox.Image;
+            pictureBox.Image = image;
+
+            if (previous != null && !ReferenceEquals(previous, image))
+            {
+                previous.Dispose();
+            }
+        }
 
 
 
@@ -99,12 +116,12 @@ namespace Aerolithe
             catch (NikonException ex)
             {
                 Console.WriteLine("NikonException: " + ex.Message);
-                picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+                ReplacePictureBoxImage(picBox_LiveView_Main, CreateCameraOfflineBitmap());
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Exception: " + ex.Message);
-                picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+                ReplacePictureBoxImage(picBox_LiveView_Main, CreateCameraOfflineBitmap());
             }
         }
 
@@ -117,6 +134,7 @@ namespace Aerolithe
 
 
             }
+            MarkLiveViewActivity();
             liveViewTimer.Start();
 
             driveStep = device.GetRange(eNkMAIDCapability.kNkMAIDCapability_MFDriveStep);
@@ -139,7 +157,7 @@ namespace Aerolithe
             liveViewTimer.Stop();
 
             // Clear live view picture
-            picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+            ReplacePictureBoxImage(picBox_LiveView_Main, CreateCameraOfflineBitmap());
         }
 
 
@@ -227,12 +245,7 @@ namespace Aerolithe
                         {
                             maskMatForThisFrame?.Dispose();
                             maskMatForThisFrame = null;
-                            this.BeginInvoke(new Action(() =>
-                            {
-                                var oldUi = picBox_liveMaskLum.Image;
-                                picBox_liveMaskLum.Image = null;
-                                oldUi?.Dispose();
-                            }));
+                            ReplacePictureBoxImage(picBox_liveMaskLum, null);
                             goto AfterMaskWork;
                         }
 
@@ -277,13 +290,7 @@ namespace Aerolithe
                         {
                             using var bmpTemp = (maskMatForLiveProcessing ?? maskMatForThisFrame).ToBitmap();
                             var uiClone = (Bitmap)bmpTemp.Clone();
-
-                            this.BeginInvoke(new Action(() =>
-                            {
-                                var prevUi = picBox_liveMaskLum.Image;
-                                picBox_liveMaskLum.Image = uiClone;
-                                prevUi?.Dispose();
-                            }));
+                            ReplacePictureBoxImage(picBox_liveMaskLum, uiClone);
                         }
                         catch (Exception)
                         {
@@ -362,12 +369,12 @@ namespace Aerolithe
                                 // 7) Overlay des blocs nets
                                 using (var overlayImage = background.ToImage<Bgr, byte>()) // copie pour dessin
                                 {
+                                    blurThreshold = GetEffectiveBlurThreshold();
                                     for (int y = 0; y < sharpnessGrid.GetLength(0); y++)
                                     {
                                         for (int x = 0; x < sharpnessGrid.GetLength(1); x++)
                                         {
                                             double sharpness = sharpnessGrid[y, x];
-                                            blurThreshold = (double)trackBar_blurThreshold.Value;
                                             if (sharpness >= blurThreshold)
                                             {
                                                 Rectangle rect = new Rectangle(x * blockSize, y * blockSize, blockSize, blockSize);
@@ -381,29 +388,25 @@ namespace Aerolithe
                                     lbl_blobCount.Text = blurredBlocks.ToString();
 
                                     // 8) Affichage principal
-                                    var prevMain = picBox_LiveView_Main.Image;
                                     if (projet.ViewSharpnessOverlay)
                                     {
                                         // On génère un Bitmap frais et on remplace l'ancien
                                         using var overlayBmp = overlayImage.ToBitmap();
-                                        picBox_LiveView_Main.Image = (Bitmap)overlayBmp.Clone(); // clone optionnel si tu veux standardiser
+                                        ReplacePictureBoxImage(picBox_LiveView_Main, (Bitmap)overlayBmp.Clone()); // clone optionnel si tu veux standardiser
                                     }
                                     else
                                     {
                                         using var bgBmp = background.ToImage<Bgr, byte>().ToBitmap();
-                                        picBox_LiveView_Main.Image = (Bitmap)bgBmp.Clone(); // clone optionnel
+                                        ReplacePictureBoxImage(picBox_LiveView_Main, (Bitmap)bgBmp.Clone()); // clone optionnel
                                     }
-                                    prevMain?.Dispose();
                                 }
                             }
                         }
                         else
                         {
                             // Pas de masque → afficher simplement le background
-                            var prevMain = picBox_LiveView_Main.Image;
                             using var bgBmp = background.ToImage<Bgr, byte>().ToBitmap();
-                            picBox_LiveView_Main.Image = (Bitmap)bgBmp.Clone();
-                            prevMain?.Dispose();
+                            ReplacePictureBoxImage(picBox_LiveView_Main, (Bitmap)bgBmp.Clone());
                         }
 
                         maskMatForThisFrame?.Dispose();
@@ -413,22 +416,91 @@ namespace Aerolithe
                 else
                 {
                     liveViewStatus = false;
-                    var prevMain = picBox_LiveView_Main.Image;
-                    picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
-                    prevMain?.Dispose();
+                    ReplacePictureBoxImage(picBox_LiveView_Main, CreateCameraOfflineBitmap());
                 }
             }
             catch (NikonException ex)
             {
                 Console.WriteLine("NikonException: " + ex.Message);
-                var prevMain = picBox_LiveView_Main.Image;
-                picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
-                prevMain?.Dispose();
+                HandleLiveViewFailure("Erreur LiveView Nikon: " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                HandleLiveViewFailure("Erreur LiveView: " + ex.Message);
             }
             finally
             {
                 isProcessing = false;
             }
+        }
+
+        private async Task StartLiveViewWithRecoveryAsync()
+        {
+            if (device == null)
+            {
+                projet.LiveViewEnabled = false;
+                SetLiveViewRuntimeState(false);
+                return;
+            }
+
+            liveViewTimer?.Stop();
+            liveViewStatus = false;
+
+            try
+            {
+                device.LiveViewEnabled = false;
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("LiveView restart: arrêt préalable ignoré: " + ex.Message);
+            }
+
+            await Task.Delay(LiveViewRestartDelay);
+
+            try
+            {
+                await WaitUntilNikonDeviceReadyAsync(NikonDeviceReadyTimeout);
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("LiveView restart: DeviceReady non confirmé: " + ex.Message);
+            }
+
+            device.LiveViewEnabled = true;
+            projet.LiveViewEnabled = true;
+            SetLiveViewRuntimeState(true);
+            MarkLiveViewActivity();
+            liveViewTimer?.Start();
+        }
+
+        private void StopLiveView()
+        {
+            liveViewTimer?.Stop();
+            liveViewStatus = false;
+
+            if (device != null)
+            {
+                try
+                {
+                    device.LiveViewEnabled = false;
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL("Erreur arrêt LiveView: " + ex.Message);
+                }
+            }
+
+            projet.LiveViewEnabled = false;
+            SetLiveViewRuntimeState(false);
+        }
+
+        private void HandleLiveViewFailure(string message)
+        {
+            liveViewStatus = false;
+            liveViewTimer?.Stop();
+            projet.LiveViewEnabled = false;
+            SetLiveViewRuntimeState(false);
+            AppendTextToConsoleNL(message);
         }
 
 

@@ -52,6 +52,8 @@ namespace Aerolithe
 
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
+                    _ = StopTimer();
+                    ClearFocusStackReports();
                     appSettings.ProjectPath = saveFileDialog.FileName;
                     string projectName = Path.GetFileNameWithoutExtension(appSettings.ProjectPath).Replace(" ", "_");
 
@@ -536,7 +538,7 @@ namespace Aerolithe
             {
                 try
                 {
-                    flowLayoutPanel1.Controls.Clear();
+                    ClearThumbnailControls();
                     string[] imageFiles = Directory.GetFiles(projet.ImageFolderPath, "*.jpg"); // ou *.png, *.jpeg, etc.
                     foreach (string file in imageFiles)
                     {
@@ -552,13 +554,13 @@ namespace Aerolithe
             }
             if (result == DialogResult.No)
             {
-                flowLayoutPanel1.Controls.Clear();
+                ClearThumbnailControls();
             }
         }
 
         public void DeleteAllPicturesInFolderWith()
         {
-            flowLayoutPanel1.Controls.Clear();
+            ClearThumbnailControls();
 
             try
             {
@@ -1078,7 +1080,8 @@ namespace Aerolithe
         public string GetFocusStackImageFullPath()
         {
             /// JPG
-            string nom = $"{ImageNameBase}_{RotationSerieIncrement:D2}.jpg";
+            string cote = (Cote == 0) ? "A" : "B";
+            string nom = $"{ImageNameBase}_{cote}_{RotationSerieIncrement:D2}.jpg";
             return Path.Combine(GetFocusStackPath(), nom);
         }
 
@@ -1227,6 +1230,20 @@ namespace Aerolithe
         public bool CalibrationAutoCentrage { get; set; } = true;
 
         public int ActuatorSpeed { get; set; } = 500;
+
+        public int FocusDetectionBlockScale { get; set; } = 2;
+
+        public int LiveViewIdleTimeoutMinutes { get; set; } = 10;
+
+        public string MetashapePath { get; set; } = string.Empty;
+
+        public string MetashapeMacHomePath { get; set; } = string.Empty;
+
+        public string MetashapeSshHost { get; set; } = "10.211.55.2";
+
+        public string MetashapeSshUser { get; set; } = "tech";
+
+        public string MetashapeSshKeyPath { get; set; } = string.Empty;
 
         public int ThumbnailWidth { get; set; } = 210;
 

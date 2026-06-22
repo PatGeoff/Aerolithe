@@ -31,8 +31,8 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public const string UiRevision = "REV-0069-email-photo-series-stats";
-        public const string UiRevisionDate = "2026-05-22";
+        public const string UiRevision = "REV-0138-actuator-feedforward-autocenter";
+        public const string UiRevisionDate = "2026-06-22";
         private string _windowTitleBase = "Aucun projet";
 
         // THIS IP ADDRESS 192.168.2.4 //
@@ -64,9 +64,16 @@ namespace Aerolithe
         private bool _networkConsoleMessagesEnabled;
         private bool _oscConsoleMessagesEnabled;
         private PrivateFontCollection? _bundledPhosphorFonts;
+        private FontFamily? _bundledPhosphorFontFamily;
         private readonly object _sequencePauseLock = new();
         private bool _sequencePaused;
         private TaskCompletionSource<bool> _sequenceResumeTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private System.Windows.Forms.Timer? _liveViewIdleTimer;
+        private DateTime _lastLiveViewActivityUtc = DateTime.UtcNow;
+        private bool _isInitializingLiveViewIdleTimeout;
+        private const int DefaultLiveViewIdleTimeoutMinutes = 10;
+        private const int MinLiveViewIdleTimeoutMinutes = 1;
+        private const int MaxLiveViewIdleTimeoutMinutes = 240;
         private static readonly Color SequenceActionButtonBackColor = Color.FromArgb(35, 35, 35);
         private static readonly Color SequencePausedButtonBackColor = Color.FromArgb(110, 70, 20);
         private readonly Dictionary<System.Windows.Forms.Button, Color> _sequencePauseButtonBackColors = new();
@@ -81,6 +88,9 @@ namespace Aerolithe
         private readonly object _sequencePhotoStatsLock = new();
         private readonly List<SequencePhotoSeriesStats> _sequencePhotoStats = new();
         private int? _specificResumeLocalRotationOverride;
+        private readonly object _actuatorAutoCenterFeedForwardLock = new();
+        private double? _actuatorAutoCenterStartAngle;
+        private double? _actuatorAutoCenterTargetAngle;
         private int? _specificResumeImageNumberOverride;
 
 
@@ -151,7 +161,9 @@ namespace Aerolithe
             Program.StartupLog("Aerolithe constructor: InitializeComponent starting.");
             InitializeComponent();
             Program.StartupLog("Aerolithe constructor: InitializeComponent completed.");
+            ConfigureMetashapeMenu();
             InitializeActuatorSpeedEvents();
+            InitializeLiveViewIdleTimeoutEvents();
             InitializeLiftXYPad();
             InitializeMessagingPanelLayout();
             SetMainWindowTitle();
@@ -161,7 +173,7 @@ namespace Aerolithe
             Instance = this;
             this.KeyDown += new KeyEventHandler(Form1_KeyDown);
             this.KeyPreview = true;
-            picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+            ReplacePictureBoxImage(picBox_LiveView_Main, CreateCameraOfflineBitmap());
 
             stepperCameraIpAddress = IPAddress.Parse("192.168.2.11");
             turntableIpAddress = IPAddress.Parse("192.168.2.12");
@@ -199,6 +211,9 @@ namespace Aerolithe
             btn_maxImagesFS.Click += btn_maxImagesFS_Click;
             AttachDriveStepSettingsButton();
             AttachFocusStackDenoiseControls();
+            AttachTimerButtons();
+            ApplyFocusDetectionBlockSizeFromSettings();
+            InitializeLiveViewIdleTimer();
             timing = new Timing();
 
             // Positionnement de la fenêtre au départ
@@ -249,6 +264,8 @@ namespace Aerolithe
             {
                 appSettings = appSettings.Load();
                 ApplyThumbnailSizeFromSettings();
+                ApplyFocusDetectionBlockSizeFromSettings();
+                ApplyLiveViewIdleTimeoutToUi();
                 Debug.WriteLine(appSettings.ProjectPath);
                 if (string.IsNullOrWhiteSpace(appSettings.ProjectPath) || !File.Exists(appSettings.ProjectPath))
                 {
@@ -325,11 +342,80 @@ namespace Aerolithe
             catch (Exception ex)
             {
                 AppendTextToConsoleNL("Erreur durant CamSetup(): " + ex.Message);
-                picBox_LiveView_Main.Image = Properties.Resources.camera_offline;
+                ReplacePictureBoxImage(picBox_LiveView_Main, CreateCameraOfflineBitmap());
             }
 
             TestLoadNikonDlls();
             AppendTextToConsoleNL("Initialisation terminée.");
+        }
+
+        private void AttachTimerButtons()
+        {
+            btn_PauseTimer.Visible = false;
+            btn_ResetTimer.Visible = false;
+            panel5.Controls.Remove(btn_PauseTimer);
+            panel5.Controls.Remove(btn_ResetTimer);
+
+            var timerMenu = new ContextMenuStrip();
+            timerMenu.Opening += (_, __) =>
+            {
+                timerMenu.Items.Clear();
+                timerMenu.Items.Add(_stopwatch.IsRunning ? "Mettre sur pause" : "Relancer", null, async (_, __) => await PauseTimer());
+                timerMenu.Items.Add("Reset", null, async (_, __) => await StopTimer());
+            };
+
+            lbl_timer.ContextMenuStrip = timerMenu;
+            panel5.ContextMenuStrip = timerMenu;
+        }
+
+        private void InitializeLiveViewIdleTimer()
+        {
+            _liveViewIdleTimer?.Stop();
+            _liveViewIdleTimer?.Dispose();
+            _liveViewIdleTimer = new System.Windows.Forms.Timer { Interval = 60_000 };
+            _liveViewIdleTimer.Tick += (_, __) => StopLiveViewIfIdle();
+            _liveViewIdleTimer.Start();
+            MarkLiveViewActivity();
+        }
+
+        private void MarkLiveViewActivity()
+        {
+            _lastLiveViewActivityUtc = DateTime.UtcNow;
+        }
+
+        private void StopLiveViewIfIdle()
+        {
+            if (_stopwatch.IsRunning || _sequencePaused || _automaticFocusRoutineRunning || _stopRequested) return;
+            int timeoutMinutes = ClampLiveViewIdleTimeoutMinutes(appSettings.LiveViewIdleTimeoutMinutes);
+            if (DateTime.UtcNow - _lastLiveViewActivityUtc < TimeSpan.FromMinutes(timeoutMinutes)) return;
+            if (device == null || !device.LiveViewEnabled) return;
+
+            try
+            {
+                StopLiveView();
+                AppendTextToConsoleNL($"LiveView Nikon arrêté après {timeoutMinutes} minute(s) d'inactivité.");
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("Erreur arrêt LiveView inactif: " + ex.Message);
+            }
+        }
+
+        private void ApplyFocusDetectionBlockSizeFromSettings()
+        {
+            int value = Math.Max(trackBar_blobCount.Minimum, Math.Min(trackBar_blobCount.Maximum, appSettings.FocusDetectionBlockScale));
+            trackBar_blobCount.Value = value;
+            lbl_BlockAmountBlurDetet.Text = (value * 16).ToString();
+        }
+
+        private void SetLiveViewRuntimeState(bool enabled)
+        {
+            btn_LiveViewEnable.Text = enabled ? "" : "";
+
+            if (!enabled)
+            {
+                ReplacePictureBoxImage(picBox_LiveView_Main, CreateCameraOfflineBitmap());
+            }
         }
 
         private void ApplyProjectStateToUi()
@@ -343,7 +429,7 @@ namespace Aerolithe
             InitializeMaskAlgorithmDropdown();
             btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
             //btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
-            btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
+            SetLiveViewRuntimeState(projet.LiveViewEnabled);
             btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
             btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
             btn_CalibrationAutoCentrage.Text = appSettings.CalibrationAutoCentrage ? "" : "";
@@ -451,11 +537,13 @@ namespace Aerolithe
                 {
                     _sequencePaused = false;
                     _sequenceResumeTcs.TrySetResult(true);
+                    _stopwatch.Start();
                 }
                 else
                 {
                     _sequencePaused = true;
                     _sequenceResumeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    _stopwatch.Stop();
                 }
 
                 paused = _sequencePaused;
@@ -840,7 +928,8 @@ namespace Aerolithe
                     return false;
                 }
 
-                ApplyPhosphorFontToControlTree(this, _bundledPhosphorFonts.Families[0]);
+                _bundledPhosphorFontFamily = _bundledPhosphorFonts.Families[0];
+                ApplyBundledPhosphorFontToControl(this);
                 return true;
             }
             catch (Exception ex)
@@ -851,14 +940,25 @@ namespace Aerolithe
             }
         }
 
+        internal void ApplyBundledPhosphorFontToControl(Control parent)
+        {
+            if (_bundledPhosphorFontFamily == null) return;
+
+            ApplyPhosphorFontToControlTree(parent, _bundledPhosphorFontFamily);
+        }
+
         private static void ApplyPhosphorFontToControlTree(Control parent, FontFamily phosphorFamily)
         {
             foreach (Control control in parent.Controls)
             {
                 ApplyWindowsTextFontToControl(control);
 
-                if (control.Font != null &&
-                    string.Equals(control.Font.FontFamily.Name, "Phosphor", StringComparison.OrdinalIgnoreCase))
+                bool isPhosphorIcon =
+                    string.Equals(control.Tag as string, "PhosphorIcon", StringComparison.OrdinalIgnoreCase) ||
+                    control.Font != null &&
+                    string.Equals(control.Font.FontFamily.Name, "Phosphor", StringComparison.OrdinalIgnoreCase);
+
+                if (control.Font != null && isPhosphorIcon)
                 {
                     control.Font = new Font(
                         phosphorFamily,
@@ -973,6 +1073,11 @@ namespace Aerolithe
             return Math.Clamp(value, 150, 1023);
         }
 
+        private int ClampLiveViewIdleTimeoutMinutes(int value)
+        {
+            return Math.Clamp(value, MinLiveViewIdleTimeoutMinutes, MaxLiveViewIdleTimeoutMinutes);
+        }
+
         private void InitializeActuatorSpeedEvents()
         {
             textBox_VitesseActuateur.TextChanged -= textBox_VitesseActuateur_TextChanged;
@@ -982,6 +1087,17 @@ namespace Aerolithe
             textBox_VitesseActuateur.TextChanged += textBox_VitesseActuateur_TextChanged;
             textBox_VitesseActuateur.KeyDown += textBox_VitesseActuateur_KeyDown;
             textBox_VitesseActuateur.Leave += textBox_VitesseActuateur_Leave;
+        }
+
+        private void InitializeLiveViewIdleTimeoutEvents()
+        {
+            textBox_VeilleNikon.TextChanged -= textBox_VeilleNikon_TextChanged;
+            textBox_VeilleNikon.KeyDown -= textBox_VeilleNikon_KeyDown;
+            textBox_VeilleNikon.Leave -= textBox_VeilleNikon_Leave;
+
+            textBox_VeilleNikon.TextChanged += textBox_VeilleNikon_TextChanged;
+            textBox_VeilleNikon.KeyDown += textBox_VeilleNikon_KeyDown;
+            textBox_VeilleNikon.Leave += textBox_VeilleNikon_Leave;
         }
 
         private void ApplyActuatorSpeedToUi()
@@ -1032,6 +1148,64 @@ namespace Aerolithe
         private void textBox_VitesseActuateur_Leave(object? sender, EventArgs e)
         {
             TryApplyActuatorSpeedFromUi(showMessage: false);
+        }
+
+        private void ApplyLiveViewIdleTimeoutToUi()
+        {
+            _isInitializingLiveViewIdleTimeout = true;
+
+            int minutes = appSettings.LiveViewIdleTimeoutMinutes;
+            if (minutes <= 0)
+            {
+                minutes = DefaultLiveViewIdleTimeoutMinutes;
+            }
+
+            minutes = ClampLiveViewIdleTimeoutMinutes(minutes);
+            appSettings.LiveViewIdleTimeoutMinutes = minutes;
+            textBox_VeilleNikon.Text = minutes.ToString(CultureInfo.InvariantCulture);
+            textBox_VeilleNikon.ForeColor = Color.White;
+
+            _isInitializingLiveViewIdleTimeout = false;
+        }
+
+        private bool TryApplyLiveViewIdleTimeoutFromUi(bool showMessage)
+        {
+            if (!int.TryParse(textBox_VeilleNikon.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minutes))
+            {
+                if (showMessage)
+                {
+                    MessageBox.Show($"SVP entrer un délai de veille Nikon valide entre {MinLiveViewIdleTimeoutMinutes} et {MaxLiveViewIdleTimeoutMinutes} minutes.");
+                }
+
+                ApplyLiveViewIdleTimeoutToUi();
+                return false;
+            }
+
+            minutes = ClampLiveViewIdleTimeoutMinutes(minutes);
+            appSettings.LiveViewIdleTimeoutMinutes = minutes;
+            textBox_VeilleNikon.Text = minutes.ToString(CultureInfo.InvariantCulture);
+            textBox_VeilleNikon.ForeColor = Color.White;
+            appSettings.Save();
+            return true;
+        }
+
+        private void textBox_VeilleNikon_TextChanged(object? sender, EventArgs e)
+        {
+            if (_isInitializingLiveViewIdleTimeout) return;
+            textBox_VeilleNikon.ForeColor = Color.Gray;
+        }
+
+        private void textBox_VeilleNikon_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter) return;
+
+            TryApplyLiveViewIdleTimeoutFromUi(showMessage: true);
+            e.SuppressKeyPress = true;
+        }
+
+        private void textBox_VeilleNikon_Leave(object? sender, EventArgs e)
+        {
+            TryApplyLiveViewIdleTimeoutFromUi(showMessage: false);
         }
 
         private int GetMaskThresholdSetting(int algorithmIndex)
@@ -1488,7 +1662,7 @@ namespace Aerolithe
 
         private void btn_LiftAutoCenterRoutine_Click(object sender, EventArgs e)
         {
-            _stopRequested = false;
+            ClearSequenceStop("Auto-centrage manuel");
             cancelAutoCentrage = false;
             Task.Run(async () =>
             {
@@ -1539,7 +1713,7 @@ namespace Aerolithe
 
         private void btn_actuator_5_Click(object sender, EventArgs e)
         {
-            _stopRequested = false;
+            ClearSequenceStop("Actuateur manuel 5°");
             cancelAutoCentrage = false;
             UdpSendActuatorMessageAsync("actuator 5");
             StartManualActuatorAutoCenterTracking(5);
@@ -1547,7 +1721,7 @@ namespace Aerolithe
 
         private void btn_actuator_25_Click(object sender, EventArgs e)
         {
-            _stopRequested = false;
+            ClearSequenceStop("Actuateur manuel 25°");
             cancelAutoCentrage = false;
             UdpSendActuatorMessageAsync("actuator 25");
             StartManualActuatorAutoCenterTracking(25);
@@ -1555,7 +1729,7 @@ namespace Aerolithe
 
         private void btn_actuator_45_Click(object sender, EventArgs e)
         {
-            _stopRequested = false;
+            ClearSequenceStop("Actuateur manuel 45°");
             cancelAutoCentrage = false;
             UdpSendActuatorMessageAsync("actuator 45");
             StartManualActuatorAutoCenterTracking(45);
@@ -1605,14 +1779,14 @@ namespace Aerolithe
         }
         private void btn_Actuator_Down_Click(object sender, EventArgs e)
         {
-            _stopRequested = false;
+            ClearSequenceStop("Actuateur manuel down");
             UdpSendActuatorMessageAsync("actuator down");
             StartManualActuatorAutoCenterTracking();
         }
 
         private void btn_Actuator_Up_Click(object sender, EventArgs e)
         {
-            _stopRequested = false;
+            ClearSequenceStop("Actuateur manuel up");
             UdpSendActuatorMessageAsync("actuator up");
             StartManualActuatorAutoCenterTracking();
         }
@@ -1643,6 +1817,7 @@ namespace Aerolithe
 
             if (ShouldAutoCenterDuringActuatorMove())
             {
+                BeginActuatorAutoCenterFeedForward(initialActuatorAngle, target);
                 actuatorAutoCenterCts = new CancellationTokenSource();
                 actuatorAutoCenterTask = RunAutoCentrageContinuPendantActuateurAsync(actuatorAutoCenterCts.Token);
             }
@@ -1707,6 +1882,7 @@ namespace Aerolithe
                 }
 
                 actuatorAutoCenterCts?.Dispose();
+                ClearActuatorAutoCenterFeedForward();
 
                 if (targetReached && ShouldAutoCenterDuringActuatorMove() && !_stopRequested && !cancellationToken.IsCancellationRequested)
                 {
@@ -2281,13 +2457,14 @@ namespace Aerolithe
                 {
                     status = "Échoué";
                     errorMessage = ex.Message;
-                    _stopRequested = true;
+                    RequestSequenceStop("StartTotalPhotoSequenceWithControls: " + ex.Message);
                     AppendTextToConsoleNL($"Erreur StartTotalPhotoSequenceWithControls: {ex.Message}");
                     ShowSequenceErrorMessage(ex);
                 }
                 finally
                 {
                     await SendSequenceNotificationAsync("Routine totale", startedAt, status, focusStackWasEnabled, errorMessage);
+                    UnfreezeMaskAfterSuccessfulSequence(status);
                     SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
                 }
             });
@@ -2360,7 +2537,7 @@ namespace Aerolithe
                 catch (Exception ex)
                 {
                     AppendTextToConsoleNL($"Erreur btn_PriseImagesMesuresTotale_Click: {ex.Message}");
-                    _stopRequested = true;
+                    RequestSequenceStop("btn_PriseImagesMesuresTotale_Click: " + ex.Message);
                     ShowMeasurementSequenceErrorMessage(ex);
                 }
                 finally
@@ -2446,13 +2623,14 @@ namespace Aerolithe
                 {
                     status = "Échoué";
                     errorMessage = ex.Message;
-                    _stopRequested = true;
+                    RequestSequenceStop("btn_prisePhotoSeq1_Click: " + ex.Message);
                     AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq1_Click: {ex.Message}");
                     ShowSequenceErrorMessage(ex);
                 }
                 finally
                 {
                     await SendSequenceNotificationAsync("Série 5°", startedAt, status, focusStackWasEnabled, errorMessage);
+                    UnfreezeMaskAfterSuccessfulSequence(status);
                     SetPhotoShootCancellationButtonVisible(false);
                 }
             });
@@ -2530,13 +2708,14 @@ namespace Aerolithe
                 {
                     status = "Échoué";
                     errorMessage = ex.Message;
-                    _stopRequested = true;
+                    RequestSequenceStop("btn_prisePhotoSeq2_Click: " + ex.Message);
                     AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq2_Click: {ex.Message}");
                     ShowSequenceErrorMessage(ex);
                 }
                 finally
                 {
                     await SendSequenceNotificationAsync("Série 25°", startedAt, status, focusStackWasEnabled, errorMessage);
+                    UnfreezeMaskAfterSuccessfulSequence(status);
                     SetPhotoShootCancellationButtonVisible(false);
                 }
             });
@@ -2642,13 +2821,14 @@ namespace Aerolithe
                 {
                     status = "Échoué";
                     errorMessage = ex.Message;
-                    _stopRequested = true;
+                    RequestSequenceStop("btn_prisePhotoSeq3_Click: " + ex.Message);
                     AppendTextToConsoleNL($"Erreur btn_prisePhotoSeq3_Click: {ex.Message}");
                     ShowSequenceErrorMessage(ex);
                 }
                 finally
                 {
                     await SendSequenceNotificationAsync("Série 45°", startedAt, status, focusStackWasEnabled, errorMessage);
+                    UnfreezeMaskAfterSuccessfulSequence(status);
                     SetPhotoShootCancellationButtonVisible(false);
                 }
             });
@@ -2720,7 +2900,8 @@ namespace Aerolithe
             _cts?.Cancel();
             _manualActuatorAutoCenterCts?.Cancel();
             cancelAutoCentrage = true;
-            _stopRequested = true;
+            RequestSequenceStop("StopSequences: cancel utilisateur");
+            _ = StopTimer();
             RestoreCalibrationAutoCentrageOverride();
             SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
             SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
@@ -2743,10 +2924,24 @@ namespace Aerolithe
 
         }
 
-        private void ResetSequenceCancellationButton()
+        private void RequestSequenceStop(string reason)
+        {
+            _stopRequested = true;
+            _lastSequenceErrorMessage = reason;
+            AppendTextToConsoleNL($"_stopRequested = true :: {reason}", Color.OrangeRed);
+        }
+
+        private void ClearSequenceStop(string reason)
         {
             _stopRequested = false;
+            AppendTextToConsoleNL($"_stopRequested = false :: {reason}");
+        }
+
+        private void ResetSequenceCancellationButton()
+        {
+            ClearSequenceStop("ResetSequenceCancellationButton");
             _manualSequenceCancellationRequested = false;
+            _ = StopTimer();
             if (btn_stopAutomaticFocusCapture.InvokeRequired)
             {
                 btn_stopAutomaticFocusCapture.Invoke(new Action(() =>
@@ -2867,7 +3062,7 @@ namespace Aerolithe
             }
 
             _automaticFocusRoutineRunning = true;
-            _stopRequested = false;
+            ClearSequenceStop("Démarrage focus routine");
             SetAutomaticFocusRoutineButtonCancelState(true);
 
             try
@@ -2884,13 +3079,13 @@ namespace Aerolithe
                 maskFreeze = false;
                 btn_freezeMask.Text = "";
                 SetAutomaticFocusRoutineButtonCancelState(false);
-                _stopRequested = false;
+                ClearSequenceStop("Fin focus routine");
             }
         }
 
         private void RequestAutomaticFocusRoutineCancel()
         {
-            _stopRequested = true;
+            RequestSequenceStop("Focus routine cancellé par l'utilisateur");
             maskFreeze = false;
             btn_freezeMask.Text = "";
             AppendTextToConsoleNL("Focus de routine cancellé par l'utilisateur.", Color.Red);
@@ -2951,8 +3146,7 @@ namespace Aerolithe
 
         private void btn_clearPicReport_Click(object sender, EventArgs e)
         {
-            //richTextBox_PicReport.Clear();
-            flowPanelReports.Controls.Clear();
+            ClearFocusStackReports();
         }
 
 
@@ -3593,6 +3787,8 @@ namespace Aerolithe
         private void trackBar_blobCount_Scroll(object sender, EventArgs e)
         {
             lbl_BlockAmountBlurDetet.Text = (trackBar_blobCount.Value * 16).ToString();
+            appSettings.FocusDetectionBlockScale = trackBar_blobCount.Value;
+            appSettings.Save();
         }
 
         private void trackBar_blurThreshold_Scroll(object sender, EventArgs e)
@@ -3937,7 +4133,7 @@ namespace Aerolithe
             }
 
             _shutdownStarted = true;
-            _stopRequested = true;
+            RequestSequenceStop("Fermeture application");
 
             try { _autoPingCts?.Cancel(); } catch { }
             try { _actuatorAnglePollingCts?.Cancel(); } catch { }
@@ -3952,6 +4148,7 @@ namespace Aerolithe
             try { captureCompleteTcs?.TrySetCanceled(); } catch { }
             try { miniaturesTcs?.TrySetCanceled(); } catch { }
             try { _pendingMiniatureTcs?.TrySetCanceled(); } catch { }
+            try { _thumbnailToolTip.Dispose(); } catch { }
 
             try
             {
@@ -4028,7 +4225,7 @@ namespace Aerolithe
                     }
                     catch (Exception ex)
                     {
-                        _stopRequested = true;
+                        RequestSequenceStop("Reprise dernière séquence: " + ex.Message);
                         _lastSequenceErrorMessage = ex.Message;
                         AppendTextToConsoleNL($"Erreur reprise dernière séquence: {ex.Message}");
                         ShowSequenceErrorMessage(ex);
@@ -4051,7 +4248,7 @@ namespace Aerolithe
 
         private void btn_ffmpegJobClear_Click(object sender, EventArgs e)
         {
-            flowPanelReports.Controls.Clear();
+            ClearFocusStackReports();
         }
 
 
@@ -4105,7 +4302,7 @@ namespace Aerolithe
                 }
                 catch (Exception ex)
                 {
-                    _stopRequested = true;
+                    RequestSequenceStop("Reprise spécifique: " + ex.Message);
                     _lastSequenceErrorMessage = ex.Message;
                     AppendTextToConsoleNL($"Erreur reprise spécifique: {ex.Message}");
                     ShowSequenceErrorMessage(ex);
@@ -4486,30 +4683,46 @@ namespace Aerolithe
 
         private async void btn_LiveViewEnable_Click(object sender, EventArgs e)
         {
-            projet.LiveViewEnabled = !projet.LiveViewEnabled;
-            btn_LiveViewEnable.Text = projet.LiveViewEnabled ? "" : "";
-            SavePrefsSettings();
+            bool enableLiveView = !projet.LiveViewEnabled;
             await RunExclusiveNikonOperationAsync(() =>
             {
-                if (device == null)
+                if (enableLiveView)
                 {
-                    return Task.CompletedTask;
+                    return StartLiveViewWithRecoveryAsync();
                 }
 
-                if (projet.LiveViewEnabled)
-                {
-                    device.LiveViewEnabled = true;
-                    liveViewTimer.Start();
-                }
-                else
-                {
-                    device.LiveViewEnabled = false;
-                    liveViewTimer.Stop();
-                }
-
+                StopLiveView();
                 return Task.CompletedTask;
-            });
+            }, waitUntilReadyBefore: false, waitUntilReadyAfter: false);
 
+            SavePrefsSettings();
+
+        }
+
+        private void SetMaskFreeze(bool enabled)
+        {
+            maskFreeze = enabled;
+
+            void updateButton() => btn_freezeMask.Text = enabled ? "" : "";
+
+            if (btn_freezeMask.InvokeRequired)
+            {
+                btn_freezeMask.Invoke(new Action(updateButton));
+            }
+            else
+            {
+                updateButton();
+            }
+        }
+
+        private void UnfreezeMaskAfterSuccessfulSequence(string status)
+        {
+            if (status != "Réussi" || !maskFreeze)
+            {
+                return;
+            }
+
+            SetMaskFreeze(false);
         }
 
         private bool ConfirmResumeLastSuccessfulSequence(string cote)
@@ -4687,7 +4900,7 @@ namespace Aerolithe
 
             if (projet.AutoCentrageActuator)
             {
-                _stopRequested = false;
+                ClearSequenceStop("Auto-centrage actuateur activé");
                 cancelAutoCentrage = false;
                 StartManualActuatorAutoCenterTracking();
             }

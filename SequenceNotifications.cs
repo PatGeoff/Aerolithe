@@ -73,6 +73,7 @@ namespace Aerolithe
                 ProjectName = projectName,
                 SequenceName = sequenceName,
                 Status = status,
+                Cote = projet.Cote == 0 ? "A" : "B",
                 StartedAt = startedAt,
                 FinishedAt = finishedAt,
                 FocusStackEnabled = focusStackWasEnabled,
@@ -93,6 +94,7 @@ namespace Aerolithe
                         Serie = failedTask.Serie,
                         Elevation = failedTask.Elevation,
                         Rotation = failedTask.Rotation,
+                        Cote = failedTask.Cote == 0 ? "A" : "B",
                         FileName = Path.GetFileName(failedTask.OutputPath)
                     });
                 }
@@ -141,15 +143,13 @@ namespace Aerolithe
             focusStackQueue.Clear();
             taskControls.Clear();
 
-            void clearReports() => flowPanelReports.Controls.Clear();
-
             if (flowPanelReports.InvokeRequired)
             {
-                flowPanelReports.Invoke(clearReports);
+                flowPanelReports.Invoke(new Action(ClearFocusStackReports));
             }
             else
             {
-                clearReports();
+                ClearFocusStackReports();
             }
         }
 

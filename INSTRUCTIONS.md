@@ -34,7 +34,10 @@ Les Cancellation tokens et les TaskCompletionSources se réalisent pas pas sur l
 Ce que je dois respecter :
 
 - Continuer à documenter les changements significatifs dans ce fichier, section `Journal Technique`.
+- Toujours écrire dans ce fichier `INSTRUCTIONS.md` les diagnostics importants, décisions techniques, changements fonctionnels et résultats de validation.
+- Toujours compiler en mode `Release` pour valider les changements: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
 - Mettre à jour `UiRevision` dans `Aerolithe.cs` quand un changement fonctionnel est fait.
+- Garder les changements visuels/layout dans `*.Designer.cs` autant que possible; éviter les modifications de design appliquées au runtime, sauf nécessité technique explicite.
 
 ## Fichiers Concernés
 
@@ -662,3 +665,697 @@ Comment valider que le travail est correct :
 - En cas d'erreur pendant une série, le premier échec de la série est ajouté au rapport.
 - Le sous-menu `À propos` affiche maintenant `REV-0069-email-photo-series-stats - 2026-05-22`.
 - Rollback si nécessaire: retirer `SequencePhotoSeriesStats`, les appels `RegisterSequencePhotoSeries(...)`, `MarkSequencePhotoSucceeded(...)`, `MarkSequencePhotoFailed(...)`, et la section `Photos par serie` dans `SequenceNotificationReport.BuildBody()`.
+
+## REV-0070-focus-stack-queue-timer-idle
+
+- Les échecs de `focus-stack.exe` ne déclenchent plus de `MessageBox`; ils sont loggés dans la console.
+- Les erreurs de séquence photo/mesure ne déclenchent plus de boîte d'erreur bloquante via `ShowSequenceErrorMessage(...)` ou `ShowMeasurementSequenceErrorMessage(...)`.
+- Les changements de `_stopRequested` passent maintenant par `RequestSequenceStop(...)` / `ClearSequenceStop(...)` pour logger la raison visible dans la console.
+- Correction du Designer pour `btn_ResetTimer`: le bouton est déclaré comme champ Designer normal et n'utilise plus `this.btn_ResetTimer = new Button();`.
+- `btn_PauseTimer` pause/reprend le chronomètre; `btn_ResetTimer` arrête et remet le chrono à `00h 00m 00s`.
+- La pause de séquence met aussi le chronomètre en pause, puis le reprend à la reprise.
+- Les images focus stackées incluent maintenant le côté dans le nom de fichier via `GetFocusStackImageFullPath()`: `Base_A_00.jpg` ou `Base_B_00.jpg`.
+- Le contrôle de queue focus stack affiche le côté A/B à la place de la série.
+- Le contrôle de queue focus stack a deux actions: refaire la prise de photo + focus stack pour cette rotation, ou relancer seulement le focus stack avec les images existantes.
+- Les boutons du contrôle de queue focus stack utilisent les icônes Phosphor `` pour reprise photo + focus stack et `` pour focus stack seulement.
+- Le contrôle de queue focus stack n'utilise plus de `RichTextBox` par ligne; il utilise des `Label` pour réduire la consommation de handles Windows.
+- Le nettoyage de la queue focus stack dispose maintenant les contrôles retirés, et la liste visible est limitée aux 200 derniers rapports terminés/en erreur pour éviter l'épuisement de handles.
+- Une erreur ou exception sur une tâche focus stack marque seulement cette tâche en `Erreur`; `ProcessFocusStackQueue()` continue ensuite avec la prochaine tâche en attente.
+- Les reprises depuis les boutons du contrôle focus stack réutilisent maintenant la tâche et le contrôle existants au lieu de créer une nouvelle ligne; `focus-stack.exe` est relancé directement sur cette tâche après récupération des images sources.
+- La taille des carrés de détection de netteté (`trackBar_blobCount`) est maintenant persistée dans `AppSettings.FocusDetectionBlockScale` et restaurée au démarrage.
+- Un timer d'inactivité arrête le LiveView Nikon après 10 minutes sans activité de capture/séquence/focus.
+- `AerolitheTabControl` désactive entièrement son rendu custom dans le Designer Visual Studio et ne l'active que dans le process runtime `Aerolithe`, pour éviter les erreurs Designer de type `same key has already been added`.
+- Correction de plusieurs incohérences `RowCount`/`ColumnCount` vs `RowStyles`/`ColumnStyles` dans `Aerolithe.Designer.cs`, et `AutoSize = false` explicite sur les `TextBox` Designer pour éviter `TextBoxBase.AdjustHeight(...)` pendant la création des handles dans Visual Studio.
+- Le sous-menu `À propos` affiche maintenant `REV-0070-focus-stack-queue-timer-idle - 2026-06-01`.
+- À compléter dans une passe suivante: reprise automatique complète d'une séquence échouée avec bypass de la rotation si la reprise échoue au même endroit.
+
+## REV-0071-turntable-skip-current-target
+
+- Avant d'envoyer une commande `turntable,target,speed` pendant une séquence photo ou une séquence d'images de mesure, Aérolithe vérifie maintenant si la table est déjà à la cible.
+- La vérification utilise la position en mémoire puis une lecture fraîche via `RequestTurntablePositionAsync(...)`.
+- Si la table est déjà dans la tolérance de la cible, la commande de rotation est ignorée et la séquence continue directement.
+- La comparaison de position tient compte du retour à zéro sur `4096`, par exemple une position proche de `4096` est considérée proche de la cible `0`.
+- Objectif: éviter qu'une reprise depuis la dernière séquence réussie fasse tourner la table inutilement quand elle est déjà à la bonne position.
+- Le sous-menu `À propos` affiche maintenant `REV-0071-turntable-skip-current-target - 2026-06-01`.
+- Rollback si nécessaire: remettre les appels directs à `UdpSendTurnTableMessageAsync($"turntable,{...},{turntableSpeed}")` suivis de `WaitForTurntablePositionAsync(...)` dans `PriseImagesMesurePourActuateurAsync(...)` et `PrisePhotoSequenceAsync(...)`.
+
+## REV-0072-dynamic-focusstack-phosphor-icons
+
+- Les contrôles `FocusStackReportControl` créés dynamiquement appliquent maintenant la fonte Phosphor embarquée après `InitializeComponent()`.
+- Objectif: afficher correctement les icônes Phosphor des boutons de reprise même si la police Phosphor n'est pas installée globalement dans Windows.
+- Les boutons de reprise du contrôle focus stack ont maintenant `UseVisualStyleBackColor = false` dans le Designer pour conserver le rendu sombre et les icônes blanches.
+- Le sous-menu `À propos` affiche maintenant `REV-0072-dynamic-focusstack-phosphor-icons - 2026-06-01`.
+- Rollback si nécessaire: retirer l'appel `Aerolithe.Instance.ApplyBundledPhosphorFontToControl(this);` dans `FocusStackReportControl` et remettre `UseVisualStyleBackColor = true` sur les deux boutons.
+
+## REV-0073-force-tagged-phosphor-icons
+
+- Les boutons d'action du contrôle focus stack portent maintenant `Tag = "PhosphorIcon"` dans le Designer.
+- Le chargement de la fonte Phosphor embarquée force maintenant la famille Phosphor sur les contrôles marqués `PhosphorIcon`, même si WinForms avait déjà remplacé `new Font("Phosphor", ...)` par une fonte fallback.
+- Les glyphes demandés restent `` (`caret-circle-double-right`, code `57626`) pour reprise photo + focus stack et `` (`caret-circle-right`, code `57634`) pour focus stack seulement.
+- Le sous-menu `À propos` affiche maintenant `REV-0073-force-tagged-phosphor-icons - 2026-06-01`.
+- Rollback si nécessaire: retirer les tags `PhosphorIcon` et revenir au test basé seulement sur `control.Font.FontFamily.Name == "Phosphor"`.
+
+## REV-0074-focus-stack-retry-visual-and-skip
+
+- Une tâche focus stack relancée depuis les boutons du contrôle est maintenant marquée `IsRetry`.
+- Le nom de fichier d'une tâche relancée s'affiche en bleu pâle dans `FocusStackReportControl`, même si le statut demeure `Erreur`, pour distinguer une reprise d'un échec initial.
+- `AutomaticFocusThenCapture(...)` retourne maintenant `bool`: `false` quand la capture focus stack ne peut pas démarrer faute de netteté suffisante, sans mettre `_stopRequested = true`.
+- Pendant une séquence photo avec focus stack, Aérolithe tente maintenant la routine autofocus puis capture focus stack jusqu'à 2 fois pour une rotation.
+- Si les 2 essais échouent, la rotation est marquée échouée dans le rapport, l'image est ignorée, puis la séquence passe à la rotation suivante.
+- Le sous-menu `À propos` affiche maintenant `REV-0074-focus-stack-retry-visual-and-skip - 2026-06-01`.
+- Rollback si nécessaire: remettre `AutomaticFocusThenCapture(...)` en `Task`, remettre l'appel à `RequestSequenceStop(...)` sur netteté insuffisante, et retirer `IsRetry` / la couleur bleue du contrôle focus stack.
+
+## REV-0075-focus-stack-retry-blur-threshold
+
+- Lorsqu'une capture focus stack échoue au premier essai par netteté insuffisante, le deuxième essai baisse temporairement `blurThreshold` de `10`.
+- La baisse du seuil est interne à la tentative de récupération: le slider `trackBar_blurThreshold` n'est pas modifié visuellement et le réglage utilisateur n'est pas sauvegardé.
+- Le calcul LiveView utilise maintenant `GetEffectiveBlurThreshold()`, ce qui permet à l'override temporaire d'être réellement appliqué au comptage `blurredBlocks`.
+- À la fin de la rotation ou de la reprise, l'override est retiré et `blurThreshold` revient à la valeur configurée dans le slider.
+- La reprise `photos + focus stack` utilise aussi deux essais, avec `blurThreshold - 10` au deuxième essai.
+- Le sous-menu `À propos` affiche maintenant `REV-0075-focus-stack-retry-blur-threshold - 2026-06-01`.
+- Rollback si nécessaire: retirer `_temporaryBlurThresholdOverride`, remettre `blurThreshold = (double)trackBar_blurThreshold.Value` dans `CameraSetup.cs`, et retirer `ApplyTemporaryBlurThresholdForRetry()` / `ClearTemporaryBlurThresholdOverride()` des reprises.
+
+## REV-0076-focus-stack-retry-blur-threshold-20
+
+- Le deuxième essai de récupération focus stack baisse maintenant temporairement `blurThreshold` de `20` au lieu de `10`.
+- Le sous-menu `À propos` affiche maintenant `REV-0076-focus-stack-retry-blur-threshold-20 - 2026-06-01`.
+- Rollback si nécessaire: remettre `FocusStackRetryBlurThresholdReduction = 10.0`.
+
+## REV-0077-focus-stack-task-mask-path
+
+- `RunExistingFocusStackTaskAsync(...)` passe maintenant explicitement `task.MaskPath` et `task.ApplyMask` à `RunFocusStack(...)`.
+- Le masque appliqué après `focus-stack.exe` est donc celui enregistré dans la tâche de queue, pas un masque recalculé depuis l'état courant du projet.
+- Avant une reprise masquée, l'ancien PNG masqué correspondant est supprimé pour éviter d'afficher un ancien résultat.
+- Si le masque attendu est introuvable, la console logge le chemin et conserve la sortie non masquée.
+- Le sous-menu `À propos` affiche maintenant `REV-0077-focus-stack-task-mask-path - 2026-06-01`.
+- Rollback si nécessaire: remettre `RunFocusStack(string[] imagePaths, string outputImage)` et retirer l'application explicite de `task.MaskPath`.
+
+## REV-0078-focus-stack-mask-source-images
+
+- Annule l'application du masque après `focus-stack.exe`: le focus stack doit utiliser les images sources déjà masquées, comme pendant une séquence normale.
+- `RunFocusStack(...)` reprend sa signature `RunFocusStack(string[] imagePaths, string outputImage)` et ne dépend plus de `MaskPath`.
+- Avant une reprise, un ancien PNG masqué portant le même nom de sortie est supprimé pour éviter d'afficher un résultat obsolète généré par une version précédente.
+- Objectif: garder le comportement identique entre séquence normale et reprise photo + focus stack; le masque est généré/appliqué pendant la capture des images sources, pas après le stacking.
+- Le sous-menu `À propos` affiche maintenant `REV-0078-focus-stack-mask-source-images - 2026-06-01`.
+- Rollback si nécessaire: réintroduire l'application post-stack du masque, mais ce n'est pas le comportement souhaité actuellement.
+
+## REV-0079-focus-stack-queue-retry-visuals
+
+- Les boutons de reprise du contrôle `FocusStackReportControl` sont un peu plus hauts dans le Designer pour laisser respirer les icônes Phosphor.
+- Le contrôle force maintenant le rendu des glyphes Phosphor en blanc sur les deux boutons de reprise, au lieu de dépendre uniquement du rendu standard WinForms.
+- Une tâche relancée affiche maintenant `Reprise - ...` dans le nom de fichier et un fond bleu foncé sur ce label, afin que l'état reprise soit visible même si le bleu pâle du texte est peu perceptible.
+- Le sous-menu `À propos` affiche maintenant `REV-0079-focus-stack-queue-retry-visuals - 2026-06-01`.
+- Rollback si nécessaire: retirer `ConfigureFocusStackActionButton(...)`, remettre la hauteur `26` du contrôle et retirer le préfixe/fond de reprise dans `FocusStackReportControl.UpdateDisplay()`.
+
+## REV-0080-liveview-idle-timeout-setting
+
+- Ajout de `AppSettings.LiveViewIdleTimeoutMinutes`, valeur par défaut `10`.
+- Le champ `textBox_VeilleNikon` charge cette valeur au démarrage et la sauvegarde sur Enter ou perte de focus.
+- La valeur est limitée entre `1` et `240` minutes.
+- L'arrêt automatique du LiveView Nikon utilise maintenant cette valeur au lieu d'un délai fixe de 10 minutes.
+- Le sous-menu `À propos` affiche maintenant `REV-0080-liveview-idle-timeout-setting - 2026-06-01`.
+- Rollback si nécessaire: retirer `LiveViewIdleTimeoutMinutes`, remettre `LiveViewIdleTimeout = TimeSpan.FromMinutes(10)` et retirer les handlers de `textBox_VeilleNikon`.
+
+## REV-0081-liveview-idle-sync-ui
+
+- Quand l'arrêt idle coupe le LiveView Nikon, l'état visuel est maintenant synchronisé: le bouton `btn_LiveViewEnable` passe à l'icône OFF et l'image principale revient à `camera_offline`.
+- L'arrêt idle ne modifie pas `projet.LiveViewEnabled`; il coupe seulement le LiveView réel pour la session courante.
+- Le bouton manuel LiveView rallume correctement le LiveView si le device est OFF, même si la préférence projet est encore ON.
+- Le sous-menu `À propos` affiche maintenant `REV-0081-liveview-idle-sync-ui - 2026-06-01`.
+- Rollback si nécessaire: remettre l'assignation directe de `btn_LiveViewEnable.Text` dans `ApplyProjectStateToUi()` et dans `btn_LiveViewEnable_Click(...)`, puis retirer `SetLiveViewRuntimeState(...)`.
+
+## REV-0082-metashape-ssh-diagnostic-2026-06-18
+
+- Contexte: le helper LaunchAgent Metashape a déjà été essayé, mais la communication Windows/Parallels vers le Mac ne fonctionnait pas de façon fiable. Ne pas repartir sur cette piste comme solution principale.
+- État actuel: le terminal SSH Metashape communique avec `tech@macstuderolithe` et confirme que `/Applications/MetashapePro.app` existe.
+- Symptôme observé: la commande `/usr/bin/open -n "/Applications/MetashapePro.app"` retourne `exit=0`, mais Metashape ne s'ouvre pas.
+- Tentative `launchctl asuser`: échoue avec `Could not switch to audit session ... Operation not permitted`, puis `launchctl/open exit=1`.
+- Tentative `open` direct: retourne `direct open exit=0`, mais `pgrep -fl "Metashape|MetaShape"` ne trouve aucun processus Metashape après attente.
+- Test comparatif: `/usr/bin/open -n /System/Applications/Utilities/Terminal.app` lancé depuis la console SSH d'Aerolithe ouvre bien Terminal sur le Mac.
+- Conclusion mise à jour: l'ouverture GUI via SSH fonctionne au moins pour Terminal; le problème semble donc spécifique à Metashape, à son bundle, ou aux arguments passés par `open`.
+- Test Metashape sans argument: `/usr/bin/open -n "/Applications/MetashapePro.app"` lancé depuis la console SSH d'Aerolithe ouvre bien Metashape, et `pgrep` trouve le processus.
+- Conclusion mise à jour: `open` via SSH fonctionne pour Metashape quand il n'y a pas d'arguments. Le problème vient probablement de la forme `/usr/bin/open -n "$METASHAPE_APP" --args -r "$SCRIPT_PATH"` ou du script passé à Metashape.
+- Prochaine piste à privilégier: tester `open -n "/Applications/MetashapePro.app" --args -r "<script>"`, puis lancer directement l'exécutable `/Applications/MetashapePro.app/Contents/MacOS/MetashapePro -r <script>` via SSH avec log stdout/stderr.
+
+## REV-0083-metashape-direct-executable-ssh
+
+- Test confirmé: `/usr/bin/open -n "/Applications/MetashapePro.app" --args -r "<script>"` ne lance pas correctement Metashape depuis la console SSH d'Aerolithe.
+- Test confirmé: `/Applications/MetashapePro.app/Contents/MacOS/MetashapePro -r "<script>"` lance bien Metashape et exécute le script.
+- Erreur observée dans ce test direct: après création/sauvegarde initiale du `.psx`, le deuxième `doc.save(PROJECT_PATH)` échoue avec `OSError: Document.save(): editing is disabled in read-only mode`.
+- `LaunchMacMetashapeViaSsh(...)` utilise maintenant l'exécutable direct Metashape (`METASHAPE_EXE`) au lieu de `launchctl asuser open` ou `open --args`.
+- Le lancement direct est fait via `nohup ... -r <script>`, en arrière-plan, avec log dans `<projet>_metashape_ssh.log` et pid dans `<projet>_metashape.pid`.
+- Le script Python Metashape généré supprime maintenant l'ancien `<projet>.psx` et l'ancien dossier `<projet>.files` avant de recréer un projet, afin d'éviter de réouvrir un projet précédent en mode read-only.
+- Vérification: `dotnet build Aerolithe.csproj -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+- Rollback si nécessaire: remettre `LaunchMacMetashapeViaSsh(...)` sur `/usr/bin/open -n "$METASHAPE_APP" --args -r "$SCRIPT_PATH"` et retirer `import shutil` + la suppression du `.psx/.files` dans le script généré.
+
+## REV-0084-metashape-terminal-command-ssh
+
+- Après test utilisateur, le bouton `Lancer Metashape` affichait encore l'ancien log `Méthode 1: launchctl asuser open` / `Méthode 2: open direct`, donc l'exécutable lancé n'incluait pas la correction `REV-0083`.
+- Ajustement supplémentaire: ne plus lancer Metashape par `nohup ... &`, car le test validé avait été fait depuis un vrai terminal SSH en avant-plan.
+- `LaunchMacMetashapeViaSsh(...)` génère maintenant le fichier `<projet>_run_metashape.command`, lui applique `chmod +x` via SSH, puis lance `/usr/bin/open -a Terminal "<commande.command>"`.
+- Objectif: ouvrir une vraie fenêtre Terminal sur le Mac, puis exécuter dedans `/Applications/MetashapePro.app/Contents/MacOS/MetashapePro -r <script>`, qui est la méthode validée manuellement.
+- Le message de lancement affiche maintenant aussi le chemin `Commande Mac`, en plus du script et du log SSH.
+- `UiRevision` passe à `REV-0084-metashape-terminal-command-ssh`.
+- Vérification: `dotnet build Aerolithe.csproj -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+- Rollback si nécessaire: remettre `LaunchMacMetashapeViaSsh(...)` sur le lancement direct `nohup "$METASHAPE_EXE" -r "$SCRIPT_PATH" ... &`.
+
+## REV-0085-metashape-command-unix-encoding
+
+- Erreur observée dans Terminal macOS lors de l'exécution du fichier `<projet>_run_metashape.command`: `line 1: ﻿#!/bin/bash: No such file or directory` puis `set: invalid option`.
+- Cause: le fichier `.command` était écrit avec `Encoding.UTF8`, ce qui peut produire un BOM, et `StringBuilder.AppendLine()` produit des fins de ligne Windows depuis Aerolithe.
+- Correction: `WriteMacMetashapeCommand(...)` écrit maintenant le `.command` en UTF-8 sans BOM (`new UTF8Encoding(false)`) et force des fins de ligne Unix `\n`.
+- Vérification: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+- Rollback si nécessaire: revenir à `AppendLine(...)` et `File.WriteAllText(..., Encoding.UTF8)`, mais cela réintroduit le risque de script illisible par macOS.
+
+## REV-0086-metashape-terminal-grep-delay
+
+- Le délai avant `pgrep -fl "Metashape|MetaShape"` après ouverture du Terminal Mac passe à 3 secondes.
+- Le message SSH précise maintenant que Terminal est ouvert et que Metashape démarre depuis la fenêtre Terminal Mac.
+- Si `pgrep` ne trouve rien après 3 secondes, le message dit de vérifier la fenêtre Terminal Mac au lieu de laisser croire que l'ouverture SSH a forcément échoué.
+- Vérification: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+
+## REV-0087-metashape-open-then-run-script
+
+- Nouveau test demandé: ouvrir Metashape d'abord, attendre, puis lancer le script Python ensuite.
+- Le fichier `<projet>_run_metashape.command` généré fait maintenant:
+  1. `/usr/bin/open -n "/Applications/MetashapePro.app"`
+  2. attente jusqu'à 15 secondes que `pgrep -fl 'Metashape|MetaShape'` trouve le process
+  3. lancement direct de `/Applications/MetashapePro.app/Contents/MacOS/MetashapePro -r <script>`
+- Objectif: utiliser le fait confirmé que Metashape s'ouvre sans argument via SSH, puis exécuter le script après initialisation de l'app.
+- `UiRevision` passe à `REV-0087-metashape-open-then-run-script`.
+- Vérification: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+- Point à vérifier en test réel: si Metashape accepte de recevoir `-r <script>` après qu'une instance GUI est déjà ouverte, ou si cette commande ouvre une deuxième instance/échoue.
+
+## REV-0088-metashape-ssh-open-test-command
+
+- Ajout d'un diagnostic demandé avant de continuer la correction Metashape: afficher dans la console SSH la commande exacte pour ouvrir Metashape sans script.
+- `Terminal SSH Metashape` affiche maintenant aussi un test complet copiable:
+  `/usr/bin/open -n "$METASHAPE_APP"; echo open_exit=$?; sleep 3; pgrep -fl "Metashape|MetaShape" || echo Aucun process Metashape`
+- Le message du bouton `Lancer Metashape` affiche aussi une commande fixe de test sans script:
+  `/usr/bin/open -n "/Applications/MetashapePro.app"; echo open_exit=$?; sleep 3; pgrep -fl "Metashape|MetaShape" || echo Aucun process Metashape`
+- `UiRevision` passe à `REV-0088-metashape-ssh-open-test-command`.
+- Vérification: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+
+## REV-0089-metashape-open-sleep-8
+
+- Test utilisateur: la commande avec `sleep 3` ne fonctionne pas de façon fiable, mais la commande suivante fonctionne:
+  `/usr/bin/open -n "/Applications/MetashapePro.app"; echo "open metashape exit=$?"; sleep 8; pgrep -fl "Metashape|MetaShape" || echo "Aucun Metashape trouvé"`
+- `Terminal SSH Metashape` affiche maintenant cette commande validée par défaut.
+- Le message du bouton `Lancer Metashape` affiche aussi cette commande validée.
+- Le fichier `<projet>_run_metashape.command` utilise maintenant cette même logique avant de lancer le script Python: `open -n`, echo exit code, attente 8 secondes, `pgrep`, puis `MetashapePro -r <script>`.
+- `UiRevision` passe à `REV-0089-metashape-open-sleep-8`.
+- Vérification: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+
+## REV-0090-metashape-terminal-single-line
+
+- Correction demandée: le champ `Commande Mac` du `Terminal SSH Metashape` ne doit contenir qu'une seule ligne simple, pas toute la séquence de diagnostic (`SSH_OK`, détection executable/app, echoes multiples).
+- `BuildDefaultMetashapeTerminalCommand()` retourne maintenant uniquement:
+  `/usr/bin/open -n "/Applications/MetashapePro.app"; echo "open metashape exit=$?"; sleep 8; pgrep -fl "Metashape|MetaShape" || echo "Aucun Metashape trouvé"`
+- `UiRevision` passe à `REV-0090-metashape-terminal-single-line`.
+- Vérification: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+
+## REV-0091-metashape-simple-calibration-import
+
+- Test demandé après validation de l'ouverture Metashape: ouvrir Metashape avec la ligne validée, puis lui envoyer un script Python minimal.
+- Le script Metashape généré est temporairement réduit à un test simple:
+  - créer/nettoyer le projet;
+  - créer un chunk `Aerolithe`;
+  - charger uniquement les images de calibration/mesure depuis `images/mesures/serie_A`;
+  - sauvegarder le projet;
+  - arrêter le script avec `return`.
+- Les étapes `detectMarkers`, import focus stacks, alignement et modèles restent dans le générateur mais ne sont plus atteintes pendant ce test simple.
+- `UiRevision` passe à `REV-0091-metashape-simple-calibration-import`.
+- Vérification: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+- Rollback/prochaine étape: retirer le `return` après l'import calibration pour réactiver progressivement la suite du pipeline.
+
+## REV-0092-metashape-ssh-actions
+
+- Changement demandé: éviter de démarrer plusieurs instances Metashape. Les commandes vérifient maintenant `pgrep -fl "Metashape|MetaShape"` avant d'ouvrir Metashape; si une instance existe, elle est réutilisée/loggée au lieu d'ouvrir une nouvelle instance.
+- `Metashape > Settings` demeure l'endroit où configurer le chemin de l'app, l'hôte SSH, l'utilisateur SSH et la clé SSH.
+- Le dialogue `Lancer Metashape` ne montre plus les champs app/SSH; il garde seulement le choix de projet et les cases d'étapes.
+- `Terminal SSH Metashape` contient maintenant trois commandes séparées avec leurs boutons:
+  - `Démarrer Metashape`
+  - `Importer mesures`
+  - `Marqueurs`
+- Le bouton `Importer mesures` génère/lance un script Python séparé `<projet>_metashape_import_measures.py` qui crée un chunk et importe les images `images/mesures/serie_A`.
+- Le bouton `Marqueurs` génère/lance un script Python séparé `<projet>_metashape_detect_markers.py` qui ouvre/utilise le projet courant et exécute `chunk.detectMarkers(...)`.
+- `UiRevision` passe à `REV-0092-metashape-ssh-actions`.
+- Vérification: `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true` passe, avec les avertissements existants du projet.
+- Point à vérifier en test réel: si lancer `MetashapePro -r <script>` depuis SSH agit sur l'instance ouverte ou démarre une instance CLI séparée; si ce n'est pas fiable, il faudra chercher une méthode IPC propre à Metashape.
+
+## REV-0093-metashape-open-project-after-script
+
+- Diagnostic utilisateur: la commande `Importer mesures` affiche que Metashape a bien exécuté le script (`AddPhotos`, `SaveProject`, projet sauvegardé), mais les images ne sont pas visibles dans la fenêtre Metashape déjà ouverte.
+- Interprétation: `MetashapePro -r <script>` semble exécuter le script dans le processus lancé par la commande SSH, pas dans l'état mémoire de la fenêtre GUI déjà ouverte. Le projet `.psx` est sauvegardé, mais la fenêtre existante peut rester sur son document courant.
+- Référence Agisoft: la documentation Python indique que les scripts peuvent être lancés depuis la console, `Tools > Run Script`, ou la ligne de commande avec `-r`; elle ne documente pas de mécanisme SSH permettant d'injecter un script dans une instance GUI déjà ouverte.
+- Correction: après `MetashapePro -r <script>`, la commande SSH exécute maintenant `open -a "$METASHAPE_APP" <projet.psx>` pour demander explicitement à la GUI Metashape d'ouvrir/recharger le projet sauvegardé.
+- `UiRevision` passe à `REV-0093-metashape-open-project-after-script`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0094-metashape-command-batches
+
+- Demande utilisateur: générer un batch au lieu de dépendre seulement d'une longue commande SSH directe.
+- Sur macOS, les batches générés sont des fichiers `.command` dans le dossier Metashape du projet:
+  - `<projet>_metashape_start.command`
+  - `<projet>_metashape_import_measures.command`
+  - `<projet>_metashape_detect_markers.command`
+- `Terminal SSH Metashape` affiche maintenant des commandes courtes qui ouvrent ces fichiers `.command` dans Terminal sur le Mac avec `/usr/bin/open -a Terminal <batch>`.
+- Les batches vérifient d'abord si Metashape est déjà ouvert, évitent de démarrer une nouvelle instance si possible, exécutent le script Python concerné, puis ouvrent le projet `.psx` dans Metashape pour rendre le résultat visible dans la GUI.
+- `UiRevision` passe à `REV-0094-metashape-command-batches`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0095-metashape-no-batches
+
+- Demande utilisateur: retirer l'approche batch `.command`; le test a montré que le projet devient visible dans la GUI, mais le batch n'est pas nécessaire.
+- Les champs du `Terminal SSH Metashape` reviennent à des commandes SSH directes.
+- Diagnostic retenu: le projet s'ouvrait en read-only parce que la GUI Metashape gardait déjà le `.psx` ouvert pendant que le script CLI essayait de le modifier.
+- Correction retenue sans batch: les commandes `Importer mesures` et `Marqueurs` ferment d'abord Metashape via AppleScript, attendent que le processus disparaisse, exécutent `MetashapePro -r <script>`, puis rouvrent le projet `.psx` dans Metashape.
+- La commande `Démarrer Metashape` ne ferme rien; elle vérifie seulement si Metashape est déjà ouvert avant d'appeler `/usr/bin/open -n`.
+- `UiRevision` passe à `REV-0095-metashape-no-batches`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0096-metashape-python-console-injection
+
+- Nouvelle stratégie demandée: garder `Démarrer Metashape` en SSH, puis demander à l'instance GUI déjà ouverte d'exécuter du Python.
+- `Terminal SSH Metashape` contient maintenant un `ListBox` vide `Scripts Python`, pour préparer une future sélection de scripts.
+- Les boutons `Envoyer import Python` et `Envoyer marqueurs Python` n'utilisent plus `MetashapePro -r`; ils lisent le script Python généré, construisent `exec("<code>")`, le copient dans le presse-papiers du Mac avec `pbcopy`, activent le processus Metashape via `System Events`, collent le code dans la console Python et appuient sur Entrée.
+- Hypothèse de test: la console Python de Metashape doit être active/focalisable, et macOS doit autoriser `System Events` à contrôler l'interface. Si macOS bloque l'automatisation, il faudra autoriser Terminal/sshd/osascript dans Accessibility.
+- `UiRevision` passe à `REV-0096-metashape-python-console-injection`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0097-metashape-custom-python-send
+
+- Correction demandée: le `ListBox`/champ précédent ne permettait pas de tester librement chaque script.
+- `Terminal SSH Metashape` contient maintenant un vrai `TextBox` multiligne éditable `Code Python` avec un bouton `Envoyer`.
+- Le bouton `Envoyer` lit le code Python saisi au moment du clic, construit `exec("<code>")`, l'envoie à l'instance Metashape ouverte via `pbcopy` + `System Events`, puis appuie sur Entrée.
+- Les boutons `Envoyer import Python` et `Envoyer marqueurs Python` restent disponibles pour envoyer les scripts générés.
+- `UiRevision` passe à `REV-0097-metashape-custom-python-send`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0098-metashape-osascript-permission-diagnostic
+
+- Diagnostic utilisateur: l'envoi Python copie bien le code dans le presse-papiers du Mac, mais `System Events` échoue avec `osascript n'est pas autorisé à envoyer des saisies de touches (1002)`.
+- Conclusion: la méthode de collage/touche vers la GUI Metashape dépend de l'autorisation macOS Accessibility pour `/usr/bin/osascript` ou le processus qui lance `osascript`.
+- Correction: la commande d'envoi Python affiche maintenant explicitement que le code est copié dans le presse-papiers et indique d'autoriser `/usr/bin/osascript` dans `Réglages système > Confidentialité et sécurité > Accessibilité` si l'erreur 1002 apparaît.
+- Limite: sans cette autorisation, Aerolithe ne peut pas simuler `Cmd+V`/Entrée dans Metashape via SSH.
+- `UiRevision` passe à `REV-0098-metashape-osascript-permission-diagnostic`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0099-metashape-ssh-utf8-output
+
+- Diagnostic utilisateur: les messages SSH affichent des caractères mal décodés comme `envoyÃ©` au lieu de `envoyé`.
+- Cause probable: la sortie `ssh` UTF-8 du Mac était lue par .NET avec l'encodage local Windows par défaut.
+- Correction: `RunMacSshCommandForHost(...)` force maintenant `StandardOutputEncoding = Encoding.UTF8` et `StandardErrorEncoding = Encoding.UTF8`.
+- Correction complémentaire: les commandes SSH distantes préfixent maintenant `export LANG=fr_CA.UTF-8 LC_ALL=fr_CA.UTF-8;` pour garder une locale UTF-8 côté Mac.
+- `UiRevision` passe à `REV-0099-metashape-ssh-utf8-output`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0100-metashape-python-normalize-ascii
+
+- Diagnostic utilisateur: le code collé dans la console Metashape contenait `\r\n`, des caractères accentués mal rendus (`S√©lectionner`) et une indentation racine invalide, causant `IndentationError: unexpected indent`.
+- Correction sûre: le code Python envoyé par `Envoyer` est maintenant normalisé avant `exec(...)`: `\r\n` et `\r` deviennent `\n`, puis les blancs au début/fin du bloc sont retirés.
+- Limite volontaire: Aerolithe ne modifie pas l'indentation interne, car corriger automatiquement des espaces pourrait casser les blocs Python `if`, `for`, `def`, etc. Le code saisi doit rester une indentation Python valide.
+- Correction complémentaire: les scripts Metashape générés pour import/markers utilisent maintenant des messages ASCII dans la console Metashape pour éviter le mojibake dans l'interface Agisoft.
+- `UiRevision` passe à `REV-0100-metashape-python-normalize-ascii`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0101-metashape-focus-console-before-paste
+
+- Demande utilisateur: avant de coller le script Python, dire à Metashape d'aller à la Console et d'être prêt à recevoir le collage.
+- Correction: la séquence `osascript` active d'abord le processus Metashape, tente de cliquer le menu `View > Console`, puis tente la variante `View > Panes > Console`.
+- Correction complémentaire: après l'ouverture de la console, `osascript` clique près du bas de la fenêtre Metashape pour donner le focus à la zone de console avant `Cmd+V` et Entrée.
+- Limite: Metashape utilise une interface Qt; les noms de menus et les coordonnées peuvent varier selon la langue, l'état des panneaux et la taille de fenêtre. Si le focus ne tombe pas dans la console, il faudra ajuster la position du clic ou trouver le raccourci clavier exact de la console.
+- `UiRevision` passe à `REV-0101-metashape-focus-console-before-paste`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0102-metashape-python-dedent
+
+- Diagnostic utilisateur: le code envoyé à la console Metashape contenait encore une indentation parasite de deux espaces devant les lignes racine après `import Metashape`, causant `IndentationError: unexpected indent`.
+- Correction: la normalisation du code Python envoyé à Metashape retire maintenant une indentation commune de 1 à 4 espaces sur les lignes suivant une première ligne non indentée, quand toutes ces lignes non vides ont cette indentation parasite.
+- Limite: si le code contient déjà plusieurs lignes racine correctement alignées à colonne 0, Aerolithe ne modifie pas l'indentation.
+- `UiRevision` passe à `REV-0102-metashape-python-dedent`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0103-metashape-python-editor-layout
+
+- Demande utilisateur: enlever les champs/boutons `Envoyer import Python` et `Envoyer marqueurs Python`.
+- `Terminal SSH Metashape` ne garde maintenant que:
+  - `Démarrer Metashape`;
+  - un grand champ multiligne éditable `Code Python` avec bouton `Envoyer`;
+  - la zone `Sortie`;
+  - `Fermer`.
+- Le champ `Code Python` utilise une ligne de layout en pourcentage et se redimensionne avec la fenêtre.
+- Les helpers morts des anciens scripts d'import/markers dédiés ont été retirés de `MetashapeAutomation.cs`.
+- `UiRevision` passe à `REV-0103-metashape-python-editor-layout`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0104-metashape-python-no-console-toggle
+
+- Demande utilisateur: renommer la fenêtre `Terminal SSH Metashape` en `Terminal SSH/Python Metashape`.
+- Diagnostic utilisateur: lors de `Envoyer`, la console Python de Metashape se fermait; le clic menu `View > Console` agissait probablement comme un toggle quand la console était déjà ouverte.
+- Correction: la séquence `osascript` ne clique plus les menus `Console`/`Panes > Console` avant le collage.
+- Nouvelle séquence: activer le processus Metashape, cliquer près du bas de la fenêtre pour focaliser la ligne d'entrée de console, puis envoyer `Cmd+V` et Entrée.
+- Limite: la console Metashape doit déjà être visible; Aerolithe ne tente plus de l'ouvrir automatiquement pour éviter de la fermer par toggle.
+- `UiRevision` passe à `REV-0104-metashape-python-no-console-toggle`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0105-metashape-pipeline-generator
+
+- Demande utilisateur: pouvoir enchaîner 5-6 commandes Metashape longues dans l'ordre, dont alignement et modèles HR/LR, sans envoyer chaque script séparément.
+- Ajout dans `Terminal SSH/Python Metashape` d'une section `Pipeline` avec cases cochables:
+  - `Importer mesures`
+  - `Détecter marqueurs`
+  - `Importer focus stacks`
+  - `Aligner photos`
+  - `Construire modèle HR`
+  - `Construire modèle LR`
+- Le bouton `Générer pipeline` remplit le grand champ `Code Python` avec un script séquentiel; il n'envoie pas automatiquement le script, pour permettre une inspection/modification avant `Envoyer`.
+- Le script généré sauvegarde explicitement le projet `.psx` après chaque étape avec `doc.save(PROJECT_PATH)`.
+- Les modèles HR/LR sont construits/exportés séparément vers les chemins GLB du projet Metashape.
+- `UiRevision` passe à `REV-0105-metashape-pipeline-generator`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0106-metashape-terminal-layout
+
+- Demande utilisateur: corriger le visuel de la fenêtre `Terminal SSH/Python Metashape`, où le pipeline, le champ `Code Python`, la sortie et les boutons étaient écrasés ou décalés.
+- Correction: le layout du dialogue utilise maintenant 10 rangées cohérentes; `Pipeline` a une hauteur fixe suffisante, `Code Python` et `Sortie` se partagent l'espace disponible, et le bouton `Fermer` reste en bas.
+- Demande utilisateur: dans le menu `Metashape`, remplacer `Terminal SSH` par `Terminal SSH/Python`.
+- `UiRevision` passe à `REV-0106-metashape-terminal-layout`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0107-metashape-pipeline-clear
+
+- Clarification demandée: `Générer pipeline` ne lance rien dans Metashape; il remplace le champ `Code Python` par un script complet reconstruit à partir des cases cochées. Il faut ensuite cliquer `Envoyer`.
+- Correction UX: après génération, la sortie indique explicitement que le champ `Code Python` a été remplacé au complet et qu'il faut cliquer `Envoyer`.
+- Correction UX: après génération, le champ `Code Python` revient au début du script pour que l'utilisateur voie immédiatement le contenu généré.
+- Ajout demandé: bouton `Clear` dans la rangée `Code Python`, à côté de `Envoyer`, pour vider le code courant.
+- Robustesse: l'envoi Python attend maintenant jusqu'à 120 secondes au lieu de 30 secondes, afin de mieux tolérer les scripts de pipeline plus longs.
+- `UiRevision` passe à `REV-0107-metashape-pipeline-clear`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0108-metashape-step-pipeline-load
+
+- Diagnostic utilisateur: après avoir exécuté `Importer mesures` et `Détecter marqueurs`, décocher ces étapes, cocher seulement `Importer focus stacks`, générer puis envoyer ne produisait rien de visible dans Metashape.
+- Clarification: l'exécution étape par étape doit être supportée; chaque génération crée un script complet pour les étapes cochées seulement, puis `Envoyer` l'exécute.
+- Correction: les scripts générés qui ne contiennent pas `Importer mesures` appellent maintenant `ensure_project_loaded(doc)`. Si le document courant contient déjà des chunks, il est utilisé tel quel; sinon le script ouvre le `.psx` sauvegardé avant d'exécuter l'étape demandée.
+- Diagnostic ajouté: chaque script généré affiche maintenant `SCRIPT RECU PAR METASHAPE`, la liste des étapes sélectionnées et le chemin du projet avant d'exécuter les étapes. Si ces lignes n'apparaissent pas dans la console Metashape, le problème est l'envoi/focus plutôt que l'étape pipeline.
+- `UiRevision` passe à `REV-0108-metashape-step-pipeline-load`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0109-metashape-hr-lr-distance-export
+
+- Demande utilisateur: ajouter des étapes pipeline après l'alignement:
+  - `Désactiver mesures`: désactive les caméras/images provenant de `mesures/serie_A`.
+  - `Texture modèle HR`: génère UV + texture après `Construire modèle HR`.
+  - `Texture modèle LR`: génère UV + texture après `Construire modèle LR`.
+  - `Script distance`: exécute `/Volumes/tech/Desktop/Script Metashape Distance.py`.
+  - `Zoom modèle 3D`: tente de rafraîchir/zoomer la vue 3D.
+  - `Exporter modèles`: exporte HR et LR vers leurs chemins GLB.
+- Les textures utilisent `page_count=2`, `texture_size=4096`, `fill_holes=True` et `ghosting_filter=True`.
+- Le build HR/LR tente de conserver deux assets modèles distincts avec `replace_asset=False` et labels `Aerolithe HR` / `Aerolithe LR`, afin que l'export final puisse exporter chaque modèle séparément.
+- Le script distance est exécuté dans un namespace contenant `Metashape`, `doc` et `chunk`.
+- Limite à valider dans Metashape: selon la version de l'API, la sélection d'un modèle par assignation `chunk.model = model` peut ne pas être supportée; le script logue alors le problème.
+- `UiRevision` passe à `REV-0109-metashape-hr-lr-distance-export`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0110-metashape-auto-open-send
+
+- Demande utilisateur: si Metashape n'est pas ouvert, l'envoi Python doit envoyer la commande SSH d'ouverture avant d'essayer de coller le script.
+- Correction: `Envoyer` vérifie maintenant `pgrep -fl "Metashape|MetaShape"`; si aucune instance n'est trouvée, il lance `/usr/bin/open -n "/Applications/MetashapePro.app"`, affiche le code de sortie, puis attend jusqu'à 20 secondes que le processus apparaisse.
+- Clarification utilisateur: le script `/Volumes/tech/Desktop/Script Metashape Distance.py` fait déjà la sélection des deux targets proches et la création de la scale bar 25 mm. La tentative d'ajouter une étape `Scale bar 25 mm` séparée a été retirée pour éviter de dupliquer cette logique.
+- État temporaire REV-0110: le pipeline gardait l'étape `Script distance`, qui exécutait le script externe avant le zoom et l'export. Cette décision est remplacée par REV-0111.
+- `UiRevision` passe à `REV-0110-metashape-auto-open-send`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0111-metashape-inline-scale-bar
+
+- Correction utilisateur: ne pas dépendre d'un script externe pour le transform de scale bar; générer le code Python comme les autres étapes.
+- Le fichier `/Volumes/tech/Desktop/Script Metashape Distance.py` a été lu et sa logique de transform est intégrée au pipeline: calculer la distance actuelle, calculer `facteur = 0.025 / distance_actuelle`, puis appliquer `Metashape.Matrix.Diag([facteur, facteur, facteur, 1]) * chunk.transform.matrix`.
+- L'étape `Script distance` est remplacée par `Scale bar 25 mm`.
+- La nouvelle étape `Scale bar 25 mm` choisit les deux marqueurs avec position 3D les plus proches, les sélectionne, crée une scale bar entre eux, met `scale_bar.reference.distance = 0.025`, applique le transform et sauvegarde le projet.
+- Limite: la sélection de la paire la plus proche suppose que les marqueurs voisins de grille sont plus proches que les diagonales après alignement; c'est le critère demandé pour éviter les diagonales/hypoténuses.
+- `UiRevision` passe à `REV-0111-metashape-inline-scale-bar`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0112-metashape-launch-shares-pipeline
+
+- Demande utilisateur: le bouton `Lancer` doit utiliser exactement les mêmes scripts que `Terminal SSH/Python Metashape`.
+- Correction: `Lancer` génère maintenant le même pipeline avec `BuildMetashapePipelinePythonScript(...)` et les mêmes étapes par défaut que le Terminal.
+- Correction: sur Mac, `Lancer` envoie le Python à l'instance GUI via la même commande SSH/Python que le bouton `Envoyer`; il ne passe plus par le vieux `.command` + `MetashapePro -r`.
+- `Lancer` n'affiche plus la fenêtre de cases d'étapes; il affiche seulement le choix `Normale` ou `Lisse / métallique / peu de détails`, qui active/désactive `Guided Image Matching`.
+- Le Terminal a une case `Guided Image Matching`, décochée par défaut, et toutes les étapes Pipeline sont cochées par défaut.
+- L'alignement utilise maintenant `keypoint_limit=60000`; `guided_matching` vaut `True` seulement pour l'option lisse/métallique/peu de détails ou la case Terminal.
+- Sécurité projet: le pipeline vérifie le `.psx` ouvert; si un autre projet est ouvert, il tente de le sauvegarder puis ouvre le bon projet, sans recréer à neuf si le bon projet est déjà ouvert.
+- `UiRevision` passe à `REV-0112-metashape-launch-shares-pipeline`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0113-metashape-console-focus
+
+- Diagnostic utilisateur: `Lancer` démarrait Metashape quand il était fermé, mais le projet restait `Untitled` et rien ne s'exécutait; même constat depuis `Terminal SSH/Python`.
+- Cause probable: le Python est bien copié dans le presse-papiers Mac, mais le collage/Entrée ne se rend pas à la console Python Metashape, surtout quand Metashape vient juste d'être ouvert.
+- Correction: l'envoi Python attend maintenant jusqu'à 30 secondes le process Metashape, puis attend une fenêtre Metashape avant de coller.
+- Correction: l'envoi Python tente d'ouvrir/focaliser `View > Console` ou `View > Panes > Console`, en évitant de cliquer si le menu indique déjà la console cochée.
+- Diagnostic ajouté: la sortie SSH affiche maintenant `Metashape déjà ouvert` ou `Metashape non ouvert; démarrage via SSH`, ainsi que la taille du contenu copié dans le presse-papiers avec `pbpaste | wc -c`.
+- `UiRevision` passe à `REV-0113-metashape-console-focus`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0114-metashape-visible-window-send
+
+- Diagnostic utilisateur: `Terminal SSH/Python` pouvait envoyer un script généré, mais `Lancer` ouvrait Metashape sans rien coller/exécuter; après un `Cancel` dans Metashape, supprimer/recréer un chunk pouvait aussi laisser les prochains envois sans effet visible.
+- Cause probable: la commande AppleScript ciblait le premier process dont le nom contenait `Metashape`; après plusieurs essais, annulations ou instances invisibles, ce process pouvait ne pas être la fenêtre GUI visible.
+- Correction: l'AppleScript cherche maintenant explicitement un process Metashape qui possède au moins une fenêtre visible avant de faire `Cmd+V` et Entrée.
+- Correction: `Lancer` n'envoie plus tout le pipeline complet dans le presse-papiers; il écrit toujours le fichier `<projet>_metashape.py`, puis colle seulement une commande courte `exec(open(...).read())` dans la console Metashape.
+- Le bouton `Envoyer` du Terminal conserve l'envoi du contenu du champ `Code Python`, pour permettre les tests étape par étape.
+- `UiRevision` passe à `REV-0114-metashape-visible-window-send`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0115-metashape-save-before-import
+
+- Diagnostic utilisateur: après `Metashape > Lancer`, Metashape restait sur un projet `Untitled`, sans changement visible côté Metashape.
+- Correction: le script Python généré attache maintenant explicitement le document Metashape au fichier `<projet>.psx` avant l'étape `Importer mesures`, via `prepare_project_for_import(doc)`.
+- `save_step(...)` sauvegarde maintenant avec `doc.save()` quand le document courant est déjà le bon `.psx`, et utilise `doc.save(PROJECT_PATH)` seulement pour attacher/changer le chemin.
+- Objectif: faire passer Metashape de `Untitled` au vrai projet dès le début du pipeline, avant l'ajout des chunks/photos.
+- `UiRevision` passe à `REV-0115-metashape-save-before-import`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0116-metashape-console-click-diagnostic
+
+- Diagnostic utilisateur: le message `Lancer Metashape` affichait encore la consigne Accessibility même si `/usr/bin/osascript`, `Parallels Desktop` et `sshd-keygen-wrapper` étaient déjà autorisés dans macOS.
+- Clarification: cette consigne était affichée systématiquement avant l'appel `osascript`; elle ne signifiait pas que l'erreur 1002 était réellement arrivée.
+- Correction: la commande SSH capture maintenant la sortie et le code retour de `osascript`; le message Accessibility n'est affiché que si `osascript` échoue.
+- Correction focus: le clic AppleScript avant `Cmd+V` vise maintenant deux points plus bas et plus à gauche dans la fenêtre Metashape, près de la ligne d'entrée de la console Python, au lieu du centre-bas qui pouvait tomber dans la sortie de console.
+- `UiRevision` passe à `REV-0116-metashape-console-click-diagnostic`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0117-metashape-run-script-menu
+
+- Décision utilisateur: ne plus dépendre d'un collage dans la console Python pour le bouton `Metashape > Lancer`; Metashape possède `Tools > Run Script...`, qui peut lancer un fichier `.py`.
+- Correction: quand `Lancer` génère `<projet>_metashape.py`, l'envoi Mac utilise maintenant AppleScript pour ouvrir `Tools > Run Script...`, puis `Cmd+Shift+G`, colle le chemin complet du script et valide le dialogue.
+- Le chemin du script est collé via le presse-papiers Mac plutôt que tapé au clavier, pour éviter les problèmes de layout clavier/caractères.
+- Le champ manuel `Terminal SSH/Python > Code Python > Envoyer` garde l'ancienne méthode console, car il sert encore à tester du code libre non sauvegardé en fichier.
+- `UiRevision` passe à `REV-0117-metashape-run-script-menu`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0118-metashape-file-log-no-print
+
+- Diagnostic utilisateur: `Tools > Run Script...` lance maintenant bien le fichier, mais Metashape affiche `Run script failed` avec `RichJupyterWidget object has no attribute '_append_custom'`.
+- Cause probable: bug interne de la console/Jupyter de Metashape déclenché par les `print(...)` du script généré.
+- Correction: les scripts Python Metashape générés n'utilisent plus `print(...)` pour les logs; `log(...)` écrit maintenant dans `<projet>_metashape.log` à côté du `.psx`.
+- Objectif: éviter la console Jupyter interne de Metashape pendant l'exécution du script et obtenir un log exploitable sur disque.
+- `UiRevision` passe à `REV-0118-metashape-file-log-no-print`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0119-metashape-run-script-open-dialog
+
+- Diagnostic utilisateur: après `Run Script`, la console Metashape affichait une ligne `In [1]:` contenant plusieurs chemins (`/Users/tech/Desktop/Script Metashape Distance.py`, puis le script généré), suivie de l'erreur `RichJupyterWidget`.
+- Interprétation: l'AppleScript ouvrait ou ciblait mal le dialogue fichier; les frappes destinées au sélecteur de fichier pouvaient encore tomber dans la console Python.
+- Correction: après `Cmd+Shift+G`, l'AppleScript fait maintenant `Cmd+A` avant de coller le chemin du script généré, afin de remplacer toute ancienne valeur ou sélection.
+- Correction: après validation du chemin, l'AppleScript clique explicitement le bouton `Open` ou `Ouvrir` du dialogue, avec fallback sur Entrée, au lieu d'envoyer Entrée deux fois.
+- `UiRevision` passe à `REV-0119-metashape-run-script-open-dialog`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0120-metashape-background-progress
+
+- Décision technique: abandonner le pilotage fragile de la GUI Metashape par collage console ou dialogue `Run Script` pour le bouton `Metashape > Lancer`.
+- `Lancer` génère toujours le script Python, puis démarre maintenant un traitement Metashape en arrière-plan via SSH avec l'exécutable direct `MetashapePro -r <script.py>`.
+- Avant le traitement, la commande SSH tente de fermer la GUI Metashape si elle est ouverte, pour éviter que le `.psx` soit verrouillé/read-only pendant l'écriture par le process batch.
+- Ajout d'une fenêtre `Progression Metashape` dans Aérolithe: elle reste ouverte pendant que Metashape travaille, affiche les logs du script et du runner SSH, et Aérolithe reste utilisable.
+- Le script Python écrit ses étapes dans `<projet>_metashape.log`; le stdout/stderr Metashape est écrit dans `<projet>_metashape_runner.log`.
+- La sortie SSH est maintenant lue en streaming pour alimenter la fenêtre de progression au fil de l'eau.
+- À la fin, si Metashape retourne `exit=0`, la commande rouvre le `.psx` dans la GUI Metashape.
+- `UiRevision` passe à `REV-0120-metashape-background-progress`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0121-metashape-close-confirmation
+
+- Demande utilisateur: ne jamais fermer une fenêtre/projet Metashape en cours sans avertissement explicite, pour éviter de perdre du travail non sauvegardé.
+- Avant de lancer le batch Mac, Aérolithe vérifie maintenant par SSH si un process Metashape est actif.
+- Si Metashape est ouvert, Aérolithe affiche une confirmation bloquante expliquant que la GUI Metashape doit être fermée pour éviter un projet read-only, et demande de sauvegarder le travail avant de continuer.
+- Le bouton par défaut de la boîte est `Non`; si l'utilisateur annule, aucun traitement Metashape n'est lancé.
+- Si la vérification SSH échoue, Aérolithe affiche aussi un avertissement et demande une confirmation avant de continuer.
+- `UiRevision` passe à `REV-0121-metashape-close-confirmation`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0122-metashape-progress-lr-viewer
+
+- Demande utilisateur: la fenêtre `Progression Metashape` doit montrer l'étape en cours et une barre de progression, sans afficher toutes les lignes de log parce que cela ralentit le reste de l'application.
+- La fenêtre de progression garde maintenant seulement les 4 dernières lignes visibles; les logs complets restent écrits dans `<projet>_metashape_runner.log` et `<projet>_metashape.log`.
+- La progression UI lit les lignes `[Aerolithe Pipeline] START ...`, `DONE ...` et `PIPELINE TERMINE` pour mettre à jour l'étape courante et la barre de progression.
+- Après un traitement Metashape réussi, Aérolithe tente d'ouvrir automatiquement une fenêtre `Viewer GLB LR` sur le fichier `<projet>_LR.glb`.
+- Le viewer intégré charge directement le GLB LR exporté et permet une inspection rapide par rotation souris et zoom molette.
+- Diagnostic logs utilisateur: `Gibeon_2001_024_C01_metashape.log` montrait un arrêt à `START Texture HR model`; `Gibeon_2001_024_C01_metashape_runner.log` montrait `AttributeError: module 'Metashape' has no attribute 'DiffuseMap'`.
+- Correction compatibilité Metashape 2.2.3: le script généré cherche maintenant `Metashape.Model.DiffuseMap`, avec fallback vers `Metashape.DiffuseMap`, puis appelle `buildTexture` sans `texture_type` si aucun enum n'est disponible.
+- `UiRevision` passe à `REV-0122-metashape-progress-lr-viewer`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0123-metashape-progress-cancel
+
+- Demande utilisateur: réduire la fenêtre `Progression Metashape` maintenant que seulement 4 lignes sont affichées.
+- La fenêtre passe à une taille plus mince (`900x250`) et conserve les mêmes informations utiles: étape courante, barre de progression, 4 lignes récentes et chemins des logs.
+- Correction du compteur d'étape: l'affichage utilise maintenant l'ordre canonique des labels du pipeline (`Align photos` = `4/12`) au lieu de `completedSteps.Count + 1`, qui pouvait afficher un rang incohérent si des lignes arrivaient dans un ordre inattendu.
+- Ajout d'un bouton `Annuler` dans la fenêtre de progression. Il envoie par SSH un arrêt du process Metashape batch associé au script courant, puis marque le traitement comme annulé dans la console Aerolithe.
+- Diagnostic logs utilisateur: les derniers logs fournis ne contenaient pas de traceback ni d'erreur; le batch était rendu à `START Align photos` et le runner affichait encore le matching/alignment Metashape.
+- Clarification: le pipeline courant ne construit pas le LR deux fois; il construit HR, texture HR, construit LR, texture LR, puis exporte les deux modèles.
+- `UiRevision` passe à `REV-0123-metashape-progress-cancel`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0124-metashape-scalebar-diagnostic
+
+- Diagnostic utilisateur: Metashape échouait à l'étape `Scale bar 25mm` avec `RuntimeError: Pas assez de marqueurs avec position 3D. Aligner les photos avant de creer la scale bar.`, puis `Metashape exit=1`.
+- Interprétation: des marqueurs ont été détectés dans les images de mesures, mais moins de deux marqueurs possèdent une position 3D exploitable après l'alignement.
+- Décision rejetée par l'utilisateur: ne pas rendre la scale bar optionnelle, car les marqueurs et l'échelle sont essentiels au résultat.
+- Cette révision est conservée comme diagnostic seulement; le comportement final est corrigé par `REV-0125-metashape-scalebar-required`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0125-metashape-scalebar-required
+
+- Correction fonctionnelle: `Scale bar 25mm` est maintenant exécutée juste après `Align photos`, avant `Disable measures` et avant la construction HR/LR.
+- Motif: l'échelle doit être validée avant de passer du temps à bâtir les modèles, et avant de désactiver les images de mesures.
+- La scale bar redevient bloquante: si moins de deux marqueurs possèdent une position 3D, le pipeline s'arrête.
+- Le message d'erreur généré est maintenant plus utile: il logue le nombre total de marqueurs, le nombre de marqueurs avec position 3D et le nombre de caméras alignées.
+- Le compteur de progression suit le nouvel ordre: `Scale bar 25mm` est maintenant l'étape `5/12`.
+- `UiRevision` passe à `REV-0125-metashape-scalebar-required`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0126-metashape-scalebar-triplets
+
+- Demande utilisateur: pour la scale bar, choisir trois marqueurs consécutifs, mesurer les distances `1-2` et `2-3`, puis utiliser la plus petite des deux.
+- Le script trie maintenant les marqueurs 3D par label numérique quand possible, sinon par label texte.
+- La sélection de scale bar parcourt les triplets consécutifs de marqueurs 3D, compare seulement les paires adjacentes `1-2` et `2-3`, puis choisit la plus petite distance valide.
+- Le log Metashape écrit l'ordre des marqueurs 3D et chaque candidat mesuré pour vérifier la sélection.
+- La scale bar reste obligatoire: il faut au moins trois marqueurs avec position 3D.
+- `UiRevision` passe à `REV-0126-metashape-scalebar-triplets`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0127-metashape-scalebar-quiet-log
+
+- Demande utilisateur: ne pas logger tous les marqueurs/candidats de scale bar.
+- Le script garde la logique de sélection par triplets consécutifs, mais ne logue plus l'ordre complet des marqueurs ni chaque distance candidate.
+- Le log conserve seulement le diagnostic minimal et la paire effectivement utilisée pour créer la scale bar.
+- La création de la scale bar reste faite avec les deux marqueurs choisis par la plus petite distance valide.
+- `UiRevision` passe à `REV-0127-metashape-scalebar-quiet-log`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0128-glb-viewer-menu-open
+
+- Demande utilisateur: ajouter un menu `Visualisateur` après `Metashape`, avec une commande pour ouvrir le visualisateur GLB.
+- Ajout dans le Designer du menu `Visualisateur > Ouvrir visualisateur GLB`.
+- Le visualisateur GLB peut maintenant s'ouvrir sans fichier chargé.
+- Ajout d'un bouton `Ouvrir` dans la fenêtre du visualisateur pour sélectionner un fichier `.glb`.
+- L'ouverture automatique du visualisateur sur le modèle LR exporté par Metashape est conservée.
+- `UiRevision` passe à `REV-0128-glb-viewer-menu-open`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0129-glb-viewer-textures-framing-icons
+
+- Demande utilisateur: afficher les textures du GLB, faire remplir davantage le visualisateur par le modèle, et mettre l'icône Aérolithe sur les fenêtres `Progression Metashape` et `Visualisateur GLB`.
+- Le visualisateur GLB lit maintenant les coordonnées `TEXCOORD_0` et les textures base color embarquées dans les matériaux GLB, puis les charge dans OpenGL.
+- Le cadrage initial du modèle est resserré pour que le modèle occupe plus d'espace dans le visualisateur.
+- Les fenêtres `Progression Metashape` et `Visualisateur GLB` utilisent l'icône de l'application.
+- Le diagnostic de scale bar distingue maintenant le cas où les caméras ne sont pas alignées avant la création de la scale bar.
+- `UiRevision` passe à `REV-0129-glb-viewer-textures-framing-icons`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0130-metashape-progress-log-tail
+
+- Demande utilisateur: éviter que la fenêtre `Progression Metashape` garde tout le texte du log et ralentisse Aérolithe.
+- L'affichage de progression conserve maintenant seulement les 8 dernières lignes reçues.
+- Le suivi SSH démarre avec `tail -n 8 -f` au lieu de relire les logs depuis le début.
+- Le lecteur de flux SSH garde seulement un tampon court des dernières lignes pour les messages d'erreur, au lieu d'accumuler toute la sortie en mémoire.
+- Les fichiers de log complets sur disque restent inchangés.
+- `UiRevision` passe à `REV-0130-metashape-progress-log-tail`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0131-metashape-main-console-quiet-marker-estimate
+
+- Demande utilisateur: ne pas écrire les logs détaillés Metashape dans la Main Console; les garder dans `Progression Metashape`.
+- En cas d'erreur du traitement suivi, la Main Console reçoit maintenant un message court et renvoie vers la fenêtre de progression et les fichiers logs.
+- Le détail SSH/Metashape complet reste affiché dans `Progression Metashape`.
+- La scale bar tente maintenant d'estimer les positions 3D des marqueurs à partir de leurs projections sur les caméras alignées et du sparse cloud avant d'échouer.
+- Le diagnostic de scale bar indique aussi combien de marqueurs ont des projections sur au moins deux caméras alignées.
+- Le visualisateur GLB rend les primitives texturées en double face avec un matériau blanc pour éviter de masquer ou assombrir des portions du modèle photogrammétrique.
+- `UiRevision` passe à `REV-0131-metashape-main-console-quiet-marker-estimate`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0132-glb-viewer-gltf-uv-orientation
+
+- Demande utilisateur: le visualisateur GLB applique mal la texture par rapport au viewer web.
+- Le viewer ne retourne plus verticalement l'image de texture avant l'upload OpenGL, afin de respecter la convention glTF utilisée par les UV `TEXCOORD_0`.
+- Les textures GLB utilisent maintenant `ClampToEdge` au lieu de `Repeat` pour éviter que des UV de bordure affichent une autre portion de la texture.
+- `UiRevision` passe à `REV-0132-glb-viewer-gltf-uv-orientation`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0133-metashape-progress-physical-line-buffer
+
+- Demande utilisateur: la fenêtre `Progression Metashape` ne doit pas garder les anciennes lignes en mémoire; seulement les 8 dernières lignes réelles.
+- Chaque message reçu est maintenant séparé en lignes physiques avant d'être ajouté au tampon d'affichage.
+- Le `TextBox` de progression est réécrit uniquement avec les 8 dernières lignes, puis son historique d'annulation est vidé avec `ClearUndo()`.
+- `UiRevision` passe à `REV-0133-metashape-progress-physical-line-buffer`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0134-metashape-scalebar-first-two-markers
+
+- Demande utilisateur: arrêter de bloquer sur les positions 3D des marqueurs et simplement sélectionner deux marqueurs consécutifs pour voir.
+- La création de scale bar tente encore d'utiliser les marqueurs 3D quand ils existent.
+- Si aucune distance 3D valide n'est disponible, le script prend les deux premiers marqueurs triés, les sélectionne, crée une scale bar de référence 25 mm, sauvegarde, puis continue sans appliquer de facteur d'échelle.
+- `UiRevision` passe à `REV-0134-metashape-scalebar-first-two-markers`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0135-metashape-scalebar-preferred-marker-pairs
+
+- Demande utilisateur: les exemples montrent des paires plausibles de marqueurs de mire, plutôt que les deux premiers marqueurs triés.
+- En absence de distance 3D, le fallback de scale bar cherche maintenant d'abord des paires préférées comme `19-20`, `11-12`, `5-6`, `21-22`, `14-15`, `23-24` et `1-7`.
+- Si aucune paire préférée n'est détectée, le script essaie une paire numérique consécutive, puis seulement ensuite les deux premiers marqueurs triés.
+- `UiRevision` passe à `REV-0135-metashape-scalebar-preferred-marker-pairs`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0136-metashape-main-console-status-errors
+
+- Demande utilisateur: garder les messages de statut du traitement Metashape suivi dans la Main Console, et y ajouter aussi les erreurs reçues.
+- Le lancement, la fin normale et l'annulation du batch Metashape restent écrits dans la Main Console.
+- Les lignes d'erreur reçues du flux Metashape sont aussi copiées dans la Main Console, sans copier le log normal complet.
+- Avant de vider les logs Metashape d'un nouveau run, le batch conserve les fichiers précédents en `.previous`.
+- `UiRevision` passe à `REV-0136-metashape-main-console-status-errors`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0137-metashape-readonly-guard
+
+- Diagnostic utilisateur: Metashape échoue avec `Document.save(): editing is disabled in read-only mode`, puis la même erreur est répétée sur plusieurs hôtes SSH.
+- Le batch Mac attend maintenant jusqu'à 20 secondes après la demande de fermeture de la GUI Metashape; si un processus Metashape reste ouvert, le traitement est annulé avant d'écrire le `.psx`.
+- Les scripts Python générés transforment maintenant l'erreur read-only de `doc.save(...)` en message explicite indiquant de fermer toute fenêtre Metashape utilisant le projet cible.
+- Le retry SSH ne relance plus le pipeline sur les autres hôtes quand SSH a répondu mais que la commande distante Metashape a retourné un code d'erreur.
+- `UiRevision` passe à `REV-0137-metashape-readonly-guard`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0138-actuator-feedforward-autocenter
+
+- Demande utilisateur: rendre l'auto-centrage pendant mouvement d'actuateur plus smooth, en évitant d'attendre que la météorite dépasse un seuil avant de démarrer le lift vertical.
+- `WaitForActuator(...)` initialise maintenant un état de feed-forward vertical avec l'angle de départ et l'angle cible quand l'auto-centrage actuateur est actif.
+- `AutoCentrageStepPendantActuateurAsync(...)` ajoute une vitesse verticale anticipée pendant les mouvements ciblés d'actuateur, puis additionne la correction LiveView existante basée sur `offsetY`.
+- Le feed-forward vertical utilise une vitesse de croisière prudente de `2200`, ralentit près de la cible, et s'arrête quand l'actuateur est à moins de `2.5°` de la cible.
+- `ActuatorAutoCenterFeedForwardVerticalSign = 1` signifie qu'une montée d'angle actuateur envoie une vitesse verticale positive. Si le premier test physique montre que le lift part dans le mauvais sens, mettre cette constante à `-1`.
+- Le lift horizontal reste corrigé seulement quand `offsetX` dépasse la tolérance pendant le suivi actuateur, pour réduire le jitter latéral.
+- Les arrêts de sécurité ne sont pas adoucis: les fins de course firmware et `stepmotor stop` continuent d'arrêter brutalement les moteurs côté ESP32.
+- `UiRevision` passe à `REV-0138-actuator-feedforward-autocenter`.
+- Rollback si le suivi vertical dérive, oscille ou part dans le mauvais sens: retirer `BeginActuatorAutoCenterFeedForward(...)`, `ClearActuatorAutoCenterFeedForward(...)`, `CalculateActuatorVerticalFeedForwardSpeed(...)`, remettre le calcul vertical direct `udpSendLiftVerticalMotorData(stepY * 100)` dans `AutoCentrageStepPendantActuateurAsync(...)`, et remettre `UiRevision` à la révision précédente voulue.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.

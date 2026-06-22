@@ -34,7 +34,6 @@ namespace Aerolithe
         static void Main()
         {
             StartupLog("Main started.");
-            CrashLog.WriteEvent("Main started.");
 
             try
             {
@@ -43,7 +42,6 @@ namespace Aerolithe
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
                 StartupLog("ApplicationConfiguration initialized.");
-                CrashLog.WriteEvent("ApplicationConfiguration initialized.");
 
                 // Empêcher plusieurs instances simultanées d’Aerolithe
                 if (!AppLifecycle.EnsureSingleInstance("Aerolithe_SingleInstance"))
@@ -58,14 +56,12 @@ namespace Aerolithe
                 Application.ApplicationExit += (_, __) =>
                 {
                     StartupLog("ApplicationExit.");
-                    CrashLog.WriteEvent("ApplicationExit.");
                     AppLifecycle.StopAllGraceful(waitMsPerTask: 100);
                 };
 
                 AppDomain.CurrentDomain.ProcessExit += (_, __) =>
                 {
                     StartupLog("ProcessExit.");
-                    CrashLog.WriteEvent("ProcessExit.");
                     AppLifecycle.StopAllGraceful(waitMsPerTask: 100);
                 };
 

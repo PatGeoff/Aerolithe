@@ -16,6 +16,7 @@ namespace Aerolithe
     public partial class Aerolithe : Form
     {
         public string focusStackOutputPath = "";
+        private const int MaxFocusStackReportControls = 200;
 
         // File d'attente pour les focus stacks
         private List<FocusStackTask> focusStackQueue = new List<FocusStackTask>();
@@ -27,14 +28,18 @@ namespace Aerolithe
 
         public class FocusStackTask
         {
+            public Guid Id { get; } = Guid.NewGuid();
             public int Serie { get; set; }
             public int Elevation { get; set; }
             public int Rotation { get; set; }
-            public string[] ImagePaths { get; set; }
-            public string OutputPath { get; set; }
-            public string MaskPath { get; set; }
+            public int RotationSerieIncrement { get; set; }
+            public int Cote { get; set; }
+            public string[] ImagePaths { get; set; } = Array.Empty<string>();
+            public string OutputPath { get; set; } = string.Empty;
+            public string MaskPath { get; set; } = string.Empty;
             public bool ApplyMask { get; set; }
-            public string Status { get; set; } // "En attente", "En cours", "Terminé", "Erreur"
+            public string Status { get; set; } = string.Empty; // "En attente", "En cours", "Terminé", "Erreur"
+            public bool IsRetry { get; set; }
         }
 
         private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, string maskPath, bool applyMask, int elevation, int rotation, int serie, string status = "En attente")
@@ -45,6 +50,8 @@ namespace Aerolithe
                 Serie = serie,
                 Elevation = elevation,
                 Rotation = rotation,
+                RotationSerieIncrement = projet.RotationSerieIncrement,
+                Cote = projet.Cote,
                 ImagePaths = imagePaths,
                 OutputPath = outputPath,
                 MaskPath = maskPath,
@@ -54,14 +61,7 @@ namespace Aerolithe
 
             focusStackQueue.Add(task);
 
-            var info = new FocusStackTaskInfo
-            {
-                Serie = serie.ToString(),
-                Elevation = elevation,
-                Rotation = rotation,
-                Filename = Path.GetFileName(outputPath),
-                Status = status
-            };
+            var info = CreateFocusStackTaskInfo(task);
 
             var control = new FocusStackReportControl();
             control.SetTaskInfo(info);
@@ -70,6 +70,7 @@ namespace Aerolithe
             taskControls[task] = control;
             flowPanelReports.ScrollControlIntoView(control);
             UpdateQueueDisplay();
+            TrimFocusStackReports();
 
             if (!isProcessingQueue)
             {
@@ -100,7 +101,7 @@ namespace Aerolithe
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
                     string selectedFolder = folderDialog.SelectedPath;
-                    string cote = projet.Cote == 1 ? "A" : "B";
+                    string cote = projet.Cote == 0 ? "A" : "B";
                     string suggestedFileName = Microsoft.VisualBasic.Interaction.InputBox(
                         "Nom du fichier de sortie :",
                         "Nom du fichier",
@@ -208,9 +209,21 @@ namespace Aerolithe
                     nextTask.Status = "En cours";
                     UpdateQueueDisplay();
 
-                    bool success = await RunFocusStack(nextTask.ImagePaths, nextTask.OutputPath);
-                    nextTask.Status = success ? "Terminé" : "Erreur";
-                    this.BeginInvoke((Action)(UpdateQueueDisplay));
+                    try
+                    {
+                        await RunExistingFocusStackTaskAsync(nextTask);
+                    }
+                    catch (Exception ex)
+                    {
+                        nextTask.Status = "Erreur";
+                        AppendTextToConsoleNL($"Erreur focus stack, passage au suivant: {ex.Message}", Color.Red);
+                    }
+
+                    this.BeginInvoke((Action)(() =>
+                    {
+                        UpdateQueueDisplay();
+                        TrimFocusStackReports();
+                    }));
                 }
             }
             finally
@@ -230,16 +243,330 @@ namespace Aerolithe
             {
                 if (taskControls.TryGetValue(task, out var control))
                 {
-                    var info = new FocusStackTaskInfo
-                    {
-                        Serie = task.Serie.ToString(),
-                        Elevation = task.Elevation,
-                        Rotation = task.Rotation,
-                        Filename = Path.GetFileName(task.OutputPath),
-                        Status = task.Status
-                    };
+                    var info = CreateFocusStackTaskInfo(task);
 
                     control.SetTaskInfo(info); // ✅ nouvelle méthode
+                }
+            }
+        }
+
+        private void TrimFocusStackReports()
+        {
+            while (taskControls.Count > MaxFocusStackReportControls)
+            {
+                FocusStackTask? removableTask = focusStackQueue.FirstOrDefault(t => t.Status == "Terminé" || t.Status == "Erreur");
+                if (removableTask == null)
+                {
+                    break;
+                }
+
+                RemoveFocusStackReportTask(removableTask);
+            }
+        }
+
+        private void ClearFocusStackReports()
+        {
+            foreach (Control control in flowPanelReports.Controls.Cast<Control>().ToArray())
+            {
+                flowPanelReports.Controls.Remove(control);
+                control.Dispose();
+            }
+
+            focusStackQueue.Clear();
+            taskControls.Clear();
+        }
+
+        private void RemoveFocusStackReportTask(FocusStackTask task)
+        {
+            focusStackQueue.Remove(task);
+
+            if (taskControls.TryGetValue(task, out FocusStackReportControl? control))
+            {
+                flowPanelReports.Controls.Remove(control);
+                control.Dispose();
+                taskControls.Remove(task);
+            }
+        }
+
+        private FocusStackTaskInfo CreateFocusStackTaskInfo(FocusStackTask task)
+        {
+            return new FocusStackTaskInfo
+            {
+                TaskId = task.Id,
+                Serie = task.Serie.ToString(CultureInfo.InvariantCulture),
+                Elevation = task.Elevation,
+                Rotation = task.Rotation,
+                RotationSerieIncrement = task.RotationSerieIncrement,
+                ImageNumber = GetFocusStackImageNumber(task),
+                CoteIndex = task.Cote,
+                Cote = task.Cote == 0 ? "A" : "B",
+                ImagePaths = task.ImagePaths,
+                OutputPath = task.OutputPath,
+                MaskPath = task.MaskPath,
+                ApplyMask = task.ApplyMask,
+                Filename = Path.GetFileName(task.OutputPath),
+                Status = task.Status,
+                IsRetry = task.IsRetry
+            };
+        }
+
+        private static int GetFocusStackImageNumber(FocusStackTask task)
+        {
+            string name = Path.GetFileNameWithoutExtension(task.OutputPath);
+            Match match = Regex.Match(name, @"_(\d+)$");
+
+            if (match.Success && int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int imageNumber))
+            {
+                return imageNumber;
+            }
+
+            return task.RotationSerieIncrement;
+        }
+
+        public async Task ReprendreFocusStackSeulementAsync(FocusStackTaskInfo info)
+        {
+            AppendTextToConsoleNL($"Reprise focus stack seulement: {info.Filename}");
+            if (!TryGetFocusStackTask(info, out FocusStackTask? foundTask))
+            {
+                AppendTextToConsoleNL("Reprise focus stack impossible: tâche introuvable.", Color.Red);
+                return;
+            }
+
+            FocusStackTask task = foundTask!;
+            task.IsRetry = true;
+            await RetryFocusStackOnExistingTaskAsync(task);
+        }
+
+        public async Task ReprendrePrisePhotoFocusStackAsync(FocusStackTaskInfo info)
+        {
+            AppendTextToConsoleNL($"Reprise prise photo + focus stack: côté {info.Cote}, rotation {info.RotationSerieIncrement:D2}");
+            if (!TryGetFocusStackTask(info, out FocusStackTask? foundTask))
+            {
+                AppendTextToConsoleNL("Reprise prise photo + focus stack impossible: tâche introuvable.", Color.Red);
+                return;
+            }
+            FocusStackTask task = foundTask!;
+            task.IsRetry = true;
+
+            using var cts = new CancellationTokenSource();
+            ResetSequenceCancellationButton();
+
+            int previousSerie = projet.Serie;
+            int previousCote = projet.Cote;
+            int previousRotation = projet.RotationSerieIncrement;
+            int previousFocus = projet.FocusSerieIncrement;
+            bool previousFocusStackEnabled = projet.FocusStackEnabled;
+
+            try
+            {
+                task.Status = "En cours";
+                UpdateQueueDisplay();
+
+                projet.Serie = Math.Max(0, ParseSerieNumber(info.Serie) - 1);
+                projet.Cote = info.CoteIndex;
+                projet.RotationSerieIncrement = info.RotationSerieIncrement;
+                projet.FocusSerieIncrement = 0;
+                projet.FocusStackEnabled = true;
+                ToggleCote(projet.Cote);
+                SavePrefsSettings();
+
+                AppendTextToConsoleNL("Reprise: suppression des anciennes images temporaires.");
+                DeleteFilesIfPresent(ResolveFocusStackInputImages(info));
+                if (!string.IsNullOrWhiteSpace(info.OutputPath) && File.Exists(info.OutputPath))
+                {
+                    File.Delete(info.OutputPath);
+                }
+
+                AppendTextToConsoleNL($"Reprise: déplacement actuateur vers {info.Elevation:0}°.");
+                await UdpSendActuatorMessageAsync($"actuator {info.Elevation.ToString("0", CultureInfo.InvariantCulture)}");
+                await WaitForActuator(info.Elevation, cts.Token);
+                AppendTextToConsoleNL($"Reprise: déplacement table tournante vers {info.Rotation:0} steps.");
+                await UdpSendTurnTableMessageAsync($"turntable,{info.Rotation},{turntableSpeed}");
+                await WaitForTurntablePositionAsync((int)info.Rotation, cancellationToken: cts.Token);
+
+                if (projet.AutoCentrage)
+                {
+                    AppendTextToConsoleNL("Reprise: auto-centrage.");
+                    await RoutineAutoCentrage(cancellationToken: cts.Token);
+                }
+
+                bool captured = false;
+                for (int focusAttempt = 1; focusAttempt <= 2; focusAttempt++)
+                {
+                    if (focusAttempt == 2)
+                    {
+                        ApplyTemporaryBlurThresholdForRetry();
+                    }
+
+                    AppendTextToConsoleNL($"Reprise: autofocus essai {focusAttempt}/2.");
+                    AutomaticFocusResult focusResult = await AutomaticFocusRoutine(cts.Token);
+                    if (focusResult != AutomaticFocusResult.Success)
+                    {
+                        task.Status = "Erreur";
+                        UpdateQueueDisplay();
+                        AppendTextToConsoleNL($"Reprise prise photo + focus stack arrêtée: {focusResult}.");
+                        return;
+                    }
+
+                    AppendTextToConsoleNL($"Reprise: capture focus stack essai {focusAttempt}/2.");
+                    captured = await AutomaticFocusThenCapture(delta, cts.Token);
+                    if (captured)
+                    {
+                        break;
+                    }
+                }
+
+                if (!captured)
+                {
+                    task.Status = "Erreur";
+                    UpdateQueueDisplay();
+                    AppendTextToConsoleNL("Reprise arrêtée: capture focus stack impossible après récupération de netteté.", Color.Red);
+                    return;
+                }
+
+                if (_stopRequested)
+                {
+                    task.Status = "Erreur";
+                    UpdateQueueDisplay();
+                    AppendTextToConsoleNL("Reprise arrêtée avant focus-stack.exe: _stopRequested est actif.", Color.Red);
+                    return;
+                }
+
+                task.ImagePaths = ResolveFocusStackInputImages(info);
+                AppendTextToConsoleNL($"Reprise: {task.ImagePaths.Length} images trouvées pour focus-stack.exe.");
+                await RunExistingFocusStackTaskAsync(task);
+            }
+            catch (Exception ex)
+            {
+                task.Status = "Erreur";
+                UpdateQueueDisplay();
+                AppendTextToConsoleNL("Erreur reprise prise photo + focus stack: " + ex.Message, Color.Red);
+            }
+            finally
+            {
+                projet.Serie = previousSerie;
+                projet.Cote = previousCote;
+                projet.RotationSerieIncrement = previousRotation;
+                projet.FocusSerieIncrement = previousFocus;
+                projet.FocusStackEnabled = previousFocusStackEnabled;
+                ClearTemporaryBlurThresholdOverride();
+                ToggleCote(projet.Cote);
+                SavePrefsSettings();
+            }
+        }
+
+        private bool TryGetFocusStackTask(FocusStackTaskInfo info, out FocusStackTask? task)
+        {
+            task = focusStackQueue.FirstOrDefault(t => t.Id == info.TaskId);
+            if (task != null)
+            {
+                return true;
+            }
+
+            task = focusStackQueue.FirstOrDefault(t =>
+                string.Equals(t.OutputPath, info.OutputPath, StringComparison.OrdinalIgnoreCase) &&
+                t.RotationSerieIncrement == info.RotationSerieIncrement &&
+                t.Cote == info.CoteIndex);
+
+            return task != null;
+        }
+
+        private async Task RetryFocusStackOnExistingTaskAsync(FocusStackTask task)
+        {
+            task.Status = "En cours";
+            UpdateQueueDisplay();
+
+            try
+            {
+                FocusStackTaskInfo info = CreateFocusStackTaskInfo(task);
+                task.ImagePaths = ResolveFocusStackInputImages(info);
+                AppendTextToConsoleNL($"Reprise focus stack seulement: {task.ImagePaths.Length} images trouvées.");
+                await RunExistingFocusStackTaskAsync(task);
+            }
+            catch (Exception ex)
+            {
+                task.Status = "Erreur";
+                UpdateQueueDisplay();
+                AppendTextToConsoleNL("Erreur reprise focus stack seulement: " + ex.Message, Color.Red);
+            }
+        }
+
+        private async Task RunExistingFocusStackTaskAsync(FocusStackTask task)
+        {
+            if (task.ImagePaths.Length == 0)
+            {
+                AppendTextToConsoleNL("Focus stack ignoré: aucune image source trouvée.", Color.Red);
+                task.Status = "Erreur";
+                UpdateQueueDisplay();
+                return;
+            }
+
+            AppendTextToConsoleNL($"Focus stack: lancement de focus-stack.exe pour {Path.GetFileName(task.OutputPath)} avec {task.ImagePaths.Length} images.");
+            if (!string.IsNullOrWhiteSpace(task.OutputPath) && File.Exists(task.OutputPath))
+            {
+                File.Delete(task.OutputPath);
+            }
+
+            string staleMaskedOutputPath = Path.ChangeExtension(task.OutputPath, ".png");
+            if (!string.IsNullOrWhiteSpace(staleMaskedOutputPath) && File.Exists(staleMaskedOutputPath))
+            {
+                File.Delete(staleMaskedOutputPath);
+            }
+
+            bool success = await RunFocusStack(task.ImagePaths, task.OutputPath);
+            task.Status = success ? "Terminé" : "Erreur";
+            UpdateQueueDisplay();
+        }
+
+        private string[] ResolveFocusStackInputImages(FocusStackTaskInfo info)
+        {
+            if (info.ImagePaths.Length > 0 && info.ImagePaths.Any(File.Exists))
+            {
+                return info.ImagePaths.Where(File.Exists).ToArray();
+            }
+
+            int previousCote = projet.Cote;
+            int previousRotation = projet.RotationSerieIncrement;
+            try
+            {
+                projet.Cote = info.CoteIndex;
+                projet.RotationSerieIncrement = info.RotationSerieIncrement;
+                string folderPath = projet.GetTempImageFolderPath();
+                if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                {
+                    return Array.Empty<string>();
+                }
+
+                string[] extensions = { ".jpg", ".jpeg", ".png", ".bmp", ".tiff" };
+                return Directory.GetFiles(folderPath)
+                    .Where(file => extensions.Contains(Path.GetExtension(file).ToLowerInvariant()))
+                    .ToArray();
+            }
+            finally
+            {
+                projet.Cote = previousCote;
+                projet.RotationSerieIncrement = previousRotation;
+            }
+        }
+
+        private static int ParseSerieNumber(string serie)
+        {
+            return int.TryParse(serie, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
+                ? value
+                : 1;
+        }
+
+        private void DeleteFilesIfPresent(IEnumerable<string> paths)
+        {
+            foreach (string path in paths)
+            {
+                try
+                {
+                    if (File.Exists(path)) File.Delete(path);
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL($"Impossible de supprimer {path}: {ex.Message}");
                 }
             }
         }
@@ -488,7 +815,7 @@ namespace Aerolithe
 
             if (!File.Exists(exePath))
             {
-                MessageBox.Show("focus-stack.exe introuvable !");
+                AppendTextToConsoleNL("focus-stack.exe introuvable: " + exePath, Color.Red);
                 return false;
             }
 
@@ -586,7 +913,7 @@ namespace Aerolithe
 
                 else
                 {
-                    MessageBox.Show("Erreur lors du traitement.");
+                    AppendTextToConsoleNL("Erreur lors du traitement focus stack.", Color.Red);
                     return false;
                 }
             }
