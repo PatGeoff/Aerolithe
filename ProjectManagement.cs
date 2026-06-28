@@ -54,7 +54,8 @@ namespace Aerolithe
                 {
                     _ = StopTimer();
                     ClearFocusStackReports();
-                    appSettings.ProjectPath = saveFileDialog.FileName;
+                    appSettings.ProjectPath = Path.GetFullPath(saveFileDialog.FileName);
+                    projet.ProjectFilePath = appSettings.ProjectPath;
                     string projectName = Path.GetFileNameWithoutExtension(appSettings.ProjectPath).Replace(" ", "_");
 
 
@@ -93,24 +94,55 @@ namespace Aerolithe
                 return;
             }
 
-            projet.ImageFolderPath = Path.Combine(projectDirectory, "images");
-            projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
-            EnsureProjectFoldersExist();
+            ConfigureImageFolderRoot(Path.Combine(projectDirectory, "images"));
         }
 
-        private void NormalizeLoadedProjectPaths(string projectPath)
+        private void ConfigureImageFolderRoot(string imagesFolderPath)
         {
-            string? projectDirectory = Path.GetDirectoryName(projectPath);
-            if (string.IsNullOrWhiteSpace(projectDirectory))
+            if (string.IsNullOrWhiteSpace(imagesFolderPath))
             {
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(projet.ImageFolderPath) || !Directory.Exists(projet.ImageFolderPath))
+            projet.ImageFolderPath = imagesFolderPath;
+            projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
+            EnsureProjectFoldersExist();
+        }
+
+        private static bool IsImagesFolder(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath))
             {
-                projet.ImageFolderPath = Path.Combine(projectDirectory, "images");
+                return false;
             }
 
+            string normalizedPath = folderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return string.Equals(Path.GetFileName(normalizedPath), "images", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool NormalizeLoadedProjectPaths(string projectPath)
+        {
+            string? projectDirectory = Path.GetDirectoryName(projectPath);
+            if (string.IsNullOrWhiteSpace(projectDirectory))
+            {
+                return false;
+            }
+
+            if (!IsValidLinkedImagesFolder(projet.ImageFolderPath))
+            {
+                if (!RelinkLoadedProjectImageFolder(projectDirectory))
+                {
+                    return false;
+                }
+            }
+
+            NormalizeLoadedFocusStackPath();
+            EnsureProjectFoldersExist();
+            return true;
+        }
+
+        private void NormalizeLoadedFocusStackPath()
+        {
             if (string.IsNullOrWhiteSpace(projet.FocusStackFolderName))
             {
                 projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
@@ -120,7 +152,79 @@ namespace Aerolithe
                 projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, projet.FocusStackFolderName);
             }
 
-            EnsureProjectFoldersExist();
+            if (string.IsNullOrWhiteSpace(projet.GetFocusStackRootPath()) || !Directory.Exists(projet.GetFocusStackRootPath()))
+            {
+                projet.FocusStackFolderName = Path.Combine(projet.ImageFolderPath, "focusStack");
+            }
+        }
+
+        private bool RelinkLoadedProjectImageFolder(string projectDirectory)
+        {
+            string savedImageFolderPath = projet.ImageFolderPath ?? string.Empty;
+            string defaultImagesFolderPath = Path.Combine(projectDirectory, "images");
+
+            if (IsValidLinkedImagesFolder(defaultImagesFolderPath))
+            {
+                DialogResult useDefaultResult = MessageBox.Show(
+                    this,
+                    $"Le dossier d'images enregistré dans le projet est introuvable ou invalide:\n\n{savedImageFolderPath}\n\nUtiliser ce dossier images trouvé à côté du fichier .aero ?\n\n{defaultImagesFolderPath}",
+                    "Relinker le dossier images",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (useDefaultResult == DialogResult.Yes)
+                {
+                    ConfigureImageFolderRoot(defaultImagesFolderPath);
+                    AppendTextToConsoleNL("Dossier images relinké: " + defaultImagesFolderPath, Color.Orange);
+                    return true;
+                }
+            }
+
+            while (true)
+            {
+                using FolderBrowserDialog folderDialog = new()
+                {
+                    Description = "Relinker le projet: choisir le dossier nomme images qui contient focusStack, mesures, noFS, etc.",
+                    SelectedPath = Directory.Exists(defaultImagesFolderPath) ? defaultImagesFolderPath : projectDirectory
+                };
+
+                if (folderDialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    AppendTextToConsoleNL("Ouverture projet interrompue: dossier images non relinké.", Color.Orange);
+                    return false;
+                }
+
+                if (!IsImagesFolder(folderDialog.SelectedPath))
+                {
+                    MessageBox.Show(
+                        this,
+                        "Le dossier choisi doit s'appeler \"images\".\n\nChoisis le dossier images du projet, pas son parent.",
+                        "Dossier images requis",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    continue;
+                }
+
+                if (!Directory.Exists(folderDialog.SelectedPath))
+                {
+                    MessageBox.Show(
+                        this,
+                        "Le dossier images choisi n'existe pas.",
+                        "Dossier introuvable",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    continue;
+                }
+
+                ConfigureImageFolderRoot(folderDialog.SelectedPath);
+                AppendTextToConsoleNL("Dossier images relinké: " + folderDialog.SelectedPath, Color.Orange);
+                return true;
+            }
+        }
+
+        private static bool IsValidLinkedImagesFolder(string folderPath)
+        {
+            return IsImagesFolder(folderPath) && Directory.Exists(folderPath);
         }
 
         private void EnsureProjectFoldersExist()
@@ -180,7 +284,13 @@ namespace Aerolithe
 
         public void OpenProject(string path)
         {
-            appSettings.ProjectPath = path;
+            if (!TryNormalizeOpenedProjectPath(path, out string openedProjectPath))
+            {
+                return;
+            }
+
+            appSettings.ProjectPath = openedProjectPath;
+            ClearFocusStackReports();
             //string projectDirectory = Path.GetDirectoryName(appSettings.ProjectPath);
             //lbl_projectPath.Text = $"{Path.GetFileName(projectDirectory)}/{Path.GetFileName(appSettings.ProjectPath)}";
             SetMainWindowTitle(appSettings.ProjectPath);
@@ -189,18 +299,25 @@ namespace Aerolithe
             try
             {
                 projet = projet.Load(appSettings.ProjectPath);
-                NormalizeLoadedProjectPaths(appSettings.ProjectPath);
+                NormalizeLoadedProjectFilePath(appSettings.ProjectPath);
+                if (!NormalizeLoadedProjectPaths(appSettings.ProjectPath))
+                {
+                    DisplayPathsInUI();
+                    return;
+                }
+
                 EnsureLoadedProjectHasImageNameBase(appSettings.ProjectPath);
                 DisplayPathsInUI();
                 stepSize = projet.StepSize;
+                _manualDriveStep = stepSize;
                 hScrollBar_driveStep.Value = stepSize;
-                txtBox_DriveStep.Text = stepSize.ToString();
+                SetDriveStepTextBoxes(stepSize, validated: true);
                 maxNbrPicturesAllowed = projet.MaxPicturesAllowed;
                 if (maxNbrPicturesAllowed == 0) maxNbrPicturesAllowed = 15;
-                textBox_nbrPhotosFS.Text = maxNbrPicturesAllowed.ToString();
-                UpdateMaxImagesFSButton();
-                UpdateDriveStepSettingsButton();
+                SetMaxPicturesAllowedText(maxNbrPicturesAllowed, validated: true);
                 ApplyFocusStackDenoiseToUi();
+                ApplyOutputCropSettingsToUi();
+                ApplySharpnessSensitivityToUi();
                 txtBox_mesurements5deg.Text = projet.Mesurements5deg.ToString();
                 txtBox_mesurements25deg.Text = projet.Mesurements25deg.ToString();
                 txtBox_mesurements45deg.Text = projet.Mesurements45deg.ToString();
@@ -214,11 +331,57 @@ namespace Aerolithe
 
         }
 
+        private bool TryNormalizeOpenedProjectPath(string path, out string openedProjectPath)
+        {
+            openedProjectPath = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                MessageBox.Show(
+                    this,
+                    "Le chemin du projet .aero est vide.",
+                    "Projet introuvable",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return false;
+            }
+
+            openedProjectPath = Path.GetFullPath(path);
+            if (!File.Exists(openedProjectPath))
+            {
+                MessageBox.Show(
+                    this,
+                    "Le fichier projet .aero est introuvable:\n\n" + openedProjectPath,
+                    "Projet introuvable",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void NormalizeLoadedProjectFilePath(string openedProjectPath)
+        {
+            string normalizedProjectPath = Path.GetFullPath(openedProjectPath);
+            if (string.Equals(projet.ProjectFilePath, normalizedProjectPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(projet.ProjectFilePath))
+            {
+                AppendTextToConsoleNL($"Chemin .aero relinké: {projet.ProjectFilePath} -> {normalizedProjectPath}", Color.Orange);
+            }
+
+            projet.ProjectFilePath = normalizedProjectPath;
+        }
+
         public void SavePrefsSettings()
         {
-            if (appSettings.ProjectPath == null)
+            if (string.IsNullOrWhiteSpace(appSettings?.ProjectPath))
             {
-                MessageBox.Show("Svp sauvegarder ou ouvrir un projet");
+                AppendTextToConsoleNL("Sauvegarde projet ignorée: aucun chemin .aero valide. Svp sauvegarder ou ouvrir un projet.", Color.Orange);
                 return;
             }
             // Pas besoin ici???
@@ -233,16 +396,31 @@ namespace Aerolithe
                 CreateNewProject();
             }
 
+            if (appSettings.ProjectPath == null)
+            {
+                return;
+            }
+
             using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
             {
-                folderDialog.Description = "Select or create the folder to save images in";
+                folderDialog.Description = "Choisir ou creer le dossier nomme images du projet. Les sous-dossiers focusStack, mesures et noFS seront crees dedans.";
                 folderDialog.SelectedPath = projet.ImageFolderPath;
 
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    projet.ImageFolderPath = folderDialog.SelectedPath;
+                    if (!IsImagesFolder(folderDialog.SelectedPath))
+                    {
+                        MessageBox.Show(
+                            this,
+                            "Le dossier choisi doit s'appeler \"images\".\n\nChoisis ou cree le dossier images du projet. Aerolithe creera ensuite focusStack, mesures, noFS et les autres sous-dossiers directement dedans.",
+                            "Dossier images requis",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    ConfigureImageFolderRoot(folderDialog.SelectedPath);
                     SavePrefsSettings();
-                    CreateAllFolders(projet.ImageFolderPath);
                     DisplayPathsInUI();
                 }
             }
@@ -596,7 +774,8 @@ namespace Aerolithe
             toolTip.SetToolTip(lbl_BlockAmountBlurDetet, "Grosseur des carrés de détection, les valeurs étant 16,32,64 ou 128\nDéfaut: 32");
             toolTip.SetToolTip(textBox_minDetect, "Seuil minimum de détections pour considérer qu'une image a une partie nette.\nDéfaut: 5");
             toolTip.SetToolTip(textBox_nbrPhotosFS, "Nombre maximal de photos prises lors d'un focus stack.\nDéfaut: 30");
-            toolTip.SetToolTip(txtBox_DriveStep, "Valeur du drivestep de la caméra.\nDéfaut: 30");
+            toolTip.SetToolTip(txtBox_DriveStep, "DriveStep manuel pour les boutons focus +/-.\nEntrée valide cette valeur manuelle; le bouton sauvegarde la copie ensuite dans la valeur de séquence.");
+            toolTip.SetToolTip(txtBox_DriveStep2, "DriveStep sauvegardé pour les focus stacks et la Séquence Totale. Entrée modifie projet.StepSize.");
             toolTip.SetToolTip(btn_maxImagesFS, "Nombre maximal de photos prises lors d'un focus stack.\nPlus il y a de photos, plus il faut diminuer le drivestep\nCliquer pour modifier.");
             toolTip.SetToolTip(lbl_maxImagesFS, "Nombre maximal de photos prises lors d'un focus stack.\nPlus il y a de photos, plus il faut diminuer le drivestep\nCliquer pour modifier.");
             
@@ -611,6 +790,12 @@ namespace Aerolithe
             var focusStackDenoiseLabel = FindControlByName<Label>("lbl_FocusStackDenoise");
             if (focusStackDenoiseTrackBar != null) toolTip.SetToolTip(focusStackDenoiseTrackBar, focusStackDenoiseToolTip);
             if (focusStackDenoiseLabel != null) toolTip.SetToolTip(focusStackDenoiseLabel, focusStackDenoiseToolTip);
+            toolTip.SetToolTip(textBox_OutputSize, "Dimension cible pour cropper les images avant Metashape. Format: 7600x5100.");
+            toolTip.SetToolTip(btn_OutputCropEnabled, "Active ou désactive le crop vers la dimension OutputSize.");
+            toolTip.SetToolTip(btn_ShowCropRegion, "Affiche une zone approximative du crop OutputSize sur le LiveView.");
+            toolTip.SetToolTip(lbl_ShowCropRegion, "Affiche une zone approximative du crop OutputSize sur le LiveView.");
+            toolTip.SetToolTip(comboBox_LensType, "Lentille utilisée. Le menu permet aussi de modifier sa course LensFullTravelSteps.");
+            toolTip.SetToolTip(picBox_LensModel, "Image de la lentille sélectionnée depuis MyResources/Images.");
             toolTip.SetToolTip(lbl_FreezeMask, "Freeze le masque ci-haut"); 
             toolTip.SetToolTip(btn_freezeMask, "Freeze le masque ci-haut");
             toolTip.SetToolTip(lbl_FocusStackEnable, "Active le Focus Stacking");
@@ -627,8 +812,9 @@ namespace Aerolithe
             toolTip.SetToolTip(lbl_saveImageForMesurements, $"Permet la sauvegarde D'UNE image pour calibration mais il faut appuyer sur Prendre une photo.\nL'image se retrouvera dans {measurementsDestination}\" ");
             toolTip.SetToolTip(lbl_LiveViewEnable, "Active/Désactive le Live View");
             toolTip.SetToolTip(btn_LiveViewEnable, "Active/Désactive le Live View");
-            toolTip.SetToolTip(lbl_saveImageForMesurementSequence, $"Sauvegarde une image de calibration sans masque au début de chaque focus stack.");
-            toolTip.SetToolTip(btn_saveImageForMesurementSequence, $"Sauvegarde une image de calibration sans masque au début de chaque focus stack.");
+            toolTip.SetToolTip(lbl_autoExposure, "Exposition automatique pour la routine totale. Les photos test vont dans tempa/autoExposure.");
+            toolTip.SetToolTip(btn_autoExposure, "Active/désactive l'exposition automatique pendant la routine totale. L'exposition originale est restaurée à la fin ou en cas d'annulation.");
+            toolTip.SetToolTip(btn_autoExposureTest, "Test manuel d'exposition automatique. Premier clic: référence. Clics suivants: tests comparés à la référence. Images dans tempa/autoExposure.");
             toolTip.SetToolTip(btn_AutoCentrageAuto, "Centrage Automatique de l'objet avant chaque série. * Recommandé *");
             toolTip.SetToolTip(lbl_AutoCentrageAuto, "Centrage Automatique de l'objet avant chaque série. * Recommandé *");
             toolTip.SetToolTip(lbl_AutoCentrageActuator, "Centrage Automatique de l'objet durant le mouvement de l'actuateur. * Recommandé *");
@@ -651,7 +837,14 @@ namespace Aerolithe
             toolTip.SetToolTip(btn_TestAutoCenterActuator, "Autocentrage mais juste ici en mode manuel");
 
             toolTip.SetToolTip(label44, "Autocentrage mais juste ici en mode manuel");
-
+            toolTip.SetToolTip(lbl_postMask, "Lorsque coché, le masque est appliqué après le focus stack, sinon à chaque photo avant le focus stack");
+            toolTip.SetToolTip(btn_postMask, "Lorsque coché, le masque est appliqué après le focus stack, sinon à chaque photo avant le focus stack");
+            toolTip.SetToolTip(lbl_AutoExpoMode, "Lorsque coché, la luminance calculée pour l'auto-exposition ne vient que de l'intérieur du masque, sinon l'image complète est utilisée");
+            toolTip.SetToolTip(btn_AutoExpoMode, "Lorsque coché, la luminance calculée pour l'auto-exposition ne vient que de l'intérieur du masque, sinon l'image complète est utilisée");
+            toolTip.SetToolTip(btn_saveSteps, "Sauvegarde le drivestep manuel comme valeur de focus stack / Séquence Totale");
+            toolTip.SetToolTip(btn_SetLensAtMiddle, "Place le moteur de la lentille environ au milieu de sa capacité.\nEnsuite bouger la caméra avec le rail linéaire jusqu'au focus.\nRecommendé de faire avant de démarrer la séquence. En");
+            toolTip.SetToolTip(lbl_AutoExpoMode2, "Lorsque coché, la luminance calculée pour l'auto-exposition ne vient que de l'intérieur du masque, sinon l'image complète est utilisée");
+            toolTip.SetToolTip(btn_AutoExpoMode2, "Lorsque coché, la luminance calculée pour l'auto-exposition ne vient que de l'intérieur du masque, sinon l'image complète est utilisée");
         }
 
 
@@ -938,6 +1131,8 @@ namespace Aerolithe
     public class ProjectPreferences
     {
         // --- Propriétés essentielles ---
+        public string ProjectFilePath { get; set; } = string.Empty;
+
         public string ImageNameBase { get; set; }           // ex: "GrosseRoche_2"
         public int RotationSerieIncrement { get; set; }     // ex: 49
         public int FocusSerieIncrement { get; set; }        // ex: 62
@@ -947,17 +1142,22 @@ namespace Aerolithe
                                                             // 
         public int MaxPicturesAllowed { get; set; } = 30;        // Paramètre global
         public int StepSize { get; set; } = 30;                // Paramètre global
+        public int SharpnessSensitivity { get; set; } = 100;
         public int Cote { get; set; } = 0;                      // 0 = B, 1 = A
 
         public int Serie { get; set; } = 0;                     // Série 0 = 5° , etc
 
         public bool ApplyMask { get; set; } = true;
 
+        public bool postMask { get; set; } = false;
+
         public bool MaskSave { get; set; } = true;
 
         public bool SaveImageToDisk { get; set; } = true;
 
         public bool ViewSharpnessOverlay { get; set; } = true;
+
+        public bool ShowCropRegion { get; set; } = false;
 
         public int PictureWidth { get; set; }
         public int PictureHeight { get; set; }
@@ -966,7 +1166,9 @@ namespace Aerolithe
 
         public double FocusStackDenoise { get; set; } = 1.0;
 
-        public bool SaveImageForMesurements { get; set; } = true;
+        public bool AutoExposureEnabled { get; set; } = false;
+
+        public bool AutoExposureUseMask { get; set; } = false;
 
         public bool AutoCentrageActuator { get; set; } = false;
 
@@ -990,6 +1192,10 @@ namespace Aerolithe
 
         public int MaskShrink_3 { get; set; } = 1;
 
+        public string OutputSize { get; set; } = "7600x5100";
+
+        public bool OutputCropEnabled { get; set; } = false;
+
         // --- Méthodes utilitaires ---
         public string GetImageFullPath()
         {
@@ -1002,9 +1208,8 @@ namespace Aerolithe
 
        public string GetImageNameFullNoFS()
         {
-            // Format: Base_Rotation_Focus.jpg
             string cote = (Cote == 0) ? "A" : "B";
-            return $"{ImageNameBase}_{cote}_{RotationSerieIncrement:D2}.jpg";
+            return $"{ImageNameBase}_{cote}_{GetCurrentSerieActuatorAngle():D2}deg_{RotationSerieIncrement:D2}.jpg";
         }
 
         public string GetMesurementImageNameFull(){
@@ -1014,7 +1219,7 @@ namespace Aerolithe
                 return $"{ImageNameBase}_{cote}_M_{ForcedMesurementActuatorAngle.Value:D2}deg_{ForcedMesurementIndex.Value:D2}.jpg";
             }
 
-            return $"{ImageNameBase}_{cote}_M_{RotationSerieIncrement:D2}.jpg";
+            return $"{ImageNameBase}_{cote}_M_{GetCurrentSerieActuatorAngle():D2}deg_{RotationSerieIncrement:D2}.jpg";
         }
 
        
@@ -1079,10 +1284,26 @@ namespace Aerolithe
 
         public string GetFocusStackImageFullPath()
         {
-            /// JPG
+            return GetFocusStackImageFullPath(GetCurrentSerieActuatorAngle());
+        }
+
+        public string GetFocusStackImageFullPath(int actuatorAngleDeg)
+        {
             string cote = (Cote == 0) ? "A" : "B";
-            string nom = $"{ImageNameBase}_{cote}_{RotationSerieIncrement:D2}.jpg";
+            int normalizedAngle = Math.Max(0, actuatorAngleDeg);
+            string nom = $"{ImageNameBase}_{cote}_{normalizedAngle:D2}deg_{RotationSerieIncrement:D2}.jpg";
             return Path.Combine(GetFocusStackPath(), nom);
+        }
+
+        private int GetCurrentSerieActuatorAngle()
+        {
+            return Serie switch
+            {
+                0 => 5,
+                1 => 25,
+                2 => 45,
+                _ => 0
+            };
         }
 
         ///
@@ -1173,6 +1394,11 @@ namespace Aerolithe
 
         public void Save(string filePath)
         {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                throw new ArgumentException("Le chemin du fichier projet .aero est vide.", nameof(filePath));
+            }
+
             string json = JsonConvert.SerializeObject(this, Formatting.Indented);
             File.WriteAllText(filePath, json);
         }
@@ -1248,6 +1474,14 @@ namespace Aerolithe
         public int ThumbnailWidth { get; set; } = 210;
 
         public int ThumbnailHeight { get; set; } = 150;
+
+        public string SelectedLensName { get; set; } = "Nikkor 60 mm";
+
+        public List<LensSetting> Lenses { get; set; } = new()
+        {
+            new LensSetting { Name = "Nikkor 60 mm", LensFullTravelSteps = 68000 },
+            new LensSetting { Name = "Sigma 105 mm", LensFullTravelSteps = 68000 }
+        };
 
         public List<MessagingUserSetting> MessagingUsers { get; set; } = new();
 
@@ -1330,6 +1564,33 @@ namespace Aerolithe
                 string json = File.ReadAllText(SettingsFilePath);
                 var settings = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
                 settings.MessagingUsers ??= new List<MessagingUserSetting>();
+                settings.Lenses ??= new List<LensSetting>();
+                settings.Lenses = settings.Lenses
+                    .Where(l => !string.IsNullOrWhiteSpace(l.Name))
+                    .GroupBy(l => l.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                    .Select(g =>
+                    {
+                        LensSetting lens = g.First();
+                        lens.Name = lens.Name.Trim();
+                        lens.LensFullTravelSteps = Math.Max(1, lens.LensFullTravelSteps);
+                        lens.ImagePath ??= string.Empty;
+                        return lens;
+                    })
+                    .OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+
+                if (settings.Lenses.Count == 0)
+                {
+                    settings.Lenses.Add(new LensSetting { Name = "Nikkor 60 mm", LensFullTravelSteps = 68000 });
+                    settings.Lenses.Add(new LensSetting { Name = "Sigma 105 mm", LensFullTravelSteps = 68000 });
+                }
+
+                if (string.IsNullOrWhiteSpace(settings.SelectedLensName)
+                    || settings.Lenses.All(l => !string.Equals(l.Name, settings.SelectedLensName, StringComparison.Ordinal)))
+                {
+                    settings.SelectedLensName = settings.Lenses[0].Name;
+                }
+
                 return settings;
             }
             catch (Exception ex)
@@ -1357,6 +1618,15 @@ namespace Aerolithe
     {
         public string Email { get; set; } = string.Empty;
         public bool Send { get; set; } = true;
+    }
+
+    public class LensSetting
+    {
+        public string Name { get; set; } = string.Empty;
+
+        public int LensFullTravelSteps { get; set; } = 68000;
+
+        public string ImagePath { get; set; } = string.Empty;
     }
 
     public class TimerController

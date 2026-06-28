@@ -2,6 +2,10 @@
 
 Utilise ce fichier pour me donner du contexte et des consignes persistantes pour ce projet.
 
+## Rappel Important
+
+- Tous les changements visuels doivent être faits dans le Designer WinForms (`*.Designer.cs`) autant que possible: nom, texte, icône/font, tooltip, layout, taille, couleur, ancrage/dock et événements visuels. Éviter de créer ou modifier l'interface au runtime, sauf nécessité technique explicite.
+
 ## Objectif
 
 J'ai développé une application Winform qui permet de prendre des photos de météorites, de faire des focus stack si nécessaire, afin de les utiliser dans Metashape Pro pour en refaire des modèles 3d high res. 
@@ -1356,6 +1360,628 @@ Comment valider que le travail est correct :
 - `ActuatorAutoCenterFeedForwardVerticalSign = 1` signifie qu'une montée d'angle actuateur envoie une vitesse verticale positive. Si le premier test physique montre que le lift part dans le mauvais sens, mettre cette constante à `-1`.
 - Le lift horizontal reste corrigé seulement quand `offsetX` dépasse la tolérance pendant le suivi actuateur, pour réduire le jitter latéral.
 - Les arrêts de sécurité ne sont pas adoucis: les fins de course firmware et `stepmotor stop` continuent d'arrêter brutalement les moteurs côté ESP32.
+- Validation terrain utilisateur: le feed-forward vertical part dans le bon sens avec `ActuatorAutoCenterFeedForwardVerticalSign = 1`, et le comportement est jugé satisfaisant pour l'instant.
 - `UiRevision` passe à `REV-0138-actuator-feedforward-autocenter`.
 - Rollback si le suivi vertical dérive, oscille ou part dans le mauvais sens: retirer `BeginActuatorAutoCenterFeedForward(...)`, `ClearActuatorAutoCenterFeedForward(...)`, `CalculateActuatorVerticalFeedForwardSpeed(...)`, remettre le calcul vertical direct `udpSendLiftVerticalMotorData(stepY * 100)` dans `AutoCentrageStepPendantActuateurAsync(...)`, et remettre `UiRevision` à la révision précédente voulue.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0139-metashape-project-lock-preflight
+
+- Diagnostic utilisateur: `Metashape > Lancer` échoue encore à `Import mesures` avec `Document.save(): editing is disabled in read-only mode`, puis `Projet Metashape ouvert en lecture seule pendant Import mesures`.
+- Le wrapper SSH Mac vérifie maintenant plus largement les processus `Metashape|MetaShape|Agisoft` avant le batch, demande leur fermeture, puis annule si un processus reste ouvert.
+- Avant de lancer `MetashapePro -r`, le wrapper exécute aussi une pré-vérification `lsof` sur le fichier `.psx` et le dossier `.files`; si le projet est encore ouvert/verrouillé, le batch s'arrête avant d'écrire.
+- Le script Python généré importe maintenant `shutil` et, à l'étape `Import mesures`, supprime explicitement l'ancien `.psx` et l'ancien dossier `.files` avant de recréer le projet.
+- Si la suppression échoue, le script lève une erreur claire demandant de fermer toute fenêtre Metashape qui utilise le projet cible.
+- `UiRevision` passe à `REV-0139-metashape-project-lock-preflight`.
+- Rollback si nécessaire: retirer `PROJECT_FILES`/`lsof` dans `BuildMacMetashapeBatchCommand(...)`, retirer `import shutil` et la suppression `.psx/.files` dans `prepare_project_for_import(...)`, puis remettre `UiRevision` à la révision précédente voulue.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0140-glb-viewer-bounding-box
+
+- Demande utilisateur: afficher une bounding box avec les mesures quand un GLB est chargé manuellement dans le visualisateur ou ouvert automatiquement après Metashape.
+- `GlbViewerForm` conserve maintenant les bornes `Min`/`Max` du modèle GLB pendant le chargement.
+- Le rendu OpenGL dessine une boîte englobante jaune autour du modèle, par-dessus le modèle pour rester visible.
+- L'en-tête du visualisateur affiche maintenant les dimensions `X/Y/Z`, avec conversion automatique en `mm`, `cm` ou `m` selon la grandeur.
+- Hypothèse: les unités du GLB sont celles exportées par Metashape après application de l'échelle; les mesures affichées suivent donc l'unité réelle du projet Metashape.
+- `UiRevision` passe à `REV-0140-glb-viewer-bounding-box`.
+- Rollback si nécessaire: retirer `DrawBoundingBox(...)`, `Min`/`Max`/`DimensionsText` dans `GlbModel`, et remettre le titre du viewer à seulement `glbPath`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0141-metashape-glb-export-format
+
+- Diagnostic utilisateur: le traitement Metashape atteint l'export GLB puis échoue avec `AttributeError: module 'Metashape' has no attribute 'ModelFormatGLB'`.
+- Le script Python généré n'utilise plus directement `Metashape.ModelFormatGLB`.
+- Ajout d'une fonction `export_model_glb(...)` qui cherche dynamiquement les formats disponibles (`Metashape.ModelFormatGLB`, `Metashape.ModelFormatGLTF`, `Metashape.ModelFormat.*`), puis retombe sur `chunk.exportModel(output_path, ...)` sans paramètre `format` pour laisser Metashape inférer le format par l'extension `.glb`.
+- L'ancien chemin d'export/test dans `MetashapeAutomation.cs` reçoit aussi un fallback équivalent pour éviter le même crash par un autre bouton.
+- `UiRevision` passe à `REV-0141-metashape-glb-export-format`.
+- Rollback si nécessaire: remettre les appels directs `chunk.exportModel(..., format=Metashape.ModelFormatGLB, ...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0142-glb-bounding-box-toggle
+
+- Demande utilisateur: pouvoir masquer/afficher la bounding box du visualisateur GLB, éviter qu'elle apparaisse toujours par-dessus le modèle, et remplacer le jaune par un vert pâle.
+- Ajout d'un bouton `Boîte: On/Off` dans l'en-tête du `GlbViewerForm`.
+- La bounding box n'est plus dessinée en désactivant le depth test; les arêtes derrière le modèle sont donc masquées par la géométrie visible.
+- La couleur de la bounding box passe de jaune vif à vert pâle (`170, 235, 190`).
+- `UiRevision` passe à `REV-0142-glb-bounding-box-toggle`.
+- Rollback si nécessaire: retirer `_boundingBoxButton`, `ToggleBoundingBox()`, le garde `_showBoundingBox`, et remettre `GL.Disable(EnableCap.DepthTest)` / couleur jaune dans `DrawBoundingBox(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0143-auto-exposure-control-placeholder
+
+- Demande utilisateur: retirer l'ancien contrôle `lbl_saveImageForMesurementSequence` / `btn_saveImageForMesurementSequence`, car la sauvegarde automatique d'image de mesure en séquence ne sert plus.
+- Les contrôles Designer existants sont renommés `lbl_autoExposure` et `btn_autoExposure` afin de conserver l'emplacement visuel pour une future fonction d'exposition automatique.
+- Le handler `btn_saveImageForMesurementSequence_Click(...)` est supprimé; `btn_autoExposure` n'a pas d'action pour l'instant.
+- La sauvegarde automatique d'image de mesure dans `PrisePhotoSequenceAsync(...)` est retirée.
+- L'ancienne propriété projet `SaveImageForMesurements` est retirée, ainsi que ses traces dans les logs/commentaires.
+- Le bouton manuel `btn_saveImageForMesurements` reste disponible pour prendre une image de mesure ponctuelle.
+- Les tooltips de `lbl_autoExposure` et `btn_autoExposure` sont définis avec les autres tooltips dans `ProjectManagement.cs` et indiquent maintenant `Exposition automatique. Fonction à définir.`
+- Diagnostic Designer: l'erreur `Microsoft.DotNet.DesignTools...ProjectInfoProvider` peut être causée par un `obj/project.assets.json` contenant un fallback NuGet absent (`NuGetFallbackFolder` / `Visual Studio\Shared\NuGetPackages`).
+- `Aerolithe.csproj` déclare maintenant `RuntimeIdentifiers=win-x64` et `DisableImplicitNuGetFallbackFolder=true` pour stabiliser le restore/design-time build entre Visual Studio et l'environnement Mac/Parallels.
+- Les warnings NuGet `NU1701` de `OpenTK` / `OpenTK.GLControl` viennent transitivement de `ScottPlot.WinForms` -> `SkiaSharp.Views.WindowsForms`; ils sont supprimés via `NoWarn=NU1701` pour éviter qu'ils polluent le chargement Designer.
+- `UiRevision` passe à `REV-0143-auto-exposure-control-placeholder`.
+- Rollback si nécessaire: restaurer `btn_saveImageForMesurementSequence` / `lbl_saveImageForMesurementSequence`, le handler `btn_saveImageForMesurementSequence_Click(...)`, la propriété `SaveImageForMesurements`, et le bloc automatique `SaveMesurementImage()` dans `PrisePhotoSequenceAsync(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0144-metashape-scale-bar-no-marker-position-write
+
+- Diagnostic utilisateur: l'étape `Scale bar 25mm` échoue avec `AttributeError: attribute 'position' of 'Metashape.Marker' objects is not writable`.
+- Cause: le script Python généré tentait d'estimer des positions 3D de marqueurs à partir des projections et d'écrire `marker.position = position`; cette propriété est read-only dans la version Metashape utilisée.
+- La création de scale bar ne calcule plus ni n'écrit de positions de marqueurs. Elle choisit une paire de marqueurs détectés via les paires préférées déjà codées, puis crée `chunk.addScalebar(marker_a, marker_b)` avec `reference.distance = 0.025`.
+- Le recalcul manuel du facteur d'échelle basé sur `marker.position` est retiré. Le script tente seulement `chunk.updateTransform()` après création de la scale bar, sans bloquer si Metashape refuse.
+- Conséquence attendue: la scale bar doit apparaître dans le projet Metashape et l'étape ne doit plus planter avant les étapes de modèle/export.
+- `UiRevision` passe à `REV-0144-metashape-scale-bar-no-marker-position-write`.
+- Rollback si nécessaire: restaurer la logique `closest_marker_pair(...)` basée sur `marker_position(...)`, `marker_distance(...)` et le facteur manuel appliqué à `chunk.transform.matrix`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0145-manual-photo-unique-thumbnail-path
+
+- Diagnostic utilisateur: avec le bouton `Prendre une photo`, toutes les miniatures affichaient le même nom au survol et ouvraient la dernière image au clic.
+- Cause probable: les prises manuelles réutilisaient le même incrément de projet, donc le même chemin fichier était réécrit par chaque nouvelle capture.
+- Après une capture manuelle sauvegardée avec succès, `takePictureAsyncSimple()` avance maintenant l'incrément d'image pour que la prochaine photo ait un nouveau nom.
+- Chaque miniature conserve aussi son chemin exact dans `PictureBox.Tag`; le tooltip, le clic et la suppression utilisent ce chemin propre à la miniature.
+- Effet attendu: les miniatures manuelles pointent chacune vers leur propre fichier et ouvrent l'image correspondante.
+- `UiRevision` passe à `REV-0145-manual-photo-unique-thumbnail-path`.
+- Rollback si nécessaire: retirer l'appel `await IncrementImgSeq()` dans `takePictureAsyncSimple()` et retirer l'utilisation de `thumbnailPath` / `PictureBox.Tag` dans `AfficherMiniatures(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0146-metashape-hr-volume-viewer-metrics
+
+- Demande utilisateur: après export des modèles Metashape, calculer le volume du modèle HR avant l'ouverture du visualisateur, afficher ce volume en `cm³`, rendre la valeur copiable, et afficher la plus grande dimension X/Y/Z plus gros dans le visualisateur.
+- Le script Metashape généré calcule maintenant `model.volume()` sur le modèle HR après l'export HR, convertit la valeur brute en `cm³` avec `x 1000000`, puis écrit un fichier `*_metrics.json` dans le dossier `Modèles`.
+- Si Metashape refuse le calcul du volume, le pipeline continue l'export LR et logue `Volume HR impossible: ...`; le visualisateur affiche alors `Volume HR: non disponible`.
+- `GlbViewerForm` lit automatiquement le fichier `*_metrics.json` voisin du GLB ouvert (`*_LR.glb` ou `*_HR.glb`) et affiche `Volume HR: ... cm³` dans un `TextBox` read-only, donc sélectionnable/copier-coller.
+- Le visualisateur calcule aussi la plus grande dimension de la bounding box du GLB ouvert et l'affiche plus gros sous forme `Dimension max: X/Y/Z ...`.
+- `UiRevision` passe à `REV-0146-metashape-hr-volume-viewer-metrics`.
+- Rollback si nécessaire: retirer `METRICS_PATH`, `calculate_hr_model_metrics(...)`, l'appel volume dans `step_export_models(...)`, puis retirer `_volumeTextBox`, `_longestDimensionLabel` et `ModelMetrics` dans `GlbViewerForm`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0147-metashape-folders-logs-scripts
+
+- Demande utilisateur: garder le `.psx` à la racine du dossier Metashape, mais déplacer les logs dans un dossier `logs` et les scripts Python dans un dossier `scripts`.
+- `MetashapeAutomationPlan` expose maintenant `ScriptsFolder`, `LogsFolder`, `PipelineLogPath`, `RunnerLogPath`, `SshLogPath` et `RunCommandPath`.
+- Les scripts Python générés sont écrits dans `scripts/<Projet>_metashape.py`; le `.command` de lancement Mac est aussi écrit dans `scripts`.
+- Les logs pipeline, runner et SSH sont écrits dans `logs`, incluant les copies `.previous`.
+- Au lancement, Aerolithe déplace automatiquement les anciens fichiers auxiliaires connus depuis la racine du projet vers `logs`/`scripts` si ces fichiers existent déjà.
+- Le fichier `<Projet>.psx` et le dossier `<Projet>.files` restent à la racine du projet Metashape.
+- `UiRevision` passe à `REV-0147-metashape-folders-logs-scripts`.
+- Rollback si nécessaire: remettre `ScriptPath` dans `ProjectFolder`, remettre les chemins de logs à `Path.Combine(plan.ProjectFolder, ...)`, retirer `MoveLegacyMetashapeAuxiliaryFiles(...)`, et remettre `UiRevision` à la révision précédente voulue.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0148-glb-viewer-metrics-style
+
+- Demande utilisateur: dans le visualisateur GLB, afficher l'axe de la plus grande dimension en minuscule et entre parenthèses, rendre `Volume HR: non disponible` de la même grosseur/couleur que la dimension, et mettre la bounding box à off par défaut.
+- `GlbViewerForm` affiche maintenant `Dimension max: (x) ...`, `(y)` ou `(z)`.
+- Le champ `Volume HR` utilise maintenant la même couleur vert pâle et la même taille/gras que la dimension max, y compris quand le volume est non disponible.
+- La bounding box démarre masquée avec le bouton `Boîte: Off`; le bouton permet toujours de la réactiver.
+- `UiRevision` passe à `REV-0148-glb-viewer-metrics-style`.
+- Rollback si nécessaire: remettre `_showBoundingBox = true`, le texte initial `Boîte: On`, les axes `X/Y/Z`, et l'ancien style du champ volume.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0149-glb-viewer-selectable-metrics
+
+- Demande utilisateur: rendre les dimensions sélectionnables comme le volume pour mieux aligner verticalement le texte, et enlever le mot `HR` du volume.
+- `Dimension max` est maintenant affiché dans un `TextBox` read-only, comme le volume, donc sélectionnable/copier-coller.
+- Le libellé du volume passe de `Volume HR: ...` à `Volume: ...`, incluant l'état `Volume: non disponible`.
+- `UiRevision` passe à `REV-0149-glb-viewer-selectable-metrics`.
+- Rollback si nécessaire: remettre `_longestDimensionLabel` en `Label` et restaurer les textes `Volume HR: ...`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0150-auto-exposure-test-tempa
+
+- Demande utilisateur: utiliser `btn_autoExposureTest` dans l'onglet Image pour des tests manuels d'exposition automatique et sauvegarder les images temporaires dans un dossier `tempa` avec des noms explicites.
+- Ajout du fichier `AutoExposure.cs` pour isoler la logique de test manuel.
+- `btn_autoExposureTest` est branché au démarrage via `InitializeAutoExposureEvents()`; le bouton reste placé dans le Designer.
+- Premier clic: prend une photo temporaire de référence dans `images/tempa/autoExposure` et mémorise shutter, angle actuateur et luminance moyenne.
+- Clics suivants: prennent une photo temporaire de test dans le même dossier, comparent la luminance moyenne à la référence et loguent le delta en stops. Cette première passe n'applique pas encore automatiquement une nouvelle vitesse Nikon.
+- Nommage des fichiers: `<Projet>_autoexp_ref/test_angle<angle>_shutter<vitesse>_<timestamp>.jpg`.
+- La capture temporaire utilise un chemin de sauvegarde override et ne crée pas de miniature de série; elle ne modifie pas les incréments de prise de vue.
+- Tooltip ajouté pour `btn_autoExposureTest`.
+- `UiRevision` passe à `REV-0150-auto-exposure-test-tempa`.
+- Rollback si nécessaire: retirer `AutoExposure.cs`, retirer `InitializeAutoExposureEvents()` du constructeur, retirer le bloc `_autoExposureCapturePath` dans `device_ImageReady(...)`, et retirer le tooltip `btn_autoExposureTest`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0151-auto-exposure-test-thumbnail
+
+- Demande utilisateur: afficher une miniature après les photos de test d'exposition.
+- Quand une capture temporaire auto-exposition est sauvegardée dans `tempa/autoExposure`, `AfficherMiniatures(...)` est maintenant appelé avec ce chemin.
+- Effet attendu: les images référence/test auto-exposition apparaissent dans le même panneau de miniatures et restent cliquables comme les autres captures.
+- `UiRevision` passe à `REV-0151-auto-exposure-test-thumbnail`.
+- Rollback si nécessaire: retirer l'appel `AfficherMiniatures(...)` du bloc `_autoExposureCapturePath` dans `device_ImageReady(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0152-auto-exposure-explicit-log
+
+- Demande utilisateur: rendre la conclusion des tests d'exposition explicite dans la Main Console.
+- Les logs `AutoExposure test` disent maintenant directement si le test est trop clair, trop sombre ou proche de la référence.
+- Le log conserve la luminance test/référence et la correction en stops.
+- `UiRevision` passe à `REV-0152-auto-exposure-explicit-log`.
+- Rollback si nécessaire: revenir au log précédent dans `btn_autoExposureTest_Click(...)` et retirer les helpers d'interprétation d'exposition ajoutés ensuite s'ils ne sont plus utilisés.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0153-auto-exposure-shutter-menu-suggestion
+
+- Demande utilisateur: cibler les valeurs possibles de la caméra, soit celles affichées dans le menu déroulant `Shutter Speed`.
+- La suggestion d'exposition ne génère plus une vitesse approximative arbitraire comme `1/149`.
+- `AutoExposure.cs` parcourt maintenant les items de `comboBox_shutterTime` ou `comboBox_shutterTime_2`, convertit les vitesses lisibles en secondes, puis choisit la valeur disponible la plus proche de la durée cible en stops.
+- Exemple attendu: si la correction mathématique tombe près de `1/149` et que le menu contient `1/150`, le log suggère `essayer 1/150`.
+- `UiRevision` passe à `REV-0153-auto-exposure-shutter-menu-suggestion`.
+- Rollback si nécessaire: restaurer la logique approximative précédente dans `TrySuggestAvailableShutter(...)` et retirer `TryFindClosestAvailableShutter(...)` / `GetAvailableShutterItems(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0154-auto-exposure-total-sequence
+
+- Demande utilisateur: implémenter l'auto-exposition dans la routine totale, restaurer l'exposition originale à la fin ou en cas d'annulation, et colorer les valeurs importantes dans la Main Console.
+- `btn_autoExposure` agit maintenant comme toggle runtime pour la routine totale seulement. Les séquences individuelles ne déclenchent pas cette calibration automatiquement.
+- Au début de `SequencePrisePhotoTotale(...)`, `BeginAutoExposureTotalSequenceAsync(...)` mémorise le shutter original courant. La valeur originale est écrite en vert dans la console.
+- Dans `SequencePrisePhotoIndividuelleActuateurAsync(...)`, après l'arrivée à l'angle 5/25/45 et avant les vraies photos, `CalibrateAutoExposureForCurrentSequenceAngleAsync(...)` prend une photo temporaire dans `images/tempa/autoExposure`.
+- À 5°, la photo temporaire sert de référence et conserve l'exposition originale. Aux angles suivants, la photo temporaire est comparée à la référence, une vitesse disponible dans le menu `Shutter Speed` est choisie, puis appliquée avant les vraies photos de la série.
+- Les images d'auto-exposition restent temporaires: elles vont dans `tempa/autoExposure`, apparaissent en miniature, ne changent pas la numérotation de séquence et ne doivent pas entrer dans Metashape.
+- Dans la console, l'exposition originale est en vert; l'exposition temporaire/suggérée/appliquée est en jaune; le reste du texte reste blanc par défaut.
+- Dans le `finally` de `SequencePrisePhotoTotale(...)`, `RestoreAutoExposureOriginalShutterAsync(...)` restaure toujours le shutter original si l'auto-exposition avait été activée, que la routine termine normalement ou soit annulée/arrêtée.
+- Tooltips mis à jour pour `lbl_autoExposure` et `btn_autoExposure`.
+- `UiRevision` passe à `REV-0154-auto-exposure-total-sequence`.
+- Rollback si nécessaire: retirer le toggle `btn_autoExposure_Click(...)`, les champs `_autoExposureSequenceEnabled` / `_autoExposureTotalSequenceActive` / `_autoExposureOriginalShutter*`, les appels `BeginAutoExposureTotalSequenceAsync(...)`, `CalibrateAutoExposureForCurrentSequenceAngleAsync(...)`, `RestoreAutoExposureOriginalShutterAsync(...)`, et remettre les tooltips précédents.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0155-internal-focus-stack-comparison
+
+- Demande utilisateur: ajouter un Focus Stack interne pour comparaison avec `focusstack.exe`, sans remplacer immédiatement le moteur existant.
+- Ajout de `FocusStackInternal.cs`.
+- Après un `focusstack.exe` réussi, `RunExistingFocusStackTaskAsync(...)` lance aussi `RunInternalFocusStackAsync(...)` sur les mêmes images source.
+- La sortie principale reste inchangée et continue d'être produite par `focusstack.exe`.
+- La sortie interne est écrite à côté de la sortie principale avec le suffixe `_internal`, par exemple `Gibeon_2011_024_C01_A_00_internal.jpg`.
+- Algorithme interne initial:
+  - charge toutes les images source valides dans l'ordre;
+  - met les images à la même dimension si nécessaire;
+  - calcule une carte locale de netteté par Laplacian grayscale, puis flou gaussien large pour stabiliser la sélection par zones;
+  - fusionne les pixels par moyenne pondérée, avec poids de netteté à puissance 4;
+  - force le fond très sombre à noir pour éviter de stacker le bruit du fond;
+  - sauvegarde un JPG qualité 95.
+- Objectif actuel: comparaison visuelle rapide. Ne pas utiliser encore cette sortie pour Metashape ou pour remplacer automatiquement la sortie `focusstack.exe` tant qu'elle n'a pas été validée sur plusieurs séries.
+- `UiRevision` passe à `REV-0155-internal-focus-stack-comparison`.
+- Rollback si nécessaire: retirer `FocusStackInternal.cs`, retirer l'appel à `RunInternalFocusStackAsync(...)` dans `RunExistingFocusStackTaskAsync(...)`, et retirer `BuildInternalFocusStackOutputPath(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0156-internal-focus-stack-alignment
+
+- Demande utilisateur: améliorer le Focus Stack interne parce que la fusion pondérée s'éloignait trop de la meilleure image source, et compenser le déplacement/agrandissement causé par le mouvement de lentille pendant le focus.
+- Le Focus Stack interne choisit maintenant une image de base globale par score Laplacian moyen.
+- Avant la fusion, chaque image source est recalée sur l'image de base avec la boîte de l'objet: scale uniforme limité entre `0.92` et `1.08`, translation du centre, puis `WarpAffine` avec fond noir.
+- La fusion interne devient conservatrice: elle conserve le pixel de l'image de base sauf si une autre image alignée est clairement plus nette localement.
+- Objectif: rester visuellement proche de la meilleure image source tout en récupérant les zones réellement plus nettes dans les autres images.
+- La sortie reste seulement comparative avec suffixe `_internal`; elle ne remplace pas encore `focusstack.exe` dans Metashape.
+- `UiRevision` passe à `REV-0156-internal-focus-stack-alignment`.
+- Rollback si nécessaire: revenir à `REV-0155`, retirer `AlignFocusSourceToBase(...)`, `FindObjectBounds(...)`, `ComputeMeanFocusScore(...)`, `FindBestGlobalFocusSourceImage(...)`, et remettre la fusion pondérée `FuseFocusStackWeighted(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0157-internal-focus-stack-coherent-selection
+
+- Demande utilisateur: réduire les artéfacts visibles dans les sorties `_internal` après l'ajout de l'alignement.
+- Cause probable: la fusion sélective changeait d'image source pixel par pixel, ce qui peut créer des micro-îlots, des textures cassées ou des marches sur les bords quand l'alignement n'est pas parfait.
+- La fusion interne garde maintenant la silhouette de l'image de base: le masque de premier plan vient de la base, pas du maximum de luminance de toutes les images alignées.
+- Les bords de l'objet sont protégés par un masque érodé; près des bords, on conserve l'image de base pour éviter que des silhouettes légèrement différentes se mélangent.
+- La carte de sélection des images sources est lissée par majorité locale avant la composition finale, mais seulement quand la majorité est claire (`>= 60%` du voisinage valide). Le but est de retirer les pixels isolés sans inventer ni moyenner les textures.
+- Contrainte importante pour Metashape Pro: le Focus Stack interne doit rester photométriquement fidèle. Il ne doit pas créer de texture artificielle, accentuer l'image, ni mélanger les couleurs; chaque pixel final doit venir d'une image source alignée ou de l'image de base.
+- La sortie reste seulement comparative avec suffixe `_internal`; elle ne remplace pas encore `focusstack.exe`.
+- `UiRevision` passe à `REV-0157-internal-focus-stack-coherent-selection`.
+- Rollback si nécessaire: revenir à `REV-0156`, retirer `BuildForegroundMask(...)`, `ErodeMask(...)`, `SmoothSelectionMap(...)`, et remettre la sélection directe dans `FuseFocusStackSelective(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0158-auto-exposure-project-state
+
+- Demande utilisateur: conserver l'état du bouton `btn_autoExposure` dans le fichier projet et le restaurer à l'ouverture.
+- Ajout de `ProjectPreferences.AutoExposureEnabled`.
+- Au chargement/ouverture d'un projet, `ApplyProjectStateToUi()` applique `projet.AutoExposureEnabled` via `SetAutoExposureSequenceEnabled(...)`.
+- Au clic sur `btn_autoExposure`, l'état est sauvegardé dans le projet avec `projet.Save(appSettings.ProjectPath)`.
+- Comportement attendu: si l'exposition automatique était activée dans un projet, elle revient activée à la prochaine ouverture de ce même projet.
+- Rollback si nécessaire: retirer `AutoExposureEnabled`, retirer l'appel `SetAutoExposureSequenceEnabled(projet.AutoExposureEnabled)` et remettre le clic de `btn_autoExposure` en état mémoire seulement.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0159-auto-exposure-visible-toggle
+
+- Correction utilisateur: `btn_autoExposure` semblait ne pas s'activer parce que le runtime changeait seulement la couleur de fond.
+- `UpdateAutoExposureToggleVisual()` met maintenant aussi le glyph Phosphor: `` quand activé, `` quand désactivé, comme les autres toggles.
+- L'état sauvegardé dans `ProjectPreferences.AutoExposureEnabled` reste inchangé; seule la visibilité du toggle est corrigée.
+- `UiRevision` passe à `REV-0159-auto-exposure-visible-toggle`.
+- Rollback si nécessaire: retirer l'assignation `btn_autoExposure.Text = ...` dans `UpdateAutoExposureToggleVisual()`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0160-internal-focus-stack-homography
+
+- Demande utilisateur: essayer un alignement par features/homographie pour le Focus Stack interne, car l'alignement par boîte globale ne corrigeait pas assez les changements dus au mouvement de lentille.
+- `FocusStackInternal.cs` tente maintenant d'aligner chaque image source sur l'image de base avec ORB + BFMatcher Hamming + ratio test + homographie RANSAC.
+- Si l'image n'a pas assez de points fiables ou si l'homographie échoue, le code retombe automatiquement sur l'ancien alignement par boîte (`scale + translation`).
+- La composition finale reste fidèle pour Metashape: les pixels viennent toujours d'images sources alignées; pas de sharpening, pas de texture inventée.
+- La sortie reste comparative avec suffixe `_internal`; elle ne remplace pas encore `focusstack.exe`.
+- `UiRevision` passe à `REV-0160-internal-focus-stack-homography`.
+- Rollback si nécessaire: retirer `TryAlignFocusSourceByHomography(...)`, les `using Emgu.CV.Features2D` / `Emgu.CV.Util`, et remettre l'appel direct à l'alignement par boîte dans `RunInternalFocusStackAsync(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0161-auto-exposure-neutral-toggle-color
+
+- Correction utilisateur: `btn_autoExposure` ne doit pas devenir vert lorsqu'il est activé; il doit rester visuellement aligné avec les boutons voisins.
+- `UpdateAutoExposureToggleVisual()` garde maintenant `BackColor = Color.FromArgb(35, 35, 35)` dans les deux états.
+- L'état reste indiqué par le glyph Phosphor seulement: `` activé, `` désactivé.
+- `UiRevision` passe à `REV-0161-auto-exposure-neutral-toggle-color`.
+- Rollback si nécessaire: remettre la couleur active `Color.FromArgb(70, 85, 45)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0162-internal-focus-stack-disabled
+
+- Demande utilisateur: désactiver le Focus Stack interne pour l'instant.
+- `RunExistingFocusStackTaskAsync(...)` ne lance plus `RunInternalFocusStackAsync(...)` après un `focusstack.exe` réussi.
+- Le Focus Stack principal reste inchangé: `focusstack.exe` produit toujours la sortie normale utilisée par la séquence.
+- La sortie comparative `_internal` n'est plus générée; un log console indique que le Focus Stack interne est désactivé.
+- `FocusStackInternal.cs` est conservé pour pouvoir réactiver cette comparaison plus tard sans refaire l'implémentation.
+- `UiRevision` passe à `REV-0162-internal-focus-stack-disabled`.
+- Rollback si nécessaire: remettre le bloc `BuildInternalFocusStackOutputPath(...)` + `RunInternalFocusStackAsync(...)` dans `RunExistingFocusStackTaskAsync(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0163-actuator-horizontal-lift-smoothing
+
+- Demande utilisateur: rendre les déplacements du lift horizontal plus smooth côté Aérolithe, sans toucher aux projets Arduino/INO.
+- Contexte diagnostic: le firmware `Aerolithe_Lift_Horizontal` a déjà une rampe interne (`targetSpeed`, `currentSpeed`, `speedRampStep = 25`), mais `AutoCentrageStepPendantActuateurAsync(...)` envoyait une correction X puis `0` à chaque cycle, ce qui pouvait rendre le mouvement latéral haché.
+- Ajout de `_actuatorAutoCenterSmoothedHorizontalStep` côté application pour filtrer seulement le suivi d'auto-centrage pendant mouvement d'actuateur.
+- La consigne horizontale cible est maintenant lissée avec `smoothingFactor = 0.35`, une variation limitée à `6` unités par cycle, et une décélération progressive vers `0`.
+- Si le signe de correction change, la commande revient d'abord vers `0` avant de repartir dans l'autre sens pour éviter une inversion brusque.
+- Le `udpSendLiftHorizontalData(0)` après chaque impulsion de correction est retiré dans ce mode; les arrêts explicites restent présents lors d'une tolérance atteinte, annulation, perte de blob, fin de suivi ou arrêt de sécurité.
+- Les modes manuels `trkBar_LiftHorizontal`, `LiftXYPad`, `RoutineAutoCentrage(...)` normale et le firmware ESP32 ne sont pas modifiés.
+- `UiRevision` passe à `REV-0163-actuator-horizontal-lift-smoothing`.
+- Rollback si nécessaire: retirer `_actuatorAutoCenterSmoothedHorizontalStep`, `CalculateSmoothedActuatorHorizontalStep(...)`, `MoveTowardZero(...)`, `ResetActuatorHorizontalAutoCenterSmoothing(...)`; remettre `udpSendLiftHorizontalData(stepX);` et remettre `udpSendLiftHorizontalData(0);` après le délai de `AutoCentrageStepPendantActuateurAsync(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0164-focus-stack-post-mask-mode
+
+- Demande utilisateur: ajouter le mode `postMask` pour choisir si le masque est appliqué avant ou après le focus stack.
+- Ajout de `ProjectPreferences.postMask`, sauvegardé et chargé avec les autres valeurs du projet.
+- `btn_postMask` est branché au runtime: clic = toggle de `projet.postMask`, sauvegarde immédiate, glyph `` activé / `` désactivé.
+- `ApplyProjectStateToUi()` restaure maintenant l'état visuel de `btn_postMask` à l'ouverture du projet.
+- `postMask` n'a d'effet que si `projet.FocusStackEnabled` et `projet.ApplyMask` sont actifs.
+- Quand `postMask` est actif pendant un focus stack, `device_ImageReady(...)` sauvegarde les images sources sans masque pour laisser `focusstack.exe` travailler sur les images complètes.
+- Chaque tâche focus stack mémorise son mode `PostMask` au moment de l'enqueue, pour éviter qu'un changement de bouton en cours de file modifie les tâches déjà créées.
+- Après un `focusstack.exe` réussi, si `ApplyMask && PostMask`, `RunExistingFocusStackTaskAsync(...)` applique le masque sauvegardé sur l'image finale et écrase la sortie focus stack normale.
+- Le bouton manuel `PostFocusStackMask` continue de créer une sortie `_Mask`; la nouvelle logique automatique réutilise une fonction commune mais overwrite la sortie finale.
+- Le panel `tableLayoutPanel66` de `btn_postMask` est harmonisé avec les toggles voisins: fond sombre, `DockStyle.Fill`, marge `2,1,2,1`.
+- `UiRevision` passe à `REV-0164-focus-stack-post-mask-mode`.
+- Rollback si nécessaire: retirer `ProjectPreferences.postMask`, retirer `btn_postMask_Click`, retirer `btn_postMask.Text` dans `ApplyProjectStateToUi()`, remettre `device_ImageReady(...)` à l'application du masque avant focus stack, retirer `FocusStackTask.PostMask` et l'appel `ApplySavedMaskToImageFile(...)` dans `RunExistingFocusStackTaskAsync(...)`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0165-auto-exposure-thumbnail-blue
+
+- Demande utilisateur: afficher le nom de la photo auto-exposition en bleu dans les miniatures, seulement pour cette photo.
+- `AfficherMiniatures(...)` accepte maintenant une couleur optionnelle pour le titre de miniature.
+- L'appel auto-exposition passe `Color.DodgerBlue`; les autres miniatures gardent leur comportement existant, dont orange pour `photoPourMesure`.
+- `UiRevision` passe à `REV-0165-auto-exposure-thumbnail-blue`.
+- Rollback si nécessaire: retirer le paramètre `titleColor` de `AfficherMiniatures(...)`, remettre l'appel auto-exposition sans couleur et restaurer le bloc `photoPourMesure ? Orange : White`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0166-horizontal-lift-smoothing-revert
+
+- Demande utilisateur: retirer les modifications récentes faites au lift horizontal et revenir au comportement du matin.
+- Retrait du smoothing horizontal introduit en `REV-0163`: suppression de `_actuatorAutoCenterSmoothedHorizontalStep`, `CalculateSmoothedActuatorHorizontalStep(...)`, `MoveTowardZero(...)` et `ResetActuatorHorizontalAutoCenterSmoothing(...)`.
+- `AutoCentrageStepPendantActuateurAsync(...)` renvoie maintenant directement `udpSendLiftHorizontalData(stepX)`, attend `150 ms`, puis renvoie `udpSendLiftHorizontalData(0)`, comme avant.
+- Le feed-forward vertical, `postMask`, la miniature bleue auto-exposition et les autres changements récents sont conservés.
+- `UiRevision` passe à `REV-0166-horizontal-lift-smoothing-revert`.
+- Rollback si nécessaire: réappliquer `REV-0163-actuator-horizontal-lift-smoothing`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0167-thumbnail-path-guards-paler-blue
+
+- Diagnostic crash utilisateur: le log `/Volumes/tech/Documents/Aerolithe/logs/aerolithe-crash-2026-06-23_10-04-22-748.log` pointe vers `ImageViewerForm` appelé par `picBox_FocusStackedImage_Click(...)`.
+- Cause directe: le clic sur l'aperçu focus stacké tentait d'ouvrir `*_Mask.jpg` quand `stackedImageInBuffer` était actif, sans vérifier que ce fichier existait; `Image.FromFile(...)` levait ensuite `FileNotFoundException`.
+- Ajout de `TryOpenImageViewer(...)` pour centraliser les vérifications `chemin vide`, `File.Exists(...)` et exceptions d'ouverture d'image.
+- `ImageViewerForm` vérifie maintenant que le chemin reçu existe avant de charger l'image.
+- `picBox_FocusStackedImage_Click(...)` ouvre encore `*_Mask` s'il existe, mais retombe sur l'image focus stackée normale si le masque est absent, avec un log console orange.
+- `AfficherMiniatures(...)` vérifie maintenant que le fichier miniature existe avant `Image.FromFile(...)`.
+- Si la miniature échoue, `_pendingMiniatureTcs` et `miniaturesTcs` reçoivent l'exception au lieu de rester en attente, ce qui rend les erreurs de calibration plus visibles et évite un blocage silencieux après une capture.
+- Le bleu du titre de miniature auto-exposition passe de `Color.DodgerBlue` à `Color.FromArgb(145, 200, 255)` pour être plus pâle.
+- `UiRevision` passe à `REV-0167-thumbnail-path-guards-paler-blue`.
+- Rollback si nécessaire: remettre les ouvertures directes `new ImageViewerForm(...)`, retirer le fallback focus stack vers l'image non `_Mask`, retirer les `TrySetException(...)` dans le catch de `AfficherMiniatures(...)`, et remettre `Color.DodgerBlue`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0168-calibration-photo-autocenter-override
+
+- Demande utilisateur: pendant la séquence de prise de photos pour calibration, désactiver l'auto-centrage et son bouton crochet, puis restaurer l'état initial à la fin ou en cas d'annulation.
+- `BeginCalibrationAutoCentrageOverride()` ne dépend plus de `appSettings.CalibrationAutoCentrage`; la séquence de photos de calibration désactive systématiquement `projet.AutoCentrage` et `projet.AutoCentrageActuator`.
+- L'état précédent de `projet.AutoCentrage` et `projet.AutoCentrageActuator` est conservé dans `_calibrationAutoCentrageSavedAuto` et `_calibrationAutoCentrageSavedActuator`.
+- `RestoreCalibrationAutoCentrageOverride()` reste appelé dans le `finally` de `btn_PriseImagesMesuresTotale_Click(...)`, dans l'annulation et à la fermeture, pour restaurer l'état sauvegardé.
+- `SetAutoCentrageState(...)` met maintenant à jour les glyphs des deux boutons, force `cancelAutoCentrage`, arrête les moteurs et le suivi continu quand l'auto-centrage actuateur est temporairement désactivé.
+- Si `projet.AutoCentrageActuator` était actif avant la séquence, sa restauration relance `StartManualActuatorAutoCenterTracking()` pour que le bouton restauré corresponde à un état réellement actif.
+- `UiRevision` passe à `REV-0168-calibration-photo-autocenter-override`.
+- Rollback si nécessaire: remettre le `return` conditionnel sur `appSettings.CalibrationAutoCentrage` dans `BeginCalibrationAutoCentrageOverride()` et retirer les effets moteurs/tracking ajoutés dans `SetAutoCentrageState(...)`.
+
+## REV-0169-metashape-camera-reference-csv
+
+- Demande utilisateur: préparer l'import de positions caméras approximatives pour Metashape afin d'éviter les alignements empilés sur les petites météorites réfléchissantes.
+- Les futures images focus stackées incluent maintenant l'angle actuateur dans leur nom: `Base_A_25deg_03.jpg` au lieu de `Base_A_03.jpg`.
+- Les images de mesure gardaient déjà l'angle dans leur nom: `Base_A_M_25deg_03.jpg`.
+- Le menu `Metashape` ajoute `Exporter positions caméras...`, qui ouvre une fenêtre avec les dossiers cochables `focusStack_A`, `focusStack_B`, `mesures/serie_A` et `mesures/serie_B`.
+- Par défaut, `focusStack_A`, `focusStack_B` et `mesures/serie_A` sont cochés; `mesures/serie_B` ne l'est pas.
+- L'export écrit un CSV `Label,FileName,FullPath,SourceFolder,Side,ActuatorDeg,RotationIndex,RotationDeg,X,Y,Z` dans le dossier Metashape du projet.
+- Les coordonnées sont un dôme approximatif calculé depuis l'angle actuateur et l'index de rotation; elles ne visent pas une précision au centimètre, mais servent de contrainte initiale pour Metashape.
+- Les anciennes images focus stackées sans angle dans le nom sont ignorées par l'export CSV, car leur angle ne peut pas être déduit de façon fiable seulement depuis le fichier.
+- `UiRevision` passe à `REV-0169-metashape-camera-reference-csv`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0170-focusstack-real-actuator-angle-filenames
+
+- Demande utilisateur: les prochains noms d'images focus stackées doivent utiliser l'angle réel de l'actuateur, pas seulement l'angle théorique de la série.
+- `GetFocusStackImageFullPath(int actuatorAngleDeg)` permet maintenant de générer un nom `Base_A_25deg_03.jpg` avec un angle fourni par l'appelant.
+- `MakeFocusStackSerie()` lit `actuatorAngle`, l'arrondit à l'entier le plus proche et l'utilise pour le nom de fichier et le rapport de file d'attente.
+- Les images existantes de `/Volumes/tech/Documents/Projets/Gibeon_2011_024_C01/_images/focusStack/focusStack_A` et `focusStack_B` ont été renommées selon les plages utilisateur: `0-19 => 05deg`, `20-33 => 25deg`, `34-47 => 45deg`, avec index local dans chaque plage.
+- `mesures/serie_A` était déjà nommé en `A_M_25deg_00..05`; aucun renommage requis.
+- `UiRevision` passe à `REV-0170-focusstack-real-actuator-angle-filenames`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+- Résultat validation: compilation Release réussie, 0 erreur, 205 avertissements.
+
+## REV-0171-metashape-nominal-dome-positions
+
+- Diagnostic utilisateur: même avec les chunks A/B séparés, les caméras du côté A ne formaient pas un dôme fiable après import/alignement.
+- Cause identifiée: l'export CSV calculait `RotationDeg` avec le nombre de fichiers réellement présents dans chaque groupe. Si des images manquaient, les index conservés (`05deg_19`, `25deg_13`, etc.) étaient compressés sur un mauvais nombre de positions.
+- Correction: les positions Metashape utilisent maintenant le nombre nominal de positions par angle: `5° => 20`, `25° => 14`, `45° => 14`; les autres angles conservent le fallback basé sur le nombre de fichiers.
+- Le script Metashape `Metashape Import Positions Cameras Aerolithe.py` recalcule aussi les positions depuis les noms de fichiers avec ces comptes nominaux, efface l'alignement existant du chunk avant l'import des références, puis applique une précision caméra moins serrée (`0.25`) pour éviter de traiter ces coordonnées approximatives comme des mesures exactes.
+- `UiRevision` passe à `REV-0171-metashape-nominal-dome-positions`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+- Résultat validation: compilation Release réussie, 0 erreur, 205 avertissements.
+
+## REV-0172-metashape-project-image-counts
+
+- Diagnostic utilisateur: les nombres de positions par angle ne doivent pas être codés en dur (`20/14/14`), car ils peuvent varier selon le projet.
+- L'export CSV Metashape utilise maintenant les comptes configurés dans le projet ouvert via `appSettings.NbrImg5Deg`, `appSettings.NbrImg25Deg` et `appSettings.NbrImg45Deg`; si une valeur est absente ou invalide, il retombe sur le nombre de fichiers trouvés.
+- Le script Metashape n'essaie plus de recalculer les positions avec des constantes locales; il applique directement les coordonnées `X/Y/Z` du CSV généré par Aerolithe.
+- Les futures images sans focus stack (`noFS/serie_A`, `noFS/serie_B`) incluent maintenant l'angle dans le nom: `Base_A_25deg_03.jpg`.
+- Les mesures manuelles hors séquence forcée incluent aussi l'angle dans le nom: `Base_A_M_25deg_03.jpg`.
+- La fenêtre d'export CSV propose maintenant `noFS/serie_A` et `noFS/serie_B` comme dossiers cochables, décochés par défaut pour éviter les doublons quand les focus stacks existent.
+- Le script Metashape importe aussi `noFS/serie_A/B` dans les chunks A/B si ces dossiers contiennent des images.
+- `UiRevision` passe à `REV-0172-metashape-project-image-counts`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+- Résultat validation: compilation Release réussie, 0 erreur, 205 avertissements; `python3 -m py_compile` du script Metashape réussi.
+
+## REV-0173-output-crop-settings
+
+- Demande utilisateur: ajouter un réglage projet pour définir une dimension de sortie de crop avant Metashape, visible/modifiable dans Settings/Paramètres.
+- `ProjectPreferences` ajoute `OutputSize` sauvegardé dans le `.aero`, au format texte `largeurxhauteur` comme `7600x5100`.
+- `ProjectPreferences` ajoute `OutputCropEnabled` pour activer/désactiver le crop sans perdre la dimension configurée.
+- L'onglet `Paramètres` ajoute la ligne `Crop output Metashape` avec un `TextBox` de dimension et un bouton crochet Phosphor (`` actif, `` inactif), déclaré dans le Designer.
+- À l'ouverture d'un projet, `OutputSize` et `OutputCropEnabled` sont chargés dans l'UI; Entrée ou perte de focus valide/sauvegarde `OutputSize`.
+- Le format `OutputSize` accepte `x`, `×` ou `*` comme séparateur, puis normalise vers `largeurxhauteur`; une valeur vide reste permise.
+- Aucun crop d'image n'est encore appliqué par cette révision; elle ajoute seulement le paramètre projet et son contrôle UI.
+- Le prototype précédent de normalisation avec padding noir a été retiré.
+- `UiRevision` passe à `REV-0173-output-crop-settings`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0174-liveview-crop-region-overlay
+
+- Demande utilisateur: brancher le nouveau bouton `btn_ShowCropRegion` pour afficher sur le LiveView la zone approximative du crop final.
+- `ProjectPreferences` ajoute `ShowCropRegion`, sauvegardé dans le `.aero`.
+- `btn_ShowCropRegion` utilise le même comportement visuel que les autres toggles Phosphor: `` activé, `` désactivé.
+- L'overlay est dessiné en bleu azure translucide dans `pnl_LiveView_Paint(...)`.
+- L'overlay s'affiche seulement si le bouton est coché, le LiveView est actif, la caméra retourne réellement une image LiveView et `picBox_LiveView_Main` contient une image.
+- Le calcul est volontairement approximatif: la photo pleine résolution est considérée comme un cadre 3:2 centré dans un LiveView 1920x1080, puis `OutputSize` est centré dans ce cadre.
+- Le LiveView se rafraîchit immédiatement quand le bouton est coché/décoché ou quand `OutputSize` est validé.
+- `UiRevision` passe à `REV-0174-liveview-crop-region-overlay`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0175-auto-exposure-mask-mode
+
+- Demande utilisateur: ajouter un mode AutoExposure pour choisir si la luminance est calculée sur l'image complète ou seulement dans la météorite.
+- Correction Designer: le champ généré `button1` est renommé `btn_AutoExpoMode` pour correspondre au contrôle `btn_AutoExpoMode`.
+- `ProjectPreferences` ajoute `AutoExposureUseMask`, sauvegardé dans le `.aero`.
+- `btn_AutoExpoMode` utilise le glyph Phosphor standard: `` quand la luminance est calculée dans le masque, `` quand l'image complète est utilisée.
+- Les captures temporaires AutoExposure sont sauvegardées brutes, sans appliquer le masque normal de prise de photo.
+- Si `AutoExposureUseMask` est actif, AutoExposure génère un masque neuf depuis la photo temporaire, sauvegarde ce masque dans le même dossier, applique le masque à la photo temporaire, puis calcule la luminance seulement sur les pixels inclus dans le masque.
+- Si `AutoExposureUseMask` est inactif, AutoExposure garde le calcul précédent sur l'image complète.
+- La miniature AutoExposure est maintenant affichée après le traitement du mode: elle montre l'image complète si le mode masque est décoché, ou l'image masquée si le mode masque est coché.
+- `UiRevision` passe à `REV-0175-auto-exposure-mask-mode`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0176-lens-settings-and-crop-resize
+
+- Demande utilisateur: brancher `comboBox_LensType` pour gérer les lentilles dans `appSettings`.
+- `AppSettings` ajoute `SelectedLensName` et une liste `Lenses`, chaque `LensSetting` contenant `Name`, `LensFullTravelSteps` et un `ImagePath` optionnel.
+- `comboBox_LensType` est rempli depuis `appSettings` et ajoute trois commandes en bas du menu: ajouter, modifier et enlever une lentille.
+- Ajouter/modifier une lentille demande le nom, la valeur mesurée `LensFullTravelSteps` et permet de choisir une image locale optionnelle.
+- Changer de lentille sauvegarde l'état dans `appSettings` et affiche l'image associée dans `picBox_LensModel`; si aucune image n'est disponible, l'image Designer reste le fallback.
+- Correction de l'overlay de crop LiveView: le calcul utilise maintenant les dimensions réelles de l'image affichée dans `picBox_LiveView_Main` au lieu d'un canevas fixe 1920x1080.
+- `picBox_LiveView_Main.SizeChanged` invalide le PictureBox pour redessiner l'overlay quand la fenêtre est redimensionnée.
+- `UiRevision` passe à `REV-0176-lens-settings-and-crop-resize`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0177-lens-middle-position
+
+- Demande utilisateur: brancher `btn_SetLensAtMiddle` pour placer approximativement la lentille au milieu de sa course.
+- Le bouton utilise la lentille sélectionnée dans `comboBox_LensType` et lit `LensFullTravelSteps` depuis `appSettings`.
+- Routine actuelle: envoyer `2 x 32767` steps vers une butée avec `ManualFocusAsync(up: 1, ...)`, puis revenir de `LensFullTravelSteps / 2` avec `ManualFocusAsync(up: 0, ...)`.
+- `ManualFocusAsync(...)` découpe déjà les grands déplacements selon la limite `MFDriveStep` Nikon, donc la demi-course configurée peut dépasser une commande unique.
+- Le bouton est désactivé pendant la routine pour éviter les doubles clics.
+- `UiRevision` passe à `REV-0177-lens-middle-position`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0178-lens-editor-dialog
+
+- Demande utilisateur: rendre visible où modifier `LensFullTravelSteps` dans l'édition d'une lentille et ajouter une séparation lisible dans `comboBox_LensType`.
+- `Modifier la lentille...` et `Ajouter une lentille...` utilisent maintenant une boîte dédiée avec deux champs visibles: `Nom de la lentille` et `LensFullTravelSteps`.
+- `comboBox_LensType` passe en `OwnerDrawFixed` pour dessiner une vraie ligne séparatrice entre les lentilles et les commandes ajouter/modifier/enlever.
+- Quand une commande du combo est choisie, la sélection revient immédiatement à la lentille courante avant d'ouvrir la boîte d'action.
+- `UiRevision` passe à `REV-0178-lens-editor-dialog`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0179-lens-editor-cleanup
+
+- Correction utilisateur: les lentilles se dupliquaient à l'ouverture du projet si `appSettings.json` contenait déjà des entrées répétées.
+- `AppSettings.Load()` et `InitializeLensSettings()` dédupliquent maintenant les lentilles par nom, normalisent le nom, forcent `LensFullTravelSteps >= 1` et réinitialisent `ImagePath` à une chaîne vide si nécessaire.
+- `InitializeLensSettings()` sauvegarde après nettoyage pour corriger `appSettings.json` au prochain démarrage.
+- Le combo lentille passe en `OwnerDrawFixed` avant le remplissage, avec une hauteur minimale, pour rendre la ligne séparatrice visible.
+- La boîte Ajouter/Modifier lentille est agrandie; elle affiche clairement les champs `Nom de la lentille` et `LensFullTravelSteps`.
+- `UiRevision` passe à `REV-0179-lens-editor-cleanup`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0180-fixed-lens-images
+
+- Demande utilisateur: retirer les commandes Ajouter/Enlever du menu lentille et charger automatiquement les images placées dans `MyResources/Images`.
+- `comboBox_LensType` ne garde maintenant que les lentilles configurées, une ligne séparatrice et la commande `Modifier la lentille...`.
+- `ApplySelectedLensImage()` résout maintenant les images hardcodées: `Nikkor 60 mm` -> `MyResources/Images/nikkor60mm.jpg`, `Sigma 105 mm` -> `MyResources/Images/Sigma105mm.jpg`.
+- Les deux JPG de lentilles sont inclus comme `Content` avec copie vers le dossier de sortie, pour fonctionner depuis le build Release.
+- Modifier une lentille ne demande plus de choisir une image; l'image suit le nom hardcodé.
+- Dans la boîte Modifier, le nom de lentille est affiché en lecture seule et seul `LensFullTravelSteps` est modifiable.
+- `UiRevision` passe à `REV-0180-fixed-lens-images`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0181-separate-drive-steps
+
+- Demande utilisateur: séparer le DriveStep manuel du DriveStep sauvegardé utilisé par le focus stack et la Séquence Totale.
+- `txtBox_DriveStep` et `hScrollBar_driveStep` pilotent maintenant seulement le DriveStep manuel utilisé par `btn_focusMinus` et `btn_focusPlus`.
+- Entrée dans `txtBox_DriveStep` valide seulement la valeur manuelle; cela ne modifie plus `projet.StepSize`.
+- `btn_saveSteps` est maintenant le seul pont vers la valeur sauvegardée: il copie la valeur manuelle dans `txtBox_DriveStep2`, `projet.StepSize`, `stepSize` et le bouton `btn_goToDriveStepSettings`.
+- `txtBox_DriveStep2` reste éditable; Entrée modifie directement `projet.StepSize`, `stepSize` et le bouton `btn_goToDriveStepSettings`.
+- Le bouton `btn_goToDriveStepSettings` affiche toujours `projet.StepSize`, donc la valeur utilisée par les focus stacks/séquences.
+- Le bouton `btn_goToDriveStepSettings` pointe maintenant vers `Settings` / `Paramètres` / `txtBox_DriveStep2`.
+- L'overlay de crop LiveView utilise maintenant un gris bleuté plus discret au lieu du bleu pâle.
+- `UiRevision` passe à `REV-0181-separate-drive-steps`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0182-project-sharpness-sensitivity
+
+- Demande utilisateur: sauvegarder et recharger la sensibilité de la netteté par projet.
+- `ProjectPreferences` ajoute `SharpnessSensitivity`, sauvegardé dans le fichier `.aero`, avec défaut `100`.
+- `trackBar_blurThreshold` sauvegarde maintenant sa valeur dans `projet.SharpnessSensitivity` lors du scroll.
+- À l'ouverture d'un projet, `ApplySharpnessSensitivityToUi()` recharge `SharpnessSensitivity` dans `trackBar_blurThreshold` et `lbl_ResBlurDetect`.
+- `UiRevision` passe à `REV-0182-project-sharpness-sensitivity`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0183-show-stacked-image-tab
+
+- Demande utilisateur: quand une image focus stackée est disponible, afficher automatiquement l'onglet `Caméra` / `Focus Stack`.
+- Ajout de `ShowFocusStackImageTab()`, qui sélectionne `tabPage20` (`Caméra`) puis `tabPage27` (`Focus Stack`) sur le thread UI.
+- `RunExistingFocusStackTaskAsync()` appelle ce helper seulement si la tâche focus stack se termine avec succès.
+- `UiRevision` passe à `REV-0183-show-stacked-image-tab`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0184-postmask-thumbnail-badge
+
+- Demande utilisateur: indiquer visuellement dans les miniatures quand une photo source de focus stack sera masquée en post-traitement.
+- `AfficherMiniatures(...)` accepte maintenant `showPostMaskBadge`; quand il est vrai, l'icône Phosphor `` est dessinée en bas à droite de la miniature.
+- Le badge est activé seulement pour le cas strict `FocusStackEnabled && ApplyMask && postMask`; les photos de mesure, auto-exposition et photos normales ne changent pas.
+- `UiRevision` passe à `REV-0184-postmask-thumbnail-badge`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0185-focusstack-report-width
+
+- Demande utilisateur: quand `splitContainer2.Panel2` est agrandi, les lignes et titres de la queue Focus Stack doivent utiliser la largeur disponible.
+- Ajout de `InitializeFocusStackReportLayout()` et du recalcul au `SizeChanged` de `flowPanelReports`.
+- Les `FocusStackReportControl` générés au runtime et `tableLayoutPanelFocusStackReportHeader` sont redimensionnés à la largeur utile du panel; la colonne `Nom`, en pourcentage, absorbe l'espace supplémentaire.
+- `UiRevision` passe à `REV-0185-focusstack-report-width`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0186-autocenter-sequence-state
+
+- Demande utilisateur: corriger le mismatch entre les boutons d'auto-centrage et l'état réel pendant/après les séquences.
+- La séquence de photos de calibration désactive maintenant réellement `AutoCentrage` et `AutoCentrageActuator`, met les boutons à jour, sauvegarde l'état, puis ne restaure rien en fin/annulation.
+- Suppression des restaurations cachées d'auto-centrage dans `finally`, `StopSequences()` et la fermeture de l'application.
+- `SequencePrisePhotoTotale(...)` demande au démarrage si l'utilisateur veut réactiver l'auto-centrage quand un mode est désactivé; si les deux modes sont déjà actifs, aucun prompt n'est affiché.
+- `UiRevision` passe à `REV-0186-autocenter-sequence-state`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0187-autoexposure-mask-link
+
+- Demande utilisateur: ajouter `btn_AutoExposureMode2` comme miroir de `btn_AutoExposureMode`.
+- Les deux boutons AutoExposureMode utilisent le même handler et affichent toujours `projet.AutoExposureUseMask`.
+- Un clic sur `ApplyMask` force maintenant `AutoExposureUseMask` au même état; changer AutoExposureMode ne modifie pas `ApplyMask`.
+- Pendant une séquence de mesures ou une photo de mesure ponctuelle, `PostMask` est visuellement mis à off et non cliquable, puis son affichage est restauré selon `projet.postMask`.
+- `UiRevision` passe à `REV-0187-autoexposure-mask-link`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0188-metashape-csv-console-lines
+
+- Demande utilisateur: après l'export CSV positions caméras Metashape, chaque ligne du résumé doit être horodatée dans la Main Console.
+- Le résumé d'export est maintenant envoyé ligne par ligne à `AppendTextToConsoleNL(...)`; la boîte de confirmation garde le message multi-lignes.
+- `UiRevision` passe à `REV-0188-metashape-csv-console-lines`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0189-metashape-output-crop-apply
+
+- Diagnostic: `OutputCropEnabled` était bien présent/sauvegardé dans l'UI projet, mais la normalisation réelle n'était pas appliquée au fichier final généré par `focus-stack.exe`.
+- Ajout de `NormalizeMetashapeOutputImageIfEnabled(...)`, qui force les images à `projet.OutputSize` par crop centré ou padding centré.
+- Le traitement s'applique maintenant au focus stack final après PostMask, aux photos de mesure et aux photos noFS sauvegardées; les images sources temporaires de focus stack ne sont pas modifiées.
+- `UiRevision` passe à `REV-0189-metashape-output-crop-apply`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0190-show-crop-region-ui-sync
+
+- Correction: à l'ouverture de certains projets, `projet.ShowCropRegion` pouvait être actif et afficher l'overlay sans que `btn_ShowCropRegion` reflète l'état chargé.
+- `ApplyOutputCropSettingsToUi()` synchronise maintenant aussi `btn_ShowCropRegion` et invalide le liveview.
+- `UiRevision` passe à `REV-0190-show-crop-region-ui-sync`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0191-measurement-sequence-state-restore
+
+- Correction: la séquence de photos pour mesures restaure maintenant explicitement `ApplyMask`, `FocusStackEnabled` et `maskFreeze` à l'état présent avant le départ de la séquence.
+- Cette restauration de sécurité s'exécute en `finally`, même si une capture ou un déplacement échoue.
+- Si la table tournante ne confirme pas la position cible pendant une séquence de mesures, l'arrêt est maintenant explicite: log rouge, `RequestSequenceStop(...)` et exception de timeout au lieu d'un `return` silencieux.
+- `UiRevision` passe à `REV-0191-measurement-sequence-state-restore`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0192-project-save-empty-path-guard
+
+- Diagnostic crash: après déplacement/réouverture partielle d'un projet, `appSettings.ProjectPath` pouvait être une chaîne vide; un clic sur `PostMask` appelait `SavePrefsSettings()`, puis `ProjectPreferences.Save("")`, ce qui causait `ArgumentException: path`.
+- `SavePrefsSettings()` vérifie maintenant `string.IsNullOrWhiteSpace(appSettings?.ProjectPath)` et logge une sauvegarde ignorée au lieu de crasher.
+- `ProjectPreferences.Save(...)` refuse explicitement les chemins vides avec un message contrôlé.
+- `UiRevision` passe à `REV-0192-project-save-empty-path-guard`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0193-image-folder-selection-validation
+
+- Diagnostic: le menu `Images > Choisir un dossier` passait le dossier choisi à `CreateAllFolders(...)`, qui attend un dossier projet; choisir un dossier déjà nommé `images` pouvait donc créer `images/images`.
+- Le menu valide maintenant que le dossier choisi s'appelle exactement `images` et affiche un message clair sinon.
+- Le libellé du menu devient `Choisir le dossier images du projet` pour réduire l'ambiguïté avant l'ouverture du dialogue.
+- La création des sous-dossiers passe par une racine images explicite: `focusStack`, `mesures`, `noFS` et les dossiers de séries sont créés directement dans le dossier `images` choisi.
+- Les autres appels à `CreateAllFolders(...)` ont été vérifiés: ils partent du dossier projet lors de la création/réinitialisation des dossiers.
+- `UiRevision` passe à `REV-0193-image-folder-selection-validation`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0194-project-image-folder-relink
+
+- À l'ouverture d'un projet existant, le chemin du fichier `.aero` est normalisé vers le fichier réellement ouvert avant toute sauvegarde; `appSettings.ProjectPath` reste le mécanisme d'ouverture automatique du dernier projet.
+- Ajout de `ProjectPreferences.ProjectFilePath` dans le `.aero` comme trace du chemin courant; si le `.aero` a été déplacé, cette valeur est relinkée vers le fichier ouvert et ne dicte jamais le chemin de sauvegarde.
+- Si `ImageFolderPath` du `.aero` est absent, introuvable ou ne pointe pas vers un dossier nommé `images`, Aerolithe propose le dossier `images` à côté du `.aero` s'il existe, sinon demande de relinker manuellement.
+- L'ouverture est interrompue sans sauvegarde automatique si le relink du dossier `images` est annulé, pour éviter d'écrire un mauvais chemin dans le projet.
+- `UiRevision` passe à `REV-0194-project-image-folder-relink`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0195-specific-resume-and-thumbnail-clear
+
+- La fenêtre `Reprise spécifique de la séquence totale` clarifie maintenant la différence entre l'élévation/série, la rotation locale autour de la table et le numéro d'image utilisé dans le nom de fichier.
+- La confirmation de reprise affiche les mêmes termes et le nom de fichier focus stack attendu.
+- La poubelle sur une miniature retire seulement la miniature du panneau; elle ne propose plus de supprimer le fichier sur disque et n'appelle plus `File.Delete(...)`.
+- `UiRevision` passe à `REV-0195-specific-resume-and-thumbnail-clear`.
+- Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.
+
+## REV-0196-thumbnail-panel-clear-button
+
+- Correction ciblée: `btn_clearPicLayout` vide maintenant seulement le panneau des miniatures avec `ClearThumbnailControls()`.
+- Le bouton ne passe plus par `DeleteAllPicturesInFolderWithPrompt()` et ne demande donc plus de supprimer les fichiers sur disque.
+- Les méthodes de suppression disque restent disponibles pour les routines qui les appellent explicitement ailleurs dans l'application.
+- `UiRevision` passe à `REV-0196-thumbnail-panel-clear-button`.
 - Vérification: compiler avec `dotnet build Aerolithe.csproj -c Release -p:EnableWindowsTargeting=true`.

@@ -686,27 +686,100 @@ namespace Aerolithe
                     return;
                 }
 
-                using (var originalBitmap = new Bitmap(focusStackOutputPath))
-                using (var savedMask = LoadSavedMaskAsGrayMat(maskPath))
-                {
-                    Bitmap finalBitmap = ApplyMask(originalBitmap, savedMask);
+                string directory = Path.GetDirectoryName(focusStackOutputPath) ?? string.Empty;
+                string filenameWithoutExt = Path.GetFileNameWithoutExtension(focusStackOutputPath);
+                string extension = Path.GetExtension(focusStackOutputPath);
+                string newFilePath = Path.Combine(directory, $"{filenameWithoutExt}_Mask{extension}");
 
-                    // Sauvegarde de l'image finale
-                    string directory = Path.GetDirectoryName(focusStackOutputPath);
-                    string filenameWithoutExt = Path.GetFileNameWithoutExtension(focusStackOutputPath);
-                    string extension = Path.GetExtension(focusStackOutputPath);
-                    string newFilePath = Path.Combine(directory, $"{filenameWithoutExt}_Mask{extension}");
-
-                    finalBitmap.Save(newFilePath);
-
-                    // Affichage dans le PictureBox
-                    picBox_FocusStackedImage.Image?.Dispose();
-                    picBox_FocusStackedImage.Image = finalBitmap;
-                    stackedImageInBuffer = true;
-                    AppendTextToConsoleNL("PostFocusStackMask: masque sauvegardé appliqué : " + maskPath);
-                }
+                ApplySavedMaskToImageFile(focusStackOutputPath, maskPath, newFilePath, updatePreview: true);
             }
 
+        }
+
+        private bool ApplySavedMaskToImageFile(string imagePath, string maskPath, string outputPath, bool updatePreview)
+        {
+            try
+            {
+                if (!File.Exists(imagePath))
+                {
+                    AppendTextToConsoleNL("PostFocusStackMask: image introuvable : " + imagePath, Color.Red);
+                    return false;
+                }
+
+                if (!File.Exists(maskPath))
+                {
+                    AppendTextToConsoleNL("PostFocusStackMask: masque introuvable : " + maskPath, Color.Red);
+                    return false;
+                }
+
+                using var imageStream = new MemoryStream(File.ReadAllBytes(imagePath));
+                using var originalBitmap = new Bitmap(imageStream);
+                using var savedMask = LoadSavedMaskAsGrayMat(maskPath);
+                Bitmap finalBitmap = ApplyMask(originalBitmap, savedMask);
+
+                bool overwriteSource = string.Equals(
+                    Path.GetFullPath(imagePath),
+                    Path.GetFullPath(outputPath),
+                    StringComparison.OrdinalIgnoreCase);
+
+                if (overwriteSource)
+                {
+                    string directory = Path.GetDirectoryName(outputPath) ?? ".";
+                    string extension = Path.GetExtension(outputPath);
+                    string tempPath = Path.Combine(directory, Path.GetFileNameWithoutExtension(outputPath) + "_postmask_tmp" + extension);
+
+                    finalBitmap.Save(tempPath);
+                    finalBitmap.Dispose();
+                    File.Copy(tempPath, outputPath, overwrite: true);
+                    File.Delete(tempPath);
+
+                    if (updatePreview)
+                    {
+                        using var previewBitmap = new Bitmap(outputPath);
+                        UpdatePostMaskPreview(new Bitmap(previewBitmap));
+                    }
+                }
+                else
+                {
+                    finalBitmap.Save(outputPath);
+
+                    if (updatePreview)
+                    {
+                        UpdatePostMaskPreview(finalBitmap);
+                    }
+                    else
+                    {
+                        finalBitmap.Dispose();
+                    }
+                }
+
+                AppendTextToConsoleNL("PostFocusStackMask: masque sauvegardé appliqué : " + maskPath);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("PostFocusStackMask: erreur application masque: " + ex.Message, Color.Red);
+                return false;
+            }
+        }
+
+        private void UpdatePostMaskPreview(Bitmap finalBitmap)
+        {
+            void Update()
+            {
+                picBox_FocusStackedImage.Image?.Dispose();
+                picBox_FocusStackedImage.Image = finalBitmap;
+                stackedImageInBuffer = true;
+            }
+
+            if (picBox_FocusStackedImage.InvokeRequired)
+            {
+                picBox_FocusStackedImage.Invoke((Action)Update);
+            }
+            else
+            {
+                Update();
+            }
         }
 
         private Mat LoadSavedMaskAsGrayMat(string maskPath)

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Aerolithe
 {
@@ -35,8 +36,14 @@ namespace Aerolithe
             bool BuildModels)
         {
             public bool GuidedMatching => MeteoriteType != MetashapeMeteoriteType.Normale;
+            public string ScriptsFolder => Path.Combine(ProjectFolder, "scripts");
+            public string LogsFolder => Path.Combine(ProjectFolder, "logs");
             public string HighModelPath => Path.Combine(ModelsFolder, ProjectName + "_HR.glb");
             public string LowModelPath => Path.Combine(ModelsFolder, ProjectName + "_LR.glb");
+            public string PipelineLogPath => Path.Combine(LogsFolder, ProjectName + "_metashape.log");
+            public string RunnerLogPath => Path.Combine(LogsFolder, ProjectName + "_metashape_runner.log");
+            public string SshLogPath => Path.Combine(LogsFolder, ProjectName + "_metashape_ssh.log");
+            public string RunCommandPath => Path.Combine(ScriptsFolder, ProjectName + "_run_metashape.command");
         }
 
         private sealed record MetashapeLaunchTarget(string Path, bool IsMacAppBundle);
@@ -47,6 +54,29 @@ namespace Aerolithe
             string Message,
             string QueueFolder,
             string LogFolder);
+
+        private sealed record MetashapeCameraReferenceFolder(
+            string Label,
+            string Path,
+            bool DefaultChecked);
+
+        private sealed record MetashapeCameraReferenceRow(
+            string Label,
+            string FileName,
+            string FullPath,
+            string SourceFolder,
+            string Side,
+            int ActuatorDeg,
+            int RotationIndex,
+            double RotationDeg,
+            double X,
+            double Y,
+            double Z);
+
+        private sealed record MetashapeCameraReferenceExportResult(
+            string OutputPath,
+            int WrittenCount,
+            int SkippedCount);
 
         private void ConfigureMetashapeMenu()
         {
@@ -71,9 +101,16 @@ namespace Aerolithe
             };
             terminal.Click += metashapeTerminalToolStripMenuItem_Click;
 
+            ToolStripMenuItem cameraReference = new()
+            {
+                Text = "Exporter positions caméras..."
+            };
+            cameraReference.Click += metashapeCameraReferenceToolStripMenuItem_Click;
+
             metashapeToolStripMenuItem.DropDownItems.Add(launch);
             metashapeToolStripMenuItem.DropDownItems.Add(settings);
             metashapeToolStripMenuItem.DropDownItems.Add(terminal);
+            metashapeToolStripMenuItem.DropDownItems.Add(cameraReference);
         }
 
         private void metashapeToolStripMenuItem_Click(object? sender, EventArgs e)
@@ -130,6 +167,433 @@ namespace Aerolithe
             }
         }
 
+        private void metashapeCameraReferenceToolStripMenuItem_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                ShowMetashapeCameraReferenceExportDialog();
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("Erreur export positions caméras Metashape: " + ex.Message, Color.Red);
+                MessageBox.Show(
+                    "Impossible d'exporter les positions caméras.\n\n" + ex.Message,
+                    "Metashape",
+                    MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            }
+        }
+
+        private void ShowMetashapeCameraReferenceExportDialog()
+        {
+            if (string.IsNullOrWhiteSpace(appSettings?.ProjectPath) || projet == null)
+            {
+                MessageBox.Show("Svp sauvegarder ou ouvrir un projet avant d'exporter les positions caméras.", "Metashape", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            List<MetashapeCameraReferenceFolder> folders = BuildMetashapeCameraReferenceFolders();
+            string projectName = !string.IsNullOrWhiteSpace(projet.ImageNameBase)
+                ? SanitizeMetashapeProjectName(projet.ImageNameBase)
+                : SanitizeMetashapeProjectName(Path.GetFileNameWithoutExtension(appSettings.ProjectPath));
+            string outputFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Metashape", projectName);
+            string outputPath = Path.Combine(outputFolder, projectName + "_camera_reference.csv");
+
+            using Form dialog = new()
+            {
+                Text = "Exporter positions caméras Metashape",
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                ClientSize = new Size(760, 460),
+                BackColor = Color.FromArgb(30, 30, 30),
+                ForeColor = Color.White
+            };
+
+            Label title = new()
+            {
+                Text = "Dossiers à inclure dans le CSV",
+                Dock = DockStyle.Fill,
+                Font = new Font(Font, FontStyle.Bold),
+                ForeColor = Color.White,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            CheckedListBox folderList = new()
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(24, 24, 24),
+                ForeColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle,
+                CheckOnClick = true
+            };
+
+            foreach (MetashapeCameraReferenceFolder folder in folders)
+            {
+                int index = folderList.Items.Add(folder);
+                folderList.SetItemChecked(index, folder.DefaultChecked);
+            }
+            folderList.DisplayMember = nameof(MetashapeCameraReferenceFolder.Label);
+
+            TextBox outputTextBox = new()
+            {
+                Text = outputPath,
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(45, 45, 45),
+                ForeColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
+            Button browse = new()
+            {
+                Text = "Parcourir...",
+                Dock = DockStyle.Fill
+            };
+            browse.Click += (_, __) =>
+            {
+                using SaveFileDialog saveFileDialog = new()
+                {
+                    Filter = "CSV (*.csv)|*.csv|All files (*.*)|*.*",
+                    Title = "Enregistrer le CSV de positions caméras",
+                    FileName = Path.GetFileName(outputTextBox.Text),
+                    InitialDirectory = Directory.Exists(Path.GetDirectoryName(outputTextBox.Text))
+                        ? Path.GetDirectoryName(outputTextBox.Text)
+                        : outputFolder
+                };
+
+                if (saveFileDialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    outputTextBox.Text = saveFileDialog.FileName;
+                }
+            };
+
+            TextBox radiusTextBox = new()
+            {
+                Text = "1.0",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(45, 45, 45),
+                ForeColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
+            Label radiusLabel = new()
+            {
+                Text = "Rayon dôme approximatif",
+                Dock = DockStyle.Fill,
+                ForeColor = Color.Gainsboro,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            TableLayoutPanel outputPanel = new()
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 3
+            };
+            outputPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            outputPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
+            outputPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
+            outputPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            outputPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            outputPanel.Controls.Add(new Label
+            {
+                Text = "Fichier CSV",
+                Dock = DockStyle.Fill,
+                ForeColor = Color.Gainsboro,
+                TextAlign = ContentAlignment.MiddleLeft
+            }, 0, 0);
+            outputPanel.SetColumnSpan(outputPanel.Controls[0], 2);
+            outputPanel.Controls.Add(outputTextBox, 0, 1);
+            outputPanel.Controls.Add(browse, 1, 1);
+            outputPanel.Controls.Add(radiusLabel, 0, 2);
+            outputPanel.Controls.Add(radiusTextBox, 1, 2);
+
+            TextBox preview = new()
+            {
+                Dock = DockStyle.Fill,
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Vertical,
+                BackColor = Color.FromArgb(24, 24, 24),
+                ForeColor = Color.Gainsboro,
+                BorderStyle = BorderStyle.FixedSingle,
+                Text = "Le CSV utilisera les images dont le nom contient l'angle, par exemple _A_25deg_03 ou _A_M_25deg_03."
+            };
+
+            Button cancel = new() { Text = "Annuler", DialogResult = DialogResult.Cancel, Dock = DockStyle.Fill };
+            Button export = new() { Text = "Exporter", DialogResult = DialogResult.OK, Dock = DockStyle.Fill };
+            TableLayoutPanel buttons = new()
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3
+            };
+            buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92F));
+            buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92F));
+            buttons.Controls.Add(cancel, 1, 0);
+            buttons.Controls.Add(export, 2, 0);
+
+            TableLayoutPanel root = new()
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 5,
+                Padding = new Padding(12),
+                BackColor = Color.FromArgb(30, 30, 30)
+            };
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 96F));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 55F));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            root.Controls.Add(title, 0, 0);
+            root.Controls.Add(folderList, 0, 1);
+            root.Controls.Add(outputPanel, 0, 2);
+            root.Controls.Add(preview, 0, 3);
+            root.Controls.Add(buttons, 0, 4);
+
+            dialog.Controls.Add(root);
+            dialog.AcceptButton = export;
+            dialog.CancelButton = cancel;
+
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+            {
+                return;
+            }
+
+            if (!double.TryParse(radiusTextBox.Text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double radius)
+                && !double.TryParse(radiusTextBox.Text.Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out radius))
+            {
+                MessageBox.Show("Le rayon doit être un nombre valide.", "Metashape", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (radius <= 0)
+            {
+                MessageBox.Show("Le rayon doit être plus grand que zéro.", "Metashape", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            List<MetashapeCameraReferenceFolder> selectedFolders = folderList.CheckedItems
+                .OfType<MetashapeCameraReferenceFolder>()
+                .ToList();
+            if (selectedFolders.Count == 0)
+            {
+                MessageBox.Show("Sélectionne au moins un dossier.", "Metashape", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            MetashapeCameraReferenceExportResult result = ExportMetashapeCameraReferenceCsv(selectedFolders, outputTextBox.Text.Trim(), radius);
+            string[] messageLines =
+            [
+                "CSV positions caméras exporté: " + result.OutputPath,
+                "Images exportées: " + result.WrittenCount.ToString(CultureInfo.InvariantCulture),
+                "Images ignorées: " + result.SkippedCount.ToString(CultureInfo.InvariantCulture)
+            ];
+            string message = string.Join(Environment.NewLine, messageLines);
+            foreach (string messageLine in messageLines)
+            {
+                AppendTextToConsoleNL(messageLine, Color.LightGreen);
+            }
+            MessageBox.Show(message, "Metashape", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private List<MetashapeCameraReferenceFolder> BuildMetashapeCameraReferenceFolders()
+        {
+            string focusStackRoot = projet.GetFocusStackRootPath();
+            return new List<MetashapeCameraReferenceFolder>
+            {
+                new("focusStack_A", Path.Combine(focusStackRoot, "focusStack_A"), true),
+                new("focusStack_B", Path.Combine(focusStackRoot, "focusStack_B"), true),
+                new("noFS/serie_A", Path.Combine(projet.ImageFolderPath, "noFS", "serie_A"), false),
+                new("noFS/serie_B", Path.Combine(projet.ImageFolderPath, "noFS", "serie_B"), false),
+                new("mesures/serie_A", Path.Combine(projet.ImageFolderPath, "mesures", "serie_A"), true),
+                new("mesures/serie_B", Path.Combine(projet.ImageFolderPath, "mesures", "serie_B"), false)
+            };
+        }
+
+        private MetashapeCameraReferenceExportResult ExportMetashapeCameraReferenceCsv(
+            List<MetashapeCameraReferenceFolder> selectedFolders,
+            string outputPath,
+            double radius)
+        {
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                throw new InvalidOperationException("Le chemin du CSV est vide.");
+            }
+
+            if (!outputPath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                outputPath += ".csv";
+            }
+
+            List<(MetashapeCameraReferenceFolder Folder, string FilePath, ParsedMetashapeCameraName Parsed)> parsedImages = new();
+            int skipped = 0;
+
+            foreach (MetashapeCameraReferenceFolder folder in selectedFolders)
+            {
+                if (!Directory.Exists(folder.Path))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                foreach (string filePath in Directory.EnumerateFiles(folder.Path, "*.jpg"))
+                {
+                    if (TryParseMetashapeCameraImageName(Path.GetFileName(filePath), out ParsedMetashapeCameraName parsed))
+                    {
+                        parsedImages.Add((folder, filePath, parsed));
+                    }
+                    else
+                    {
+                        skipped++;
+                    }
+                }
+
+                foreach (string filePath in Directory.EnumerateFiles(folder.Path, "*.jpeg"))
+                {
+                    if (TryParseMetashapeCameraImageName(Path.GetFileName(filePath), out ParsedMetashapeCameraName parsed))
+                    {
+                        parsedImages.Add((folder, filePath, parsed));
+                    }
+                    else
+                    {
+                        skipped++;
+                    }
+                }
+            }
+
+            var groupCounts = parsedImages
+                .GroupBy(item => new { item.Folder.Path, item.Parsed.Side, item.Parsed.ActuatorDeg })
+                .ToDictionary(group => group.Key, group => group.Count());
+
+            List<MetashapeCameraReferenceRow> rows = new();
+            foreach ((MetashapeCameraReferenceFolder folder, string filePath, ParsedMetashapeCameraName parsed) in parsedImages)
+            {
+                var key = new { folder.Path, parsed.Side, parsed.ActuatorDeg };
+                int groupCount = GetMetashapeRotationCount(parsed.ActuatorDeg, Math.Max(1, groupCounts[key]));
+                double rotationDeg = groupCount <= 1 ? 0 : parsed.RotationIndex * 360.0 / groupCount;
+                (double x, double y, double z) = CalculateMetashapeDomeCameraPosition(rotationDeg, parsed.ActuatorDeg, radius);
+                rows.Add(new MetashapeCameraReferenceRow(
+                    Path.GetFileNameWithoutExtension(filePath),
+                    Path.GetFileName(filePath),
+                    filePath,
+                    folder.Label,
+                    parsed.Side,
+                    parsed.ActuatorDeg,
+                    parsed.RotationIndex,
+                    rotationDeg,
+                    x,
+                    y,
+                    z));
+            }
+
+            rows = rows
+                .OrderBy(row => row.SourceFolder, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.Side, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.ActuatorDeg)
+                .ThenBy(row => row.RotationIndex)
+                .ToList();
+
+            string? outputFolder = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrWhiteSpace(outputFolder))
+            {
+                Directory.CreateDirectory(outputFolder);
+            }
+
+            StringBuilder csv = new();
+            csv.AppendLine("Label,FileName,FullPath,SourceFolder,Side,ActuatorDeg,RotationIndex,RotationDeg,X,Y,Z");
+            foreach (MetashapeCameraReferenceRow row in rows)
+            {
+                csv.Append(Csv(row.Label)).Append(',')
+                    .Append(Csv(row.FileName)).Append(',')
+                    .Append(Csv(row.FullPath)).Append(',')
+                    .Append(Csv(row.SourceFolder)).Append(',')
+                    .Append(Csv(row.Side)).Append(',')
+                    .Append(row.ActuatorDeg.ToString(CultureInfo.InvariantCulture)).Append(',')
+                    .Append(row.RotationIndex.ToString(CultureInfo.InvariantCulture)).Append(',')
+                    .Append(row.RotationDeg.ToString("0.########", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(row.X.ToString("0.########", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(row.Y.ToString("0.########", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(row.Z.ToString("0.########", CultureInfo.InvariantCulture))
+                    .AppendLine();
+            }
+
+            File.WriteAllText(outputPath, csv.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            return new MetashapeCameraReferenceExportResult(outputPath, rows.Count, skipped);
+        }
+
+        private readonly record struct ParsedMetashapeCameraName(string Side, int ActuatorDeg, int RotationIndex);
+
+        private static bool TryParseMetashapeCameraImageName(string fileName, out ParsedMetashapeCameraName parsed)
+        {
+            parsed = default;
+            string name = Path.GetFileNameWithoutExtension(fileName);
+
+            Match measurementMatch = Regex.Match(
+                name,
+                @"_(?<side>[AB])_M_(?<angle>\d{1,3})deg_(?<index>\d+)$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (measurementMatch.Success)
+            {
+                parsed = new ParsedMetashapeCameraName(
+                    measurementMatch.Groups["side"].Value.ToUpperInvariant(),
+                    int.Parse(measurementMatch.Groups["angle"].Value, CultureInfo.InvariantCulture),
+                    int.Parse(measurementMatch.Groups["index"].Value, CultureInfo.InvariantCulture));
+                return true;
+            }
+
+            Match focusStackMatch = Regex.Match(
+                name,
+                @"_(?<side>[AB])_(?<angle>\d{1,3})deg_(?<index>\d+)$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (focusStackMatch.Success)
+            {
+                parsed = new ParsedMetashapeCameraName(
+                    focusStackMatch.Groups["side"].Value.ToUpperInvariant(),
+                    int.Parse(focusStackMatch.Groups["angle"].Value, CultureInfo.InvariantCulture),
+                    int.Parse(focusStackMatch.Groups["index"].Value, CultureInfo.InvariantCulture));
+                return true;
+            }
+
+            return false;
+        }
+
+        private static (double X, double Y, double Z) CalculateMetashapeDomeCameraPosition(double rotationDeg, int actuatorDeg, double radius)
+        {
+            double theta = rotationDeg * Math.PI / 180.0;
+            double phi = actuatorDeg * Math.PI / 180.0;
+            double x = radius * Math.Cos(phi) * Math.Cos(theta);
+            double y = radius * Math.Cos(phi) * Math.Sin(theta);
+            double z = radius * Math.Sin(phi);
+            return (x, y, z);
+        }
+
+        private int GetMetashapeRotationCount(int actuatorDeg, int fallbackCount)
+        {
+            int configuredCount = actuatorDeg switch
+            {
+                5 => appSettings?.NbrImg5Deg ?? 0,
+                25 => appSettings?.NbrImg25Deg ?? 0,
+                45 => appSettings?.NbrImg45Deg ?? 0,
+                _ => fallbackCount
+            };
+
+            return configuredCount > 0 ? configuredCount : fallbackCount;
+        }
+
+        private static string Csv(string value)
+        {
+            value ??= string.Empty;
+            if (value.Contains('"') || value.Contains(',') || value.Contains('\n') || value.Contains('\r'))
+            {
+                return "\"" + value.Replace("\"", "\"\"") + "\"";
+            }
+
+            return value;
+        }
+
         private void ouvrirVisualisateurGLBToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             try
@@ -166,6 +630,9 @@ namespace Aerolithe
 
             Directory.CreateDirectory(plan.ProjectFolder);
             Directory.CreateDirectory(plan.ModelsFolder);
+            Directory.CreateDirectory(plan.ScriptsFolder);
+            Directory.CreateDirectory(plan.LogsFolder);
+            MoveLegacyMetashapeAuxiliaryFiles(plan);
 
             MetashapeLaunchTarget? metashapeTarget = FindMetashapeLaunchTarget();
             if (metashapeTarget == null)
@@ -247,11 +714,57 @@ namespace Aerolithe
             return requestPath;
         }
 
+        private void MoveLegacyMetashapeAuxiliaryFiles(MetashapeAutomationPlan plan)
+        {
+            MoveLegacyMetashapeFile(
+                Path.Combine(plan.ProjectFolder, plan.ProjectName + "_metashape.py"),
+                plan.ScriptPath);
+            MoveLegacyMetashapeFile(
+                Path.Combine(plan.ProjectFolder, plan.ProjectName + "_run_metashape.command"),
+                plan.RunCommandPath);
+
+            string[] logSuffixes =
+            [
+                "_metashape.log",
+                "_metashape.log.previous",
+                "_metashape_runner.log",
+                "_metashape_runner.log.previous",
+                "_metashape_ssh.log",
+                "_metashape_ssh.log.previous"
+            ];
+
+            foreach (string suffix in logSuffixes)
+            {
+                string fileName = plan.ProjectName + suffix;
+                MoveLegacyMetashapeFile(
+                    Path.Combine(plan.ProjectFolder, fileName),
+                    Path.Combine(plan.LogsFolder, fileName));
+            }
+        }
+
+        private void MoveLegacyMetashapeFile(string sourcePath, string destinationPath)
+        {
+            if (!File.Exists(sourcePath) || string.Equals(sourcePath, destinationPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath) ?? ".");
+                File.Move(sourcePath, destinationPath, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("Déplacement fichier Metashape ignoré: " + sourcePath + " -> " + destinationPath + " (" + ex.Message + ")", Color.Orange);
+            }
+        }
+
         private string LaunchMacMetashapeViaSsh(MetashapeAutomationPlan plan, string appBundlePath)
         {
             string scriptPath = ToMacPath(plan.ScriptPath);
             string commandPath = ToMacPath(WriteMacMetashapeCommand(plan, appBundlePath));
-            string logPath = ToMacPath(Path.Combine(plan.ProjectFolder, plan.ProjectName + "_metashape_ssh.log"));
+            string logPath = ToMacPath(plan.SshLogPath);
             string remoteShellCommand = "COMMAND_PATH="
                 + BashString(commandPath)
                 + "; LOG_PATH="
@@ -328,8 +841,8 @@ namespace Aerolithe
 
             string scriptPath = ToMacPath(plan.ScriptPath);
             string projectPath = ToMacPath(plan.ProjectFile);
-            string pipelineLogPath = ToMacPath(Path.Combine(plan.ProjectFolder, plan.ProjectName + "_metashape.log"));
-            string runnerLogPath = ToMacPath(Path.Combine(plan.ProjectFolder, plan.ProjectName + "_metashape_runner.log"));
+            string pipelineLogPath = ToMacPath(plan.PipelineLogPath);
+            string runnerLogPath = ToMacPath(plan.RunnerLogPath);
             string remoteCommand = BuildMacMetashapeBatchCommand(appBundlePath, scriptPath, projectPath, pipelineLogPath, runnerLogPath);
 
             Form progressForm = CreateMetashapeProgressForm(
@@ -766,6 +1279,7 @@ namespace Aerolithe
                 + "METASHAPE_APP=" + BashString(appPath) + "; "
                 + "SCRIPT_PATH=" + BashString(scriptPath) + "; "
                 + "PROJECT_PATH=" + BashString(projectPath) + "; "
+                + "PROJECT_FILES=\"${PROJECT_PATH%.*}.files\"; "
                 + "PIPELINE_LOG=" + BashString(pipelineLogPath) + "; "
                 + "RUNNER_LOG=" + BashString(runnerLogPath) + "; "
                 + "mkdir -p \"$(dirname \"$PIPELINE_LOG\")\"; "
@@ -776,17 +1290,25 @@ namespace Aerolithe
                 + "echo \"$(date '+%Y-%m-%d %H:%M:%S') Lancement Metashape\"; "
                 + "echo \"Script: $SCRIPT_PATH\"; "
                 + "echo \"Projet: $PROJECT_PATH\"; "
-                + "if pgrep -fl \"Metashape|MetaShape\" >/dev/null 2>&1; then "
+                + "if pgrep -ifl \"Metashape|MetaShape|Agisoft\" >/dev/null 2>&1; then "
                 + "echo \"Fermeture de Metashape GUI pour éviter un projet read-only\"; "
                 + "/usr/bin/osascript -e 'tell application \"MetashapePro\" to quit' >/dev/null 2>&1 || true; "
                 + "/usr/bin/osascript -e 'tell application \"Metashape\" to quit' >/dev/null 2>&1 || true; "
                 + "for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do "
-                + "pgrep -fl \"Metashape|MetaShape\" >/dev/null 2>&1 || break; sleep 1; "
+                + "pgrep -ifl \"Metashape|MetaShape|Agisoft\" >/dev/null 2>&1 || break; sleep 1; "
                 + "done; "
-                + "if pgrep -fl \"Metashape|MetaShape\" >/dev/null 2>&1; then "
+                + "if pgrep -ifl \"Metashape|MetaShape|Agisoft\" >/dev/null 2>&1; then "
                 + "echo \"ERREUR: Metashape est encore ouvert apres la demande de fermeture. Traitement annule pour eviter un projet read-only.\"; "
-                + "pgrep -fl \"Metashape|MetaShape\"; "
+                + "pgrep -ifl \"Metashape|MetaShape|Agisoft\"; "
                 + "exit 87; "
+                + "fi; "
+                + "fi; "
+                + "if command -v lsof >/dev/null 2>&1; then "
+                + "if lsof \"$PROJECT_PATH\" >/dev/null 2>&1 || { [ -d \"$PROJECT_FILES\" ] && lsof +D \"$PROJECT_FILES\" >/dev/null 2>&1; }; then "
+                + "echo \"ERREUR: Projet Metashape encore ouvert/verrouille: $PROJECT_PATH\"; "
+                + "lsof \"$PROJECT_PATH\" 2>/dev/null || true; "
+                + "[ -d \"$PROJECT_FILES\" ] && lsof +D \"$PROJECT_FILES\" 2>/dev/null || true; "
+                + "exit 88; "
                 + "fi; "
                 + "fi; "
                 + "echo \"Exécution: $METASHAPE_EXE -r $SCRIPT_PATH\"; "
@@ -1185,6 +1707,8 @@ namespace Aerolithe
             StringBuilder script = new();
             script.AppendLine("import math");
             script.AppendLine("import os");
+            script.AppendLine("import shutil");
+            script.AppendLine("import json");
             script.AppendLine("import Metashape");
             script.AppendLine();
             script.AppendLine("PROJECT_PATH = " + PythonString(Map(plan.ProjectFile)));
@@ -1193,11 +1717,12 @@ namespace Aerolithe
             script.AppendLine("FOCUS_STACK_B = " + PythonString(Map(plan.FocusStackB)));
             script.AppendLine("HR_MODEL_PATH = " + PythonString(Map(plan.HighModelPath)));
             script.AppendLine("LR_MODEL_PATH = " + PythonString(Map(plan.LowModelPath)));
+            script.AppendLine("METRICS_PATH = os.path.join(os.path.dirname(HR_MODEL_PATH), os.path.splitext(os.path.basename(HR_MODEL_PATH))[0].replace('_HR', '') + '_metrics.json')");
             script.AppendLine("HR_MODEL_LABEL = 'Aerolithe HR'");
             script.AppendLine("LR_MODEL_LABEL = 'Aerolithe LR'");
             script.AppendLine("GUIDED_MATCHING = " + (plan.GuidedMatching ? "True" : "False"));
             script.AppendLine("IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.tif', '.tiff', '.png')");
-            script.AppendLine("LOG_PATH = os.path.splitext(PROJECT_PATH)[0] + '_metashape.log'");
+            script.AppendLine("LOG_PATH = " + PythonString(Map(plan.PipelineLogPath)));
             script.AppendLine();
             script.AppendLine("def log(message):");
             script.AppendLine("    line = '[Aerolithe Pipeline] ' + str(message)");
@@ -1289,6 +1814,7 @@ namespace Aerolithe
             script.AppendLine();
             script.AppendLine("def prepare_project_for_import(doc):");
             script.AppendLine("    os.makedirs(os.path.dirname(PROJECT_PATH), exist_ok=True)");
+            script.AppendLine("    project_files = os.path.splitext(PROJECT_PATH)[0] + '.files'");
             script.AppendLine("    current_path = str(getattr(doc, 'path', '') or '')");
             script.AppendLine("    if current_path and os.path.abspath(current_path) != os.path.abspath(PROJECT_PATH):");
             script.AppendLine("        log('Projet Metashape ouvert different: ' + current_path)");
@@ -1297,13 +1823,19 @@ namespace Aerolithe
             script.AppendLine("            log('Projet ouvert sauvegarde avant changement')");
             script.AppendLine("        except Exception as exc:");
             script.AppendLine("            log('Sauvegarde du projet ouvert impossible: ' + str(exc))");
-            script.AppendLine("        if os.path.isfile(PROJECT_PATH):");
-            script.AppendLine("            log('Ouverture du projet cible: ' + PROJECT_PATH)");
-            script.AppendLine("            doc.open(PROJECT_PATH)");
-            script.AppendLine("            return doc");
             script.AppendLine("    if current_path and os.path.abspath(current_path) == os.path.abspath(PROJECT_PATH):");
+            script.AppendLine("        log('Projet cible deja ouvert dans le document courant; nettoyage des chunks')");
             script.AppendLine("        return doc");
-            script.AppendLine("    log('Creation/attachement du projet Metashape: ' + PROJECT_PATH)");
+            script.AppendLine("    try:");
+            script.AppendLine("        if os.path.isfile(PROJECT_PATH):");
+            script.AppendLine("            log('Suppression ancien projet Metashape: ' + PROJECT_PATH)");
+            script.AppendLine("            os.remove(PROJECT_PATH)");
+            script.AppendLine("        if os.path.isdir(project_files):");
+            script.AppendLine("            log('Suppression ancien dossier Metashape: ' + project_files)");
+            script.AppendLine("            shutil.rmtree(project_files)");
+            script.AppendLine("    except OSError as exc:");
+            script.AppendLine("        raise RuntimeError('Impossible de supprimer l ancien projet Metashape avant Import mesures: ' + str(exc) + '. Fermer toute fenetre Metashape qui utilise ' + PROJECT_PATH + ', puis relancer.')");
+            script.AppendLine("    log('Creation du projet Metashape: ' + PROJECT_PATH)");
             script.AppendLine("    doc.save(PROJECT_PATH)");
             script.AppendLine("    return doc");
             script.AppendLine();
@@ -1458,7 +1990,7 @@ namespace Aerolithe
             script.AppendLine();
             script.AppendLine("def estimate_marker_position_from_projections(chunk, marker):");
             script.AppendLine("    if marker_position(marker) is not None:");
-            script.AppendLine("        return True");
+            script.AppendLine("        return marker_position(marker)");
             script.AppendLine("    projections = getattr(marker, 'projections', {}) or {}");
             script.AppendLine("    point_cloud = getattr(chunk, 'point_cloud', None)");
             script.AppendLine("    if point_cloud is None:");
@@ -1482,9 +2014,8 @@ namespace Aerolithe
             script.AppendLine("            pass");
             script.AppendLine("    position = vector_average(picked)");
             script.AppendLine("    if position is None:");
-            script.AppendLine("        return False");
-            script.AppendLine("    marker.position = position");
-            script.AppendLine("    return True");
+            script.AppendLine("        return None");
+            script.AppendLine("    return position");
             script.AppendLine();
             script.AppendLine("def ensure_marker_positions(chunk):");
             script.AppendLine("    estimated = 0");
@@ -1497,16 +2028,20 @@ namespace Aerolithe
             script.AppendLine("                aligned_projection_count += 1");
             script.AppendLine("        if aligned_projection_count >= 2:");
             script.AppendLine("            projection_markers += 1");
-            script.AppendLine("        if estimate_marker_position_from_projections(chunk, marker):");
+            script.AppendLine("        if marker_position(marker) is not None or estimate_marker_position_from_projections(chunk, marker) is not None:");
             script.AppendLine("            if aligned_projection_count >= 1:");
             script.AppendLine("                estimated += 1");
             script.AppendLine("    if estimated:");
-            script.AppendLine("        log('Positions 3D estimees pour marqueurs: ' + str(estimated))");
+            script.AppendLine("        log('Positions 3D disponibles/calculees pour marqueurs: ' + str(estimated))");
             script.AppendLine("    return projection_markers");
             script.AppendLine();
-            script.AppendLine("def marker_distance(marker_a, marker_b):");
+            script.AppendLine("def marker_distance(chunk, marker_a, marker_b):");
             script.AppendLine("    position_a = marker_position(marker_a)");
             script.AppendLine("    position_b = marker_position(marker_b)");
+            script.AppendLine("    if position_a is None:");
+            script.AppendLine("        position_a = estimate_marker_position_from_projections(chunk, marker_a)");
+            script.AppendLine("    if position_b is None:");
+            script.AppendLine("        position_b = estimate_marker_position_from_projections(chunk, marker_b)");
             script.AppendLine("    if position_a is None or position_b is None:");
             script.AppendLine("        return None");
             script.AppendLine("    delta = position_a - position_b");
@@ -1558,8 +2093,8 @@ namespace Aerolithe
             script.AppendLine("        return (sorted_markers[0], sorted_markers[1])");
             script.AppendLine("    return None");
             script.AppendLine();
-            script.AppendLine("def evaluate_marker_pair(best, marker_a, marker_b):");
-            script.AppendLine("    distance = marker_distance(marker_a, marker_b)");
+            script.AppendLine("def evaluate_marker_pair(best, chunk, marker_a, marker_b):");
+            script.AppendLine("    distance = marker_distance(chunk, marker_a, marker_b)");
             script.AppendLine("    if distance is None or distance <= 0:");
             script.AppendLine("        return best");
             script.AppendLine("    if best is None or distance < best[0]:");
@@ -1569,26 +2104,14 @@ namespace Aerolithe
             script.AppendLine("def closest_marker_pair(chunk):");
             script.AppendLine("    total_markers = len(chunk.markers)");
             script.AppendLine("    aligned_cameras = len([camera for camera in chunk.cameras if getattr(camera, 'transform', None) is not None])");
-            script.AppendLine("    projection_markers = ensure_marker_positions(chunk)");
-            script.AppendLine("    markers = sorted([marker for marker in chunk.markers if marker_position(marker) is not None], key=marker_sort_key)");
-            script.AppendLine("    log('Scale bar diagnostic: marqueurs=' + str(total_markers) + ', marqueurs 3D=' + str(len(markers)) + ', marqueurs avec projections alignees=' + str(projection_markers) + ', cameras alignees=' + str(aligned_cameras) + '/' + str(len(chunk.cameras)))");
-            script.AppendLine("    best = None");
-            script.AppendLine("    if len(markers) >= 3:");
-            script.AppendLine("        for i in range(len(markers) - 2):");
-            script.AppendLine("            marker_1 = markers[i]");
-            script.AppendLine("            marker_2 = markers[i + 1]");
-            script.AppendLine("            marker_3 = markers[i + 2]");
-            script.AppendLine("            best = evaluate_marker_pair(best, marker_1, marker_2)");
-            script.AppendLine("            best = evaluate_marker_pair(best, marker_2, marker_3)");
-            script.AppendLine("    if best is not None:");
-            script.AppendLine("        return best");
             script.AppendLine("    all_markers = sorted(list(chunk.markers), key=marker_sort_key)");
+            script.AppendLine("    log('Scale bar diagnostic: marqueurs=' + str(total_markers) + ', cameras alignees=' + str(aligned_cameras) + '/' + str(len(chunk.cameras)))");
             script.AppendLine("    if len(all_markers) < 2:");
             script.AppendLine("        raise RuntimeError('Scale bar impossible: moins de deux marqueurs detectes.')");
             script.AppendLine("    fallback_pair = preferred_detected_marker_pair(all_markers)");
             script.AppendLine("    if fallback_pair is None:");
             script.AppendLine("        raise RuntimeError('Scale bar impossible: aucune paire de marqueurs detectes.')");
-            script.AppendLine("    log('Scale bar sans calcul 3D: utilisation de la paire detectee ' + fallback_pair[0].label + ' / ' + fallback_pair[1].label)");
+            script.AppendLine("    log('Scale bar: utilisation de la paire detectee ' + fallback_pair[0].label + ' / ' + fallback_pair[1].label)");
             script.AppendLine("    return (None, fallback_pair[0], fallback_pair[1])");
             script.AppendLine();
             script.AppendLine("def step_scale_bar_25mm(doc):");
@@ -1604,19 +2127,13 @@ namespace Aerolithe
             script.AppendLine("    scale_bar = chunk.addScalebar(marker_a, marker_b)");
             script.AppendLine("    scale_bar.label = 'Aerolithe scale bar 25 mm'");
             script.AppendLine("    scale_bar.reference.distance = 0.025");
-            script.AppendLine("    if distance_actuelle is None:");
-            script.AppendLine("        log('Scale bar 25 mm creee entre ' + marker_a.label + ' et ' + marker_b.label + ' sans distance 3D calculee')");
-            script.AppendLine("        save_step(doc, 'Scale bar 25mm')");
-            script.AppendLine("        return");
-            script.AppendLine("    distance_cible = 0.025");
-            script.AppendLine("    facteur = distance_cible / distance_actuelle");
-            script.AppendLine("    matrix = chunk.transform.matrix");
-            script.AppendLine("    if not matrix:");
-            script.AppendLine("        raise RuntimeError('Scale bar impossible: matrice du chunk absente.')");
-            script.AppendLine("    chunk.transform.matrix = Metashape.Matrix.Diag([facteur, facteur, facteur, 1]) * matrix");
+            script.AppendLine("    try:");
+            script.AppendLine("        chunk.updateTransform()");
+            script.AppendLine("        log('Transformation du chunk mise a jour avec la scale bar 25 mm')");
+            script.AppendLine("    except Exception as exc:");
+            script.AppendLine("        log('Scale bar creee, updateTransform ignore: ' + str(exc))");
             script.AppendLine("    log('Scale bar 25 mm creee entre ' + marker_a.label + ' et ' + marker_b.label)");
-            script.AppendLine("    log('Distance brute: ' + str(distance_actuelle) + ' m; facteur: ' + str(facteur))");
-            script.AppendLine("    log('Distance forcee: 0.025 m')");
+            script.AppendLine("    log('Distance reference: 0.025 m')");
             script.AppendLine("    save_step(doc, 'Scale bar 25mm')");
             script.AppendLine();
             script.AppendLine("def step_zoom_model(doc):");
@@ -1632,6 +2149,35 @@ namespace Aerolithe
             script.AppendLine("    except Exception as exc:");
             script.AppendLine("        log('Zoom automatique non supporte: ' + str(exc))");
             script.AppendLine();
+            script.AppendLine("def export_model_glb(chunk, output_path):");
+            script.AppendLine("    export_args = dict(binary=True, save_texture=True, save_uv=True, save_normals=True, save_colors=True)");
+            script.AppendLine("    candidates = []");
+            script.AppendLine("    for name in ('ModelFormatGLB', 'ModelFormatGLTF', 'ModelFormatGLTFBinary'):");
+            script.AppendLine("        value = getattr(Metashape, name, None)");
+            script.AppendLine("        if value is not None:");
+            script.AppendLine("            candidates.append(value)");
+            script.AppendLine("    model_format_class = getattr(Metashape, 'ModelFormat', None)");
+            script.AppendLine("    if model_format_class is not None:");
+            script.AppendLine("        for name in ('ModelFormatGLB', 'ModelFormatGLTF', 'GLB', 'GLTF'):");
+            script.AppendLine("            value = getattr(model_format_class, name, None)");
+            script.AppendLine("            if value is not None:");
+            script.AppendLine("                candidates.append(value)");
+            script.AppendLine("    last_error = None");
+            script.AppendLine("    for model_format in candidates:");
+            script.AppendLine("        try:");
+            script.AppendLine("            chunk.exportModel(output_path, format=model_format, **export_args)");
+            script.AppendLine("            return");
+            script.AppendLine("        except TypeError as exc:");
+            script.AppendLine("            last_error = exc");
+            script.AppendLine("    try:");
+            script.AppendLine("        chunk.exportModel(output_path, **export_args)");
+            script.AppendLine("    except TypeError:");
+            script.AppendLine("        minimal_args = dict(binary=True, save_texture=True)");
+            script.AppendLine("        if candidates:");
+            script.AppendLine("            chunk.exportModel(output_path, format=candidates[0], **minimal_args)");
+            script.AppendLine("        else:");
+            script.AppendLine("            chunk.exportModel(output_path, **minimal_args)");
+            script.AppendLine();
             script.AppendLine("def export_model(doc, label, output_path):");
             script.AppendLine("    chunk = current_chunk(doc)");
             script.AppendLine("    os.makedirs(os.path.dirname(output_path), exist_ok=True)");
@@ -1640,11 +2186,46 @@ namespace Aerolithe
             script.AppendLine("        raise RuntimeError('Modele a exporter introuvable: ' + label)");
             script.AppendLine("    set_current_model(chunk, model)");
             script.AppendLine("    log('Export GLB ' + label + ': ' + output_path)");
-            script.AppendLine("    chunk.exportModel(output_path, format=Metashape.ModelFormatGLB, binary=True, save_texture=True, save_uv=True, save_normals=True, save_colors=True)");
+            script.AppendLine("    export_model_glb(chunk, output_path)");
             script.AppendLine("    save_step(doc, 'Export ' + label)");
+            script.AppendLine();
+            script.AppendLine("def get_model_volume_raw(model):");
+            script.AppendLine("    volume_attr = getattr(model, 'volume', None)");
+            script.AppendLine("    if callable(volume_attr):");
+            script.AppendLine("        return volume_attr()");
+            script.AppendLine("    if volume_attr is not None:");
+            script.AppendLine("        return volume_attr");
+            script.AppendLine("    raise RuntimeError('Calcul du volume non supporte par cette version de Metashape.')");
+            script.AppendLine();
+            script.AppendLine("def calculate_hr_model_metrics(doc):");
+            script.AppendLine("    chunk = current_chunk(doc)");
+            script.AppendLine("    model = find_model(chunk, HR_MODEL_LABEL)");
+            script.AppendLine("    if model is None:");
+            script.AppendLine("        raise RuntimeError('Modele HR introuvable pour calcul du volume.')");
+            script.AppendLine("    set_current_model(chunk, model)");
+            script.AppendLine("    raw_volume = float(get_model_volume_raw(model))");
+            script.AppendLine("    volume_cm3 = raw_volume * 1000000.0");
+            script.AppendLine("    metrics = {");
+            script.AppendLine("        'project': os.path.splitext(os.path.basename(PROJECT_PATH))[0],");
+            script.AppendLine("        'hr_model': HR_MODEL_PATH,");
+            script.AppendLine("        'lr_model': LR_MODEL_PATH,");
+            script.AppendLine("        'volume_raw': raw_volume,");
+            script.AppendLine("        'volume_cm3': volume_cm3,");
+            script.AppendLine("        'volume_source': 'Metashape model.volume()',");
+            script.AppendLine("        'volume_conversion': 'raw_m3_x_1000000_to_cm3'");
+            script.AppendLine("    }");
+            script.AppendLine("    os.makedirs(os.path.dirname(METRICS_PATH), exist_ok=True)");
+            script.AppendLine("    with open(METRICS_PATH, 'w', encoding='utf-8') as metrics_file:");
+            script.AppendLine("        json.dump(metrics, metrics_file, ensure_ascii=False, indent=2)");
+            script.AppendLine("    log('Volume HR: ' + str(volume_cm3) + ' cm3')");
+            script.AppendLine("    log('Mesures modele: ' + METRICS_PATH)");
             script.AppendLine();
             script.AppendLine("def step_export_models(doc):");
             script.AppendLine("    export_model(doc, HR_MODEL_LABEL, HR_MODEL_PATH)");
+            script.AppendLine("    try:");
+            script.AppendLine("        calculate_hr_model_metrics(doc)");
+            script.AppendLine("    except Exception as exc:");
+            script.AppendLine("        log('Volume HR impossible: ' + str(exc))");
             script.AppendLine("    export_model(doc, LR_MODEL_LABEL, LR_MODEL_PATH)");
             script.AppendLine();
             script.AppendLine("doc = Metashape.app.document");
@@ -2519,6 +3100,7 @@ namespace Aerolithe
             string projectFile = Path.Combine(projectFolder, projectName + ".psx");
             string modelsFolder = Path.Combine(projectFolder, "Modèles");
             string focusStackRoot = projet.GetFocusStackRootPath();
+            string scriptsFolder = Path.Combine(projectFolder, "scripts");
 
             return new MetashapeAutomationPlan(
                 projectName,
@@ -2528,7 +3110,7 @@ namespace Aerolithe
                 Path.Combine(projet.ImageFolderPath, "mesures", "serie_A"),
                 Path.Combine(focusStackRoot, "focusStack_A"),
                 Path.Combine(focusStackRoot, "focusStack_B"),
-                Path.Combine(projectFolder, projectName + "_metashape.py"),
+                Path.Combine(scriptsFolder, projectName + "_metashape.py"),
                 meteoriteType,
                 SaveProject: true,
                 ImportMeasures: true,
@@ -2548,6 +3130,7 @@ namespace Aerolithe
             string modelsFolder = Path.Combine(projectFolder, "Modèles");
             string imagesFolder = Path.Combine(documentsFolder, "Projets", projectName, "images");
             string focusStackRoot = Path.Combine(imagesFolder, "focusStack");
+            string scriptsFolder = Path.Combine(projectFolder, "scripts");
 
             return new MetashapeAutomationPlan(
                 projectName,
@@ -2557,7 +3140,7 @@ namespace Aerolithe
                 Path.Combine(imagesFolder, "mesures", "serie_A"),
                 Path.Combine(focusStackRoot, "focusStack_A"),
                 Path.Combine(focusStackRoot, "focusStack_B"),
-                Path.Combine(projectFolder, projectName + "_metashape.py"),
+                Path.Combine(scriptsFolder, projectName + "_metashape.py"),
                 MetashapeMeteoriteType.Normale,
                 SaveProject: true,
                 ImportMeasures: true,
@@ -2915,7 +3498,7 @@ namespace Aerolithe
                 ProjectFolder = projectFolder,
                 ProjectFile = projectFile,
                 ModelsFolder = Path.Combine(projectFolder, "Modèles"),
-                ScriptPath = Path.Combine(projectFolder, projectName + "_metashape.py"),
+                ScriptPath = Path.Combine(projectFolder, "scripts", projectName + "_metashape.py"),
                 SaveProject = defaultPlan.SaveProject,
                 ImportMeasures = defaultPlan.ImportMeasures,
                 DetectMarkers = defaultPlan.DetectMarkers,
@@ -3241,7 +3824,7 @@ namespace Aerolithe
 
         private string WriteMacMetashapeCommand(MetashapeAutomationPlan plan, string appBundlePath)
         {
-            string commandPath = Path.Combine(plan.ProjectFolder, plan.ProjectName + "_run_metashape.command");
+            string commandPath = plan.RunCommandPath;
             string appPath = GetMacAppBundlePathForMac(appBundlePath);
             string executablePath = GetMacAppExecutablePathForMac(appBundlePath);
             string scriptPath = ToMacPath(plan.ScriptPath);
@@ -3477,7 +4060,7 @@ namespace Aerolithe
             script.AppendLine("BUILD_MODELS = " + (plan.BuildModels ? "True" : "False"));
             script.AppendLine();
             script.AppendLine("IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.tif', '.tiff', '.png')");
-            script.AppendLine("LOG_PATH = os.path.splitext(PROJECT_PATH)[0] + '_metashape.log'");
+            script.AppendLine("LOG_PATH = " + PythonString(MapPath(plan.PipelineLogPath)));
             script.AppendLine();
             script.AppendLine("def log(message):");
             script.AppendLine("    line = '[Aerolithe Metashape] ' + str(message)");
@@ -3523,23 +4106,11 @@ namespace Aerolithe
             script.AppendLine("    if not chunk.scalebars:");
             script.AppendLine("        log('Aucune barre d\\'échelle trouvée; échelle non appliquée.')");
             script.AppendLine("        return");
-            script.AppendLine("    sb = chunk.scalebars[0]");
-            script.AppendLine("    m0 = sb.point0");
-            script.AppendLine("    m1 = sb.point1");
-            script.AppendLine("    if not m0 or not m1 or not m0.position or not m1.position:");
-            script.AppendLine("        log('Barre d\\'échelle ou marqueurs invalides; échelle non appliquée.')");
-            script.AppendLine("        return");
-            script.AppendLine("    current_distance = (m0.position - m1.position).norm()");
-            script.AppendLine("    if current_distance == 0:");
-            script.AppendLine("        log('Distance de barre d\\'échelle à 0; échelle non appliquée.')");
-            script.AppendLine("        return");
-            script.AppendLine("    factor = 0.025 / current_distance");
-            script.AppendLine("    matrix = chunk.transform.matrix");
-            script.AppendLine("    if not matrix:");
-            script.AppendLine("        log('Transformation absente; échelle non appliquée.')");
-            script.AppendLine("        return");
-            script.AppendLine("    chunk.transform.matrix = Metashape.Matrix.Diag([factor, factor, factor, 1]) * matrix");
-            script.AppendLine("    log('Échelle forcée à 25 mm')");
+            script.AppendLine("    try:");
+            script.AppendLine("        chunk.updateTransform()");
+            script.AppendLine("        log('Échelle mise à jour via scale bar 25 mm')");
+            script.AppendLine("    except Exception as exc:");
+            script.AppendLine("        log('UpdateTransform via scale bar ignoré: ' + str(exc))");
             script.AppendLine();
             script.AppendLine("def build_and_export_model(doc, chunk, face_count, output_path):");
             script.AppendLine("    label = os.path.splitext(os.path.basename(output_path))[0]");
@@ -3564,7 +4135,20 @@ namespace Aerolithe
             script.AppendLine("        chunk.buildTexture(**texture_args)");
             script.AppendLine("    save_step(doc, 'Texture ' + label)");
             script.AppendLine("    log('Export GLB ' + output_path)");
-            script.AppendLine("    chunk.exportModel(output_path, format=Metashape.ModelFormatGLB, binary=True, save_texture=True, save_uv=True, save_normals=True, save_colors=True)");
+            script.AppendLine("    export_args = dict(binary=True, save_texture=True, save_uv=True, save_normals=True, save_colors=True)");
+            script.AppendLine("    model_format = getattr(Metashape, 'ModelFormatGLB', None)");
+            script.AppendLine("    if model_format is None and getattr(Metashape, 'ModelFormat', None) is not None:");
+            script.AppendLine("        model_format = getattr(Metashape.ModelFormat, 'ModelFormatGLB', getattr(Metashape.ModelFormat, 'ModelFormatGLTF', None))");
+            script.AppendLine("    try:");
+            script.AppendLine("        if model_format is not None:");
+            script.AppendLine("            chunk.exportModel(output_path, format=model_format, **export_args)");
+            script.AppendLine("        else:");
+            script.AppendLine("            chunk.exportModel(output_path, **export_args)");
+            script.AppendLine("    except TypeError:");
+            script.AppendLine("        if model_format is not None:");
+            script.AppendLine("            chunk.exportModel(output_path, format=model_format, binary=True, save_texture=True)");
+            script.AppendLine("        else:");
+            script.AppendLine("            chunk.exportModel(output_path, binary=True, save_texture=True)");
             script.AppendLine("    save_step(doc, 'Export ' + label)");
             script.AppendLine();
             script.AppendLine("def main():");

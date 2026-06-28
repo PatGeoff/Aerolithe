@@ -1,4 +1,6 @@
 ﻿using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,11 +40,12 @@ namespace Aerolithe
             public string OutputPath { get; set; } = string.Empty;
             public string MaskPath { get; set; } = string.Empty;
             public bool ApplyMask { get; set; }
+            public bool PostMask { get; set; }
             public string Status { get; set; } = string.Empty; // "En attente", "En cours", "Terminé", "Erreur"
             public bool IsRetry { get; set; }
         }
 
-        private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, string maskPath, bool applyMask, int elevation, int rotation, int serie, string status = "En attente")
+        private void EnqueueFocusStackTask(string[] imagePaths, string outputPath, string maskPath, bool applyMask, bool postMask, int elevation, int rotation, int serie, string status = "En attente")
         {
             AppendTextToConsoleNL("EnqueueFocusStackTask");
             var task = new FocusStackTask
@@ -56,6 +59,7 @@ namespace Aerolithe
                 OutputPath = outputPath,
                 MaskPath = maskPath,
                 ApplyMask = applyMask,
+                PostMask = postMask,
                 Status = status
             };
 
@@ -65,6 +69,7 @@ namespace Aerolithe
 
             var control = new FocusStackReportControl();
             control.SetTaskInfo(info);
+            ApplyFocusStackReportControlWidth(control);
 
             flowPanelReports.Controls.Add(control);
             taskControls[task] = control;
@@ -76,6 +81,49 @@ namespace Aerolithe
             {
                 _ = ProcessFocusStackQueue();
             }
+        }
+
+        private void InitializeFocusStackReportLayout()
+        {
+            flowPanelReports.WrapContents = false;
+            flowPanelReports.FlowDirection = FlowDirection.TopDown;
+            flowPanelReports.SizeChanged -= flowPanelReports_SizeChanged;
+            flowPanelReports.SizeChanged += flowPanelReports_SizeChanged;
+            ResizeFocusStackReportControls();
+        }
+
+        private void flowPanelReports_SizeChanged(object? sender, EventArgs e)
+        {
+            ResizeFocusStackReportControls();
+        }
+
+        private void ResizeFocusStackReportControls()
+        {
+            ApplyFocusStackReportHeaderWidth();
+
+            foreach (FocusStackReportControl control in flowPanelReports.Controls.OfType<FocusStackReportControl>())
+            {
+                ApplyFocusStackReportControlWidth(control);
+            }
+        }
+
+        private void ApplyFocusStackReportHeaderWidth()
+        {
+            if (tableLayoutPanelFocusStackReportHeader == null)
+            {
+                return;
+            }
+
+            int scrollbarWidth = flowPanelReports.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0;
+            int width = flowPanelReports.ClientSize.Width - flowPanelReports.Padding.Horizontal - scrollbarWidth;
+            tableLayoutPanelFocusStackReportHeader.Width = Math.Max(610, width);
+        }
+
+        private void ApplyFocusStackReportControlWidth(FocusStackReportControl control)
+        {
+            int scrollbarWidth = flowPanelReports.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0;
+            int width = flowPanelReports.ClientSize.Width - flowPanelReports.Padding.Horizontal - scrollbarWidth - control.Margin.Horizontal;
+            control.Width = Math.Max(610, width);
         }
 
         // Quand on appuie sur le bouton pour faire un FocusStack. 
@@ -116,9 +164,14 @@ namespace Aerolithe
                         }));
                     }
 
-                    EnqueueFocusStackTask(imagePaths, outputPath, projet.GetMaskFullImagePath(), projet.ApplyMask, (int)actuatorAngle, turntablePosition, projet.Serie + 1);
+                    EnqueueFocusStackTask(imagePaths, outputPath, projet.GetMaskFullImagePath(), projet.ApplyMask, projet.postMask, GetFocusStackActuatorAngleForFileName(), turntablePosition, projet.Serie + 1);
                 }
             }
+        }
+
+        private int GetFocusStackActuatorAngleForFileName()
+        {
+            return (int)Math.Round(actuatorAngle, MidpointRounding.AwayFromZero);
         }
 
         public Task MakeFocusStackSerie()
@@ -168,10 +221,11 @@ namespace Aerolithe
             //baseName = System.Text.RegularExpressions.Regex.Replace(baseName, "_\\d+$", "");
             //string outputPath = Path.Combine(projet.GetFocusStackPath(), baseName + "_stacked.jpg");
 
-            string outputPath = projet.GetFocusStackImageFullPath();
+            int focusStackActuatorAngle = GetFocusStackActuatorAngleForFileName();
+            string outputPath = projet.GetFocusStackImageFullPath(focusStackActuatorAngle);
             string maskPath = projet.GetMaskFullImagePath();
 
-            this.BeginInvoke((Action)(() => AppendTextToConsoleNL($"projet.GetFocusStackImageFullPath: {projet.GetFocusStackImageFullPath()}")));
+            this.BeginInvoke((Action)(() => AppendTextToConsoleNL($"projet.GetFocusStackImageFullPath: {outputPath}")));
             this.BeginInvoke((Action)(() => AppendTextToConsoleNL($"projet.GetMaskFullImagePath: {projet.GetMaskFullImagePath()}")));
 
             this.BeginInvoke((Action)(() =>
@@ -179,11 +233,11 @@ namespace Aerolithe
                 if (imageFiles.Length > 0)
                 {
                     this.BeginInvoke((Action)(() => AppendTextToConsoleNL("FocusStack première image : " + imageFiles[0])));
-                    EnqueueFocusStackTask(imageFiles, outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, projet.Serie + 1);
+                    EnqueueFocusStackTask(imageFiles, outputPath, maskPath, projet.ApplyMask, projet.postMask, focusStackActuatorAngle, turntablePosition, projet.Serie + 1);
                 }
                 else
                 {
-                    EnqueueFocusStackTask(Array.Empty<string>(), outputPath, maskPath, projet.ApplyMask, (int)actuatorAngle, turntablePosition, projet.Serie + 1, "Erreur");
+                    EnqueueFocusStackTask(Array.Empty<string>(), outputPath, maskPath, projet.ApplyMask, projet.postMask, focusStackActuatorAngle, turntablePosition, projet.Serie + 1, "Erreur");
                     this.BeginInvoke((Action)(() => AppendTextToConsoleNL("Aucune image trouvée dans le dossier.")));
                 }
             }));
@@ -514,8 +568,40 @@ namespace Aerolithe
             }
 
             bool success = await RunFocusStack(task.ImagePaths, task.OutputPath);
+            if (success)
+            {
+                if (task.ApplyMask && task.PostMask)
+                {
+                    AppendTextToConsoleNL("PostMask actif: application du masque sur l'image focus stack finale.");
+                    success = ApplySavedMaskToImageFile(task.OutputPath, task.MaskPath, task.OutputPath, updatePreview: true);
+                }
+
+                if (success)
+                {
+                    success = NormalizeMetashapeOutputImageIfEnabled(task.OutputPath);
+                }
+
+                AppendTextToConsoleNL("Focus stack interne désactivé: sortie comparative _internal non générée.", Color.Gray);
+            }
             task.Status = success ? "Terminé" : "Erreur";
+            if (success)
+            {
+                ShowFocusStackImageTab();
+            }
             UpdateQueueDisplay();
+        }
+
+        private static string BuildInternalFocusStackOutputPath(string outputPath)
+        {
+            string? directory = Path.GetDirectoryName(outputPath);
+            string filename = Path.GetFileNameWithoutExtension(outputPath);
+            string extension = Path.GetExtension(outputPath);
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                extension = ".jpg";
+            }
+
+            return Path.Combine(directory ?? string.Empty, filename + "_internal" + extension);
         }
 
         private string[] ResolveFocusStackInputImages(FocusStackTaskInfo info)

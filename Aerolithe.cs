@@ -31,8 +31,8 @@ namespace Aerolithe
 {
     public partial class Aerolithe : Form
     {
-        public const string UiRevision = "REV-0138-actuator-feedforward-autocenter";
-        public const string UiRevisionDate = "2026-06-22";
+        public const string UiRevision = "REV-0196-thumbnail-panel-clear-button";
+        public const string UiRevisionDate = "2026-06-28";
         private string _windowTitleBase = "Aucun projet";
 
         // THIS IP ADDRESS 192.168.2.4 //
@@ -105,9 +105,6 @@ namespace Aerolithe
         private readonly Color _automaticFocusRoutineNormalBackColor = Color.FromArgb(30, 30, 30);
         private readonly Color _automaticFocusRoutineCancelBackColor = Color.FromArgb(100, 80, 30, 30);
         private CancellationTokenSource? _manualActuatorAutoCenterCts;
-        private readonly object _calibrationAutoCentrageOverrideLock = new();
-        private bool? _calibrationAutoCentrageSavedAuto;
-        private bool? _calibrationAutoCentrageSavedActuator;
         private bool? _espLiftVerticalMaxSwitchPressed;
         private bool? _espLiftVerticalMinSwitchPressed;
         private bool? _espLiftHorizontalLeftSwitchPressed;
@@ -136,6 +133,11 @@ namespace Aerolithe
         private bool StackConsoleView = false;
         private bool MainConsoleScrollToCarret = true;
         private bool StackConsoleScrollToCarret = true;
+        private bool _syncingDriveStepText;
+        private int _manualDriveStep;
+        private bool _syncingLensCombo;
+        private const string LensSeparatorItem = "────────────";
+        private const string LensEditCommand = "Modifier la lentille...";
 
         public Timing timing = new Timing();
 
@@ -151,6 +153,7 @@ namespace Aerolithe
         private static extern int SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
 
         private const int SB_VERT = 1;
+        private const int WM_SETREDRAW = 0x000B;
         private const int WM_VSCROLL = 0x0115;
         private const int SB_THUMBPOSITION = 4;
 
@@ -206,12 +209,15 @@ namespace Aerolithe
             }
 
             InitializeSequenceActionControls();
+            InitializeAutoExposureEvents();
             UpdateNetworkConsoleMessagesButton();
             UpdateOscConsoleMessagesButton();
             btn_maxImagesFS.Click += btn_maxImagesFS_Click;
             AttachDriveStepSettingsButton();
+            AttachDriveStepMirrorTextBox();
             AttachFocusStackDenoiseControls();
             AttachTimerButtons();
+            InitializeFocusStackReportLayout();
             ApplyFocusDetectionBlockSizeFromSettings();
             InitializeLiveViewIdleTimer();
             timing = new Timing();
@@ -266,6 +272,7 @@ namespace Aerolithe
                 ApplyThumbnailSizeFromSettings();
                 ApplyFocusDetectionBlockSizeFromSettings();
                 ApplyLiveViewIdleTimeoutToUi();
+                InitializeLensSettings();
                 Debug.WriteLine(appSettings.ProjectPath);
                 if (string.IsNullOrWhiteSpace(appSettings.ProjectPath) || !File.Exists(appSettings.ProjectPath))
                 {
@@ -408,13 +415,319 @@ namespace Aerolithe
             lbl_BlockAmountBlurDetet.Text = (value * 16).ToString();
         }
 
+        private void ApplySharpnessSensitivityToUi()
+        {
+            int value = Math.Clamp(projet.SharpnessSensitivity, trackBar_blurThreshold.Minimum, trackBar_blurThreshold.Maximum);
+            if (value != projet.SharpnessSensitivity)
+            {
+                projet.SharpnessSensitivity = value;
+            }
+
+            trackBar_blurThreshold.Value = value;
+            lbl_ResBlurDetect.Text = value.ToString();
+        }
+
+        private void InitializeLensSettings()
+        {
+            appSettings.Lenses ??= new List<LensSetting>();
+            appSettings.Lenses = appSettings.Lenses
+                .Where(l => !string.IsNullOrWhiteSpace(l.Name))
+                .GroupBy(l => l.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Select(g =>
+                {
+                    LensSetting lens = g.First();
+                    lens.Name = lens.Name.Trim();
+                    lens.LensFullTravelSteps = Math.Max(1, lens.LensFullTravelSteps);
+                    lens.ImagePath ??= string.Empty;
+                    return lens;
+                })
+                .OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            if (appSettings.Lenses.Count == 0)
+            {
+                appSettings.Lenses.Add(new LensSetting { Name = "Nikkor 60 mm", LensFullTravelSteps = 68000 });
+                appSettings.Lenses.Add(new LensSetting { Name = "Sigma 105 mm", LensFullTravelSteps = 68000 });
+            }
+
+            if (string.IsNullOrWhiteSpace(appSettings.SelectedLensName)
+                || appSettings.Lenses.All(l => !string.Equals(l.Name, appSettings.SelectedLensName, StringComparison.Ordinal)))
+            {
+                appSettings.SelectedLensName = appSettings.Lenses[0].Name;
+            }
+
+            comboBox_LensType.DrawMode = DrawMode.OwnerDrawFixed;
+            comboBox_LensType.ItemHeight = Math.Max(comboBox_LensType.ItemHeight, 18);
+            comboBox_LensType.DrawItem -= comboBox_LensType_DrawItem;
+            comboBox_LensType.DrawItem += comboBox_LensType_DrawItem;
+            RefreshLensComboItems();
+            ApplySelectedLensImage();
+            appSettings.Save();
+        }
+
+        private void RefreshLensComboItems()
+        {
+            _syncingLensCombo = true;
+            try
+            {
+                comboBox_LensType.Items.Clear();
+                foreach (LensSetting lens in appSettings.Lenses.OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase))
+                {
+                    comboBox_LensType.Items.Add(lens.Name);
+                }
+
+                comboBox_LensType.Items.Add(LensSeparatorItem);
+                comboBox_LensType.Items.Add(LensEditCommand);
+                comboBox_LensType.SelectedItem = appSettings.SelectedLensName;
+                comboBox_LensType.Text = appSettings.SelectedLensName;
+            }
+            finally
+            {
+                _syncingLensCombo = false;
+            }
+        }
+
+        private LensSetting? GetSelectedLensSetting()
+        {
+            return appSettings?.Lenses?.FirstOrDefault(l => string.Equals(l.Name, appSettings.SelectedLensName, StringComparison.Ordinal));
+        }
+
+        private int GetSelectedLensFullTravelSteps()
+        {
+            return GetSelectedLensSetting()?.LensFullTravelSteps ?? 68000;
+        }
+
+        private void ApplySelectedLensImage()
+        {
+            LensSetting? lens = GetSelectedLensSetting();
+            string imagePath = ResolveLensImagePath(lens);
+
+            Image? previous = picBox_LensModel.Image;
+            picBox_LensModel.Image = null;
+            previous?.Dispose();
+
+            if (!string.IsNullOrWhiteSpace(imagePath) && File.Exists(imagePath))
+            {
+                try
+                {
+                    using Image loaded = Image.FromFile(imagePath);
+                    picBox_LensModel.Image = new Bitmap(loaded);
+                    picBox_LensModel.SizeMode = PictureBoxSizeMode.Zoom;
+                }
+                catch (Exception ex)
+                {
+                    AppendTextToConsoleNL("Erreur chargement image de lentille: " + ex.Message, Color.Orange);
+                }
+            }
+        }
+
+        private string ResolveLensImagePath(LensSetting? lens)
+        {
+            if (lens == null)
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(lens.ImagePath) && File.Exists(lens.ImagePath))
+            {
+                return lens.ImagePath;
+            }
+
+            string fileName = lens.Name.Trim().ToLowerInvariant() switch
+            {
+                "nikkor 60 mm" => "nikkor60mm.jpg",
+                "sigma 105 mm" => "Sigma105mm.jpg",
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return string.Empty;
+            }
+
+            string[] roots =
+            {
+                AppContext.BaseDirectory,
+                Application.StartupPath,
+                AppDomain.CurrentDomain.BaseDirectory
+            };
+
+            foreach (string root in roots.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                string candidate = Path.Combine(root, "MyResources", "Images", fileName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private void comboBox_LensType_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (_syncingLensCombo || comboBox_LensType.SelectedItem == null)
+            {
+                return;
+            }
+
+            string selected = comboBox_LensType.SelectedItem.ToString() ?? string.Empty;
+            if (selected == LensSeparatorItem)
+            {
+                RefreshLensComboItems();
+                return;
+            }
+
+            if (selected == LensEditCommand)
+            {
+                RefreshLensComboItems();
+                EditSelectedLensSettingFromPrompt();
+                return;
+            }
+
+            appSettings.SelectedLensName = selected;
+            appSettings.Save();
+            ApplySelectedLensImage();
+            AppendTextToConsoleNL($"Lentille sélectionnée: {selected}, course={GetSelectedLensFullTravelSteps()} steps.");
+        }
+
+        private void EditSelectedLensSettingFromPrompt()
+        {
+            LensSetting? lens = GetSelectedLensSetting();
+            if (lens == null)
+            {
+                RefreshLensComboItems();
+                return;
+            }
+
+            if (!TryShowLensSettingsDialog("Modifier la lentille", lens.Name, lens.LensFullTravelSteps, out string newName, out int fullTravelSteps))
+            {
+                RefreshLensComboItems();
+                return;
+            }
+
+            if (appSettings.Lenses.Any(l => !ReferenceEquals(l, lens) && string.Equals(l.Name, newName, StringComparison.OrdinalIgnoreCase)))
+            {
+                MessageBox.Show("Une autre lentille porte déjà ce nom.");
+                RefreshLensComboItems();
+                return;
+            }
+
+            lens.Name = newName;
+            lens.LensFullTravelSteps = fullTravelSteps;
+
+            appSettings.SelectedLensName = lens.Name;
+            appSettings.Save();
+            RefreshLensComboItems();
+            ApplySelectedLensImage();
+        }
+
+        private void comboBox_LensType_DrawItem(object? sender, DrawItemEventArgs e)
+        {
+            e.DrawBackground();
+            if (e.Index < 0 || e.Index >= comboBox_LensType.Items.Count)
+            {
+                return;
+            }
+
+            string text = comboBox_LensType.Items[e.Index]?.ToString() ?? string.Empty;
+            if (text == LensSeparatorItem)
+            {
+                using Pen pen = new(Color.FromArgb(110, 110, 110));
+                int y = e.Bounds.Top + e.Bounds.Height / 2;
+                e.Graphics.DrawLine(pen, e.Bounds.Left + 6, y, e.Bounds.Right - 6, y);
+                return;
+            }
+
+            bool selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+            Color color = selected ? SystemColors.HighlightText : Color.White;
+            if (text == LensEditCommand)
+            {
+                color = selected ? SystemColors.HighlightText : Color.FromArgb(210, 210, 210);
+            }
+
+            TextRenderer.DrawText(e.Graphics, text, e.Font, e.Bounds, color, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            e.DrawFocusRectangle();
+        }
+
+        private bool TryShowLensSettingsDialog(string title, string defaultName, int defaultFullTravelSteps, out string name, out int fullTravelSteps)
+        {
+            name = string.Empty;
+            fullTravelSteps = defaultFullTravelSteps;
+
+            using Form dialog = new()
+            {
+                Text = title,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterParent,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                ClientSize = new Size(500, 150)
+            };
+
+            using TableLayoutPanel layout = new()
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12),
+                ColumnCount = 2,
+                RowCount = 3
+            };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 185F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+
+            Label nameLabel = new() { Text = "Nom de la lentille :", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+            System.Windows.Forms.TextBox nameTextBox = new() { Text = defaultName, Dock = DockStyle.Fill, Margin = new Padding(0, 5, 0, 5), ReadOnly = true };
+            Label travelLabel = new() { Text = "LensFullTravelSteps :", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+            System.Windows.Forms.TextBox travelTextBox = new() { Text = defaultFullTravelSteps.ToString(CultureInfo.InvariantCulture), Dock = DockStyle.Fill, Margin = new Padding(0, 5, 0, 5) };
+            FlowLayoutPanel buttons = new() { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
+            System.Windows.Forms.Button okButton = new() { Text = "OK", DialogResult = DialogResult.OK, Width = 90 };
+            System.Windows.Forms.Button cancelButton = new() { Text = "Annuler", DialogResult = DialogResult.Cancel, Width = 90 };
+            buttons.Controls.Add(okButton);
+            buttons.Controls.Add(cancelButton);
+
+            layout.Controls.Add(nameLabel, 0, 0);
+            layout.Controls.Add(nameTextBox, 1, 0);
+            layout.Controls.Add(travelLabel, 0, 1);
+            layout.Controls.Add(travelTextBox, 1, 1);
+            layout.Controls.Add(buttons, 0, 2);
+            layout.SetColumnSpan(buttons, 2);
+            dialog.Controls.Add(layout);
+            dialog.AcceptButton = okButton;
+            dialog.CancelButton = cancelButton;
+
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+            {
+                return false;
+            }
+
+            name = nameTextBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                MessageBox.Show("SVP entrer un nom de lentille.");
+                return false;
+            }
+
+            if (!int.TryParse(travelTextBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out fullTravelSteps) || fullTravelSteps <= 0)
+            {
+                MessageBox.Show("SVP entrer un LensFullTravelSteps valide.");
+                return false;
+            }
+
+            return true;
+        }
+
         private void SetLiveViewRuntimeState(bool enabled)
         {
             btn_LiveViewEnable.Text = enabled ? "" : "";
 
             if (!enabled)
             {
+                liveViewStatus = false;
                 ReplacePictureBoxImage(picBox_LiveView_Main, CreateCameraOfflineBitmap());
+                picBox_LiveView_Main.Invalidate();
             }
         }
 
@@ -424,19 +737,23 @@ namespace Aerolithe
 
             btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
             btn_applyMask.Text = projet.ApplyMask ? "" : "";
+            btn_postMask.Text = projet.postMask ? "" : "";
+            SetAutoExposureSequenceEnabled(projet.AutoExposureEnabled);
+            UpdateAutoExposureModeVisual();
             InitializeMaskThresholdSettings();
             InitializeMaskShrinkSettings();
             InitializeMaskAlgorithmDropdown();
-            btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
             //btn_SaveImageToDisk.Text = projet.SaveImageToDisk ? "" : "";
             SetLiveViewRuntimeState(projet.LiveViewEnabled);
             btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
             btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
             btn_CalibrationAutoCentrage.Text = appSettings.CalibrationAutoCentrage ? "" : "";
             btn_ShowSharpnessOverlay.Text = projet.ViewSharpnessOverlay ? "" : "";
+            btn_ShowCropRegion.Text = projet.ShowCropRegion ? "" : "";
             UpdateMaxImagesFSButton();
             UpdateDriveStepSettingsButton();
             ApplyFocusStackDenoiseToUi();
+            ApplyOutputCropSettingsToUi();
             ApplyActuatorSpeedToUi();
         }
 
@@ -646,27 +963,177 @@ namespace Aerolithe
             UpdateDriveStepSettingsButton();
         }
 
+        private void AttachDriveStepMirrorTextBox()
+        {
+            if (txtBox_DriveStep2 == null) return;
+
+            txtBox_DriveStep2.TextChanged -= txtBox_DriveStep2_TextChanged;
+            txtBox_DriveStep2.TextChanged += txtBox_DriveStep2_TextChanged;
+            txtBox_DriveStep2.KeyDown -= txtBox_DriveStep2_KeyDown;
+            txtBox_DriveStep2.KeyDown += txtBox_DriveStep2_KeyDown;
+
+            btn_saveSteps.Click -= btn_saveSteps_Click;
+            btn_saveSteps.Click += btn_saveSteps_Click;
+        }
+
+        private void SetDriveStepTextBoxes(int value, bool validated)
+        {
+            SetManualDriveStepTextBox(value, validated);
+            SetSequenceDriveStepTextBox(value, validated);
+        }
+
+        private void SetManualDriveStepTextBox(int value, bool validated)
+        {
+            _syncingDriveStepText = true;
+            try
+            {
+                string text = value.ToString();
+                txtBox_DriveStep.Text = text;
+                txtBox_DriveStep.ForeColor = validated ? Color.White : Color.Gray;
+            }
+            finally
+            {
+                _syncingDriveStepText = false;
+            }
+        }
+
+        private void SetSequenceDriveStepTextBox(int value, bool validated)
+        {
+            if (txtBox_DriveStep2 == null) return;
+
+            _syncingDriveStepText = true;
+            try
+            {
+                txtBox_DriveStep2.Text = value.ToString();
+                txtBox_DriveStep2.ForeColor = validated ? Color.White : Color.Gray;
+            }
+            finally
+            {
+                _syncingDriveStepText = false;
+            }
+            UpdateDriveStepSettingsButton();
+        }
+
+        private bool TryReadManualDriveStep(out int value)
+        {
+            value = 0;
+            if (!int.TryParse(txtBox_DriveStep.Text, out int parsed))
+            {
+                return false;
+            }
+
+            value = Math.Clamp(parsed, hScrollBar_driveStep.Minimum, hScrollBar_driveStep.Maximum);
+            return true;
+        }
+
+        private bool TryReadSequenceDriveStep(out int value)
+        {
+            value = 0;
+            if (txtBox_DriveStep2 == null || !int.TryParse(txtBox_DriveStep2.Text, out int parsed))
+            {
+                return false;
+            }
+
+            value = Math.Clamp(parsed, hScrollBar_driveStep.Minimum, hScrollBar_driveStep.Maximum);
+            return true;
+        }
+
+        private void CommitManualDriveStepFromTextBox()
+        {
+            if (!TryReadManualDriveStep(out int value))
+            {
+                MessageBox.Show("SVP enter un nombre valide");
+                return;
+            }
+
+            _manualDriveStep = value;
+            hScrollBar_driveStep.Value = value;
+            SetManualDriveStepTextBox(value, validated: true);
+        }
+
+        private void SaveManualDriveStepAsSequenceStep()
+        {
+            if (!TryReadManualDriveStep(out int value))
+            {
+                MessageBox.Show("SVP enter un nombre valide");
+                return;
+            }
+
+            _manualDriveStep = value;
+            hScrollBar_driveStep.Value = value;
+            stepSize = value;
+            projet.StepSize = value;
+
+            if (!string.IsNullOrWhiteSpace(appSettings?.ProjectPath))
+            {
+                projet.Save(appSettings.ProjectPath);
+            }
+
+            SetManualDriveStepTextBox(value, validated: true);
+            SetSequenceDriveStepTextBox(value, validated: true);
+            AppendTextToConsoleNL($"DriveStep de séquence sauvegardé: {value}");
+        }
+
+        private void CommitSequenceDriveStepFromTextBox()
+        {
+            if (!TryReadSequenceDriveStep(out int value))
+            {
+                MessageBox.Show("SVP enter un nombre valide");
+                return;
+            }
+
+            stepSize = value;
+            projet.StepSize = value;
+
+            if (!string.IsNullOrWhiteSpace(appSettings?.ProjectPath))
+            {
+                projet.Save(appSettings.ProjectPath);
+            }
+
+            SetSequenceDriveStepTextBox(value, validated: true);
+            AppendTextToConsoleNL($"DriveStep de séquence modifié: {value}");
+        }
+
+        private void SetMaxPicturesAllowedText(int value, bool validated)
+        {
+            textBox_nbrPhotosFS.Text = value.ToString();
+            textBox_nbrPhotosFS.ForeColor = validated ? Color.White : Color.Gray;
+            UpdateMaxImagesFSButton();
+        }
+
         private void UpdateDriveStepSettingsButton()
         {
             var button = FindControlByName<System.Windows.Forms.Button>("btn_goToDriveStepSettings");
             if (button == null) return;
-
-            if (int.TryParse(txtBox_DriveStep.Text, out int value))
-            {
-                button.Text = value.ToString();
-                return;
-            }
 
             button.Text = projet.StepSize.ToString();
         }
 
         private void btn_goToDriveStepSettings_Click(object? sender, EventArgs e)
         {
-            aerolitheTabControl2.SelectedTab = tabPage20;
-            aerolitheTabControl3.SelectedTab = tabPage26;
+            aerolitheTabControl2.SelectedTab = tabPage25;
+            aerolitheTabControl4.SelectedTab = tabPage32;
 
-            txtBox_DriveStep.Focus();
-            txtBox_DriveStep.SelectAll();
+            txtBox_DriveStep2.Focus();
+            txtBox_DriveStep2.SelectAll();
+        }
+
+        private void ShowFocusStackImageTab()
+        {
+            void SelectTab()
+            {
+                aerolitheTabControl2.SelectedTab = tabPage20;
+                aerolitheTabControl3.SelectedTab = tabPage27;
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke((Action)SelectTab);
+            }
+            else
+            {
+                SelectTab();
+            }
         }
 
         private void AttachFocusStackDenoiseControls()
@@ -1896,12 +2363,7 @@ namespace Aerolithe
                         await TryAutofocusPendantActuateurAsync(cancellationToken);
                     }
 
-                    if (offsets.hasForeground)
-                    {
-                        AppendTextToConsoleNL("Auto-centrage final à la position d'actuateur atteinte");
-                        await RoutineAutoCentrage(3000);
-                    }
-                    else
+                    if (!offsets.hasForeground)
                     {
                         AppendTextToConsoleNL("Auto-centrage final ignoré: aucun blob détecté");
                     }
@@ -2045,20 +2507,19 @@ namespace Aerolithe
             System.Windows.Forms.RichTextBox textbox = txtBox_FFMPEGConsole;
 
             string timestamp = $"{DateTime.Now:HH:mm:ss:ff} - ";
+            Color messageColor = txtBox_Console.ForeColor;
 
             if (textbox.InvokeRequired)
             {
                 //Debug.WriteLine("Invoke required");
                 textbox.Invoke(new Action(() =>
                 {
-                    AppendFormattedText(timestamp, Color.Gray, textbox);
-                    AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor, textbox);
+                    AppendFormattedTextLine(textbox, (timestamp, Color.Gray), (message + Environment.NewLine, messageColor));
                 }));
             }
             else
             {
-                AppendFormattedText(timestamp, Color.Gray, textbox);
-                AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor, textbox);
+                AppendFormattedTextLine(textbox, (timestamp, Color.Gray), (message + Environment.NewLine, messageColor));
             }
         }
 
@@ -2074,14 +2535,12 @@ namespace Aerolithe
                 //Debug.WriteLine("Invoke required");
                 textbox.Invoke(new Action(() =>
                 {
-                    AppendFormattedText(timestamp, Color.Gray, textbox);
-                    AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor, textbox);
+                    AppendFormattedTextLine(textbox, (timestamp, Color.Gray), (message + Environment.NewLine, txtBox_Console.ForeColor));
                 }));
             }
             else
             {
-                AppendFormattedText(timestamp, Color.Gray, textbox);
-                AppendFormattedText(message + Environment.NewLine, txtBox_Console.ForeColor, textbox);
+                AppendFormattedTextLine(textbox, (timestamp, Color.Gray), (message + Environment.NewLine, txtBox_Console.ForeColor));
             }
         }
 
@@ -2096,14 +2555,12 @@ namespace Aerolithe
             {
                 textbox.Invoke(new Action(() =>
                 {
-                    AppendFormattedText(timestamp, Color.Gray, textbox);
-                    AppendFormattedText(message + Environment.NewLine, messageColor, textbox);
+                    AppendFormattedTextLine(textbox, (timestamp, Color.Gray), (message + Environment.NewLine, messageColor));
                 }));
             }
             else
             {
-                AppendFormattedText(timestamp, Color.Gray, textbox);
-                AppendFormattedText(message + Environment.NewLine, messageColor, textbox);
+                AppendFormattedTextLine(textbox, (timestamp, Color.Gray), (message + Environment.NewLine, messageColor));
             }
         }
 
@@ -2116,15 +2573,13 @@ namespace Aerolithe
             {
                 textbox.Invoke((System.Windows.Forms.MethodInvoker)delegate
                 {
-                    AppendFormattedTextInternal(text, color, textbox);
+                    AppendFormattedTextLine(textbox, (text, color));
                 });
             }
             else
             {
-                AppendFormattedTextInternal(text, color, textbox);
+                AppendFormattedTextLine(textbox, (text, color));
             }
-
-            ManageRichTextBoxContent(textbox);
 
         }
 
@@ -2150,36 +2605,67 @@ namespace Aerolithe
 
 
 
-        private void AppendFormattedTextInternal(string text, Color color, RichTextBox textbox)
+        private void AppendFormattedTextLine(RichTextBox textbox, params (string Text, Color Color)[] segments)
         {
+            bool scrollToCaret = textbox == txtBox_FFMPEGConsole ? StackConsoleScrollToCarret : MainConsoleScrollToCarret;
             int scrollPos = 0;
+            int selectionStart = textbox.SelectionStart;
+            int selectionLength = textbox.SelectionLength;
 
-            if (!MainConsoleScrollToCarret)
+            if (!scrollToCaret)
             {
                 scrollPos = GetScrollPos(textbox.Handle, SB_VERT);
             }
 
-            textbox.SuspendLayout();
+            SendMessage(textbox.Handle, WM_SETREDRAW, 0, 0);
 
-            textbox.SelectionStart = textbox.TextLength;
-            textbox.SelectionLength = 0;
-            textbox.SelectionColor = color;
-            textbox.AppendText(text);
-            textbox.SelectionColor = textbox.ForeColor;
-
-            ManageRichTextBoxContent(textbox);
-
-            if (MainConsoleScrollToCarret)
+            try
             {
-                textbox.ScrollToCaret();
-            }
-            else
-            {
-                SetScrollPos(textbox.Handle, SB_VERT, scrollPos, true);
-                SendMessage(textbox.Handle, WM_VSCROLL, SB_THUMBPOSITION, scrollPos);
-            }
+                textbox.SelectionStart = textbox.TextLength;
+                textbox.SelectionLength = 0;
 
-            textbox.ResumeLayout();
+                foreach ((string text, Color color) in segments)
+                {
+                    if (string.IsNullOrEmpty(text))
+                    {
+                        continue;
+                    }
+
+                    textbox.SelectionColor = color;
+                    textbox.AppendText(text);
+                }
+
+                textbox.SelectionColor = textbox.ForeColor;
+
+                ManageRichTextBoxContent(textbox);
+
+                if (scrollToCaret)
+                {
+                    textbox.SelectionStart = textbox.TextLength;
+                    textbox.SelectionLength = 0;
+                }
+                else
+                {
+                    selectionStart = Math.Min(selectionStart, textbox.TextLength);
+                    selectionLength = Math.Min(selectionLength, textbox.TextLength - selectionStart);
+                    textbox.SelectionStart = selectionStart;
+                    textbox.SelectionLength = selectionLength;
+                }
+            }
+            finally
+            {
+                SendMessage(textbox.Handle, WM_SETREDRAW, 1, 0);
+                if (scrollToCaret)
+                {
+                    textbox.ScrollToCaret();
+                }
+                else
+                {
+                    SetScrollPos(textbox.Handle, SB_VERT, scrollPos, false);
+                    SendMessage(textbox.Handle, WM_VSCROLL, SB_THUMBPOSITION, scrollPos);
+                }
+                textbox.Invalidate();
+            }
         }
 
 
@@ -2521,11 +3007,16 @@ namespace Aerolithe
             DisplayPathsInUI();
             ResetSequenceCancellationButton();
 
+            bool applyMaskWasEnabled = projet.ApplyMask;
+            bool focusStackWasEnabled = projet.FocusStackEnabled;
+            bool maskFreezeWasEnabled = maskFreeze;
+
             Task.Run(async () =>
             {
                 SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: true);
                 try
                 {
+                    SetPostMaskMeasurementVisual(measurementActive: true);
                     BeginCalibrationAutoCentrageOverride();
                     tokenSource = new CancellationTokenSource();
                     await SequenceTotaleImageMesuresAsync(tokenSource.Token);
@@ -2542,7 +3033,8 @@ namespace Aerolithe
                 }
                 finally
                 {
-                    RestoreCalibrationAutoCentrageOverride();
+                    RestoreMeasurementSequenceCaptureState(applyMaskWasEnabled, focusStackWasEnabled, maskFreezeWasEnabled);
+                    SetPostMaskMeasurementVisual(measurementActive: false);
                     SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
                 }
             });
@@ -2902,7 +3394,6 @@ namespace Aerolithe
             cancelAutoCentrage = true;
             RequestSequenceStop("StopSequences: cancel utilisateur");
             _ = StopTimer();
-            RestoreCalibrationAutoCentrageOverride();
             SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false);
             SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false);
             SetPhotoShootCancellationButtonVisible(false);
@@ -2961,7 +3452,7 @@ namespace Aerolithe
         {
             try
             {
-                await ManualFocusAsync(1, stepSize);
+                await ManualFocusAsync(1, _manualDriveStep);
                 focusStackStepVar -= 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
             }
@@ -2975,7 +3466,7 @@ namespace Aerolithe
         {
             try
             {
-                await ManualFocusAsync(0, stepSize);
+                await ManualFocusAsync(0, _manualDriveStep);
                 focusStackStepVar += 1;
                 lbl_focusStepsVar.Text = focusStackStepVar.ToString();
             }
@@ -3046,8 +3537,9 @@ namespace Aerolithe
 
         private void hScrollBar_driveStep_ValueChanged(object sender, EventArgs e)
         {
-            txtBox_DriveStep.Text = hScrollBar_driveStep.Value.ToString();
-
+            int value = hScrollBar_driveStep.Value;
+            _manualDriveStep = value;
+            SetManualDriveStepTextBox(value, validated: true);
         }
 
 
@@ -3141,7 +3633,7 @@ namespace Aerolithe
 
         private void btn_clearPicLayout_Click(object sender, EventArgs e)
         {
-            DeleteAllPicturesInFolderWithPrompt();
+            ClearThumbnailControls();
         }
 
         private void btn_clearPicReport_Click(object sender, EventArgs e)
@@ -3196,6 +3688,230 @@ namespace Aerolithe
                     DrawBlackBelowLine(startY, e.Graphics);
                 }
             }
+
+            DrawCropRegionOverlay(e.Graphics, sender as Control ?? picBox_LiveView_Main);
+        }
+
+        private void DrawCropRegionOverlay(Graphics graphics, Control liveViewControl)
+        {
+            if (!ShouldDrawCropRegionOverlay())
+            {
+                return;
+            }
+
+            if (!TryGetOutputSizePixels(out int cropWidth, out int cropHeight))
+            {
+                return;
+            }
+
+            int photoWidth = projet.PictureWidth > 0 ? projet.PictureWidth : 8256;
+            int photoHeight = projet.PictureHeight > 0 ? projet.PictureHeight : 5504;
+            cropWidth = Math.Min(cropWidth, photoWidth);
+            cropHeight = Math.Min(cropHeight, photoHeight);
+
+            Image? liveViewImage = picBox_LiveView_Main.Image;
+            if (liveViewImage == null || liveViewImage.Width <= 0 || liveViewImage.Height <= 0)
+            {
+                return;
+            }
+
+            float sourceWidth = liveViewImage.Width;
+            float sourceHeight = liveViewImage.Height;
+            RectangleF displayedLiveView = GetZoomedContentBounds(liveViewControl.ClientRectangle, sourceWidth, sourceHeight);
+            if (displayedLiveView.Width <= 0 || displayedLiveView.Height <= 0)
+            {
+                return;
+            }
+
+            RectangleF photoFrameInLiveView = GetCenteredRect(sourceWidth, sourceHeight, photoWidth / (float)photoHeight);
+            float cropScaleX = cropWidth / (float)photoWidth;
+            float cropScaleY = cropHeight / (float)photoHeight;
+            RectangleF cropInLiveView = new(
+                photoFrameInLiveView.X + (photoFrameInLiveView.Width * (1f - cropScaleX) * 0.5f),
+                photoFrameInLiveView.Y + (photoFrameInLiveView.Height * (1f - cropScaleY) * 0.5f),
+                photoFrameInLiveView.Width * cropScaleX,
+                photoFrameInLiveView.Height * cropScaleY);
+
+            RectangleF cropDisplay = new(
+                displayedLiveView.X + cropInLiveView.X / sourceWidth * displayedLiveView.Width,
+                displayedLiveView.Y + cropInLiveView.Y / sourceHeight * displayedLiveView.Height,
+                cropInLiveView.Width / sourceWidth * displayedLiveView.Width,
+                cropInLiveView.Height / sourceHeight * displayedLiveView.Height);
+
+            RectangleF photoDisplay = new(
+                displayedLiveView.X + photoFrameInLiveView.X / sourceWidth * displayedLiveView.Width,
+                displayedLiveView.Y + photoFrameInLiveView.Y / sourceHeight * displayedLiveView.Height,
+                photoFrameInLiveView.Width / sourceWidth * displayedLiveView.Width,
+                photoFrameInLiveView.Height / sourceHeight * displayedLiveView.Height);
+
+            using SolidBrush fill = new(Color.FromArgb(48, 72, 92, 108));
+            using Pen border = new(Color.FromArgb(230, 96, 124, 142), 2f);
+            FillRectangleIfPositive(graphics, fill, photoDisplay.X, photoDisplay.Y, photoDisplay.Width, cropDisplay.Top - photoDisplay.Top);
+            FillRectangleIfPositive(graphics, fill, photoDisplay.X, cropDisplay.Bottom, photoDisplay.Width, photoDisplay.Bottom - cropDisplay.Bottom);
+            FillRectangleIfPositive(graphics, fill, photoDisplay.X, cropDisplay.Top, cropDisplay.Left - photoDisplay.Left, cropDisplay.Height);
+            FillRectangleIfPositive(graphics, fill, cropDisplay.Right, cropDisplay.Top, photoDisplay.Right - cropDisplay.Right, cropDisplay.Height);
+            graphics.DrawRectangle(border, cropDisplay.X, cropDisplay.Y, cropDisplay.Width, cropDisplay.Height);
+        }
+
+        private bool ShouldDrawCropRegionOverlay()
+        {
+            return projet?.ShowCropRegion == true
+                && projet.LiveViewEnabled
+                && liveViewStatus
+                && device?.LiveViewEnabled == true
+                && picBox_LiveView_Main.Image != null;
+        }
+
+        private void picBox_LiveView_Main_SizeChanged(object? sender, EventArgs e)
+        {
+            picBox_LiveView_Main.Invalidate();
+        }
+
+        private static void FillRectangleIfPositive(Graphics graphics, Brush brush, float x, float y, float width, float height)
+        {
+            if (width <= 0 || height <= 0)
+            {
+                return;
+            }
+
+            graphics.FillRectangle(brush, x, y, width, height);
+        }
+
+        private bool TryGetOutputSizePixels(out int width, out int height)
+        {
+            width = 0;
+            height = 0;
+            if (!TryNormalizeOutputSize(projet?.OutputSize ?? string.Empty, out string normalized))
+            {
+                return false;
+            }
+
+            string[] parts = normalized.Split('x');
+            return parts.Length == 2
+                && int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out width)
+                && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out height)
+                && width > 0
+                && height > 0;
+        }
+
+        private bool NormalizeMetashapeOutputImageIfEnabled(string imagePath)
+        {
+            if (projet?.OutputCropEnabled != true)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+            {
+                AppendTextToConsoleNL("Crop output Metashape ignoré: image introuvable " + imagePath, Color.Red);
+                return false;
+            }
+
+            if (!TryGetOutputSizePixels(out int targetWidth, out int targetHeight))
+            {
+                AppendTextToConsoleNL("Crop output Metashape ignoré: OutputSize invalide " + projet.OutputSize, Color.Red);
+                return false;
+            }
+
+            try
+            {
+                using var sourceStream = new MemoryStream(File.ReadAllBytes(imagePath));
+                using var source = new Bitmap(sourceStream);
+                if (source.Width == targetWidth && source.Height == targetHeight)
+                {
+                    return true;
+                }
+
+                using Bitmap normalized = CreateCenteredCropOrPadBitmap(source, targetWidth, targetHeight);
+                string directory = Path.GetDirectoryName(imagePath) ?? ".";
+                string extension = Path.GetExtension(imagePath);
+                string tempPath = Path.Combine(
+                    directory,
+                    Path.GetFileNameWithoutExtension(imagePath) + "_output_crop_tmp" + extension);
+
+                SaveBitmapForImagePath(normalized, tempPath);
+                File.Copy(tempPath, imagePath, overwrite: true);
+                File.Delete(tempPath);
+
+                AppendTextToConsoleNL(
+                    $"Crop output Metashape appliqué: {Path.GetFileName(imagePath)} {source.Width}x{source.Height} -> {targetWidth}x{targetHeight}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL("Crop output Metashape erreur: " + ex.Message, Color.Red);
+                return false;
+            }
+        }
+
+        private static Bitmap CreateCenteredCropOrPadBitmap(Bitmap source, int targetWidth, int targetHeight)
+        {
+            Bitmap output = new(targetWidth, targetHeight, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            output.SetResolution(source.HorizontalResolution, source.VerticalResolution);
+
+            using Graphics graphics = Graphics.FromImage(output);
+            graphics.Clear(GetImageCornerColor(source));
+            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+
+            int sourceWidth = Math.Min(source.Width, targetWidth);
+            int sourceHeight = Math.Min(source.Height, targetHeight);
+            int sourceX = Math.Max(0, (source.Width - targetWidth) / 2);
+            int sourceY = Math.Max(0, (source.Height - targetHeight) / 2);
+            int destX = Math.Max(0, (targetWidth - source.Width) / 2);
+            int destY = Math.Max(0, (targetHeight - source.Height) / 2);
+
+            Rectangle sourceRect = new(sourceX, sourceY, sourceWidth, sourceHeight);
+            Rectangle destRect = new(destX, destY, sourceWidth, sourceHeight);
+            graphics.DrawImage(source, destRect, sourceRect, GraphicsUnit.Pixel);
+
+            return output;
+        }
+
+        private static Color GetImageCornerColor(Bitmap source)
+        {
+            return source.Width > 0 && source.Height > 0
+                ? source.GetPixel(0, 0)
+                : Color.Black;
+        }
+
+        private static void SaveBitmapForImagePath(Bitmap bitmap, string outputPath)
+        {
+            string extension = Path.GetExtension(outputPath).ToLowerInvariant();
+            System.Drawing.Imaging.ImageFormat format = extension switch
+            {
+                ".png" => System.Drawing.Imaging.ImageFormat.Png,
+                ".bmp" => System.Drawing.Imaging.ImageFormat.Bmp,
+                ".tif" or ".tiff" => System.Drawing.Imaging.ImageFormat.Tiff,
+                _ => System.Drawing.Imaging.ImageFormat.Jpeg
+            };
+
+            bitmap.Save(outputPath, format);
+        }
+
+        private static RectangleF GetCenteredRect(float outerWidth, float outerHeight, float aspectRatio)
+        {
+            if (aspectRatio <= 0)
+            {
+                return RectangleF.Empty;
+            }
+
+            float width = outerWidth;
+            float height = width / aspectRatio;
+            if (height > outerHeight)
+            {
+                height = outerHeight;
+                width = height * aspectRatio;
+            }
+
+            return new RectangleF((outerWidth - width) * 0.5f, (outerHeight - height) * 0.5f, width, height);
+        }
+
+        private static RectangleF GetZoomedContentBounds(Rectangle controlBounds, float sourceWidth, float sourceHeight)
+        {
+            RectangleF centered = GetCenteredRect(controlBounds.Width, controlBounds.Height, sourceWidth / sourceHeight);
+            return new RectangleF(controlBounds.X + centered.X, controlBounds.Y + centered.Y, centered.Width, centered.Height);
         }
 
 
@@ -3341,8 +4057,7 @@ namespace Aerolithe
 
                 if (File.Exists(imagePath))
                 {
-                    ImageViewerForm viewer = new ImageViewerForm(imagePath);
-                    viewer.Show();
+                    TryOpenImageViewer(imagePath);
                 }
                 else
                 {
@@ -3360,7 +4075,10 @@ namespace Aerolithe
         {
             public ImageViewerForm(string imagePath)
             {
-
+                if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+                {
+                    throw new FileNotFoundException("Image introuvable.", imagePath);
+                }
 
                 this.Text = "Aperçu de l'image";
                 this.WindowState = FormWindowState.Maximized;
@@ -3373,6 +4091,36 @@ namespace Aerolithe
                 };
 
                 this.Controls.Add(pictureBox);
+            }
+        }
+
+        private bool TryOpenImageViewer(string imagePath)
+        {
+            if (string.IsNullOrWhiteSpace(imagePath))
+            {
+                AppendTextToConsoleNL("Image introuvable: chemin vide.", Color.Red);
+                MessageBox.Show("Image introuvable : chemin vide.");
+                return false;
+            }
+
+            if (!File.Exists(imagePath))
+            {
+                AppendTextToConsoleNL("Image introuvable : " + imagePath, Color.Red);
+                MessageBox.Show("Image introuvable : " + imagePath);
+                return false;
+            }
+
+            try
+            {
+                ImageViewerForm viewer = new ImageViewerForm(imagePath);
+                viewer.Show();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppendTextToConsoleNL($"Erreur à l'ouverture de l'image {imagePath}: {ex.Message}", Color.Red);
+                MessageBox.Show($"Erreur à l'ouverture de l'image : {ex.Message}");
+                return false;
             }
         }
 
@@ -3471,39 +4219,36 @@ namespace Aerolithe
         private void picBox_FocusStackedImage_Click(object sender, EventArgs e)
         {
             //AppendTextToConsoleNL("stackedImageInBuffer = " + stackedImageInBuffer);
-            if (stackedImageInBuffer == false)
+            if (!File.Exists(focusStackOutputPath))
             {
-                if (File.Exists(focusStackOutputPath))
-                {
+                MessageBox.Show("Image introuvable : " + focusStackOutputPath + Environment.NewLine + "Il faut choisir un projet");
+                return;
+            }
 
-                    ImageViewerForm viewer = new ImageViewerForm(focusStackOutputPath);
+            string imagePathToOpen = focusStackOutputPath;
 
-                    viewer.Show();
-                    stackedImageInBuffer = false;
-                }
-                else
+            if (stackedImageInBuffer)
+            {
+                string? directory = Path.GetDirectoryName(focusStackOutputPath);
+                string filenameWithoutExt = Path.GetFileNameWithoutExtension(focusStackOutputPath);
+                string extension = Path.GetExtension(focusStackOutputPath);
+
+                if (!string.IsNullOrWhiteSpace(directory))
                 {
-                    MessageBox.Show("Image introuvable : " + focusStackOutputPath + Environment.NewLine + "Il faut choisir un projet");
+                    string maskedFocusStackPath = Path.Combine(directory, $"{filenameWithoutExt}_Mask{extension}");
+                    if (File.Exists(maskedFocusStackPath))
+                    {
+                        imagePathToOpen = maskedFocusStackPath;
+                    }
+                    else
+                    {
+                        AppendTextToConsoleNL("Masque focus stack introuvable, ouverture de l'image focus stack: " + maskedFocusStackPath, Color.Orange);
+                    }
                 }
             }
-            else
-            {
 
-                if (File.Exists(focusStackOutputPath))
-                {
-                    string directory = Path.GetDirectoryName(focusStackOutputPath);
-                    string filenameWithoutExt = Path.GetFileNameWithoutExtension(focusStackOutputPath);
-                    string extension = Path.GetExtension(focusStackOutputPath);
-                    string newFilePath = Path.Combine(directory, $"{filenameWithoutExt}_Mask{extension}");
-                    ImageViewerForm viewer = new ImageViewerForm(newFilePath);
-                    viewer.Show();
-                    stackedImageInBuffer = false;
-                }
-                else
-                {
-                    MessageBox.Show("Image introuvable : " + focusStackOutputPath + Environment.NewLine + "Il faut choisir un projet");
-                }
-            }
+            TryOpenImageViewer(imagePathToOpen);
+            stackedImageInBuffer = false;
         }
 
 
@@ -3762,26 +4507,46 @@ namespace Aerolithe
 
         private void txtBox_DriveStep_TextChanged(object sender, EventArgs e)
         {
+            if (_syncingDriveStepText)
+            {
+                return;
+            }
+
             txtBox_DriveStep.ForeColor = Color.Gray;
-            UpdateDriveStepSettingsButton();
         }
 
         private void txtBox_DriveStep_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (int.TryParse(txtBox_DriveStep.Text, out int value))
-                {
-                    hScrollBar_driveStep.Value = value;
-                    txtBox_DriveStep.ForeColor = Color.White;
-                    stepSize = value;
-                    projet.StepSize = stepSize;
-                    projet.Save(appSettings.ProjectPath);
-                    UpdateDriveStepSettingsButton();
-                }
+                CommitManualDriveStepFromTextBox();
                 // Empêche le son 'ding'
                 e.SuppressKeyPress = true;
             }
+        }
+
+        private void txtBox_DriveStep2_TextChanged(object? sender, EventArgs e)
+        {
+            if (_syncingDriveStepText)
+            {
+                return;
+            }
+
+            txtBox_DriveStep2.ForeColor = Color.Gray;
+        }
+
+        private void txtBox_DriveStep2_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                CommitSequenceDriveStepFromTextBox();
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void btn_saveSteps_Click(object? sender, EventArgs e)
+        {
+            SaveManualDriveStepAsSequenceStep();
         }
 
         private void trackBar_blobCount_Scroll(object sender, EventArgs e)
@@ -3793,7 +4558,16 @@ namespace Aerolithe
 
         private void trackBar_blurThreshold_Scroll(object sender, EventArgs e)
         {
-            lbl_ResBlurDetect.Text = trackBar_blurThreshold.Value.ToString();
+            int value = trackBar_blurThreshold.Value;
+            lbl_ResBlurDetect.Text = value.ToString();
+            if (projet != null)
+            {
+                projet.SharpnessSensitivity = value;
+                if (!string.IsNullOrWhiteSpace(appSettings?.ProjectPath))
+                {
+                    projet.Save(appSettings.ProjectPath);
+                }
+            }
         }
 
         private void textBox_minDetect_TextChanged(object sender, EventArgs e)
@@ -3917,6 +4691,117 @@ namespace Aerolithe
 
             textBox_nbrPhotosFS.Focus();
             textBox_nbrPhotosFS.SelectAll();
+        }
+
+        private void ApplyOutputCropSettingsToUi()
+        {
+            if (textBox_OutputSize == null || btn_OutputCropEnabled == null || btn_ShowCropRegion == null) return;
+
+            if (string.IsNullOrWhiteSpace(projet.OutputSize))
+            {
+                projet.OutputSize = "7600x5100";
+            }
+
+            textBox_OutputSize.Text = projet.OutputSize;
+            textBox_OutputSize.ForeColor = Color.White;
+            btn_OutputCropEnabled.Text = projet.OutputCropEnabled ? "" : "";
+            btn_ShowCropRegion.Text = projet.ShowCropRegion ? "" : "";
+            picBox_LiveView_Main?.Invalidate();
+        }
+
+        private bool TryNormalizeOutputSize(string value, out string normalized)
+        {
+            normalized = string.Empty;
+            string trimmed = (value ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                return true;
+            }
+
+            string[] parts = trimmed
+                .ToLowerInvariant()
+                .Replace(" ", string.Empty)
+                .Replace("×", "x")
+                .Replace("*", "x")
+                .Split('x', StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length != 2 ||
+                !int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int width) ||
+                !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int height) ||
+                width <= 0 ||
+                height <= 0)
+            {
+                return false;
+            }
+
+            normalized = width.ToString(CultureInfo.InvariantCulture) + "x" + height.ToString(CultureInfo.InvariantCulture);
+            return true;
+        }
+
+        private bool SaveOutputSizeFromUi(bool showMessage)
+        {
+            if (!TryNormalizeOutputSize(textBox_OutputSize.Text, out string normalized))
+            {
+                textBox_OutputSize.ForeColor = Color.Red;
+                if (showMessage)
+                {
+                    MessageBox.Show("Format OutputSize invalide. Utilise le format largeurxhauteur, par exemple 7600x5100.");
+                }
+                return false;
+            }
+
+            projet.OutputSize = normalized;
+            textBox_OutputSize.Text = normalized;
+            textBox_OutputSize.ForeColor = Color.White;
+            picBox_LiveView_Main?.Invalidate();
+
+            if (!string.IsNullOrWhiteSpace(appSettings?.ProjectPath))
+            {
+                projet.Save(appSettings.ProjectPath);
+            }
+
+            return true;
+        }
+
+        private void textBox_OutputSize_TextChanged(object? sender, EventArgs e)
+        {
+            textBox_OutputSize.ForeColor = Color.FromArgb(170, 170, 170);
+        }
+
+        private void textBox_OutputSize_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter) return;
+
+            SaveOutputSizeFromUi(showMessage: true);
+            e.SuppressKeyPress = true;
+        }
+
+        private void textBox_OutputSize_Leave(object? sender, EventArgs e)
+        {
+            SaveOutputSizeFromUi(showMessage: false);
+        }
+
+        private void btn_OutputCropEnabled_Click(object? sender, EventArgs e)
+        {
+            projet.OutputCropEnabled = !projet.OutputCropEnabled;
+            btn_OutputCropEnabled.Text = projet.OutputCropEnabled ? "" : "";
+
+            if (!string.IsNullOrWhiteSpace(appSettings?.ProjectPath))
+            {
+                projet.Save(appSettings.ProjectPath);
+            }
+        }
+
+        private void btn_ShowCropRegion_Click(object? sender, EventArgs e)
+        {
+            projet.ShowCropRegion = !projet.ShowCropRegion;
+            btn_ShowCropRegion.Text = projet.ShowCropRegion ? "" : "";
+            picBox_LiveView_Main?.Invalidate();
+
+            if (!string.IsNullOrWhiteSpace(appSettings?.ProjectPath))
+            {
+                projet.Save(appSettings.ProjectPath);
+            }
         }
 
         private void btn_consoleScrollToCaret_Click(object sender, EventArgs e)
@@ -4140,7 +5025,6 @@ namespace Aerolithe
             try { _manualActuatorAutoCenterCts?.Cancel(); } catch { }
             try { tokenSource?.Cancel(); } catch { }
             try { _cts?.Cancel(); } catch { }
-            try { RestoreCalibrationAutoCentrageOverride(); } catch { }
             try { SetSequenceActionControlsVisible(_volumeSequenceActionsPanel, visible: false); } catch { }
             try { SetSequenceActionControlsVisible(_totalSequenceActionsPanel, visible: false); } catch { }
 
@@ -4266,8 +5150,8 @@ namespace Aerolithe
             }
 
             DialogResult result = MessageBox.Show(
-                $"Reprendre la séquence à partir de ces paramètres?\nSérie {serie} ({angleIndexes[serie]}°)\nCôté {(cote == 0 ? "A" : "B")}\nNo rotation {rotation}\nImage focus stack {GetFocusStackPreviewImageName(imageNumber)}",
-                "Confirmation",
+                $"Reprendre la séquence totale à partir de ce point?\n\nÉlévation / série: {angleIndexes[serie]}° (série {serie})\nCôté: {(cote == 0 ? "A" : "B")}\nRotation locale dans cette série: {rotation}\nNo image dans le nom de fichier: {imageNumber}\nNom attendu: {GetFocusStackPreviewImageName(imageNumber)}",
+                "Confirmer la reprise spécifique",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
 
@@ -4325,7 +5209,7 @@ namespace Aerolithe
 
             using Form prompt = new Form
             {
-                Text = "Reprise à partir d'un endroit spécifique",
+                Text = "Reprise spécifique de la séquence totale",
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MinimizeBox = false,
@@ -4333,7 +5217,7 @@ namespace Aerolithe
                 ShowInTaskbar = false,
                 BackColor = Color.FromArgb(40, 40, 40),
                 ForeColor = Color.White,
-                ClientSize = new Size(440, 365)
+                ClientSize = new Size(620, 440)
             };
 
             var layout = new TableLayoutPanel
@@ -4343,17 +5227,18 @@ namespace Aerolithe
                 BackColor = Color.FromArgb(40, 40, 40),
                 ForeColor = Color.White,
                 ColumnCount = 2,
-                RowCount = 8
+                RowCount = 9
             };
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 205F));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
 
             int GetPhotoCountForSerie(int serieIndex)
@@ -4390,7 +5275,7 @@ namespace Aerolithe
             }
 
             var cmbSerie = new System.Windows.Forms.ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, BackColor = Color.FromArgb(40, 40, 40), ForeColor = Color.White };
-            cmbSerie.Items.AddRange(new object[] { "0", "1", "2" });
+            cmbSerie.Items.AddRange(new object[] { "Série 0 - élévation 5°", "Série 1 - élévation 25°", "Série 2 - élévation 45°" });
             int initialSerie = projet.Serie >= 0 && projet.Serie < angleIndexes.Length ? projet.Serie : 0;
             cmbSerie.SelectedIndex = initialSerie;
             var cmbCote = new System.Windows.Forms.ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, BackColor = Color.FromArgb(40, 40, 40), ForeColor = Color.White };
@@ -4398,11 +5283,19 @@ namespace Aerolithe
             cmbCote.SelectedIndex = projet.Cote == 0 ? 0 : 1;
             var txtRotation = new System.Windows.Forms.TextBox { Dock = DockStyle.Fill, Text = GetDefaultRotationForSerie(initialSerie).ToString(CultureInfo.InvariantCulture), BackColor = Color.FromArgb(40, 40, 40), ForeColor = Color.White };
             var txtImageNumber = new System.Windows.Forms.TextBox { Dock = DockStyle.Fill, Text = Math.Max(0, projet.RotationSerieIncrement).ToString(CultureInfo.InvariantCulture), BackColor = Color.FromArgb(40, 40, 40), ForeColor = Color.White };
+            var lblIntro = new Label
+            {
+                Dock = DockStyle.Fill,
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                ForeColor = Color.FromArgb(220, 220, 220),
+                Text = "Choisis le point exact où la séquence totale doit reprendre. La rotation locale sert au positionnement physique; le no image sert au nom de fichier.",
+                AutoSize = false
+            };
             var lblSerieInfo = new Label { Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White };
             var lblImageName = new Label { Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White };
 
             var btnOk = new System.Windows.Forms.Button { Text = "OK", DialogResult = DialogResult.OK, Dock = DockStyle.Fill, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
-            var btnCancel = new System.Windows.Forms.Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Dock = DockStyle.Fill, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            var btnCancel = new System.Windows.Forms.Button { Text = "Annuler", DialogResult = DialogResult.Cancel, Dock = DockStyle.Fill, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
             var buttons = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(40, 40, 40), ColumnCount = 3, RowCount = 1, Padding = new Padding(0, 8, 0, 0) };
             buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
@@ -4410,21 +5303,23 @@ namespace Aerolithe
             buttons.Controls.Add(btnCancel, 1, 0);
             buttons.Controls.Add(btnOk, 2, 0);
 
-            layout.Controls.Add(new Label { Text = "Série (0, 1, 2)", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 0);
-            layout.Controls.Add(cmbSerie, 1, 0);
-            layout.Controls.Add(new Label { Text = "Côté", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 1);
-            layout.Controls.Add(cmbCote, 1, 1);
-            layout.Controls.Add(lblSerieInfo, 0, 2);
+            layout.Controls.Add(lblIntro, 0, 0);
+            layout.SetColumnSpan(lblIntro, 2);
+            layout.Controls.Add(new Label { Text = "Élévation / série", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 1);
+            layout.Controls.Add(cmbSerie, 1, 1);
+            layout.Controls.Add(new Label { Text = "Côté météorite", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 2);
+            layout.Controls.Add(cmbCote, 1, 2);
+            layout.Controls.Add(lblSerieInfo, 0, 3);
             layout.SetColumnSpan(lblSerieInfo, 2);
-            layout.Controls.Add(new Label { Text = "No rotation", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 3);
-            layout.Controls.Add(txtRotation, 1, 3);
-            layout.Controls.Add(new Label { Text = "Entrer le numéro de rotation, pas l'angle.", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 4);
-            layout.SetColumnSpan(layout.GetControlFromPosition(0, 4), 2);
-            layout.Controls.Add(new Label { Text = "No image FS", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 5);
-            layout.Controls.Add(txtImageNumber, 1, 5);
-            layout.Controls.Add(lblImageName, 0, 6);
+            layout.Controls.Add(new Label { Text = "Rotation locale", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 4);
+            layout.Controls.Add(txtRotation, 1, 4);
+            layout.Controls.Add(new Label { Text = "Position autour de la table pour cette élévation. Entrer l'index de rotation, pas l'angle en degrés.", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.FromArgb(220, 220, 220) }, 0, 5);
+            layout.SetColumnSpan(layout.GetControlFromPosition(0, 5), 2);
+            layout.Controls.Add(new Label { Text = "No image dans le fichier", Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = Color.White }, 0, 6);
+            layout.Controls.Add(txtImageNumber, 1, 6);
+            layout.Controls.Add(lblImageName, 0, 7);
             layout.SetColumnSpan(lblImageName, 2);
-            layout.Controls.Add(buttons, 0, 7);
+            layout.Controls.Add(buttons, 0, 8);
             layout.SetColumnSpan(buttons, 2);
 
             prompt.Controls.Add(layout);
@@ -4461,11 +5356,11 @@ namespace Aerolithe
                     }
                 }
 
-                lblSerieInfo.Text = $"{photoCount} photos pour cette série. {stepText} entre rotations.{rotationText}";
+                lblSerieInfo.Text = $"Cette élévation contient {photoCount} positions. Écart calculé: {stepText} entre rotations.{rotationText}";
                 lblImageName.Text = int.TryParse(txtImageNumber.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int imageNumberIndex)
                     && imageNumberIndex >= 0
-                    ? $"Image focus stack: {GetFocusStackPreviewImageName(imageNumberIndex)}"
-                    : "Image focus stack: n/a";
+                    ? $"Nom attendu du focus stack: {GetFocusStackPreviewImageName(imageNumberIndex)}"
+                    : "Nom attendu du focus stack: n/a";
             }
 
             cmbSerie.SelectedIndexChanged += (_, __) =>
@@ -4542,6 +5437,8 @@ namespace Aerolithe
             // Sauvegarder ou Appliquer le masque
             projet.ApplyMask = !projet.ApplyMask;
             btn_applyMask.Text = projet.ApplyMask ? "" : "";
+            projet.AutoExposureUseMask = projet.ApplyMask;
+            UpdateAutoExposureModeVisual();
 
 
             // disable la sauvegarde de l'image pour la mesure du volume dans Mestashape
@@ -4565,6 +5462,58 @@ namespace Aerolithe
             projet.Save(appSettings.ProjectPath);
         }
 
+        private void btn_postMask_Click(object sender, EventArgs e)
+        {
+            projet.postMask = !projet.postMask;
+            btn_postMask.Text = projet.postMask ? "" : "";
+            SavePrefsSettings();
+        }
+
+        private void SetPostMaskMeasurementVisual(bool measurementActive)
+        {
+            void update()
+            {
+                btn_postMask.Enabled = !measurementActive;
+                btn_postMask.Text = measurementActive ? "" : (projet.postMask ? "" : "");
+            }
+
+            if (btn_postMask.InvokeRequired)
+            {
+                btn_postMask.Invoke((Action)update);
+            }
+            else
+            {
+                update();
+            }
+        }
+
+        private void RestoreMeasurementSequenceCaptureState(bool applyMaskWasEnabled, bool focusStackWasEnabled, bool maskFreezeWasEnabled)
+        {
+            void update()
+            {
+                photoPourMesure = false;
+                projet.ApplyMask = applyMaskWasEnabled;
+                projet.FocusStackEnabled = focusStackWasEnabled;
+                maskFreeze = maskFreezeWasEnabled;
+
+                btn_applyMask.Text = projet.ApplyMask ? "" : "";
+                btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
+                btn_freezeMask.Text = maskFreeze ? "" : "";
+                btn_saveImageForMesurements.Text = "";
+
+                SavePrefsSettings();
+            }
+
+            if (btn_applyMask.InvokeRequired)
+            {
+                btn_applyMask.Invoke((Action)update);
+            }
+            else
+            {
+                update();
+            }
+        }
+
         private void btn_freezeMask_Click(object sender, EventArgs e)
         {
             maskFreeze = !maskFreeze;
@@ -4581,18 +5530,9 @@ namespace Aerolithe
         {
 
             photoPourMesure = !photoPourMesure;
-            btn_saveImageForMesurementSequence.Text = photoPourMesure ? "" : "";
+            btn_saveImageForMesurements.Text = photoPourMesure ? "" : "";
             if (photoPourMesure) saveImageForMesurementEnable();
             else saveImageForMesurementRemettre();
-        }
-
-
-        //Bouton dans l'onlet Camera
-        private void btn_saveImageForMesurementSequence_Click(object sender, EventArgs e)
-        {
-            projet.SaveImageForMesurements = !projet.SaveImageForMesurements;
-            btn_saveImageForMesurementSequence.Text = projet.SaveImageForMesurements ? "" : "";
-            SavePrefsSettings();
         }
 
         private async Task saveImageForMesurementEnable()
@@ -4610,6 +5550,8 @@ namespace Aerolithe
                 btn_applyMask.Text = "";                                   // false
                 btn_focusStack.Text = "";                                  // false
                 btn_freezeMask.Text = "";                                  // false
+                btn_postMask.Enabled = false;
+                btn_postMask.Text = "";
                 btn_saveImageForMesurements.Text = "";                   // true
             }));
             await Task.Delay(200);
@@ -4634,9 +5576,11 @@ namespace Aerolithe
 
             Invoke(new Action(() =>
             {
-                if (projet.ApplyMask) btn_applyMask.Text = "";             // true?
-                if (projet.FocusStackEnabled) btn_focusStack.Text = "";    // true?
-                if (maskFreeze) btn_freezeMask.Text = "";                  // true?
+                btn_applyMask.Text = projet.ApplyMask ? "" : "";
+                btn_focusStack.Text = projet.FocusStackEnabled ? "" : "";
+                btn_freezeMask.Text = maskFreeze ? "" : "";
+                btn_postMask.Enabled = true;
+                btn_postMask.Text = projet.postMask ? "" : "";
                 btn_saveImageForMesurements.Text = "";                   // false
             }));
         }
@@ -4923,46 +5867,55 @@ namespace Aerolithe
 
         private void BeginCalibrationAutoCentrageOverride()
         {
-            if (appSettings.CalibrationAutoCentrage)
-            {
-                return;
-            }
-
-            lock (_calibrationAutoCentrageOverrideLock)
-            {
-                if (_calibrationAutoCentrageSavedAuto.HasValue || _calibrationAutoCentrageSavedActuator.HasValue)
-                {
-                    return;
-                }
-
-                _calibrationAutoCentrageSavedAuto = projet.AutoCentrage;
-                _calibrationAutoCentrageSavedActuator = projet.AutoCentrageActuator;
-            }
-
             SetAutoCentrageState(autoCentrage: false, autoCentrageActuator: false);
-            AppendTextToConsoleNL("Auto-centrage de calibration désactivé temporairement.");
+            AppendTextToConsoleNL("Auto-centrage désactivé pour la séquence de photos de calibration.");
         }
 
-        private void RestoreCalibrationAutoCentrageOverride()
+        private async Task PromptAutoCentrageBeforeTotalSequenceAsync(CancellationToken cancellationToken)
         {
-            bool? autoCentrage;
-            bool? autoCentrageActuator;
-
-            lock (_calibrationAutoCentrageOverrideLock)
-            {
-                autoCentrage = _calibrationAutoCentrageSavedAuto;
-                autoCentrageActuator = _calibrationAutoCentrageSavedActuator;
-                _calibrationAutoCentrageSavedAuto = null;
-                _calibrationAutoCentrageSavedActuator = null;
-            }
-
-            if (!autoCentrage.HasValue || !autoCentrageActuator.HasValue)
+            if (projet.AutoCentrage && projet.AutoCentrageActuator)
             {
                 return;
             }
 
-            SetAutoCentrageState(autoCentrage.Value, autoCentrageActuator.Value);
-            AppendTextToConsoleNL("Auto-centrage restauré après la séquence de photos de calibration.");
+            cancellationToken.ThrowIfCancellationRequested();
+
+            DialogResult result;
+            if (InvokeRequired)
+            {
+                TaskCompletionSource<DialogResult> promptTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                BeginInvoke(new Action(() =>
+                {
+                    promptTcs.TrySetResult(ShowAutoCentrageTotalSequencePrompt());
+                }));
+                result = await promptTcs.Task;
+            }
+            else
+            {
+                result = ShowAutoCentrageTotalSequencePrompt();
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (result == DialogResult.Yes)
+            {
+                SetAutoCentrageState(autoCentrage: true, autoCentrageActuator: true);
+                AppendTextToConsoleNL("Auto-centrage réactivé pour la séquence totale.");
+            }
+            else
+            {
+                AppendTextToConsoleNL("Séquence totale lancée sans réactiver l'auto-centrage.", Color.Orange);
+            }
+        }
+
+        private DialogResult ShowAutoCentrageTotalSequencePrompt()
+        {
+            return MessageBox.Show(
+                "L'auto-centrage est désactivé. Voulez-vous le réactiver avant de lancer la séquence totale?",
+                "Auto-centrage désactivé",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button1);
         }
 
         private void SetAutoCentrageState(bool autoCentrage, bool autoCentrageActuator)
@@ -4973,6 +5926,30 @@ namespace Aerolithe
                 projet.AutoCentrageActuator = autoCentrageActuator;
                 btn_AutoCentrageAuto.Text = projet.AutoCentrage ? "" : "";
                 btn_AutoCentrageActuator.Text = projet.AutoCentrageActuator ? "" : "";
+
+                if (projet.AutoCentrage || projet.AutoCentrageActuator)
+                {
+                    cancelAutoCentrage = false;
+                }
+                else
+                {
+                    cancelAutoCentrage = true;
+                }
+
+                if (projet.AutoCentrageActuator)
+                {
+                    ClearSequenceStop("Auto-centrage actuateur activé");
+                    StartManualActuatorAutoCenterTracking();
+                }
+                else
+                {
+                    _manualActuatorAutoCenterCts?.Cancel();
+                    udpSendLiftVerticalMotorData(0);
+                    udpSendLiftHorizontalData(0);
+                    udpSendCameraLinearMotorData(0);
+                }
+
+                SavePrefsSettings();
             }
 
             if (InvokeRequired)
@@ -5104,5 +6081,6 @@ namespace Aerolithe
         {
             GoToFSFolder();
         }
+       
     }
 }

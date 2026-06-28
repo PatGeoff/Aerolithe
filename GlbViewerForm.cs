@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Drawing.Imaging;
+using System.Globalization;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
@@ -11,13 +12,18 @@ namespace Aerolithe
         private readonly GLControl _glControl;
         private readonly System.Windows.Forms.Timer _renderTimer;
         private readonly Label _titleLabel;
+        private readonly TextBox _longestDimensionTextBox;
+        private readonly TextBox _volumeTextBox;
+        private readonly Button _boundingBoxButton;
         private GlbModel? _model;
+        private ModelMetrics? _metrics;
         private readonly List<int> _textureIds = new();
         private bool _dragging;
         private Point _lastMouse;
         private float _yaw = -25f;
         private float _pitch = 20f;
         private float _distance = 4f;
+        private bool _showBoundingBox;
 
         public GlbViewerForm(string? glbPath = null)
         {
@@ -36,12 +42,39 @@ namespace Aerolithe
             _titleLabel = new Label
             {
                 Text = "Aucun GLB chargé",
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                Height = 24,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(10, 0, 10, 0),
                 ForeColor = Color.Gainsboro,
                 BackColor = Color.FromArgb(32, 32, 32),
                 AutoEllipsis = true
+            };
+
+            _longestDimensionTextBox = new TextBox
+            {
+                Text = "Dimension max: -",
+                Dock = DockStyle.Left,
+                Width = 270,
+                ReadOnly = true,
+                BorderStyle = BorderStyle.None,
+                ForeColor = Color.FromArgb(170, 235, 190),
+                BackColor = Color.FromArgb(32, 32, 32),
+                Font = new Font(Font.FontFamily, 12.5f, FontStyle.Bold),
+                Margin = new Padding(0)
+            };
+
+            _volumeTextBox = new TextBox
+            {
+                Text = "Volume: -",
+                Dock = DockStyle.Left,
+                Width = 270,
+                ReadOnly = true,
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(32, 32, 32),
+                ForeColor = Color.FromArgb(170, 235, 190),
+                Font = new Font(Font.FontFamily, 12.5f, FontStyle.Bold),
+                Margin = new Padding(0)
             };
 
             Button openButton = new()
@@ -52,13 +85,30 @@ namespace Aerolithe
             };
             openButton.Click += (_, __) => OpenGlbFromDialog();
 
+            _boundingBoxButton = new Button
+            {
+                Text = "Boîte: Off",
+                Dock = DockStyle.Right,
+                Width = 110
+            };
+            _boundingBoxButton.Click += (_, __) => ToggleBoundingBox();
+
             Panel header = new()
             {
                 Dock = DockStyle.Top,
-                Height = 36,
+                Height = 56,
                 BackColor = Color.FromArgb(32, 32, 32)
             };
+            Panel metricsPanel = new()
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(32, 32, 32)
+            };
+            metricsPanel.Controls.Add(_volumeTextBox);
+            metricsPanel.Controls.Add(_longestDimensionTextBox);
+            header.Controls.Add(metricsPanel);
             header.Controls.Add(_titleLabel);
+            header.Controls.Add(_boundingBoxButton);
             header.Controls.Add(openButton);
 
             _glControl = new GLControl(GraphicsMode.Default)
@@ -149,13 +199,23 @@ namespace Aerolithe
         {
             DeleteUploadedTextures();
             _model = GlbModel.Load(glbPath);
+            _metrics = ModelMetrics.TryLoadForGlb(glbPath);
             _distance = Math.Max(0.05f, _model.Radius * 2.15f);
             _yaw = -25f;
             _pitch = 20f;
             Text = "Visualisateur GLB - " + Path.GetFileName(glbPath);
-            _titleLabel.Text = glbPath;
+            _titleLabel.Text = glbPath + "   |   " + _model.DimensionsText;
+            _longestDimensionTextBox.Text = "Dimension max: " + _model.LongestDimensionText;
+            _volumeTextBox.Text = _metrics?.VolumeCm3Text ?? "Volume: non disponible";
             ConfigureViewport();
             UploadModelTextures();
+            _glControl.Invalidate();
+        }
+
+        private void ToggleBoundingBox()
+        {
+            _showBoundingBox = !_showBoundingBox;
+            _boundingBoxButton.Text = _showBoundingBox ? "Boîte: On" : "Boîte: Off";
             _glControl.Invalidate();
         }
 
@@ -364,7 +424,50 @@ namespace Aerolithe
             GL.Disable(EnableCap.Texture2D);
             GL.BindTexture(TextureTarget.Texture2D, 0);
 
+            if (_showBoundingBox)
+            {
+                DrawBoundingBox(_model);
+            }
+
             _glControl.SwapBuffers();
+        }
+
+        private static void DrawBoundingBox(GlbModel model)
+        {
+            Vector3 min = model.Min;
+            Vector3 max = model.Max;
+            Vector3[] corners =
+            [
+                new(min.X, min.Y, min.Z),
+                new(max.X, min.Y, min.Z),
+                new(max.X, max.Y, min.Z),
+                new(min.X, max.Y, min.Z),
+                new(min.X, min.Y, max.Z),
+                new(max.X, min.Y, max.Z),
+                new(max.X, max.Y, max.Z),
+                new(min.X, max.Y, max.Z)
+            ];
+
+            int[] edges =
+            [
+                0, 1, 1, 2, 2, 3, 3, 0,
+                4, 5, 5, 6, 6, 7, 7, 4,
+                0, 4, 1, 5, 2, 6, 3, 7
+            ];
+
+            GL.Disable(EnableCap.Lighting);
+            GL.Disable(EnableCap.Texture2D);
+            GL.Enable(EnableCap.DepthTest);
+            GL.LineWidth(2.0f);
+            GL.Color3(Color.FromArgb(170, 235, 190));
+            GL.Begin(PrimitiveType.Lines);
+            foreach (int index in edges)
+            {
+                GL.Vertex3(corners[index]);
+            }
+            GL.End();
+            GL.LineWidth(1.0f);
+            GL.Enable(EnableCap.Lighting);
         }
 
         private void GlControl_MouseDown(object? sender, MouseEventArgs e)
@@ -401,6 +504,22 @@ namespace Aerolithe
             public required List<GlbPrimitive> Primitives { get; init; }
             public Vector3 Center { get; init; }
             public float Radius { get; init; }
+            public Vector3 Min { get; init; }
+            public Vector3 Max { get; init; }
+            public Vector3 Size => Max - Min;
+            public string DimensionsText => "Dimensions X/Y/Z: " + FormatLength(Size.X) + " x " + FormatLength(Size.Y) + " x " + FormatLength(Size.Z);
+            public string LongestDimensionText
+            {
+                get
+                {
+                    float x = Math.Abs(Size.X);
+                    float y = Math.Abs(Size.Y);
+                    float z = Math.Abs(Size.Z);
+                    if (x >= y && x >= z) return "(x) " + FormatLength(Size.X);
+                    if (y >= x && y >= z) return "(y) " + FormatLength(Size.Y);
+                    return "(z) " + FormatLength(Size.Z);
+                }
+            }
 
             public static GlbModel Load(string path)
             {
@@ -497,7 +616,23 @@ namespace Aerolithe
 
                 Vector3 center = (min + max) * 0.5f;
                 float radius = Math.Max(0.001f, (max - min).Length * 0.5f);
-                return new GlbModel { Primitives = primitives, Center = center, Radius = radius };
+                return new GlbModel { Primitives = primitives, Center = center, Radius = radius, Min = min, Max = max };
+            }
+
+            private static string FormatLength(float meters)
+            {
+                float value = Math.Abs(meters);
+                if (value < 0.01f)
+                {
+                    return (meters * 1000f).ToString("0.##") + " mm";
+                }
+
+                if (value < 1f)
+                {
+                    return (meters * 100f).ToString("0.##") + " cm";
+                }
+
+                return meters.ToString("0.###") + " m";
             }
 
             private static GlbMaterial[] ReadMaterials(JsonElement root, JsonElement bufferViews, byte[] bin)
@@ -681,6 +816,63 @@ namespace Aerolithe
         private sealed record GlbMaterial(byte[] TextureBytes, bool DoubleSided)
         {
             public static GlbMaterial Empty { get; } = new(Array.Empty<byte>(), true);
+        }
+
+        private sealed class ModelMetrics
+        {
+            public double? VolumeCm3 { get; init; }
+            public string VolumeCm3Text => VolumeCm3.HasValue
+                ? "Volume: " + VolumeCm3.Value.ToString("0.###", CultureInfo.InvariantCulture) + " cm³"
+                : "Volume: non disponible";
+
+            public static ModelMetrics? TryLoadForGlb(string glbPath)
+            {
+                string? metricsPath = FindMetricsPath(glbPath);
+                if (metricsPath == null)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    using JsonDocument document = JsonDocument.Parse(File.ReadAllText(metricsPath));
+                    JsonElement root = document.RootElement;
+                    double? volumeCm3 = root.TryGetProperty("volume_cm3", out JsonElement volumeElement) &&
+                        volumeElement.TryGetDouble(out double parsedVolume)
+                            ? parsedVolume
+                            : null;
+
+                    return new ModelMetrics { VolumeCm3 = volumeCm3 };
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            private static string? FindMetricsPath(string glbPath)
+            {
+                string? directory = Path.GetDirectoryName(glbPath);
+                if (string.IsNullOrWhiteSpace(directory))
+                {
+                    return null;
+                }
+
+                string baseName = Path.GetFileNameWithoutExtension(glbPath);
+                string projectName = baseName.EndsWith("_LR", StringComparison.OrdinalIgnoreCase) ||
+                    baseName.EndsWith("_HR", StringComparison.OrdinalIgnoreCase)
+                        ? baseName[..^3]
+                        : baseName;
+
+                string preferredPath = Path.Combine(directory, projectName + "_metrics.json");
+                if (File.Exists(preferredPath))
+                {
+                    return preferredPath;
+                }
+
+                string[] candidates = Directory.GetFiles(directory, "*_metrics.json");
+                return candidates.Length == 1 ? candidates[0] : null;
+            }
         }
     }
 }
